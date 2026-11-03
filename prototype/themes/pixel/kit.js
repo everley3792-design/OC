@@ -17,6 +17,7 @@
     p0: '#4A3460', p1: '#7A5C9E', p2: '#A98CD0', p3: '#D2B8EC', pk: '#F1B6C7', pk2: '#FFE0E6',
     c0: '#FFF7E6', c1: '#F6E9CF', c2: '#E4CFA6', white: '#FFFFFF',
     n0: '#141A33', n1: '#232A52', n2: '#39407A', n3: '#5A5FA0', n4: '#8A8FCF',
+    ng0: '#22383F', ng1: '#2F4D4E', ng2: '#3F6560', ng3: '#557F70', nb0: '#3E3550', nb1: '#5A4A63',
   };
   const PAL = Object.values(P).filter((v, i, a) => a.indexOf(v) === i);
   const RGB = PAL.map((h) => OC.hexToRgb(h));
@@ -158,6 +159,7 @@
   function icon(ctx, name, x, y, s = 2, c1 = P.ink, c2, c3) {
     const rows = IC[name]; if (!rows) return;
     const map = { 1: c1, 2: c2 || c1, 3: c3 || P.white, 4: P.c2 };
+    if (name === 'map') Object.assign(map, { 4: P.w4, 3: P.r1 });
     if (name === 'coin') Object.assign(map, { 1: P.e2, 2: P.r4, 3: P.r5 });
     if (name === 'heart') Object.assign(map, { 1: P.r0, 2: P.r2, 3: P.pk });
     if (name === 'heartE') Object.assign(map, { 1: P.e2, 4: P.c2 });
