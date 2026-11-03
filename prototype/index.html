@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OC Shimeji — Visual Prototype</title>
+<style>
+  :root { --bg:#141216; --fg:#eee7e1; --muted:#9b938e; --accent:#f2b8a0; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, sans-serif; }
+  body.record { background:#000; overflow:hidden; }
+  #wrap { display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; box-sizing:border-box; height:100%; }
+  #stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; width:100%; }
+  canvas#c { height:100%; max-width:100%; aspect-ratio:9/16; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.5); background:#000; }
+  body.record canvas#c { border-radius:0; box-shadow:none; height:auto; width:1080px; }
+  #bar { display:flex; gap:10px; align-items:center; width:min(720px,100%); flex-wrap:wrap; }
+  #bar button, #bar select { background:#2a2629; color:var(--fg); border:1px solid #3a3438; border-radius:10px; padding:8px 12px; font:inherit; cursor:pointer; }
+  #bar input[type=range] { flex:1; min-width:160px; accent-color:var(--accent); }
+  #time { font-variant-numeric: tabular-nums; color:var(--muted); min-width:92px; text-align:right; }
+  #chap { color:var(--muted); width:100%; text-align:center; min-height:1.4em; }
+  body.record #bar, body.record #chap { display:none; }
+  body.record #wrap { padding:0; display:block; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="c" width="1080" height="1920"></canvas></div>
+  <div id="chap"></div>
+  <div id="bar">
+    <select id="theme">
+      <option value="mallow">A · 棉霧島 Mallow Mist</option>
+      <option value="pixel">B · 像素森語 Pixel Grove</option>
+      <option value="sketch">C · 手帳繪本 Inkpot Tales</option>
+    </select>
+    <button id="play">❚❚</button>
+    <input id="seek" type="range" min="0" max="45" step="0.0333" value="0">
+    <span id="time">0.00 / 45.0</span>
+  </div>
+</div>
+<script src="shared/core.js"></script>
+<script src="shared/engine.js"></script>
+<script>
+const THEME_FILES = {
+  mallow: ['kit', 'char', 'world', 'shots'],
+  pixel: ['kit', 'char', 'world', 'shots'],
+  sketch: ['kit', 'char', 'world', 'shots'],
+};
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed ' + src)); document.head.appendChild(s); });
+}
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const themeId = q.get('theme') || 'mallow';
+  for (const f of THEME_FILES[themeId]) await loadScript(`themes/${themeId}/${f}.js`);
+  const record = q.has('record');
+  if (record) document.body.classList.add('record');
+  const sel = document.getElementById('theme');
+  sel.value = themeId;
+  sel.onchange = () => { q.set('theme', sel.value); location.search = q.toString(); };
+  await OC.boot(themeId, document.getElementById('c'));
+  if (record) return; // the recorder drives renderFrame(t) itself
+  let playing = true, t = parseFloat(q.get('t') || '0'), last = performance.now();
+  const seek = document.getElementById('seek'), time = document.getElementById('time'), chap = document.getElementById('chap');
+  seek.max = OC.DURATION;
+  document.getElementById('play').onclick = (e) => { playing = !playing; e.target.textContent = playing ? '❚❚' : '▶'; last = performance.now(); };
+  seek.oninput = () => { t = parseFloat(seek.value); };
+  function loop(now) {
+    if (playing) { t += (now - last) / 1000; if (t >= OC.DURATION) t = 0; }
+    last = now;
+    OC.renderFrame(t);
+    seek.value = t;
+    time.textContent = t.toFixed(2) + ' / ' + OC.DURATION.toFixed(1);
+    const s = OC.SHOTS.find((s) => t >= s.t0 && t < s.t1);
+    chap.textContent = s ? (s.zh ? s.zh + ' — ' + s.en : '') : '';
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
