@@ -5,11 +5,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MotionTest {
-    @Test fun springSettlesToOneWithSoftOvershoot() {
+    @Test fun springSettlesToOneWithBoundedOvershoot() {
         assertEquals(0f, Motion.spring(0f))
-        val peak = (1..200).maxOf { Motion.spring(it / 200f) }
-        assertTrue(peak in 1.0f..1.10f, "overshoot should stay soft, was $peak")
+        // default spring (2.2 Hz, damp 6) peaks at ~1.256; used only on small rig params (turn, rise)
+        val peak = (1..400).maxOf { Motion.spring(it / 400f) }
+        assertEquals(1.256f, peak, 0.01f)
         assertEquals(1f, Motion.spring(3f), 0.001f)
+    }
+
+    @Test fun uiPopOvershootStaysUnderSixPercent() {
+        val peak = (1..400).maxOf { Ease.outBack(it / 400f) }
+        assertTrue(peak in 1.0f..1.06f, "UI pop overshoot was $peak")
     }
 
     @Test fun wobbleDecays() {
