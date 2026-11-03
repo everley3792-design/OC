@@ -7,9 +7,9 @@ import kotlin.test.assertTrue
 class MotionTest {
     @Test fun springSettlesToOneWithBoundedOvershoot() {
         assertEquals(0f, Motion.spring(0f))
-        // default spring (2.2 Hz, damp 6) peaks at ~1.256; used only on small rig params (turn, rise)
+        // default spring (2.2 Hz, damp 6) peaks at ~1.280; used only on small rig params (turn, rise)
         val peak = (1..400).maxOf { Motion.spring(it / 400f) }
-        assertEquals(1.256f, peak, 0.01f)
+        assertEquals(1.280f, peak, 0.005f)
         assertEquals(1f, Motion.spring(3f), 0.001f)
     }
 

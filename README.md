@@ -19,7 +19,7 @@
 
 ## 狀態
 - ✅ 三支 MP4、三張總覽圖、三套可執行動態原型（含播放器與錄影腳本）
-- ✅ 技術架構與規範文件、Android 多模組專案骨架、純 Kotlin 核心（生活模擬、動畫、存檔、素材包）
+- ✅ 技術架構與規範文件、Android 多模組專案骨架、純 Kotlin 核心（生活模擬、動畫、存檔、素材包）— `cd android && ./gradlew -PcoreOnly=true test`：12 個單元測試全數通過
 - ⏳ APK：此雲端環境無法存取 Google Maven，尚未建置
 - ⏳ Android 懸浮桌寵：原生程式碼已撰寫（`android/platform/overlay`），**尚未編譯與實機驗證**；影片中為視覺模擬
 - ⏸ 第二階段：等待選定美術方向
