@@ -106,7 +106,7 @@
     T(c.title, 60, 92, c.hFont, c.ink);
     T(c.tagline, 62, 140, c.sFont, c.sub);
     // phones
-    const times = [5.0, 8.7, 11.3, 21.7, id === 'pixel' ? 26.7 : ['wild', 'isle', 'quirk'].includes(id) ? 27.1 : 26.0, 37.4];
+    const times = [5.0, 8.7, 11.3, 21.7, id === 'pixel' ? 26.7 : ['wild', 'isle', 'quirk', 'isle3d'].includes(id) ? 27.1 : 26.0, 37.4];
     const caps = ['小島 · 白天 HUD', '日夜光影', '捏臉 / 創角', '對話 · 特殊反應', '地圖 → 地點', '動畫工坊'];
     const main = document.getElementById('c');
     const pw = 380, ph = 676;
