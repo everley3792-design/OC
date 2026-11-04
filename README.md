@@ -20,6 +20,14 @@
 | E · 晴日島嶼 Sunny Isle | [`E_sunny-isle.mp4`](deliverables/videos/E_sunny-isle.mp4) | [`E_sunny-isle.png`](deliverables/overviews/E_sunny-isle.png) | `prototype/index.html?theme=isle` |
 | F · 奇趣鎮 Quirkville | [`F_quirkville.mp4`](deliverables/videos/F_quirkville.mp4) | [`F_quirkville.png`](deliverables/overviews/F_quirkville.png) | `prototype/index.html?theme=quirk` |
 
+### 第三輪：3D 固定視角世界 ＋ 2D 角色（混合）
+
+| 方案 | 影片 | 視覺總覽 | 原型 |
+|---|---|---|---|
+| G · 晴日島嶼 3D | [`G_sunny-isle-3d.mp4`](deliverables/videos/G_sunny-isle-3d.mp4) | [`G_sunny-isle-3d.png`](deliverables/overviews/G_sunny-isle-3d.png) | `prototype/index.html?theme=isle3d` |
+
+說明：[`docs/phase1-round3-hybrid3d.md`](docs/phase1-round3-hybrid3d.md)
+
 **先讀：** [`docs/phase1-round2-comparison.md`](docs/phase1-round2-comparison.md)（第二輪 D/E/F）與 [`docs/phase1-comparison.md`](docs/phase1-comparison.md)（第一輪 A/B/C）。
 
 文件：

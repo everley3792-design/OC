@@ -3,8 +3,10 @@ package app.ocshimeji.render
 import app.ocshimeji.core.anim.RigPose
 
 /**
- * 2.5D world rendering contract (libGDX SpriteBatch, orthographic camera, pure 2D).
- * Implemented per art direction in Phase 2. Layers, drawn in order:
+ * World rendering contract. Round 3 decision: 3D fixed-camera world (orthographic, 50° tilt,
+ * Filament or Godot) with 2D characters as camera-facing billboards; ground (x, y) maps to
+ * X = x, Z = (y + level*24)/sin50°, Y = level*24/cos50° so 2D layouts stay valid.
+ * For the pure-2D schemes (A–F) the layer order below applies:
  *   0 Ground tiles / painted ground  1 Decals (paths, puddles)  2 Cliff faces (elevation)
  *   3 Y-sorted actors & props (sort key = foot y, then x)  4 Overhead (canopies, roofs when inside)
  *   5 Weather particles  6 Lighting (multiply tint + additive light sprites; pixel: palette LUT)

@@ -1,17 +1,21 @@
 # CLAUDE.md — OC Shimeji
 
-原創角色生活模擬 + Android 系統級懸浮桌寵。直向手機、純 2D / 2.5D（**禁止 3D 模型與 3D 場景**）。
+原創角色生活模擬 + Android 系統級懸浮桌寵。直向手機。
+
+**視覺技術規則（第三輪起，使用者已選擇做法 ①）**：世界（地形、建築、樹木、道具、光影）**可以是 3D，但鏡頭固定**（正交、俯角 50°，只平移／縮放，不旋轉）；**角色、UI、繪畫工坊、逐幀動畫、玩家素材、懸浮桌寵一律 2D**（角色以面向鏡頭的看板放進 3D 世界）。純 2D 方案（A–F）仍保留供比較。詳見 `docs/phase1-round3-hybrid3d.md`。
 
 ## 目前階段
 - **第一階段完成**：三套視覺方案（影片、總覽圖、可執行原型）、技術架構、規範文件、Android 專案骨架。
 - **等待使用者選定美術方向**。在使用者明確選擇（或提出混合/修改）之前，**不要開始第二階段**，也不要自行刪除任何方案。
-- 方案代號：第一輪 `mallow`（A 棉霧島）、`pixel`（B 像素森語）、`sketch`（C 手帳繪本）；第二輪（Switch 風格參考、同視角）`wild`（D 風語原野）、`isle`（E 晴日島嶼）、`quirk`（F 奇趣鎮）。使用者可能選擇任一方案或混合。
+- 方案代號：第一輪 `mallow`（A 棉霧島）、`pixel`（B 像素森語）、`sketch`（C 手帳繪本）；第二輪（Switch 風格參考、同視角）`wild`（D 風語原野）、`isle`（E 晴日島嶼）、`quirk`（F 奇趣鎮）。第三輪 `isle3d`（G 晴日島嶼 3D：3D 固定視角世界＋E 的 2D 角色與 UI）。使用者可能選擇任一方案或混合。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材（見 `docs/phase1-round2-comparison.md`）。
 
 ## 目錄
 ```
 prototype/            動態原型（HTML Canvas，逐幀決定性渲染）
-  index.html          ?theme=mallow|pixel|sketch|wild|isle|quirk  ；&record=1 給錄影工具用
+  index.html          ?theme=mallow|pixel|sketch|wild|isle|quirk|isle3d  ；&record=1 給錄影工具用
+  vendor/three/       three.js r158（MIT，UMD 版，全域 THREE），只給第三輪 3D 世界用
+  themes/isle3d/      world3d.js（3D 世界、座標對齊、角色看板、光影）theme.js（沿用 E 的所有畫面，只替換世界渲染）
   shared/core.js      時間軸、緩動、彈簧、眨眼、走路路徑、共用分鏡與資料
   shared/engine.js    鏡頭切換與轉場合成
   shared/board.js     視覺總覽圖產生器
@@ -23,7 +27,7 @@ prototype/            動態原型（HTML Canvas，逐幀決定性渲染）
   tools/stills.js     輸出單張畫面檢查
   tools/board.js      輸出總覽圖
 deliverables/         videos/*.mp4  overviews/*.png
-docs/                 phase1-round2-comparison、phase1-comparison（先讀）、visual-plan、architecture、ui-components、art-guidelines、animation-guidelines、asset-format
+docs/                 phase1-round3-hybrid3d、phase1-round2-comparison、phase1-comparison（先讀）、visual-plan、architecture、ui-components、art-guidelines、animation-guidelines、asset-format
 android/              Gradle 多模組專案（core:* 純 Kotlin；app / platform:overlay / render:world / ui:design 為 Android）
 ```
 
@@ -51,6 +55,8 @@ Playwright 與 Chromium 已預裝於雲端環境（`require('playwright')`），
 - 每頁一個主要按鈕；觸控熱區 ≥ 48dp；主要操作放下方拇指區。
 - 懸浮桌寵：`platform/overlay` 程式碼**尚未實機驗證**。在 `docs/architecture.md` 驗證清單全部通過前，不可宣稱完成。影片中的桌寵是視覺模擬。
 - 所有美術為原創；參考圖只取方向，不得複製既有遊戲的角色、地圖或素材。
+- 3D 世界座標必須遵守對齊公式 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°`，讓 2D 版面、手指路徑與 UI 錨點不需修改。
+- 3D 原型在無 GPU 容器中以 SwiftShader 渲染；錄影較慢屬正常。
 - 字體皆為開放授權（見 `prototype/assets/fonts/LICENSES.md`）；新增字體前先確認授權。
 
 ## 環境限制（第一階段實測）

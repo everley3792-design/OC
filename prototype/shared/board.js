@@ -91,6 +91,12 @@
     pros: ['創角自由度與「角色個性」表現最強，最貼近 OC 核心', '心願泡泡讓自主生活一眼看懂，最有趣'], cons: ['城鎮題材較少自然探索感', '白色 UI 需要仔細的層次以免單調'],
   }); };
 
+  CFG.isle3d = () => Object.assign(CFG.isle(), {
+    title: '方案 G · 晴日島嶼 3D（混合）', tagline: '3D 固定視角世界（正交 50°・柔和陰影・真實光源・微縮景深）＋ E 的 2D 角色、UI 與所有創作系統',
+    notes: ['世界：Blender／程式 3D 模型、擠出黏土地形、日夜光源與陰影方向變化', '角色：2D rig 每幀畫進貼圖，以看板放入 3D，遮擋正確', '座標對齊：2D 版面、手指路徑、UI 錨點完全沿用', '效能：中（固定鏡頭可烘焙光影；角色只是貼圖平面）'],
+    pros: ['同時擁有 3D 的立體光影與 2D 的創作自由', '懸浮桌寵、繪畫與動畫工坊完全不受影響'], cons: ['需要 3D 場景美術與 Android 3D 渲染（Filament／Godot）', '開發成本高於純 2D 的 E'],
+  });
+
   async function renderBoard() {
     const id = G.theme.id, c = CFG[id]();
     const B = OC.makeCanvas(2560, 1440), x = B.getContext('2d');
