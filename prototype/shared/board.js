@@ -55,6 +55,42 @@
     },
   };
 
+  // ---- Round 2 (Switch-inspired) ----
+  const r2 = (o) => Object.assign({ icons: ['bag', 'map', 'dots', 'coin', 'sun', 'moon', 'heart', 'star', 'brush', 'phone', 'gear', 'paw'] }, o);
+  CFG.wild = () => { const W = OC.WS, P = W.P; return r2({
+    bg: '#1A2026', panel: '#232B32', ink: '#F6F2E8', sub: '#B9B4A6', accent: P.gold, dark: true, smooth: true,
+    title: '方案 D · 風語原野 Windsong Fields', tagline: '賽璐珞彩繪 · 有色線稿 · 風是主角 · 探索式極簡 HUD（白線圖示＋小地圖）',
+    hFont: W.ZSERIF(44), bFont: W.SANS(700, 24), sFont: W.SANS(500, 20), nFont: W.SANS(500, 18),
+    palette: [['奶油光', P.cream], ['草', P.grass], ['深草', P.grassLo], ['岩', P.rock], ['岩影', P.rockLo], ['河', P.water], ['霧', P.mist], ['木', P.wood], ['布', P.cloth], ['赤', P.red], ['金', P.gold], ['符光', P.glow]],
+    type: [['Noto Serif TC＋Cinzel（標題）', W.ZSERIF(34), '苔光森林'], ['Noto Sans TC（介面）', W.SANS(700, 30), 'MAP 10:20']],
+    drawIcon: (c, n, x, y) => OC.V.icon(c, n, x, y, 42, P.text, 1.8),
+    drawChar: (c, d, s, x, y, k) => W.ch(c, d, s, x, y, k, 1), k: 2.4,
+    notes: ['動態：連續 60fps；風陣以波的形式掃過草地、風車、圍巾', '角色：賽璐珞雙色＋暖色邊光＋有色描邊、虹膜大眼', 'UI：深色半透明面板、金色角括號選取、白線圖示、區域標題卡', '效能：中高（草叢逐葉擺動；省電模式改為成組擺動）'],
+    pros: ['探索感與「大作」質感最強，最成熟高級', '適合未來擴充更多地點與冒險元素'], cons: ['療癒可愛度略低於 E/F', '深色 UI 對親子／輕度玩家較嚴肅'],
+  }); };
+  CFG.isle = () => { const I = OC.IS, P = I.P; return r2({
+    bg: '#FFF4D8', panel: '#FFFDF6', ink: P.brown, sub: P.brown2, accent: P.coral, smooth: true,
+    title: '方案 E · 晴日島嶼 Sunny Isle', tagline: '玩具感平塗 · 無描邊 · 草皮條紋 · 圓潤厚實按鈕 · 手機 App 選單 · 圈形轉場',
+    hFont: I.ZH(44), bFont: I.ZH(24), sFont: I.ZH(20), nFont: I.ZH(18),
+    palette: [['海', P.sea], ['淺灘', P.shallow], ['沙', P.sand], ['草 A', P.grassA], ['草 B', P.grassB], ['土崖', P.cliff], ['珊瑚', P.coral], ['青綠', P.teal], ['向日葵', P.yellow], ['紫', P.purple], ['奶油', P.cream], ['可可', P.brown]],
+    type: [['粉圓 Huninn（中文）', I.ZH(34), '麻糬好開心'], ['Nunito Black（數字）', I.F(900, 34), '10:20 3,240']],
+    drawIcon: (c, n, x, y) => I.roundToy(c, x, y, 22, [P.coral, P.teal, P.yellow, P.purple, P.green, P.blue][Math.round(x + y) % 6], n, { is: 22 }),
+    drawChar: (c, d, s, x, y, k) => I.ch(c, d, s, x, y, k, 1), k: 2.4,
+    notes: ['動態：彈跳回饋（outBack 2.2）、逐字彈出對話、圈形 iris 轉場', '角色：大頭圓臉、點點眼、大腮紅、條紋 T 恤', 'UI：奶油色厚實面板＋下緣唇邊、傾斜名牌、手機 App 選單', '效能：低（平塗、少漸層，最適合常駐桌寵）'],
+    pros: ['最療癒親切、最容易被大眾接受', '效能成本最低，懸浮桌寵最省電'], cons: ['與知名島嶼生活遊戲氣質相近，需靠角色與細節建立辨識度', '風格較「標準」，驚喜感略少'],
+  }); };
+  CFG.quirk = () => { const Q = OC.QK, P = Q.P; return r2({
+    bg: '#F4F7FB', panel: '#FFFFFF', ink: P.ink, sub: P.ink2, accent: P.mag, smooth: true,
+    title: '方案 F · 奇趣鎮 Quirkville', tagline: '亮面玩具質感 · 幾何臉部參數 · 白色 UI＋彩色標題列 · 心願泡泡 · 喜劇節奏 · 斜條轉場',
+    hFont: Q.ZB(900, 42), bFont: Q.ZB(900, 24), sFont: Q.ZB(700, 20), nFont: Q.ZB(700, 18),
+    palette: [['洋紅', P.mag], ['橙', P.orange], ['檸檬', P.yellow], ['萊姆', P.lime], ['天空', P.sky], ['藍', P.blue], ['紫', P.purple], ['青', P.teal], ['磚', P.pave], ['草', P.grass], ['海', P.sea], ['墨', P.ink]],
+    type: [['Noto Sans TC Black（標題）', Q.ZB(900, 32), '好吃！'], ['Nunito Black（數字）', Q.B(900, 34), '10:20 3,240']],
+    drawIcon: (c, n, x, y) => Q.orb(c, x, y, 22, [P.mag, P.orange, P.blue, P.lime, P.purple, P.teal][Math.round(x + y) % 6], n, { is: 22 }),
+    drawChar: (c, d, s, x, y, k) => Q.ch(c, d, s, x, y, k, 1), k: 2.2,
+    notes: ['動態：喜劇時機（預備→大反應→停頓）、集中線、斜條轉場', '角色：亮面高光、幾何五官可用滑桿調整大小／間距／角度', 'UI：白卡＋彩色標題列、光澤按鈕、居民頭上的心願泡泡', '效能：中（亮面高光與描邊；可預烘）'],
+    pros: ['創角自由度與「角色個性」表現最強，最貼近 OC 核心', '心願泡泡讓自主生活一眼看懂，最有趣'], cons: ['城鎮題材較少自然探索感', '白色 UI 需要仔細的層次以免單調'],
+  }); };
+
   async function renderBoard() {
     const id = G.theme.id, c = CFG[id]();
     const B = OC.makeCanvas(2560, 1440), x = B.getContext('2d');
@@ -64,7 +100,7 @@
     T(c.title, 60, 92, c.hFont, c.ink);
     T(c.tagline, 62, 140, c.sFont, c.sub);
     // phones
-    const times = [5.0, 8.7, 11.3, 21.7, id === 'pixel' ? 26.7 : 26.0, 37.4];
+    const times = [5.0, 8.7, 11.3, 21.7, id === 'pixel' ? 26.7 : ['wild', 'isle', 'quirk'].includes(id) ? 27.1 : 26.0, 37.4];
     const caps = ['小島 · 白天 HUD', '日夜光影', '捏臉 / 創角', '對話 · 特殊反應', '地圖 → 地點', '動畫工坊'];
     const main = document.getElementById('c');
     const pw = 380, ph = 676;
@@ -72,7 +108,7 @@
       OC.renderFrame(t);
       const px = 60 + i * (pw + 30), py = 176;
       x.save(); OC.rr(x, px - 8, py - 8, pw + 16, ph + 16, 34); x.fillStyle = c.dark ? '#000' : '#2B2228'; x.fill();
-      OC.rr(x, px, py, pw, ph, 28); x.clip(); x.imageSmoothingEnabled = !c.dark; x.imageSmoothingQuality = 'high'; x.drawImage(main, px, py, pw, ph); x.restore();
+      OC.rr(x, px, py, pw, ph, 28); x.clip(); x.imageSmoothingEnabled = c.smooth || !c.dark; x.imageSmoothingQuality = 'high'; x.drawImage(main, px, py, pw, ph); x.restore();
       T(caps[i], px + pw / 2, py + ph + 46, c.sFont, c.sub, 'center');
     });
     // bottom row

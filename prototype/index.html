@@ -30,6 +30,9 @@
       <option value="mallow">A · 棉霧島 Mallow Mist</option>
       <option value="pixel">B · 像素森語 Pixel Grove</option>
       <option value="sketch">C · 手帳繪本 Inkpot Tales</option>
+      <option value="wild">D · 風語原野 Windsong Fields</option>
+      <option value="isle">E · 晴日島嶼 Sunny Isle</option>
+      <option value="quirk">F · 奇趣鎮 Quirkville</option>
     </select>
     <button id="play">❚❚</button>
     <input id="seek" type="range" min="0" max="45" step="0.0333" value="0">
@@ -43,6 +46,10 @@ const THEME_FILES = {
   mallow: ['kit', 'char', 'world', 'shots'],
   pixel: ['kit', 'char', 'world', 'shots'],
   sketch: ['kit', 'char', 'world', 'shots'],
+  // Round 2 (Switch-inspired) — share the vector toolkit, rig and acting layer
+  wild: ['shared/vec.js', 'shared/vchar.js', 'shared/acting.js', 'kit', 'world', 'shots'],
+  isle: ['shared/vec.js', 'shared/vchar.js', 'shared/acting.js', 'kit', 'world', 'shots'],
+  quirk: ['shared/vec.js', 'shared/vchar.js', 'shared/acting.js', 'kit', 'world', 'shots'],
 };
 function loadScript(src) {
   return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed ' + src)); document.head.appendChild(s); });
@@ -50,7 +57,7 @@ function loadScript(src) {
 (async () => {
   const q = new URLSearchParams(location.search);
   const themeId = q.get('theme') || 'mallow';
-  for (const f of THEME_FILES[themeId]) await loadScript(`themes/${themeId}/${f}.js`);
+  for (const f of THEME_FILES[themeId]) await loadScript(f.includes('/') ? f : `themes/${themeId}/${f}.js`);
   const record = q.has('record');
   if (record) document.body.classList.add('record');
   const sel = document.getElementById('theme');

@@ -6,6 +6,10 @@
 | LXGWWenKaiTC-Regular.woff / -Bold.woff | LXGW WenKai TC (霞鶩文楷 TC) | SIL Open Font License 1.1 | Google Fonts |
 | Fredoka-*.woff | Fredoka | SIL Open Font License 1.1 | Google Fonts |
 | Silkscreen-*.woff | Silkscreen | SIL Open Font License 1.1 | Google Fonts |
+| NotoSansTC-*.woff | Noto Sans TC | SIL Open Font License 1.1 | Google Fonts |
+| NotoSerifTC-SemiBold.woff | Noto Serif TC | SIL Open Font License 1.1 | Google Fonts |
+| Cinzel-*.woff | Cinzel | SIL Open Font License 1.1 | Google Fonts |
+| Nunito-*.woff | Nunito | SIL Open Font License 1.1 | Google Fonts |
 | Unifont.otf | GNU Unifont | GPLv2+ with GNU font embedding exception, or SIL OFL 1.1 (dual) | Debian `fonts-unifont` |
 
 All fonts are used unmodified. Shipping in the Android app: OFL permits bundling; keep this file and each font's license text in the APK's open-source notices screen.
