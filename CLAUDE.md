@@ -11,7 +11,7 @@
 ## 目錄
 ```
 prototype/            動態原型（HTML Canvas，逐幀決定性渲染）
-  index.html          ?theme=mallow|pixel|sketch  ；&record=1 給錄影工具用
+  index.html          ?theme=mallow|pixel|sketch|wild|isle|quirk  ；&record=1 給錄影工具用
   shared/core.js      時間軸、緩動、彈簧、眨眼、走路路徑、共用分鏡與資料
   shared/engine.js    鏡頭切換與轉場合成
   shared/board.js     視覺總覽圖產生器
