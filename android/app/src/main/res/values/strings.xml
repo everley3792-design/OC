@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">OC Shimeji</string>
+    <string name="pet_channel">桌寵</string>
+    <string name="pet_notif_title">你的 OC 正在桌面上陪你</string>
+    <string name="pet_notif_text">點兩下桌寵可回到遊戲</string>
+    <string name="pet_stop">收起桌寵</string>
 </resources>

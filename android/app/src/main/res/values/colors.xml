@@ -1,0 +1,5 @@
+<resources>
+    <!-- must match the game background token (bg) so launch to web has no flash -->
+    <color name="oc_bg">#FFF8E7</color>
+    <color name="oc_accent">#F26B5B</color>
+</resources>
