@@ -1,4 +1,36 @@
-# 技術架構（初版）
+# 技術架構
+
+## 第二階段實際架構（目前版本）
+
+第一階段規劃的 libGDX / Filament + Compose 方案，在第二階段改為「**重用已驗證的網頁技術 + 原生外殼**」，理由：方案 G 的 3D 世界與 2D 角色已用 three.js 做出並被選定；同一份程式可在瀏覽器測試，也能完全離線打包進 APK。
+
+```
+Android App (app.ocshimeji)
+├─ MainActivity ── WebView ──► https://appassets.androidplatform.net/game/index.html （AssetServer：從 APK assets 提供，離線）
+│     │                         game/  three.js 3D 世界 + 2D 看板角色 + DOM UI（tokens.css / app.css）
+│     ├─ NativeBridge (window.OCNative)：主題、安全區、存檔備份/分享、觸覺、桌寵控制、桌寵影格寫入
+│     └─ JS 掛鉤 (window.OCApp)：setInsets / onSystemTheme / lifecycle / back / onPetState
+├─ OverlayPetService (前景服務) + TYPE_APPLICATION_OVERLAY 視窗 + PetView（Canvas）
+│     └─ core:pet PetBrain（純 Kotlin，有單元測試）← 使用遊戲輸出的 PNG 影格
+├─ ShareProvider（匯出存檔）、檔案選擇器（匯入圖片 / 存檔）
+└─ core:* 純 Kotlin 模組（anim、sim、pet、model …）
+```
+
+| 層 | 技術 | 位置 |
+|---|---|---|
+| 世界渲染 | three.js r158，正交 50° 固定鏡頭，PCF 柔和陰影 | `game/js/world/` |
+| 角色 | 2D 參數化 rig / 玩家 PNG 影格 → CanvasTexture 垂直看板 | `game/js/art/`、`world.js` |
+| 遊戲規則 | 純 JS（無 DOM、無渲染） | `game/js/core/game.js` |
+| UI | 原生 DOM + CSS 變數（Design Tokens） | `game/css/`、`game/js/ui/` |
+| 存檔 | localStorage JSON（schema v1）＋原生檔案備份 | `game/js/core/store.js` |
+| 建置 | Gradle：離線管線（aapt/dx/zipalign/apksigner）或 AGP | `docs/android-build.md` |
+
+懸浮桌寵的驗證清單（下方）**仍未在實機執行**。
+
+---
+
+## 第一階段規劃（歷史紀錄）
+
 
 ## 技術選型
 

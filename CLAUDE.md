@@ -2,64 +2,58 @@
 
 原創角色生活模擬 + Android 系統級懸浮桌寵。直向手機。
 
-**視覺技術規則（第三輪起，使用者已選擇做法 ①）**：世界（地形、建築、樹木、道具、光影）**可以是 3D，但鏡頭固定**（正交、俯角 50°，只平移／縮放，不旋轉）；**角色、UI、繪畫工坊、逐幀動畫、玩家素材、懸浮桌寵一律 2D**（角色以面向鏡頭的看板放進 3D 世界）。純 2D 方案（A–F）仍保留供比較。詳見 `docs/phase1-round3-hybrid3d.md`。
+**已選定美術方向（第三輪做法 ①，方案 G「晴日島 3D」）**：世界（地形、建築、樹木、道具、家具、光影）是 **3D，鏡頭固定**（正交、俯角 50°，只平移／縮放，不旋轉）；**角色、UI、繪畫工坊、逐格動畫、玩家素材、懸浮桌寵一律 2D**（角色以垂直看板放進 3D 世界）。不要改成全 2D 或全 3D，也不要再提新方案。
 
 ## 目前階段
-- **第一階段完成**：三套視覺方案（影片、總覽圖、可執行原型）、技術架構、規範文件、Android 專案骨架。
-- **等待使用者選定美術方向**。在使用者明確選擇（或提出混合/修改）之前，**不要開始第二階段**，也不要自行刪除任何方案。
-- 方案代號：第一輪 `mallow`（A 棉霧島）、`pixel`（B 像素森語）、`sketch`（C 手帳繪本）；第二輪（Switch 風格參考、同視角）`wild`（D 風語原野）、`isle`（E 晴日島嶼）、`quirk`（F 奇趣鎮）。第三輪 `isle3d`（G 晴日島嶼 3D：3D 固定視角世界＋E 的 2D 角色與 UI）。使用者可能選擇任一方案或混合。
-- 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材（見 `docs/phase1-round2-comparison.md`）。
+- **第一階段完成**：7 個視覺方案（A–G）的影片、總覽圖、原型（`prototype/`、`deliverables/`）。保留供參考，不再修改。
+- **第二階段完成**：可操作的遊戲（`game/`）+ Android 外殼與實際建置的 Debug APK。完成紀錄與未驗證項目：`docs/phase2-report.md`。
+- 下一步見 `docs/roadmap.md`。使用者明確要求**延後**：大型生活 AI、經濟、社交、小遊戲、完整動畫工作室與事件演出——不要自行開始。
+- 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
 ```
-prototype/            動態原型（HTML Canvas，逐幀決定性渲染）
-  index.html          ?theme=mallow|pixel|sketch|wild|isle|quirk|isle3d  ；&record=1 給錄影工具用
-  vendor/three/       three.js r158（MIT，UMD 版，全域 THREE），只給第三輪 3D 世界用
-  themes/isle3d/      world3d.js（3D 世界、座標對齊、角色看板、光影）theme.js（沿用 E 的所有畫面，只替換世界渲染）
-  shared/core.js      時間軸、緩動、彈簧、眨眼、走路路徑、共用分鏡與資料
-  shared/engine.js    鏡頭切換與轉場合成
-  shared/board.js     視覺總覽圖產生器
-  shared/vec.js       第二輪共用：形狀、擠出地形、材質（cel/flat/gloss）、圖示、物品
-  shared/vchar.js     第二輪共用：參數化角色 rig（iris/dot/mii 三種臉部系統、臉部滑桿參數）
-  shared/acting.js    第二輪共用：角色表演（走路轉身、驚喜跳、吃東西、桌寵拖放），三方案時間完全一致
-  themes/<id>/        kit.js（tokens/圖示/物品/UI 零件）char.js（角色 rig）world.js（2.5D 世界）shots.js（11 個分鏡）
-  tools/record.js     錄 MP4（Playwright → PNG → ffmpeg）
-  tools/stills.js     輸出單張畫面檢查
-  tools/board.js      輸出總覽圖
-deliverables/         videos/*.mp4  overviews/*.png
-docs/                 phase1-round3-hybrid3d、phase1-round2-comparison、phase1-comparison（先讀）、visual-plan、architecture、ui-components、art-guidelines、animation-guidelines、asset-format
-android/              Gradle 多模組專案（core:* 純 Kotlin；app / platform:overlay / render:world / ui:design 為 Android）
+game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
+  css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
+  css/app.css         UI 元件
+  lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
+  js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（需求/居民/任務/成就/目標規則）
+  js/art/             vec.js vchar.js（2D 角色 rig）style.js（OC 資料模型、部件、物品目錄、物品圖）
+  js/world/           models.js（3D 模型庫）env.js（光照/天氣/特效）world.js（引擎：鏡頭、導航 A*、看板角色、輸入、拾取、佈置）areas.js（晴日島、苔光森林）
+  js/ui/              ui.js（DOM/圖示/表單/提示）pages.js（所有頁面）studio.js（逐格動畫工作室）
+  js/app.js           外殼：開機、主題、效能模式、HUD、導覽、快速背包、互動、對話、佈置、桌寵輸出、OCApp 原生掛鉤
+android/              Gradle 專案。app（WebView 外殼 + bridge + overlay 桌寵）；core:*（純 Kotlin，含 PetBrain）
+prototype/            第一階段原型（凍結）
+docs/                 phase2-report、roadmap、design-system、ui-components、art-guidelines、android-build、architecture …
+deliverables/         apk/（Debug APK + sha256）phase2/（截圖）videos/ overviews/（第一階段）
 ```
 
 ## 指令
 ```bash
-# 原型預覽（直接用瀏覽器開啟 prototype/index.html?theme=sketch）
-cd prototype && node tools/stills.js sketch /tmp/out 5 10.6 21.4       # 檢查畫面
-cd prototype && node tools/record.js sketch ../deliverables/videos/C_inkpot-tales.mp4
-cd prototype && node tools/board.js sketch ../deliverables/overviews/C_inkpot-tales.png
-# Kotlin 核心（不需 Android SDK）
-cd android && gradle -PcoreOnly=true test
-# 完整 App（需要 Android SDK + Google Maven）
-cd android && ./gradlew :app:assembleDebug
+cd game && python3 -m http.server 8765        # 開 http://localhost:8765/index.html（手機尺寸 393×852 檢視）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（18 個）
+cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.2.0-alpha-debug.apk（複製一份到 deliverables/apk/）
+cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
-Playwright 與 Chromium 已預裝於雲端環境（`require('playwright')`），不要重新安裝。
+Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
 
 ## 規則
-- 原型每一幀必須是時間 `t` 的純函數（不可用 `Math.random()`/`Date`；用 `OC.rng(seed)`、`OC.hash`）。否則錄影會閃爍、無法重現。
-- 設計座標：360×640dp（×3 = 1080×1920）。B 方案：世界 270×480（×4）、UI 540×960（×2），只能整數座標與整數縮放。
-- 所有方案共用分鏡時間（`OC.SHOTS`）；改時間軸要全部一起改並重錄。
-- 第二輪主題的命名空間：`OC.WS`（D）、`OC.IS`（E）、`OC.QK`（F）。不要使用 `OC.W`（那是畫面寬度 1080）。
-- 動畫數值以 `prototype/shared/core.js` 與 `android/core/anim/Motion.kt` 為準，兩邊必須同步（有單元測試）。
-- `core:*` 模組不得依賴 Android。渲染層只讀狀態不改狀態。
-- 新功能不得新增常駐 HUD 元件（上限 6 個），見 `docs/visual-plan.md`。
-- 每頁一個主要按鈕；觸控熱區 ≥ 48dp；主要操作放下方拇指區。
-- 懸浮桌寵：`platform/overlay` 程式碼**尚未實機驗證**。在 `docs/architecture.md` 驗證清單全部通過前，不可宣稱完成。影片中的桌寵是視覺模擬。
-- 所有美術為原創；參考圖只取方向，不得複製既有遊戲的角色、地圖或素材。
-- 3D 世界座標必須遵守對齊公式 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°`，讓 2D 版面、手指路徑與 UI 錨點不需修改。
-- 3D 原型在無 GPU 容器中以 SwiftShader 渲染；錄影較慢屬正常。
-- 字體皆為開放授權（見 `prototype/assets/fonts/LICENSES.md`）；新增字體前先確認授權。
+- **座標**：遊戲邏輯一律用設計座標 (x, y, 層)；3D 由 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°` 對應。點擊螢幕＝設計座標（不用射線）。可行走/層級/地面高度寫成解析函式（`OC.Areas.*`）。
+- **角色**是 2D 看板：只在量化姿勢改變時重畫紋理；呼吸/彈跳用網格變換。轉身用連續的 `face`/`back` 平滑趨近，不可瞬間翻轉。
+- **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
+- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個元件。
+- **不得做假功能**：未實作的功能用 `lockedRow` / `.locked` 明確標示「未開放」；任務、成就、目標只能由真實行為累積。
+- 天氣/時間變化用指數趨近（τ≈1.6s），不可閃光、不可晃鏡頭；霧永遠開著（晴天推遠），切天氣不重新編譯著色器。
+- 效能模式（高/平衡/省電/自訂）必須真的改變：像素比、陰影、特效、草、fps 上限、看板解析度、點光源。
+- 3D 模型：倒角/車床柔邊、登記碰撞（`ctx.block`）、共用幾何與材質快取；整島 ≲ 250 draw calls。
+- 存檔 schema `v:1`（`store.js` 的 `fresh()`）；新增欄位要給預設值（`deepMerge` 會補）。
+- `core:*` 模組不得依賴 Android；動畫數值以 `prototype/shared/core.js` 與 `android/core/anim/Motion.kt` 為準（有單元測試）。
+- 離線 APK 管線每個 Exec 任務都要宣告 inputs/outputs，否則會產生過期 APK。
+- **懸浮桌寵與實機行為尚未驗證**（無模擬器）。在實機跑完 `docs/architecture.md` 驗證清單前不可宣稱完成。
+- 金鑰：release keystore 只能經環境變數 `OC_RELEASE_*` 提供，絕不提交。
+- 所有美術為原創；字體皆為開放授權（`game/fonts/LICENSES.md`），新增前先確認授權。
 
-## 環境限制（第一階段實測）
-- 雲端容器無法連線 `dl.google.com`（Google Maven）→ 無法下載 AGP / Android SDK → 無法建置 APK。
-- Maven Central 偶爾回 429；用 `--max-workers=1` 重試，快取填滿後即可離線建置核心模組。
-- GitHub raw 下載被封鎖；字體改由 Google Fonts（fonts.gstatic.com）取得。
+## 環境限制（實測）
+- 無法連線 `dl.google.com` / Google Maven → 無法用 AGP / 下載 Android SDK；改用離線管線（`docs/android-build.md`）。
+- Maven Central 偶爾 429；`--max-workers=1` 重試。GitHub raw 被封鎖；字體由 Google Fonts 取得。
+- 沒有 Android 模擬器或實機：只能驗證到「APK 建置、簽章、內容正確」與「遊戲在 Chromium 手機模擬中正常」。

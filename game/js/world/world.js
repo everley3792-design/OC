@@ -272,7 +272,7 @@
   // placement ghost
   let ghost = null;
   function setGhost(f) {
-    if (ghost) { root.remove(ghost.g); ghost = null; }
+    if (ghost) { root.remove(ghost.g); root.remove(ghost.ring); ghost = null; }
     if (!f) return;
     const g = OC.Models.furniture(f.id); g.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.78; o.castShadow = false; } });
     const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#3FC1B0', transparent: true, opacity: 0.35, depthWrite: false })); ring.rotation.x = -Math.PI / 2; root.add(ring);

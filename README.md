@@ -1,8 +1,18 @@
 # OC Shimeji
 
-> 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（純 2D / 2.5D）
+> 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 第一階段交付物
+## 第二階段（目前版本 0.2.0-alpha）
+
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.2.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.2.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+）
+- **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）
+- 截圖：[`deliverables/phase2/screens-contact-sheet.jpg`](deliverables/phase2/screens-contact-sheet.jpg)
+- 完成紀錄與測試報告（含**尚未在實機驗證**的項目）：[`docs/phase2-report.md`](docs/phase2-report.md)
+- 文件：[Design System](docs/design-system.md) · [UI 元件](docs/ui-components.md) · [美術素材規範](docs/art-guidelines.md) · [Android 建置](docs/android-build.md) · [架構](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [CLAUDE.md](CLAUDE.md)
+
+---
+
+## 第一階段交付物（視覺方向比較，已凍結）
 
 ### 第一輪
 
@@ -35,9 +45,6 @@
 - [角色與場景美術規範](docs/art-guidelines.md) · [動畫規範](docs/animation-guidelines.md) · [素材格式規範](docs/asset-format.md)
 - [CLAUDE.md](CLAUDE.md)（開發規範與指令）
 
-## 狀態
-- ✅ 兩輪共六支 MP4、六張總覽圖、六套可執行動態原型（含播放器與錄影腳本）
-- ✅ 技術架構與規範文件、Android 多模組專案骨架、純 Kotlin 核心（生活模擬、動畫、存檔、素材包）— `cd android && ./gradlew -PcoreOnly=true test`：12 個單元測試全數通過
-- ⏳ APK：此雲端環境無法存取 Google Maven，尚未建置
-- ⏳ Android 懸浮桌寵：原生程式碼已撰寫（`android/platform/overlay`），**尚未編譯與實機驗證**；影片中為視覺模擬
-- ⏸ 第二階段：等待選定美術方向
+## 第一階段狀態（已結束）
+- ✅ 三輪共 7 支 MP4、7 張總覽圖、7 套動態原型；使用者選定 G（3D 固定視角 + 2D 角色）
+- 第二階段的狀態見上方與 `docs/phase2-report.md`

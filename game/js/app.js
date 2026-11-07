@@ -346,6 +346,7 @@
   let placeBar = null;
   function startPlacement(o, at) {
     if (Wd.area.id !== 'isle') { toast('家具只能放在晴日島', 'info'); return; }
+    if (o.id && !St.count(o.id)) { toast('背包裡沒有這件家具', 'info'); return; }
     cancelPlacement(true); closeTray();
     let f;
     if (o.uid) { const rec = S().placed.find((p) => p.uid === o.uid); if (!rec) return; f = Object.assign({}, rec); Wd.removeFurniture(o.uid); placing = { mode: 'move', f, orig: Object.assign({}, rec) }; }
