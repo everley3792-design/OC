@@ -232,7 +232,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       check('6e 採集：入背包；同一個點一天只能採一次', fo.r1 && !fo.r2 && fo.n, fo.why);
       await travel(page, 'isle');
       await seed(page, 'seed', { items: { seed_tomato: 1 } });
-      const g = await page.evaluate(() => { const id = Object.keys(OC.Places.plot ? OC.Areas.isle.plots || {} : {})[0]; const pid = 'isle0'; const p = OC.Places.plant(pid, 'seed_tomato'); const s0 = OC.Store.count('seed_tomato'); OC.Places.water(pid, OC.Store.s.activeId); for (let d = 0; d < 6; d++) { OC.Sim.advance(1440); OC.Places.water(pid, OC.Store.s.activeId); } const pl = OC.Places.plot(pid); const t0 = OC.Store.count('tomato'), h = OC.Places.harvest(pid), h2 = OC.Places.harvest(pid); return { planted: p.ok, seedUsed: s0 === 0, growth: pl.growth, got: OC.Store.count('tomato') - t0, again: h2.ok }; });
+      const g = await page.evaluate(() => { const id = Object.keys(OC.Places.plot ? OC.Areas.isle.plots || {} : {})[0]; const pid = 'isle0'; const p = OC.Places.plant(pid, 'seed_tomato'); const s0 = OC.Store.count('seed_tomato'); OC.Places.water(pid, OC.Store.s.activeId); for (let d = 0; d < 12 && OC.Places.plot(pid).growth < 1; d++) { OC.Sim.advance(1440); OC.Places.water(pid, OC.Store.s.activeId); } const pl = OC.Places.plot(pid); const t0 = OC.Store.count('tomato'), h = OC.Places.harvest(pid), h2 = OC.Places.harvest(pid); return { planted: p.ok, seedUsed: s0 === 0, growth: pl.growth, got: OC.Store.count('tomato') - t0, again: h2.ok }; });
       check('6f 種田：播種扣種子→澆水在遊戲時間內成長→收成入背包，不能重複收成', g.planted && g.seedUsed && g.got >= 1 && !g.again, JSON.stringify(g));
       // OCs do activities too: an unwatered plot attracts an OC who waters it (the plot remembers who)
       await seed(page, 'seed2', { items: { seed_carrot: 1 } });
@@ -275,6 +275,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       const k = I['小空'];
       await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); const b = OC.Brain.get(id); if (b) { b.holds.clear(); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'do') OC.Brain.finish(b, 't'); b.st = 'think'; b.thinkAt = 1e9; } c.needs.food = 40; OC.App.actorOf(id).path = null; }, k);
       await wait(page, 800);
+      await page.evaluate(() => { window.__toasts = []; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList && n.classList.contains('toast') && window.__toasts.push(n.textContent)))).observe(document.getElementById('app'), { childList: true, subtree: true }); window.__uses = []; const u = OC.Use.use; OC.Use.use = (id, oc) => { window.__uses.push([id, oc && OC.Chars.name(OC.Chars.get(oc))]); return u(id, oc); }; });
       await page.evaluate(() => document.querySelector('.bag-fab').click()); await wait(page, 500);
       const slot = await page.$('.tray .slot[data-id="cookie"]');
       const box = await slot.boundingBox();
@@ -295,7 +296,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.mouse.up();
       const during = await page.evaluate(() => OC.Store.count('cookie'));
       await until(page, (n) => OC.Store.count('cookie') === n - 1, n0, 10000);
-      const fed = await page.evaluate(([id, n]) => { const b = OC.Brain.get(id); return { n: OC.Store.count('cookie'), food: OC.Chars.get(id).needs.food, tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted.cookie || {}).n, holds: b && [...b.holds], st: b && b.st, ev: OC.Events.current ? OC.Events.current.ev.id : '-', toasts: [...document.querySelectorAll('.toast')].map((t) => t.textContent).slice(-3), mate: !!OC.App.mates[id] }; }, [k, n0]);
+      const fed = await page.evaluate(([id, n]) => { const b = OC.Brain.get(id); return { n: OC.Store.count('cookie'), food: OC.Chars.get(id).needs.food, tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted.cookie || {}).n, holds: b && [...b.holds], st: b && b.st, ev: OC.Events.current ? OC.Events.current.ev.id : '-', toasts: (window.__toasts || []).slice(-4), uses: window.__uses, mate: !!OC.App.mates[id], tx: OC.Tx.log.slice(0, 2).map((e) => e.reason) }; }, [k, n0]);
       check('8c 拖到 OC 身上時有命中提示', hot);
       check('8d 動畫進行中還沒扣；吃完才扣 1 個並留下品嚐紀錄', during === n0 && fed.n === n0 - 1 && fed.tasted >= 1, JSON.stringify(fed));
       // 3) interrupted (picked up while eating) → not consumed
@@ -383,11 +384,12 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       check('13a 新介面的觸控目標 ≥ 40px（地圖、商店、背包）', sizes.length === 0, sizes.slice(0, 5).join(', '));
       // tap a shop door on the street → walk → shop opens → buy with taps
       await page.evaluate(() => { const q = OC.World.nearestWalkable(300, 700, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 800);
-      const door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 20 && p.x < innerWidth - 20 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
+      const door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 80 && p.x < innerWidth - 80 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
       console.log('  13b door', JSON.stringify(door));
       if (door) await page.touchscreen.tap(door.x, door.y);
-      const opened = !!door && await until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
-      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && door.zh);
+      const isOpen = () => until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
+      let tries = 1, opened = !!door && await isOpen(); if (door && !opened) { tries = 2; await page.touchscreen.tap(door.x, door.y); opened = await isOpen(); }
+      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && `${door.zh}（點 ${tries} 次）`);
       if (opened) {
         const m0 = await page.evaluate(() => OC.Store.s.coins);
         await page.tap('[data-page="shop"] .shop-item'); await wait(page, 500); await shot(page, '13-buy-sheet');

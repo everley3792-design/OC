@@ -148,7 +148,7 @@
         if (!free(s, c.id)) continue;
         if (!s.inside && (!clearPoint(s.x, s.y, c.id, 10) || !clearPoint(s.ax, s.ay, c.id, 8))) continue;   // someone is standing there
         const d = Math.hypot(s.ax - a.x, s.ay - a.y); if (d > 900) continue;
-        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (novel[o.id] && novel[o.id] > Sim().now() ? 0.45 : 0) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (o.kind === 'plot' && verb === 'tend' ? 0.35 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
+        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (novel[o.id] && novel[o.id] > Sim().now() ? 0.45 : 0) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (o.kind === 'plot' && verb === 'tend' ? 0.8 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
         v += (Sim().rnd() - 0.5) * 0.04;
         if (!best || v > best.s) best = { slot: s, s: v };
       }
@@ -238,6 +238,7 @@
     if (settings().autonomy === 'paused' && !b.queued) { b.thinkAt = nowR() + 2; return; }
     if (b.invited && convs.includes(b.invited)) { b.thinkAt = nowR() + 1; return; }
     if (b.manual && !settings().playerAuto && !(b.manualOverride > nowR()) && (nowR() - b.cmdAt < 40 || b.a.path || b.a.joy || b.a.mode === 'sit' || b.a.mode === 'talk')) { b.thinkAt = nowR() + 2; return; }
+    if (b.resumeTrip) { const L = b.resumeTrip; b.resumeTrip = null; if (OC.Places.open(L.to) && settings().travel !== false) { dlog(b, `繼續前往${OC.Places.get(L.to).zh}`); startTravel(b, L.to, L.act); return; } }
     let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
@@ -279,6 +280,7 @@
     c.life.cur = { act: b.act, slot: s ? s.k : null, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '', until: b.until, t0: b.t0 };
     if (!b.aligning) anim(b); else Wd().setAction(a, 'idle'); St().mark();
     if (!resumed) OC.Events && OC.Events.trigger('actStart', { a: c.id, act: b.act, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '' });
+    if (s && s.obj.kind === 'plot' && b.act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
   }
   function anim(b) { const A = D().ACTS[b.act]; if (!A || !b.a) return; if (A.anim && A.anim !== 'idle') Wd().setAction(b.a, A.anim, { priority: A.lock ? 5 : 4 }); else Wd().setAction(b.a, 'idle'); }
   const St = () => OC.Store;
@@ -325,7 +327,7 @@
     if (!b.holds.size) {
       if (b.st === 'social') endConvOf(b, 'interrupted');
       if (b.st === 'do' && b.act && reason !== 'pet') { const A = D().ACTS[b.act]; b.susp = { act: b.act, slot: b.slot ? b.slot.k : null, left: Math.max(0, b.until - Sim().now()), t0: b.t0, resumable: A.cat !== 'body' }; finishPartial(b); }
-      else if (b.st === 'go') { const q = b.byPlayer ? b.act : null; abort(b, '被打斷'); if (q) b.queued = q; }   // a player request resumes after the interruption
+      else if (b.st === 'go') { const q = b.byPlayer ? b.act : null, L = b.leaving; abort(b, '被打斷'); if (q) b.queued = q; if (L) b.resumeTrip = L; }   // a player request / a trip resumes after the interruption   // a player request resumes after the interruption
       if (reason !== 'pet' && b.a) { b.a.path = null; }
     }
     b.holds.add(reason); b.st = reason === 'event' || b.st === 'event' ? 'event' : 'held'; return true;
