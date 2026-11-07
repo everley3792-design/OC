@@ -670,7 +670,8 @@
 
   // ---- store events → feedback ----
   St.on('questDone', (q) => toast(`任務完成：${q.zh}（到「更多 → 今日任務」領取）`, 'flag'));
-  St.on('achUnlocked', (a) => toast(`解鎖成就：${a.zh}`, 'trophy'));
+  St.on('achUnlocked', (a) => toast(`解鎖成就：${a.zh}（+${a.reward || OC.Shops.INCOME.ach} 星幣）`, 'trophy'));
+  St.on('reward', (r) => { if (r.why !== '成就') setTimeout(() => toast(`${r.why} +${r.coins} 星幣`, 'coin'), 900); });
   St.on('friendUp', (e) => toast(`和${Gm.NPCS[e.id].zh}的友情升到「${Gm.LEVEL_ZH[e.level]}」！`, 'heart'));
   St.on('inv', (e) => { if (e.first && e.n > 0) toast(`圖鑑新增：${Sty.ITEMS[e.id].zh}`, 'book'); });
   St.on('saveError', () => toast('存檔空間不足：請刪除一些作品', 'info'));
@@ -690,6 +691,7 @@
     await OC.Assets.init();
     // Phase 4 life simulation: engines + absence catch-up (capped, no events, no rewards)
     OC.Items.registerCustom();                       // workshop products → item catalogue
+    OC.Shops.income();                               // achievement / exploration / discovery income (idempotent)
     OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks);
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');

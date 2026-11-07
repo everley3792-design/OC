@@ -145,7 +145,8 @@
         const act = t.lv === 2 ? 'jump' : t.lv === 1 ? 'happy' : t.lv === -1 ? 'sad' : t.lv === -2 ? (OC.Chars.has(c, 'sensitive') ? 'cry' : 'angry') : 'idle';
         if (act === 'jump') { OC.World.jump(a); OC.World.setAction(a, 'happy', { dur: 1.6, priority: 8 }); } else if (act !== 'idle') OC.World.setAction(a, act, { dur: 1.6, priority: 8 });
         if (t.lv === 2) { A().floatText(a, '♥♥', 'var(--heart)'); } if (t.lv <= -1) A().floatText(a, '💦', 'var(--blue)');
-        const ln = OC.Talk.say({ 2: 'tasted_fav', 1: 'tasted_like', 0: 'tasted_ok', '-1': 'tasted_dislike', '-2': 'tasted_hate' }[t.lv], c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c));
+        if (it.anim && t.lv >= 0) OC.World.setAction(a, it.anim, { dur: 1.6, priority: 8 });
+        const ln = it.reaction && t.lv >= 0 ? { text: it.reaction } : OC.Talk.say({ 2: 'tasted_fav', 1: 'tasted_like', 0: 'tasted_ok', '-1': 'tasted_dislike', '-2': 'tasted_hate' }[t.lv], c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c));
         if (t.discovered) setTimeout(() => toast(`發現了！${name(c)}${OC.Taste.LV[t.lv] === '普通' ? '覺得' + it.zh + '普普通通' : OC.Taste.LV[t.lv] + it.zh}`, 'heart'), 600);
         St.stat('eaten'); OC.Game.progress('eat');
         setTimeout(() => OC.Brain.unhold(ocId, 'feed'), 1700); resolve(true);
@@ -170,7 +171,7 @@
     const likes = c.tastes.likeItems.includes(id) || (c.profile.likes || []).some((l) => l && it.zh.includes(l)), dis = c.tastes.dislikeItems.includes(id);
     M().feel(c, likes ? 'excited' : dis ? 'confused' : 'happy', likes ? 0.7 : 0.35, `收到你送的${it.zh}`); M().player(c, { aff: likes ? 4 : dis ? 0 : 2, fam: 1 }); M().needs(c, Object.assign({ social: 6 }, it.use || {}));
     M().remember(c, { type: 'player', imp: likes ? 0.65 : 0.4, text: `收到你送的${it.zh}`, data: { item: id }, key: r.entry.key });
-    OC.World.setAction(a, likes ? 'happy' : dis ? 'shy' : 'greet', { dur: 1.6, priority: 8 }); const ln = OC.Talk.say(likes ? 'fed_like' : dis ? 'fed_bad' : 'gift_r', c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c)); St.stat('gifts');
+    OC.World.setAction(a, it.anim && !dis ? it.anim : likes ? 'happy' : dis ? 'shy' : 'greet', { dur: 1.6, priority: 8 }); const ln = it.reaction && !dis ? { text: it.reaction } : OC.Talk.say(likes ? 'fed_like' : dis ? 'fed_bad' : 'gift_r', c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c)); St.stat('gifts');
   }
   /** clothing: built-in looks change a look value; workshop clothing becomes a part on its anchor. Not consumed. */
   function wear(ocId, id) {
@@ -319,7 +320,7 @@
     },
   });
   function editProduct(d, after) {
-    const v = Object.assign({ zh: '', kind: 'food', price: 80, power: 20, tags: [], shop: null, d: '', anchor: 'accessory', sit: false, flavor: null, reaction: '' }, d ? JSON.parse(JSON.stringify(d)) : {});
+    const v = Object.assign({ zh: '', kind: 'food', price: 80, power: 20, tags: [], shop: null, d: '', anchor: 'accessory', sit: false, flavor: null, reaction: '', anim: '' }, d ? JSON.parse(JSON.stringify(d)) : {});
     sheet(d ? '編輯商品' : '新增商品', (b, api) => {
       const prev = h('div.prod-prev'); const showPrev = () => { prev.replaceChildren(v.asset ? (() => { const im = h('img', { alt: '' }); OC.Assets.thumbURL(v.asset).then((u) => { im.src = u; }).catch(() => {}); return im; })() : h('span.faint', null, '還沒有圖片')); };
       const nameIn = h('input.input', { value: v.zh, maxlength: 16, placeholder: '商品名稱', on: { input: (e) => (v.zh = e.target.value) } });
@@ -339,6 +340,9 @@
       b.append(h('div.hstack', null, prev, h('div.vstack.grow', { style: { gap: '6px' } }, h('button.btn.s', { on: { click: async () => { const a = await OC.Library.pick({ title: '選擇商品圖片' }); if (a) { v.asset = a.id; showPrev(); } } } }, icon('image', 's'), '從素材庫選'), h('button.btn.s', { on: { click: async () => { const m = await OC.Paint.open({ w: 256, h: 256 }); if (m && m.id) { v.asset = m.id; showPrev(); } } } }, icon('brush', 's'), '畫一張'))),
         h('div.muted', { style: { marginTop: '10px' } }, '名稱'), nameIn, h('div.muted', { style: { marginTop: '10px' } }, '類別'), h('div', { style: { overflowX: 'auto' } }, kindSeg),
         h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow.muted', null, '價格'), priceLab), priceIn, extra, h('div.muted', { style: { marginTop: '8px' } }, '介紹'), desc,
+        h('div.muted', { style: { marginTop: '8px' } }, '標籤（用逗號分隔，可搜尋）'), h('input.input', { value: (v.tags || []).join('、'), maxlength: 40, placeholder: '例如：甜點、夏天', on: { input: (e) => (v.tags = e.target.value.split(/[,，、]/).map((t) => t.trim()).filter(Boolean).slice(0, 6)) } }),
+        h('div.muted', { style: { marginTop: '8px' } }, 'OC 拿到時說的話（可留空＝依個性自動）'), h('input.input', { value: v.reaction || '', maxlength: 30, placeholder: '例如：哇，是粉紅糰子！', on: { input: (e) => (v.reaction = e.target.value) } }),
+        h('div.muted', { style: { marginTop: '8px' } }, 'OC 的反應動作'), h('select.input', { on: { change: (e) => (v.anim = e.target.value) } }, ...[['', '依喜好自動'], ['happy', '開心'], ['jump', '跳起來'], ['shy', '害羞'], ['greet', '揮手'], ['dance', '跳舞'], ['surprised', '驚訝']].filter(([k]) => !k || OC.Chars.ACTION_ZH[k]).map(([k, zh]) => h('option', { value: k, selected: (v.anim || '') === k }, zh))),
         h('div.hstack', { style: { marginTop: '12px' } }, d ? h('button.btn.block', { on: { click: async () => { if (St.count(d.id)) { toast('背包裡還有這件商品，不能刪除', 'info'); return; } if (await confirm('刪除商品', `刪除「${d.zh}」？已經擺放在場景中的也會消失。`, '刪除', true)) { for (const r of Object.values(S().rooms)) for (let i = r.length - 1; i >= 0; i--) if (r[i].id === d.id) r.splice(i, 1); IT().removeCustom(d.id); api.close(); after && after(); } } } }, '刪除') : null,
           h('button.btn.primary.block', { on: { click: () => { const r = IT().saveCustom(Object.assign({}, v, { id: d && d.id, shop: v.shop || IT().defaultShop(v.kind) })); if (!r.ok) { toast(r.errors[0], 'info'); return; } toast(`「${v.zh}」已上架到${SH().get(v.shop || IT().defaultShop(v.kind)).zh}`, 'check'); api.close(); after && after(); } } }, icon('check', 's'), d ? '儲存' : '上架')));
       showPrev(); render();

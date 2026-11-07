@@ -286,7 +286,7 @@
       if ((w.type === 'read_n' && ev.type === 'act' && ev.act === 'read') || (w.type === 'tend_n' && ev.type === 'act' && ev.act === 'tend')) { w.prog++; hit = w.prog >= w.n; }
       if ((w.type === 'befriend' || w.type === 'bestfriend') && ev.type === 'rel' && ev.other === w.other && RANK[ev.to] >= (w.type === 'befriend' ? 2 : 3)) hit = true;
       if (w.type === 'skill' && ev.type === 'skill' && ev.skill === w.skill && ev.lv >= w.n) hit = true;
-      if (hit) { w.state = 'done'; w.doneAt = Sim().now(); w.by = by; done = w; feel(c, by === 'player' ? 'happy' : 'proud', 0.6, '願望實現：' + w.text); needs(c, { mood: 8 }); remember(c, { type: 'wish', imp: 0.65, text: `願望實現了：${w.text}${by === 'player' ? '（是你幫的忙）' : ''}`, who: w.other ? [w.other] : [], key: 'wish:' + w.id }); if (by === 'player') player(c, { aff: 4 }); St.emit('life:wishDone', { id: c.id, wish: w }); }
+      if (hit) { w.state = 'done'; w.doneAt = Sim().now(); w.by = by; done = w; if (by === 'player' && OC.Tx && OC.Tx.run(`wish:${c.id}:${w.id}`, { get: { coins: 60 } }, `完成${OC.Chars.name(c)}的心願`).ok) OC.Store.emit('reward', { coins: 60, why: '完成心願' }); feel(c, by === 'player' ? 'happy' : 'proud', 0.6, '願望實現：' + w.text); needs(c, { mood: 8 }); remember(c, { type: 'wish', imp: 0.65, text: `願望實現了：${w.text}${by === 'player' ? '（是你幫的忙）' : ''}`, who: w.other ? [w.other] : [], key: 'wish:' + w.id }); if (by === 'player') player(c, { aff: 4 }); St.emit('life:wishDone', { id: c.id, wish: w }); }
     }
     return done;
   }

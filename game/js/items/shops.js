@@ -54,5 +54,14 @@
   /** shops that buy back: general store & market */
   function sell(item, n = 1) { return OC.Game.sell(item, n); }
 
-  OC.Shops = { SHOPS, stock, deal, price, left, owned, buy, sell, get: (id) => SHOPS[id] || null };
+  /* other income (each with an idempotent key, so restarts / repeated events never pay twice):
+   *   achievements +ach.reward (default 150) · first visit to a place +80 · each new discovery +10
+   *   (quests, OC wishes, selling, foraging / fishing / harvest are paid where they happen) */
+  const INCOME = { visit: 80, find: 10, ach: 150 };
+  function income() {
+    St.on('achUnlocked', (x) => { const n = x.reward || INCOME.ach; if (OC.Tx.run(`ach:${x.id}`, { get: { coins: n } }, `成就：${x.zh}`).ok) St.emit('reward', { coins: n, why: '成就' }); });
+    St.on('inv', (e) => { if (e && e.first && OC.Tx.run(`find:${e.id}`, { get: { coins: INCOME.find } }, `新發現：${I()[e.id] ? I()[e.id].zh : e.id}`).ok) St.emit('reward', { coins: INCOME.find, why: '新發現' }); });
+    St.on('places', (e) => { if (e && e.first && OC.Places.get(e.id) && OC.Tx.run(`visit:${e.id}`, { get: { coins: INCOME.visit } }, `第一次造訪${OC.Places.get(e.id).zh}`).ok) St.emit('reward', { coins: INCOME.visit, why: '探索新地點' }); });
+  }
+  OC.Shops = { INCOME, income, SHOPS, stock, deal, price, left, owned, buy, sell, get: (id) => SHOPS[id] || null };
 })();

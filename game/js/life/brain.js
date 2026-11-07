@@ -96,7 +96,7 @@
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
   const charOf = (b) => OC.Chars.get(b.id);
-  const available = (b) => b && b.a && !b.holds.size && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
+  const available = (b) => b && b.a && !b.holds.size && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
 
   // ---------------- scoring ----------------
   const NEED_W = { food: 1.4, sleep: 1.3, energy: 1.0, fun: 0.9, social: 0.9, comfort: 0.6, interest: 0.7, active: 0.7 };
@@ -241,7 +241,7 @@
     const list = candidates(b); b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
-    if (b.queued) b.queued = null;
+    b.byPlayer = !!(b.queued && ch.kind === 'act' && ch.act === b.queued); if (b.queued) b.queued = null;
     b.dbg.reason = `${ch.kind === 'act' ? D().ACTS[ch.act].zh : ch.kind === 'travel' ? '去' + OC.Places.get(ch.place).zh + D().ACTS[ch.act].zh : D().SOCIAL[ch.social].zh}（${ch.why.slice(0, 3).join('、')}）`;
     dlog(b, b.dbg.reason);
     if (ch.kind === 'social') { if (!Social.start(b, brains[ch.other], ch.social)) b.thinkAt = nowR() + 1; return; }
@@ -302,7 +302,7 @@
     dlog(b, `結束 ${A.zh}（${why}，${Math.round(gm)} 分鐘）`);
   }
   function cleanup(b) {
-    const a = b.a, s = b.slot; release(b.id); b.slot = null; b.dest = null; b.aligning = false;
+    const a = b.a, s = b.slot; b.byPlayer = false; release(b.id); b.slot = null; b.dest = null; b.aligning = false;
     const c = charOf(b); if (c) c.life.cur = null;
     if (a) {
       if (a.hidden) { a.hidden = false; hooks.hide(a, false); }
@@ -480,7 +480,7 @@
       const t0 = ch.pl !== loc ? now + OC.Places.travelMin(loc, ch.pl) : now, P0 = placeOK() ? OC.Places.get(ch.pl) : null;
       c.life.cur = cur = { act: ch.act, t0, until: t0 + (ch.act === 'sleep' ? Math.max(60, (wakeAtGm(c, t0) - t0)) : durOf(c, ch.act)), place: 'place:' + ch.pl, placeZh: P0 ? P0.zh : '', slot: null, abstract: true };
       c.life.absLast = [ch.act].concat(fake.last).slice(0, 4);
-      if (!o.offline) { c.life.log.unshift({ gm: now, text: `${P0 ? '在' + P0.zh : ''}${D().ACTS[ch.act].zh}` }); if (c.life.log.length > 40) c.life.log.length = 40; }
+      if (!o.offline) { c.life.log.unshift({ gm: now, text: ch.pl !== loc && P0 ? `前往${P0.zh}（${D().ACTS[ch.act].zh}）` : `${P0 ? '在' + P0.zh : ''}${D().ACTS[ch.act].zh}` }); if (c.life.log.length > 40) c.life.log.length = 40; }
     }
   }
   function wakeAtGm(c, now) { const r = M().routine(c), h = Sim().hourOf(now); let dh = r.wake - h; if (dh <= 0) dh += 24; if (!M().sleepTime(c, h)) dh = Math.min(dh, 3); return now + dh * 60; }

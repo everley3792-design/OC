@@ -56,7 +56,7 @@
       const x = g.x, W = 600, Hh = 240; x.clearRect(0, 0, W, Hh);
       x.fillStyle = water === 'pond' ? '#7FD0EA' : '#4FC3E8'; x.beginPath(); x.roundRect(0, 0, W, Hh, 24); x.fill();
       x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 3; for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo((i * 120 + t * 30) % 700 - 60, 60 + (i % 3) * 50); x.quadraticCurveTo((i * 120 + t * 30) % 700, 50 + (i % 3) * 50, (i * 120 + t * 30) % 700 + 60, 60 + (i % 3) * 50); x.stroke(); }
-      g.dbg = { st, zone, mark, power, prog };
+      g.dbg = { st, zone, mark, power, prog, pers: { pz, pb, pr } };
       if (st === 'charge') { if (g.down) { power += pdir * dt * 1.2; if (power > 1 || power < 0) { pdir *= -1; power = Math.max(0, Math.min(1, power)); } } bar(x, 40, 180, 520, 24, power, '#FFC93C'); x.fillStyle = '#fff'; x.font = 'bold 28px sans-serif'; x.fillText('力道', 40, 165); }
       if (st === 'wait' || st === 'bite') {
         const bx = 140 + 320 * Math.max(0.2, power), by = 120 + Math.sin(t * 3) * 4 + (st === 'bite' ? 14 : 0);
@@ -69,7 +69,7 @@
         zone += zv * dt * (Math.sin(t * 1.7) + Math.sin(t * 0.63 + 1) * 0.8); zone = Math.max(0.1, Math.min(0.9, zone)); if (zone <= 0.1 || zone >= 0.9) zv = -zv;
         mv += (g.down ? 1.9 : -1.6) * dt; mv = Math.max(-0.9, Math.min(0.9, mv)); mark = Math.max(0, Math.min(1, mark + mv * dt)); if (mark <= 0 || mark >= 1) mv = 0;
         const r = I(fish).rarity, zw = 0.22 - r * 0.025 + lv * 0.01 + pz, inZone = Math.abs(mark - zone) < zw / 2;
-        prog += (inZone ? 0.32 * pr : -0.22 - r * 0.02) * dt; g.dbg = { st, zone, mark, zw, prog, power };
+        prog += (inZone ? 0.34 * pr : -0.18 - r * 0.02) * dt; g.dbg = { st, zone, mark, mv, zw, prog, power };
         x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.roundRect(30, 60, 540, 50, 25); x.fill();
         x.fillStyle = inZone ? '#6CCB5F' : '#FFC93C'; x.beginPath(); x.roundRect(30 + (zone - zw / 2) * 540, 60, zw * 540, 50, 20); x.fill();
         x.font = '34px sans-serif'; x.fillText('🐟', 30 + zone * 540 - 17, 98);
