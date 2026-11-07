@@ -49,15 +49,25 @@ val checkToolchain by tasks.registering {
     }
 }
 
+// Framework attributes newer than the API-23 res jar (android:foregroundServiceType for the Android 14+ FGS type).
+// Built from android/tools/framework-extras with `aapt package -x` (package id 0x01); used only as an extra -I.
+val fwExtrasDir = rootProject.file("tools/framework-extras")
+val fwExtras = layout.buildDirectory.file("fw-extras/framework-extras.apk")
+val buildFwExtras by tasks.registering(Exec::class) {
+    inputs.dir(fwExtrasDir); outputs.file(fwExtras)
+    doFirst { fwExtras.get().asFile.parentFile.mkdirs() }
+    commandLine("aapt", "package", "-f", "-x", "-M", File(fwExtrasDir, "AndroidManifest.xml").path, "-S", File(fwExtrasDir, "res").path, "-F", fwExtras.get().asFile.path)
+}
+
 val genRes by tasks.registering(Exec::class) {
-    dependsOn(checkToolchain)
-    inputs.dir(resDir); inputs.file(manifest); outputs.dir(gen)
+    dependsOn(checkToolchain, buildFwExtras)
+    inputs.dir(resDir); inputs.file(manifest); inputs.file(fwExtras); outputs.dir(gen)
     doFirst {
         gen.get().asFile.mkdirs()
         val bi = gen.get().file("app/ocshimeji/BuildInfo.java").asFile; bi.parentFile.mkdirs()
         bi.writeText("package app.ocshimeji;\npublic final class BuildInfo { public static final String VERSION_NAME = \"$vName\"; public static final int VERSION_CODE = $vCode; }\n")
     }
-    commandLine("aapt", "package", "-f", "-m", "-J", gen.get().asFile.path, "-M", manifest.path, "-S", resDir.path, "-I", resJar.path)
+    commandLine("aapt", "package", "-f", "-m", "-J", gen.get().asFile.path, "-M", manifest.path, "-S", resDir.path, "-I", resJar.path, "-I", fwExtras.get().asFile.path)
 }
 tasks.named("compileKotlin") { dependsOn(genRes) }
 tasks.named("compileJava") { dependsOn(genRes) }
@@ -116,12 +126,12 @@ val dex by tasks.registering(Exec::class) {
 }
 
 val packageRes by tasks.registering(Exec::class) {
-    dependsOn(syncGame, checkToolchain)
+    dependsOn(syncGame, checkToolchain, buildFwExtras)
     val out = apkDir.map { it.file("base.ap_") }
-    inputs.dir(resDir); inputs.file(manifest); inputs.dir(layout.buildDirectory.dir("assets")); outputs.file(out)
+    inputs.dir(resDir); inputs.file(manifest); inputs.file(fwExtras); inputs.dir(layout.buildDirectory.dir("assets")); outputs.file(out)
     doFirst { apkDir.get().asFile.mkdirs() }
     commandLine("aapt", "package", "-f", "--no-crunch", "-M", manifest.path, "-S", resDir.path, "-A", layout.buildDirectory.dir("assets").get().asFile.path,
-        "-I", resJar.path, "-F", out.get().asFile.path, "--version-code", vCode, "--version-name", vName, "-0", "glb", "-0", "woff", "-0", "woff2", "-0", "png", "-0", "jpg")
+        "-I", resJar.path, "-I", fwExtras.get().asFile.path, "-F", out.get().asFile.path, "--version-code", vCode, "--version-name", vName, "-0", "glb", "-0", "woff", "-0", "woff2", "-0", "png", "-0", "jpg")
 }
 
 val unsignedApk = apkDir.map { it.file("app-unsigned.apk") }
@@ -178,4 +188,17 @@ val assembleRelease by tasks.registering(Exec::class) {
 tasks.register<Exec>("verifyDebugApk") {
     group = "verification"; dependsOn(assembleDebug)
     commandLine("apksigner", "verify", "--verbose", "--min-sdk-version", "26", debugApk.asFile.path)
+    // the compiled manifest must carry what Android 14/15 check at runtime (not just the source XML)
+    doLast {
+        fun run(vararg cmd: String): String { val p = ProcessBuilder(*cmd).redirectErrorStream(true).start(); val t = p.inputStream.bufferedReader().readText(); p.waitFor(); return t }
+        val x = run("aapt", "dump", "xmltree", debugApk.asFile.path, "AndroidManifest.xml")
+        require(Regex("targetSdkVersion\\(0x01010270\\)=\\(type 0x10\\)0x23").containsMatchIn(x)) { "targetSdkVersion is not 35" }
+        require(x.contains("android:foregroundServiceType(0x01010599)=@0x")) { "OverlayPetService lacks android:foregroundServiceType" }
+        require(x.contains("PROPERTY_SPECIAL_USE_FGS_SUBTYPE")) { "missing PROPERTY_SPECIAL_USE_FGS_SUBTYPE" }
+        require(x.contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE")) { "missing FOREGROUND_SERVICE_SPECIAL_USE" }
+        require(!x.contains("BIND_ACCESSIBILITY_SERVICE") && !x.contains("QUERY_ALL_PACKAGES")) { "forbidden permission/service in manifest" }
+        val res = run("aapt", "dump", "resources", debugApk.asFile.path)
+        require(Regex("integer/fgs_special_use: t=0x11 d=0x40000000").containsMatchIn(res)) { "fgs_special_use must be the int 0x40000000 (FOREGROUND_SERVICE_TYPE_SPECIAL_USE)" }
+        println("manifest OK: targetSdk 35, specialUse FGS type + subtype property, no accessibility / all-packages permissions")
+    }
 }

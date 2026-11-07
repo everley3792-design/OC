@@ -1,4 +1,9 @@
 <resources>
     <color name="oc_bg">#1D2130</color>
     <color name="oc_accent">#FF8A7A</color>
+    <!-- home-screen widget (dark) -->
+    <color name="widget_bg">#F02A3042</color>
+    <color name="widget_fg">#F3EEE6</color>
+    <color name="widget_sub">#B9B2A8</color>
+    <color name="widget_btn_fg">#1D2130</color>
 </resources>

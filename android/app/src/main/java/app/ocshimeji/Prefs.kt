@@ -19,5 +19,10 @@ class Prefs(ctx: Context) {
         get() = sp.getFloat("petScale", 1f)
         set(v) { sp.edit().putFloat("petScale", v.coerceIn(0.6f, 1.6f)).apply() }
 
+    /** POST_NOTIFICATIONS was requested once (Android shows the dialog at most twice; after that → settings page) */
+    var askedNotif: Boolean
+        get() = sp.getBoolean("askedNotif", false)
+        set(v) { sp.edit().putBoolean("askedNotif", v).apply() }
+
     fun effectiveDark(systemDark: Boolean): Boolean = when (themeMode) { "dark" -> true; "light" -> false; else -> systemDark }
 }

@@ -1,0 +1,7 @@
+<!-- android.R.attr.foregroundServiceType (API 29+), public id 0x01010599 (verified with javap on the API-35 framework jar).
+     Only the attribute id is needed: the manifest gives the value as @integer/fgs_special_use (= 1 << 30), so no flag
+     names are declared here (they would add an "id" type that collides with the platform's own). -->
+<resources>
+  <attr name="foregroundServiceType" format="integer" />
+  <public type="attr" name="foregroundServiceType" id="0x01010599" />
+</resources>

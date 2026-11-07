@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Framework "extras" for the OFFLINE build only. Never packaged into the APK.
+     The offline aapt links against the API-23 platform jar, whose attribute table predates
+     android:foregroundServiceType (API 29). This tiny package (built with `aapt package -x`, package id 0x01)
+     declares that attribute with its real public id 0x01010599 (android.R.attr.foregroundServiceType, verified
+     with javap against the API-35 framework jar) so the manifest compiles to exactly what AGP would produce. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="android" />

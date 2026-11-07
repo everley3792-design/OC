@@ -1,17 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- OC Shimeji — single merged manifest (used by both the offline Gradle pipeline and AGP).
-     targetSdk 33: see docs/android-build.md (raise to 35 with a full Android SDK). -->
+     targetSdk 35 (Android 15). Android 14+ attributes that the offline aapt's API-23 attribute table lacks
+     (foregroundServiceType) are resolved through android/tools/framework-extras (see docs/android-build.md). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.ocshimeji"
-    android:versionCode="9"
-    android:versionName="0.6.0-alpha">
+    android:versionCode="10"
+    android:versionName="0.7.0-alpha">
 
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="33" />
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
-    <!-- Floating desktop pet: "display over other apps" (user-granted in Settings) + foreground service -->
+    <!-- Desktop pets: "display over other apps" (user-granted in Settings) + a foreground service.
+         Android 14+: the service type is specialUse (no standard type fits an on-screen companion), with its
+         own permission and the PROPERTY_SPECIAL_USE_FGS_SUBTYPE explanation below. See docs/permissions.md. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 13+: the pet's pause / stop notification and reminders (asked only when the player uses them) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- App-context lines (opt-in): foreground app *package name* via UsageStatsManager; granted by the user in
+         Settings › Usage access. Never AccessibilityService, never screen or notification content. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <!-- Reminders / pomodoro: exact timing only if the player asks for it and grants it in Settings (Android 12+);
+         otherwise inexact alarms are used. Boot: re-register the player's reminders after a restart (nothing else). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Android 11+ package visibility: only launchable apps (for the app-context rule picker), not QUERY_ALL_PACKAGES -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".OcApp"
@@ -43,6 +63,34 @@
             android:grantUriPermissions="true" />
         <service
             android:name=".overlay.OverlayPetService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="@integer/fgs_special_use">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Desktop companion: user-placed interactive character overlay (SYSTEM_ALERT_WINDOW), runs only while the user keeps it on screen; pause/stop in the notification." />
+        </service>
+
+        <!-- reminders, pomodoro, alarms (+ re-register after reboot / update) -->
+        <receiver
+            android:name=".tools.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- home-screen widget (separate from the floating pet) -->
+        <receiver
+            android:name=".widget.PetWidget"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pet_widget_info" />
+        </receiver>
     </application>
 </manifest>

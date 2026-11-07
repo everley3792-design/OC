@@ -1,7 +1,22 @@
 <resources>
     <string name="app_name">OC Shimeji</string>
     <string name="pet_channel">桌寵</string>
-    <string name="pet_notif_title">你的 OC 正在桌面上陪你</string>
-    <string name="pet_notif_text">點兩下桌寵可回到遊戲</string>
-    <string name="pet_stop">收起桌寵</string>
+    <string name="pet_notif_title">%1$s 正在桌面上陪你</string>
+    <string name="pet_notif_paused">%1$s 暫停中（不自己走動）</string>
+    <string name="pet_notif_text">長按桌寵開啟選單・點兩下回到遊戲</string>
+    <string name="pet_notif_text_pass">觸控穿透中：碰不到桌寵，手指直接操作下面的 App</string>
+    <string name="pet_stop">收起</string>
+    <string name="pet_pause">暫停</string>
+    <string name="pet_resume">繼續</string>
+    <string name="pet_touch_off">觸控穿透</string>
+    <string name="pet_touch_on">恢復觸控</string>
+    <string name="tools_channel">番茄鐘與提醒</string>
+    <string name="widget_name">OC 小卡</string>
+    <string name="widget_open_once">打開遊戲一次就會顯示心情</string>
+    <string name="widget_no_todo">沒有待辦事項</string>
+    <string name="widget_pet_out">放出桌寵</string>
+    <string name="widget_pet_away">收起桌寵</string>
+    <string name="fgs_special_use_reason">使用者主動放到桌面上的互動桌寵（懸浮視窗）；只在使用者開啟時執行，可隨時從通知收起。</string>
+    <!-- Android 14+ foreground service type specialUse (= ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE, 1 << 30).
+         Given as an integer resource so the offline aapt (API 23 attribute table + framework extras) and AGP both resolve it. -->
 </resources>

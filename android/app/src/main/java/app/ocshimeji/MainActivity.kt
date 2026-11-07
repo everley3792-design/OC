@@ -211,7 +211,9 @@ class MainActivity : Activity() {
         web.onResume(); js("window.OCApp&&OCApp.lifecycle('resume')")
         if (pendingPetStart && OverlayPetService.canDrawOverlays(this)) { pendingPetStart = false; startPet() }
         js("window.OCApp&&OCApp.onPetState(${OverlayPetService.running},${OverlayPetService.canDrawOverlays(this)})")
+        if (!routedLaunch) { routedLaunch = true; web.postDelayed({ routeIntent(intent) }, 1500) }   // after the game booted
     }
+    private var routedLaunch = false
     override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); if (::web.isInitialized && !failed) web.saveState(outState) }
     override fun onDestroy() { if (::web.isInitialized && !failed) web.destroy(); super.onDestroy() }
 
@@ -226,13 +228,42 @@ class MainActivity : Activity() {
     // ---------------- floating pet ----------------
     fun startPet() {
         if (!OverlayPetService.canDrawOverlays(this)) { pendingPetStart = true; startActivity(OverlayPetService.permissionIntent(this)); return }
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF) // the pet works either way; this only shows its "stop" notification
+        // the pet works without it, but its pause / stop controls live in the notification (Android 13+ asks once)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !prefs.askedNotif) {
+            prefs.askedNotif = true; requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF)
         }
-        OverlayPetService.start(this)
-        js("window.OCApp&&OCApp.onPetState(true,true)")
+        val ok = OverlayPetService.start(this)
+        js("window.OCApp&&OCApp.onPetState(${ok},true)")
     }
     fun stopPet() { OverlayPetService.stop(this); js("window.OCApp&&OCApp.onPetState(false,${OverlayPetService.canDrawOverlays(this)})") }
+
+    /** permission requests only happen when the player uses the feature (pet center buttons) */
+    fun requestPermissionFor(kind: String) {
+        runCatching {
+            when (kind) {
+                "overlay" -> startActivity(OverlayPetService.permissionIntent(this))
+                "notifications" -> if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) && prefs.askedNotif) openAppNotificationSettings()
+                    else if (Build.VERSION.SDK_INT >= 33) { prefs.askedNotif = true; requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIF) } else openAppNotificationSettings()
+                "notificationSettings" -> openAppNotificationSettings()
+                "usage" -> startActivity(app.ocshimeji.overlay.UsageWatcher.settingsIntent(this))
+                "exactAlarm" -> if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+            }
+        }.onFailure { js("window.OCApp&&OCApp.onPermission&&OCApp.onPermission('$kind','unavailable')") }
+    }
+    private fun openAppNotificationSettings() = startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))
+
+    @Deprecated("plain Activity API")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == REQ_NOTIF) js("window.OCApp&&OCApp.onPermission&&OCApp.onPermission('notifications','${if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) "granted" else "denied"}')")
+    }
+
+    /** notification / widget / pet double-tap → open a page in the game */
+    private fun routeIntent(i: Intent?) {
+        val page = i?.getStringExtra(EXTRA_PAGE) ?: return
+        if (i.getBooleanExtra(EXTRA_START_PET, false)) startPet()
+        js("window.OCApp&&OCApp.openPage&&OCApp.openPage('${page.replace(Regex("[^a-z0-9_]"), "")}')")
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); routeIntent(intent) }
 
     fun js(code: String) { if (::web.isInitialized && !failed) runOnUiThread { web.evaluateJavascript(code, null) } }
 
@@ -271,6 +302,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQ_NOTIF = 2; private const val REQ_FILE = 3
+        const val EXTRA_PAGE = "page"; const val EXTRA_START_PET = "startPet"
         private const val EXTRA_FRESH = "fresh"; private const val EXTRA_SAFE = "safe"; private const val EXTRA_IGNORE_OLD = "ignoreOldWebView"
         /** the game uses ??, replaceChildren, CSS aspect-ratio / inset → Chromium 88+ */
         const val MIN_WEBVIEW = 88

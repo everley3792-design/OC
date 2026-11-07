@@ -1,0 +1,4 @@
+<resources>
+    <!-- ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE (1 << 30); see AndroidManifest.xml and docs/android-native.md -->
+    <integer name="fgs_special_use">0x40000000</integer>
+</resources>

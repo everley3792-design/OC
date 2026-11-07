@@ -1,162 +1,433 @@
 package app.ocshimeji.overlay
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.content.res.Configuration
-import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.Choreographer
-import android.view.Gravity
-import android.view.MotionEvent
+import android.view.WindowInsets
 import android.view.WindowManager
 import app.ocshimeji.MainActivity
 import app.ocshimeji.Prefs
 import app.ocshimeji.R
-import app.ocshimeji.core.pet.PetBrain
-import kotlin.math.hypot
+import app.ocshimeji.core.pet.AnimClip
+import app.ocshimeji.core.pet.AppContext
+import app.ocshimeji.core.pet.PetSocial
+import app.ocshimeji.widget.PetWidget
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.Calendar
 
 /**
- * System-level floating desktop pet (Shimeji-style), drawn over other apps.
+ * System-level desktop pets (Shimeji-style), drawn over other apps.
  *
- * Android-supported mechanism: SYSTEM_ALERT_WINDOW ("display over other apps", granted by the
- * user in Settings) + a TYPE_APPLICATION_OVERLAY window owned by a foreground service.
- * The window is only as large as the pet and moves with it, so touches elsewhere always reach
- * the app underneath. Sprite frames are the player's own OC, exported by the game (PetSprites).
+ * Android-supported mechanism only: SYSTEM_ALERT_WINDOW ("display over other apps", granted by the
+ * user in Settings) + TYPE_APPLICATION_OVERLAY windows owned by a foreground service of type
+ * `specialUse` (Android 14+, declared in the manifest with PROPERTY_SPECIAL_USE_FGS_SUBTYPE).
  *
- * Gestures: drag = pick up (pendulum swing) → release = fall & land; tap = happy hop;
- * double-tap = open OC Shimeji; notification action = put the pet away.
+ *  - every pet has its own window, only as large as the pet; bubbles and the menu are separate
+ *    small windows → no full-screen transparent layer, touches elsewhere reach the app below;
+ *  - optional touch-passthrough (FLAG_NOT_TOUCHABLE, ≤ 80 % opacity as Android 12+ requires);
+ *  - frame loop on Choreographer, capped (60/30 fps, lower when everyone rests), fully stopped while
+ *    the screen is off or the pets are paused; no wake locks, no alarms, START_NOT_STICKY;
+ *  - the overlay permission is re-checked; if the user revokes it the service stops and says why;
+ *  - the system may hide overlays on secure screens (HIDE_OVERLAY_WINDOWS) — we never fight that.
  */
 class OverlayPetService : Service() {
-
-    private lateinit var wm: WindowManager
-    private lateinit var view: PetView
-    private lateinit var lp: WindowManager.LayoutParams
-    private val brain = PetBrain(seed = (SystemClock.uptimeMillis() % 10000).toInt())
+    lateinit var wm: WindowManager; private set
+    private val pets = LinkedHashMap<String, PetWindow>()
+    private val social = PetSocial()
+    private val app = AppContext()
+    private val main = Handler(Looper.getMainLooper())
     private var lastFrameNs = 0L
-    private var sizePx = 0
-    private var attached = false
+    private var looping = false
+    var paused = false; private set
+    private var screenOn = true
+    private var global = JSONObject()
+    var screenW = 1080; private set
+    var screenH = 1920; private set
+    private var insetTop = 0; private var insetBottom = 0
+    var hour = 12; private set
+    var haptics = true; private set
+    var theme = PetTheme.of(false); private set
+    private var fpsCap = 30
+    private var pauseScreenOff = true
+    private var maxPets = MAX_PETS
+    private var removedThisSession = HashSet<String>()
+    private var lastError = ""
+    // diagnostics
+    private var frames = 0; private var frameNsSum = 0L; private var measuredFps = 0f; private var fpsWindowStart = 0L
+    private var usage: UsageWatcher? = null
+    private var appHidden = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
-        return START_STICKY
-    }
-
     override fun onCreate() {
         super.onCreate()
-        if (!canDrawOverlays(this)) { stopSelf(); return }
-        startForeground(NOTIF_ID, buildNotification())
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        view = PetView(this).apply { sprites = PetSprites.load(this@OverlayPetService) }
-        sizePx = (110 * resources.displayMetrics.density * Prefs(this).petScale).toInt()
-        lp = WindowManager.LayoutParams(
-            sizePx, sizePx,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            PixelFormat.TRANSLUCENT,
-        ).apply { gravity = Gravity.TOP or Gravity.START; title = "OC Shimeji pet" }
-        val (w, h) = screen()
-        brain.reset(w, h, sizePx)
-        attachTouch()
-        wm.addView(view, lp); attached = true
-        running = true; instance = this
-        Choreographer.getInstance().postFrameCallback(frame)
+        instance = this
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_STOP -> { stopEverything("stopped by user"); return START_NOT_STICKY }
+            ACTION_PAUSE -> { setPaused(!paused); return START_NOT_STICKY }
+            ACTION_PASSTHROUGH -> { togglePassthrough(); return START_NOT_STICKY }
+        }
+        if (!canDrawOverlays(this)) {
+            status("no-permission", "沒有「顯示在其他應用程式上層」權限")
+            runCatching { goForeground() }   // startForegroundService() must always be answered, even when we stop at once
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }; stopSelf(); return START_NOT_STICKY
+        }
+        // Android 15: an app holding SYSTEM_ALERT_WINDOW may start a foreground service from the background only while
+        // it has a visible overlay window → add the pet windows first, then promote to foreground.
+        if (!running) {
+            running = true
+            reload()
+            val ok = runCatching { goForeground() }
+            if (ok.isFailure) {
+                lastError = "startForeground: " + (ok.exceptionOrNull()?.javaClass?.simpleName ?: "?")
+                status("blocked", "系統不允許現在啟動前景服務（${ok.exceptionOrNull()?.javaClass?.simpleName}）。請從 App 內再啟動一次。")
+                stopEverything(lastError); return START_NOT_STICKY
+            }
+            registerScreen()
+            ensureLoop()
+        } else reload()
+        intent?.getStringExtra(EXTRA_TEST_OC)?.let { oc -> intent.getStringExtra(EXTRA_TEST_ANIM)?.let { test(oc, it) } }
+        return START_NOT_STICKY   // no restart-after-kill keep-alive: the player starts the pets again
+    }
+
+    private fun goForeground() {
+        val n = buildNotification()
+        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        else startForeground(NOTIF_ID, n)
+    }
+
+    // ---------------------------------------------------------------- config
+    /** (re)read config.json written by the game: pets, settings, lines, foods, relationships, app rules */
+    fun reload() {
+        val cfg = PetFiles.readConfig(this)
+        global = cfg.optJSONObject("global") ?: JSONObject()
+        updateScreen()
+        val dark = when (global.optString("theme", Prefs(this).themeMode)) { "dark" -> true; "light" -> false; else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES }
+        theme = PetTheme.of(dark)
+        fpsCap = if (global.optInt("fps", 30) >= 60) 60 else 30
+        pauseScreenOff = global.optBoolean("pauseScreenOff", true)
+        haptics = global.optBoolean("haptics", true)
+        maxPets = global.optInt("maxPets", MAX_PETS).coerceIn(1, MAX_PETS)
+        PetSprites.applyBudget(global.optInt("cacheMB", 24))
+        // relationships → pet-to-pet meetings
+        val aff = HashMap<String, Float>(); cfg.optJSONObject("aff")?.let { a -> for (k in a.keys()) aff[k] = a.optDouble(k, 0.0).toFloat() }
+        social.affinity = aff
+        // app context (opt-in)
+        global.optJSONObject("app").let { a ->
+            app.enabled = a?.optBoolean("enabled", false) == true
+            app.useSystemCategory = a?.optBoolean("useSystem", true) != false
+            app.hideOverExcluded = a?.optBoolean("hide", false) == true
+            val rules = HashMap<String, String>(); a?.optJSONObject("rules")?.let { r -> for (k in r.keys()) rules[k] = r.optString(k) }
+            app.rules = rules
+            app.exclude = a?.optJSONArray("exclude")?.let { ex -> (0 until ex.length()).map { ex.optString(it) }.toSet() } ?: emptySet()
+        }
+        val list = cfg.optJSONArray("pets") ?: JSONArray()
+        val want = LinkedHashMap<String, JSONObject>()
+        for (i in 0 until list.length()) { val p = list.optJSONObject(i) ?: continue; val id = p.optString("id"); if (id.isNotEmpty() && id !in removedThisSession && want.size < maxPets) want[id] = p }
+        if (want.isEmpty() && list.length() == 0) want["legacy"] = JSONObject().put("id", "legacy").put("name", "OC")  // pre-0.7 export
+        // remove pets no longer wanted
+        for (id in pets.keys.toList()) if (id !in want) { pets.remove(id)?.detach() }
+        val data = cfg.optJSONObject("data") ?: JSONObject()
+        var seed = 1
+        for ((id, p) in want) {
+            val w = pets.getOrPut(id) { PetWindow(this, id, (SystemClock.uptimeMillis() % 9973).toInt() + seed * 31) }
+            seed++
+            val sprites = if (id == "legacy") PetSprites.legacy(this) else PetSprites.load(this, id)
+            w.configure(p, data.optJSONObject(id), global, sprites, screenW, screenH, insetTop, insetBottom)
+            if (!w.attached && !w.attach()) { lastError = "addView failed for $id"; if (!canDrawOverlays(this)) { revoked(); return } }
+        }
+        if (app.enabled && UsageWatcher.granted(this)) { if (usage == null) usage = UsageWatcher(this) } else usage = null
+        if (running) { notifyUpdate(); writeStatus() }
+    }
+
+    private fun updateScreen() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            val m = wm.currentWindowMetrics; screenW = m.bounds.width(); screenH = m.bounds.height()
+            val ins = m.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            insetTop = ins.top; insetBottom = ins.bottom
+        } else @Suppress("DEPRECATION") {
+            val dm = android.util.DisplayMetrics(); wm.defaultDisplay.getRealMetrics(dm); screenW = dm.widthPixels; screenH = dm.heightPixels
+            val res = resources.getIdentifier("status_bar_height", "dimen", "android"); insetTop = if (res > 0) resources.getDimensionPixelSize(res) else 0
+            val nb = resources.getIdentifier("navigation_bar_height", "dimen", "android"); insetBottom = if (nb > 0) resources.getDimensionPixelSize(nb) else 0
+        }
+    }
+
+    // ---------------------------------------------------------------- frame loop
     private val frame = object : Choreographer.FrameCallback {
         override fun doFrame(nowNs: Long) {
-            if (!attached) return
-            val dt = if (lastFrameNs == 0L) 0f else ((nowNs - lastFrameNs) / 1e9f)
-            val interval = if (brain.isResting) 1f / 15f else 1f / 30f // battery: low fps when resting
-            if (lastFrameNs == 0L || dt >= interval) {
+            if (!looping) return
+            val resting = pets.values.all { it.brain.isResting } && !pets.values.any { it.brain.isDragging }
+            val cap = when { paused -> 10; resting -> 15; else -> fpsCap }
+            val interval = 1_000_000_000L / cap
+            if (lastFrameNs == 0L || nowNs - lastFrameNs >= interval - 2_000_000L) {
+                val dt = if (lastFrameNs == 0L) 0f else ((nowNs - lastFrameNs) / 1e9f).coerceAtMost(0.1f)
                 lastFrameNs = nowNs
-                brain.update(dt.coerceAtMost(0.1f))
-                lp.x = brain.x.toInt(); lp.y = brain.y.toInt()
-                wm.updateViewLayout(view, lp)
-                view.render(brain)
+                val t0 = System.nanoTime(); val now = SystemClock.uptimeMillis()
+                for (w in pets.values) w.frame(dt, now, screenW, insetTop, paused, theme)
+                if (!paused && pets.size > 1) for (m in social.step(pets.map { PetSocial.Member(it.key, it.value.brain) }, dt)) meeting(m, now)
+                frames++; frameNsSum += System.nanoTime() - t0
+                if (now - fpsWindowStart > 2000) { measuredFps = frames * 1000f / (now - fpsWindowStart).coerceAtLeast(1); fpsWindowStart = now; avgFrameMs = if (frames > 0) frameNsSum / 1e6f / frames else 0f; frames = 0; frameNsSum = 0; housekeeping() }
             }
             Choreographer.getInstance().postFrameCallback(this)
         }
     }
+    private var avgFrameMs = 0f
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun attachTouch() {
-        var downX = 0f; var downY = 0f; var grabX = 0f; var grabY = 0f; var downT = 0L; var lastTap = 0L; var dragging = false
-        view.setOnTouchListener { _, e ->
-            when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; grabX = e.rawX - brain.x; grabY = e.rawY - brain.y; downT = e.eventTime; dragging = false; true }
-                MotionEvent.ACTION_MOVE -> {
-                    if (!dragging && (hypot(e.rawX - downX, e.rawY - downY) > 10 * resources.displayMetrics.density || e.eventTime - downT > 220)) dragging = true
-                    if (dragging) brain.drag(e.rawX - grabX, e.rawY - grabY)
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (dragging) brain.release()
-                    else if (e.eventTime - lastTap < 320) openApp()
-                    else { brain.poke(); lastTap = e.eventTime }
-                    dragging = false; true
-                }
-                else -> false
-            }
-        }
+    private fun ensureLoop() {
+        val want = running && screenOn && pets.isNotEmpty()
+        if (want && !looping) { looping = true; lastFrameNs = 0L; fpsWindowStart = SystemClock.uptimeMillis(); Choreographer.getInstance().postFrameCallback(frame) }
+        else if (!want && looping) { looping = false; Choreographer.getInstance().removeFrameCallback(frame) }
     }
 
-    private fun openApp() = startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+    private var lastHousekeeping = 0L
+    private fun housekeeping() {
+        val c = Calendar.getInstance(); hour = c.get(Calendar.HOUR_OF_DAY)
+        for (w in pets.values) w.brain.hour = hour
+        if (!canDrawOverlays(this)) { revoked(); return }
+        usage?.poll()?.let { onApp(it) }
+        val now = SystemClock.uptimeMillis()
+        if (now - lastHousekeeping > 10_000) { lastHousekeeping = now; writeStatus() }
+    }
 
-    private fun screen(): Pair<Int, Int> = if (Build.VERSION.SDK_INT >= 30) {
-        val b = wm.currentWindowMetrics.bounds; b.width() to b.height()
-    } else @Suppress("DEPRECATION") resources.displayMetrics.let { it.widthPixels to it.heightPixels }
+    // ---------------------------------------------------------------- app context (opt-in, package name only)
+    private var lastPkg = ""
+    private fun onApp(pkg: String) {
+        if (pkg == lastPkg || pkg == packageName) return
+        lastPkg = pkg
+        val sysCat = UsageWatcher.systemCategory(this, pkg)
+        val hit = app.classify(pkg, sysCat)
+        val hide = hit.excluded && app.hideOverExcluded
+        if (hide != appHidden) { appHidden = hide; for (w in pets.values) w.setHidden(hide) }
+        val cat = hit.category ?: return
+        if (paused) return
+        val w = pets.values.firstOrNull { it.talk.has("app_$cat") } ?: return
+        w.sayCat("app_$cat", SystemClock.uptimeMillis(), chatter = true)
+    }
+
+    // ---------------------------------------------------------------- interactions
+    fun touched(w: PetWindow) { if (paused) { /* touching a paused pet still reacts, it does not resume autonomy */ } }
+    fun dropped(w: PetWindow) { /* reserved for future "thrown" memory; the game is told nothing — no reward for throwing */ }
+
+    private fun meeting(m: PetSocial.Meeting, now: Long) {
+        val a = pets[m.a] ?: return; val b = pets[m.b] ?: return
+        a.sayCat("friend", now); main.postDelayed({ b.sayCat("friend", SystemClock.uptimeMillis()) }, 1200)
+        PetFiles.event(this, m.a, "meet", JSONObject().put("with", m.b).put("kind", m.kind))
+    }
+
+    fun later(ms: Long, r: () -> Unit) { main.postDelayed({ if (running) r() }, ms) }
+
+    fun openApp(page: String) {
+        for (w in pets.values) w.closePopups()
+        runCatching { startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_PAGE, page).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
+    }
+
+    fun removePet(id: String) {
+        removedThisSession += id; pets.remove(id)?.detach()
+        if (pets.isEmpty()) stopEverything("all pets put away") else { notifyUpdate(); writeStatus() }
+    }
+
+    /** "test on desktop": play an animation on a pet right now */
+    fun test(oc: String, anim: String) {
+        val w = pets[oc] ?: pets.values.firstOrNull() ?: return
+        val dur = w.view.sprites?.set(anim)?.clip?.seconds()?.coerceIn(1f, 6f) ?: 2f
+        when (anim) {
+            "walk", "run" -> w.brain.goTo(if (w.brain.x > screenW / 2) w.brain.minX else w.brain.maxX, anim == "run")
+            "jump" -> w.brain.jump(0f)
+            else -> w.brain.react(anim, dur * if (w.view.sprites?.set(anim)?.clip?.loop == AnimClip.Loop.LOOP) 2 else 1)
+        }
+        w.say("▶ $anim", theme, SystemClock.uptimeMillis())
+    }
+
+    /** a reminder / pomodoro fired → the pet says it (the notification is posted separately) */
+    fun announce(cat: String, text: String?) {
+        val w = pets.values.firstOrNull() ?: return
+        val now = SystemClock.uptimeMillis()
+        val line = w.talk.react(cat, 0f)
+        w.brain.react(if (cat == "timer_done") "cheer" else "greet", 2f)
+        w.say(listOfNotNull(text, line).joinToString("\n").ifBlank { "⏰" }, theme, now)
+    }
+
+    fun setPaused(p: Boolean) {
+        paused = p
+        for (w in pets.values) { w.closePopups(); if (p) w.brain.settle() }
+        notifyUpdate(); writeStatus()
+    }
+
+    private fun togglePassthrough() {
+        val cfg = PetFiles.readConfig(this); val g = cfg.optJSONObject("global") ?: JSONObject()
+        g.put("passthrough", !g.optBoolean("passthrough", false)); cfg.put("global", g)
+        PetFiles.writeConfig(this, cfg.toString())
+        PetFiles.event(this, "", "setting", JSONObject().put("passthrough", g.optBoolean("passthrough")))   // the game mirrors it into its save
+        reload()
+    }
+
+    // ---------------------------------------------------------------- system events
+    private var screenReceiver: BroadcastReceiver? = null
+    private fun registerScreen() {
+        screenOn = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                screenOn = i.action != Intent.ACTION_SCREEN_OFF
+                if (!pauseScreenOff && !screenOn) return
+                for (w in pets.values) w.closePopups()
+                ensureLoop(); writeStatus()
+            }
+        }
+        val f = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_NOT_EXPORTED) else registerReceiver(r, f)
+        screenReceiver = r
+    }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (attached) { val (w, h) = screen(); brain.resize(w, h) }
+        if (!running) return
+        updateScreen()
+        for (w in pets.values) w.resize(screenW, screenH, insetTop, insetBottom)
+        reload()   // theme may have changed (system dark mode)
     }
 
-    private fun buildNotification(): Notification {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.pet_channel), NotificationManager.IMPORTANCE_LOW))
-        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), flags)
-        val stop = PendingIntent.getService(this, 1, Intent(this, OverlayPetService::class.java).setAction(ACTION_STOP), flags)
-        return Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_stat_pet)
-            .setContentTitle(getString(R.string.pet_notif_title))
-            .setContentText(getString(R.string.pet_notif_text))
-            .setContentIntent(open)
-            .addAction(Notification.Action.Builder(null, getString(R.string.pet_stop), stop).build())
-            .setOngoing(true)
-            .build()
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) PetSprites.cache.evictAll()   // frames are decoded again lazily
+    }
+
+    override fun onLowMemory() { super.onLowMemory(); PetSprites.cache.evictAll() }
+
+    private fun revoked() {
+        lastError = "overlay permission revoked"
+        status("revoked", "「顯示在其他應用程式上層」權限被關閉，桌寵已收起。")
+        stopEverything(lastError)
+    }
+
+    private fun stopEverything(why: String) {
+        running = false
+        looping = false; Choreographer.getInstance().removeFrameCallback(frame)
+        main.removeCallbacksAndMessages(null)
+        for (w in pets.values) w.detach(); pets.clear()
+        screenReceiver?.let { runCatching { unregisterReceiver(it) } }; screenReceiver = null
+        usage = null
+        if (why.isNotEmpty() && lastStatusCode !in setOf("revoked", "blocked", "no-permission")) status("stopped", why)
+        runCatching { if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else @Suppress("DEPRECATION") stopForeground(true) }
+        stopSelf()
+        PetWidget.refresh(this)
     }
 
     override fun onDestroy() {
-        running = false; instance = null
-        if (attached) { Choreographer.getInstance().removeFrameCallback(frame); runCatching { wm.removeView(view) }; attached = false }
+        if (running) stopEverything("")
+        instance = null
+        PetSprites.cache.evictAll()
         super.onDestroy()
     }
+
+    // ---------------------------------------------------------------- notification & status
+    private fun buildNotification(): Notification {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.pet_channel), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_PAGE, "petcenter"), flags)
+        fun svc(action: String, rc: Int) = PendingIntent.getService(this, rc, Intent(this, OverlayPetService::class.java).setAction(action), flags)
+        val names = pets.values.joinToString("、") { it.name }.ifEmpty { "OC" }
+        val pass = global.optBoolean("passthrough", false)
+        return Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_pet)
+            .setContentTitle(if (paused) getString(R.string.pet_notif_paused, names) else getString(R.string.pet_notif_title, names))
+            .setContentText(getString(if (pass) R.string.pet_notif_text_pass else R.string.pet_notif_text))
+            .setContentIntent(open)
+            .setOngoing(true).setShowWhen(false).setCategory(Notification.CATEGORY_SERVICE)
+            .addAction(Notification.Action.Builder(null, getString(if (paused) R.string.pet_resume else R.string.pet_pause), svc(ACTION_PAUSE, 2)).build())
+            .addAction(Notification.Action.Builder(null, getString(if (pass) R.string.pet_touch_on else R.string.pet_touch_off), svc(ACTION_PASSTHROUGH, 3)).build())
+            .addAction(Notification.Action.Builder(null, getString(R.string.pet_stop), svc(ACTION_STOP, 1)).build())
+            .build()
+    }
+
+    private fun notifyUpdate() {
+        if (!running) return
+        runCatching { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIF_ID, buildNotification()) }
+        PetWidget.refresh(this)
+    }
+
+    private var lastStatusCode = ""
+    private fun status(code: String, msg: String) {
+        lastStatusCode = code
+        PetFiles.writeStatus(this, JSONObject().put("code", code).put("msg", msg).put("at", System.currentTimeMillis()))
+    }
+
+    private fun writeStatus() {
+        lastStatusCode = if (paused) "paused" else "running"
+        PetFiles.writeStatus(this, diag())
+    }
+
+    /** what is really happening (management center + diagnostics page) */
+    fun diag(): JSONObject = JSONObject()
+        .put("code", if (!running) lastStatusCode.ifEmpty { "stopped" } else if (paused) "paused" else "running")
+        .put("at", System.currentTimeMillis())
+        .put("paused", paused).put("screenOn", screenOn).put("looping", looping)
+        .put("pets", JSONArray().apply { for (w in pets.values) put(JSONObject().put("id", w.id).put("name", w.name).put("state", w.brain.state.name).put("anim", w.brain.anim).put("surface", w.brain.surface.name).put("x", w.brain.x.toInt()).put("y", w.brain.y.toInt()).put("size", w.sizePx).put("hidden", w.hidden).put("sprites", w.view.sprites?.keys?.size ?: 0).put("draws", w.view.draws)) })
+        .put("fpsCap", fpsCap).put("fps", Math.round(measuredFps * 10) / 10.0).put("frameMs", Math.round(avgFrameMs * 100) / 100.0)
+        .put("cacheKB", PetSprites.cacheBytes() / 1024).put("cacheBudgetKB", PetSprites.budgetBytes / 1024)
+        .put("screen", "${screenW}x$screenH").put("insets", "$insetTop/$insetBottom")
+        .put("events", PetFiles.pendingCount(this)).put("dropped", PetFiles.dropped(this))
+        .put("app", JSONObject().put("enabled", app.enabled).put("granted", UsageWatcher.granted(this)).put("watching", usage != null).put("hidden", appHidden))
+        .put("fgsType", if (Build.VERSION.SDK_INT >= 34) "specialUse" else "none (Android < 14)")
+        .put("error", lastError)
 
     companion object {
         private const val CHANNEL = "pet"
         private const val NOTIF_ID = 7
+        /** hard cap (memory / battery); the player may choose fewer */
+        const val MAX_PETS = 3
         const val ACTION_STOP = "app.ocshimeji.pet.STOP"
+        const val ACTION_PAUSE = "app.ocshimeji.pet.PAUSE"
+        const val ACTION_PASSTHROUGH = "app.ocshimeji.pet.PASSTHROUGH"
+        const val EXTRA_TEST_OC = "testOc"; const val EXTRA_TEST_ANIM = "testAnim"
         @Volatile var running = false; private set
-        @Volatile private var instance: OverlayPetService? = null
+        @Volatile var instance: OverlayPetService? = null; private set
 
         fun canDrawOverlays(ctx: Context) = Settings.canDrawOverlays(ctx)
         fun permissionIntent(ctx: Context) = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}"))
-        fun start(ctx: Context) { if (canDrawOverlays(ctx)) ctx.startForegroundService(Intent(ctx, OverlayPetService::class.java)) }
-        fun stop(ctx: Context) { ctx.stopService(Intent(ctx, OverlayPetService::class.java)) }
-        /** Called after the game exported new sprite frames (e.g. the player edited their OC). */
-        fun reloadSprites() { instance?.let { s -> s.view.post { s.view.sprites = PetSprites.load(s) } } }
+        /** must be called from a foreground context (activity / widget click / notification action) */
+        fun start(ctx: Context): Boolean {
+            if (!canDrawOverlays(ctx)) return false
+            return runCatching { ctx.startForegroundService(Intent(ctx, OverlayPetService::class.java)); true }.getOrElse { false }
+        }
+        fun stop(ctx: Context) { val s = instance; if (s != null) s.main.post { s.stopEverything("stopped by user") } else ctx.stopService(Intent(ctx, OverlayPetService::class.java)) }
+        /** config or sprites changed (the game exported) → re-read */
+        fun reload() { instance?.let { s -> s.main.post { if (running) s.reload() } } }
+        fun pause(p: Boolean) { instance?.let { s -> s.main.post { if (running) s.setPaused(p) } } }
+        fun test(ctx: Context, oc: String, anim: String) {
+            val s = instance
+            if (s != null && running) s.main.post { s.test(oc, anim) }
+            else if (canDrawOverlays(ctx)) runCatching { ctx.startForegroundService(Intent(ctx, OverlayPetService::class.java).putExtra(EXTRA_TEST_OC, oc).putExtra(EXTRA_TEST_ANIM, anim)) }
+        }
+        fun announce(cat: String, text: String?) { instance?.let { s -> s.main.post { if (running) s.announce(cat, text) } } }
+        fun diagJson(ctx: Context): JSONObject {
+            instance?.takeIf { running }?.let { return it.diag() }
+            // not running: report the last reason (a "running" status left by a killed process is reported as stopped)
+            val st = PetFiles.readStatus(ctx); val code = st.optString("code", "stopped")
+            return st.put("code", if (code == "running" || code == "paused") "stopped" else code).put("pets", JSONArray())
+        }
     }
 }
