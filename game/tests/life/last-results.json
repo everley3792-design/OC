@@ -1,71 +1,58 @@
 {
- "at": "2026-11-07T19:54:08.141Z",
+ "at": "2026-11-07T20:04:49.086Z",
  "results": [
   {
-   "name": "10a 存檔重開：關係、回憶、願望、生活紀錄完整",
+   "name": "7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動",
    "ok": true,
    "detail": {
-    "before": [
-     2,
-     0,
-     0
-    ],
-    "after": [
-     2,
-     0,
-     0
-    ],
-    "differs": [],
-    "wishes": [
-     [
-      0,
-      0,
-      0
+    "called": {
+     "st": "held",
+     "holds": [
+      "call"
      ],
-     [
-      0,
-      0,
-      0
-     ]
-    ],
-    "rec": [
-     [
-      2,
-      79,
-      2
-     ],
-     [
-      2,
-      79,
-      2
-     ]
-    ]
+     "susp": "read"
+    },
+    "resumed": {
+     "st": "do",
+     "act": "read",
+     "holds": 0
+    }
    }
   },
   {
-   "name": "10b 重開後繼續進行中的活動",
+   "name": "7b 拖曳：暫停 → 放下有反應 → 恢復自主",
    "ok": true,
    "detail": {
-    "before": [
-     "cmw6tnakfktpo:read"
-    ],
-    "after": [
-     "cmw6tnakfktpo:read"
-    ]
+    "h1": true,
+    "moved": {
+     "x": 387,
+     "y": 673
+    },
+    "act": null
    }
   },
   {
-   "name": "10c 第三階段（v2）存檔自動遷移（v2→v3→v4），舊需求數值保留",
+   "name": "7c 打開編輯器（換裝）時暫停、關閉後恢復",
    "ok": true,
    "detail": {
-    "social0": 40,
-    "v": 4,
-    "life": true,
-    "chars": 3,
-    "needs": "active,comfort,energy,food,fun,interest,mood,sleep,social,t",
-    "food": 50,
-    "emo": "neutral"
+    "ed": [
+     "editor"
+    ],
+    "ed2": [],
+    "edInfo": {
+     "stack": 0,
+     "open": false,
+     "dirty": false,
+     "sheets": []
+    }
    }
+  },
+  {
+   "name": "7d 和玩家聊天時暫停，結束後恢復",
+   "ok": true,
+   "detail": [
+    "dialogue"
+   ]
   },
   {
    "name": "沒有 JavaScript 錯誤",

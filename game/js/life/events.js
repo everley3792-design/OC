@@ -89,6 +89,8 @@
     if (!cur) return;
     const t = nowR(), c = cur;
     if (t - c.t0 > 90) { end('timeout'); return; }
+    // a participant left the scene (travelled away, or the player changed place): the scene cannot continue
+    if ([c.cast.a, c.cast.b].some((m) => m && !m.a)) { end('left'); return; }
     if (t < c.waitUntil || c.pending) return;
     const st = c.ev.steps[c.i++]; if (!st) { finish(); return; }
     const who = (r) => (r === 'a' ? c.cast.a : r === 'b' ? c.cast.b : null);
