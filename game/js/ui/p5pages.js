@@ -134,7 +134,7 @@
     return new Promise((resolve) => {
       setTimeout(() => { if (a._feed !== token) return resolve(false); OC.World.setAction(a, drink ? 'drink' : 'eat', { dur: chew + 0.2, priority: 8 }); }, first ? 950 : 50);
       setTimeout(() => {
-        const b = OC.Brain.get(ocId), ok = a._feed === token && b && b.holds.has('feed') && [...b.holds].every((x) => x === 'feed') && St.count(id) >= 1;
+        const b = OC.Brain.get(ocId), ok = a._feed === token && b && b.holds.has('feed') && [...b.holds].every((x) => x === 'feed' || x === 'stage') && St.count(id) >= 1;
         a._feed = null;
         if (!ok) { OC.Brain.unhold(ocId, 'feed'); toast('被打斷了，東西還在背包裡', 'info'); return resolve(false); }
         const r = OC.Tx.run(OC.Tx.uid('feed'), { pay: { items: { [id]: 1 } } }, `${name(c)}吃了${it.zh}`, { oc: ocId });
@@ -146,14 +146,15 @@
         const emo = { 2: ['excited', 0.75], 1: ['happy', 0.5], 0: ['content', 0.25], '-1': ['confused', 0.35], '-2': ['annoyed', 0.55] }[t.lv];
         M().feel(c, emo[0], emo[1], `吃了${it.zh}`); M().player(c, { aff: t.lv >= 1 ? 3 : t.lv === 0 ? 1 : 0, fam: 1 }); M().wishEvent(c, { type: 'fed', item: id }, 'player');
         if (t.first || t.lv === 2 || t.lv === -2) M().remember(c, { type: 'player', imp: t.lv === 2 ? 0.7 : t.first ? 0.5 : 0.55, text: `${t.first ? '第一次吃' : '吃了'}你給的${it.zh}，${OC.Taste.LV[t.lv]}${t.lv >= 1 ? '！' : '…'}`, data: { item: id, lv: t.lv }, key: r.entry.key });
-        const act = t.lv === 2 ? 'jump' : t.lv === 1 ? 'happy' : t.lv === -1 ? 'sad' : t.lv === -2 ? (OC.Chars.has(c, 'sensitive') ? 'cry' : 'angry') : 'idle';
-        if (act === 'jump') { OC.World.jump(a); OC.World.setAction(a, 'happy', { dur: 1.6, priority: 8 }); } else if (act !== 'idle') OC.World.setAction(a, act, { dur: 1.6, priority: 8 });
-        if (t.lv === 2) { A().floatText(a, '♥♥', 'var(--heart)'); } if (t.lv <= -1) A().floatText(a, '💦', 'var(--blue)');
-        if (it.anim && t.lv >= 0) OC.World.setAction(a, it.anim, { dur: 1.6, priority: 8 });
-        const ln = it.reaction && t.lv >= 0 ? { text: it.reaction } : OC.Talk.say({ 2: 'tasted_fav', 1: 'tasted_like', 0: 'tasted_ok', '-1': 'tasted_dislike', '-2': 'tasted_hate' }[t.lv], c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c));
-        if (t.discovered) setTimeout(() => toast(`發現了！${name(c)}${OC.Taste.LV[t.lv] === '普通' ? '覺得' + it.zh + '普普通通' : OC.Taste.LV[t.lv] + it.zh}`, 'heart'), 600);
-        St.stat('eaten'); OC.Game.progress('eat');
-        setTimeout(() => OC.Brain.unhold(ocId, 'feed'), 1700); resolve(true);
+        // Phase 6: one progress event + a performance chosen by preference level and temperament (data already applied)
+        if (OC.Progress) OC.Progress.emit('eat', { oc: ocId, item: id, lv: t.lv, first: !!t.first, by: 'player', drink });
+        const perf = { 2: 'taste_fav', 1: 'taste_like', 0: 'taste_ok', '-1': 'taste_dislike', '-2': 'taste_hate' }[t.lv];
+        const custom = it.reaction && t.lv >= 0 ? it.reaction : null;
+        if (Math.abs(t.lv) < 2 && !custom) { const ln = OC.Talk.say({ 1: 'tasted_like', 0: 'tasted_ok', '-1': 'tasted_dislike' }[t.lv], c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c)); }
+        setTimeout(() => OC.Brain.unhold(ocId, 'feed'), 50);
+        if (OC.Stage) OC.Stage.perform(perf, { oc: ocId, item: id }).then(() => { const a2 = A().actorOf(ocId); if (!a2) return; if (custom) A().bubble(a2, custom, name(c)); if (it.anim && t.lv >= 0) OC.World.setAction(a2, it.anim, { dur: 1.6, priority: 8 }); });
+        if (t.discovered && OC.Stage) setTimeout(() => OC.Stage.card({ kind: 'taste', item: id, title: `發現了${name(c)}的口味`, sub: `${name(c)}${OC.Taste.LV[t.lv] === '普通' ? '覺得' + it.zh + '普普通通' : OC.Taste.LV[t.lv] + it.zh}` }), 400);
+        St.stat('eaten'); resolve(true);
       }, (first ? 950 : 50) + (chew + 0.25) * 1000);
     });
   }
@@ -165,6 +166,7 @@
       (c.life.toyDay = c.life.toyDay || {})[id] = OC.Sim.day();
       M().needs(c, fresh ? it.use || { fun: 15 } : { fun: 4 }, '玩' + it.zh); M().feel(c, 'happy', fresh ? 0.5 : 0.2, '和你玩' + it.zh); M().player(c, { aff: fresh ? 2 : 0, fam: 1 }); M().wishEvent(c, { type: 'played' }, 'player'); M().skill(c, 'sport', 0.6);
       if (fresh) M().remember(c, { type: 'player', imp: 0.4, text: `和你一起玩${it.zh}`, key });
+      if (OC.Progress) OC.Progress.emit('play', { oc: ocId, item: id, fresh });
       const ln = OC.Talk.say(fresh ? 'toy' : 'played', c, null); if (ln) A().bubble(a, ln.text, name(c)); OC.Brain.unhold(ocId, 'play');
     }, 3000);
     if (!fresh) toast('今天已經玩過這個了，牠還是陪你玩了一下', 'info');
@@ -175,7 +177,10 @@
     const likes = c.tastes.likeItems.includes(id) || (c.profile.likes || []).some((l) => l && it.zh.includes(l)), dis = c.tastes.dislikeItems.includes(id);
     M().feel(c, likes ? 'excited' : dis ? 'confused' : 'happy', likes ? 0.7 : 0.35, `收到你送的${it.zh}`); M().player(c, { aff: likes ? 4 : dis ? 0 : 2, fam: 1 }); M().needs(c, Object.assign({ social: 6 }, it.use || {}));
     M().remember(c, { type: 'player', imp: likes ? 0.65 : 0.4, text: `收到你送的${it.zh}`, data: { item: id }, key: r.entry.key });
-    OC.World.setAction(a, it.anim && !dis ? it.anim : likes ? 'happy' : dis ? 'shy' : 'greet', { dur: 1.6, priority: 8 }); const ln = it.reaction && !dis ? { text: it.reaction } : OC.Talk.say(likes ? 'fed_like' : dis ? 'fed_bad' : 'gift_r', c, null, { item: id }); if (ln) A().bubble(a, ln.text, name(c)); St.stat('gifts');
+    if (OC.Progress) OC.Progress.emit('gift', { oc: ocId, item: id, likes, dis });
+    St.stat('gifts');
+    const after = () => { const a2 = A().actorOf(ocId); if (!a2) return; const ln = it.reaction && !dis ? { text: it.reaction } : OC.Talk.say(likes ? 'fed_like' : dis ? 'fed_bad' : 'gift_r', c, null, { item: id }); if (ln) A().bubble(a2, ln.text, name(c)); if (it.anim && !dis) OC.World.setAction(a2, it.anim, { dur: 1.6, priority: 8 }); };
+    if (OC.Stage) OC.Stage.perform('gift', { oc: ocId, item: id, react: likes ? 'happy' : dis ? 'shy' : 'greet', fx: likes ? 'hearts' : dis ? 'sweat' : 'sparkle' }).then(after); else after();
   }
   /** clothing: built-in looks change a look value; workshop clothing becomes a part on its anchor. Not consumed. */
   function wear(ocId, id) {
@@ -184,6 +189,7 @@
     else { const slot = it.slot, cur = c.look[slot]; if (cur === it.val) { c.look[slot] = slot === 'shirt' ? OC.Chars.LOOK_DEFAULT.shirt : 'none'; toast(`脫下了${it.zh}`, 'shirt'); } else { c.look[slot] = it.val; toast(`${name(c)}穿上了${it.zh}`, 'shirt'); } }
     OC.Chars.save(c); if (a) { a.key = ''; OC.World.setAction(a, 'happy', { dur: 1.2, priority: 7 }); const ln = OC.Talk.say('wear', c, null); if (ln) A().bubble(a, ln.text, name(c)); }
     M().feel(c, 'happy', 0.3, '換了新衣服'); M().player(c, { fam: 1 });
+    if (OC.Progress) OC.Progress.emit('wear', { oc: ocId, item: id });
   }
   function use(id, ocId) {
     const k = IT().useKind(id);

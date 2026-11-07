@@ -70,7 +70,7 @@
   }
   function talked(id) {
     const n = npc(id), fresh = Date.now() - n.lastTalk > 30 * 60000; n.lastTalk = Date.now();
-    St.stat('talks'); progress('talk');
+    St.stat('talks'); progress('talk', 1, { npc: id });
     if (fresh) St.needs({ social: has('social') ? 22 : 15, mood: 3 });
   }
   /** give an item → reaction */
@@ -83,7 +83,7 @@
     if (d.likes.includes(item)) { r = { mood: 'love', line: `哇！是${ITEMS()[item].zh}！我最喜歡了！`, fr: repeat ? 3 : 10 }; if (!n.liked.includes(item)) n.liked.push(item); memory(id, `收到了最喜歡的${ITEMS()[item].zh}`); }
     else if (d.dislikes.includes(item)) r = { mood: 'meh', line: `呃…${ITEMS()[item].zh}嗎？謝謝你的心意…`, fr: 1 };
     else r = { mood: 'ok', line: `謝謝你的${ITEMS()[item].zh}！`, fr: repeat ? 1 : 4 };
-    addFriend(id, r.fr, 'gift'); St.stat('gifts'); progress('gift'); St.needs({ social: 8, mood: 4 });
+    addFriend(id, r.fr, 'gift'); St.stat('gifts'); progress('gift', 1, { npc: id, item }); St.needs({ social: 8, mood: 4 });
     return r;
   }
 
@@ -92,16 +92,16 @@
     const it = ITEMS()[id]; if (!it || !it.use) return false;
     if (!OC.Tx.run(null, { pay: { items: { [id]: 1 } } }, '吃掉').ok) return false;
     const fx = Object.assign({}, it.use); if (has('foodie') && it.kind === 'food') fx.mood = (fx.mood || 0) + 6;
-    St.needs(fx); St.stat('eaten'); progress('eat');
+    St.needs(fx); St.stat('eaten'); progress('eat', 1, { oc: S().activeId, item: id, by: 'player' });
     return fx;
   }
-  function sell(id, n = 1) { const it = ITEMS()[id]; if (!it || !it.sell || St.count(id) < n) return false; if (!OC.Tx.run(OC.Tx.uid('sell'), { pay: { items: { [id]: n } }, get: { coins: it.sell * n } }, `賣出 ${it.zh} ×${n}`).ok) return false; St.stat('sold', n); progress('sell', n); return it.sell * n; }
+  function sell(id, n = 1) { const it = ITEMS()[id]; if (!it || !it.sell || St.count(id) < n) return false; if (!OC.Tx.run(OC.Tx.uid('sell'), { pay: { items: { [id]: n } }, get: { coins: it.sell * n } }, `賣出 ${it.zh} ×${n}`).ok) return false; progress('sell', n, { item: id }); St.stat('sold', n); progress('sell', n); return it.sell * n; }
   function buy(id) {
     const it = ITEMS()[id]; if (!it || !it.price) return { ok: false, why: '無法購買' };
     if (it.kind === 'clothing' && St.count(id)) return { ok: false, why: '已經擁有' };
     const r = OC.Tx.run(OC.Tx.uid('buy'), { pay: { coins: it.price }, get: { items: { [id]: 1 } } }, `購買 ${it.zh}`);
     if (!r.ok) return { ok: false, why: r.why[0] };
-    St.stat('bought'); progress('buy');
+    St.stat('bought'); progress('buy', 1, { shop: 'general', item: id });
     return { ok: true };
   }
   function wearOptions(slot) { const base = OC.Style.FREE_WEAR[slot].slice(); for (const [id, it] of Object.entries(ITEMS())) if (it.kind === 'clothing' && it.slot === slot && St.count(id)) base.push(it.val); return base; }
@@ -118,50 +118,25 @@
     { id: 'anim', zh: '創作時間', d: '在工坊存一段逐格動畫', n: 1, reward: 150, ic: 'film' },
     { id: 'visit', zh: '出門走走', d: '搭渡船去苔光森林', n: 1, reward: 100, ic: 'compass' },
   ];
-  function todayQuests() {
+  // Phase 6: daily quests live in OC.Quests (js/play/quests.js); these keep the old API working
+  const PROGRESS_EV = { shake: 'shake', talk: 'talk', pick: 'pick', eat: 'eat', gift: 'gift', sell: 'sell', place: 'place', anim: 'anim', buy: 'buy' };
+  function progress(key, n = 1, data) { if (OC.Progress && PROGRESS_EV[key]) OC.Progress.emit(PROGRESS_EV[key], Object.assign({ count: n }, data || {})); }
+  function todayQuests() { return OC.Quests ? OC.Quests.legacyToday() : legacyTodayQuests(); }
+  function claim(id) { return OC.Quests ? OC.Quests.legacyClaim(id) : false; }
+  function legacyTodayQuests() {
     const q = S().quests, day = OC.Clock.dayKey();
     if (q.day !== day) { q.day = day; q.done = {}; q.claimed = {}; q.prog = {}; St.touch(); }
     const d = new Date(), seed = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate();
     const ids = QUEST_POOL.map((x, i) => [OC.hash(seed + i * 0.37), x]).sort((a, b) => a[0] - b[0]).slice(0, 4).map((x) => x[1]);
     return ids.map((x) => Object.assign({}, x, { prog: Math.min(x.n, (q.prog || {})[x.id] || 0), claimed: !!q.claimed[x.id] }));
   }
-  function progress(key, n = 1) {
-    const q = S().quests; todayQuests(); q.prog = q.prog || {}; q.prog[key] = (q.prog[key] || 0) + n;
-    const def = todayQuests().find((x) => x.id === key);
-    if (def && def.prog >= def.n && !q.done[key]) { q.done[key] = 1; St.emit('questDone', def); }
-    St.touch('quest'); checkAch();
-  }
-  function claim(id) {
-    const q = S().quests, def = todayQuests().find((x) => x.id === id);
-    if (!def || def.prog < def.n || q.claimed[id]) return false;
-    const r = OC.Tx.run(`quest:${q.day}:${id}`, { get: { coins: def.reward } }, `任務：${def.zh}`); if (!r.ok) { q.claimed[id] = 1; return false; }
-    q.claimed[id] = 1; St.touch('quest'); return def.reward;
-  }
-
   // ---------------- achievements ----------------
   const st = () => S().stats;
   const totalFr = () => Object.values(S().npcs).reduce((a, n) => a + n.fr, 0);
   const maxFr = () => Math.max(0, ...Object.values(S().npcs).map((n) => n.fr));
   const COLLECTIBLE = () => Object.keys(ITEMS()).filter((k) => ITEMS()[k].kind !== 'clothing');
-  const ACH = [
-    { id: 'fruit1', zh: '第一顆果實', d: '搖果樹 1 次', v: () => st().shakes, n: 1 },
-    { id: 'orchard', zh: '果園小幫手', d: '搖果樹 20 次', v: () => st().shakes, n: 20 },
-    { id: 'chat10', zh: '話匣子', d: '聊天 10 次', v: () => st().talks, n: 10 },
-    { id: 'friend', zh: '交到朋友', d: '和任一居民成為「朋友」', v: () => maxFr(), n: LEVELS[2] },
-    { id: 'bff', zh: '摯友', d: '和任一居民成為「摯友」', v: () => maxFr(), n: LEVELS[4] },
-    { id: 'decor5', zh: '島嶼設計師', d: '佈置家具 5 次', v: () => st().placed, n: 5 },
-    { id: 'anim1', zh: '第一段動畫', d: '在工坊存一段逐格動畫', v: () => st().anims, n: 1 },
-    { id: 'collect10', zh: '收藏家入門', d: '圖鑑收集 10 種物品', v: () => Object.keys(S().seen).filter((k) => COLLECTIBLE().includes(k)).length, n: 10 },
-    { id: 'forest', zh: '森林探險', d: '造訪苔光森林', v: () => (st().visits || {}).forest || 0, n: 1 },
-    { id: 'walker', zh: '散步達人', d: '在島上走 3000 步', v: () => Math.floor(st().steps), n: 3000 },
-    { id: 'shopper', zh: '常客', d: '在攤位買 5 次東西', v: () => st().bought, n: 5 },
-    { id: 'gift5', zh: '送禮高手', d: '送出 5 份禮物', v: () => st().gifts, n: 5 },
-  ];
-  function checkAch() {
-    const a = S().ach;
-    for (const x of ACH) if (!a[x.id] && x.v() >= x.n) { a[x.id] = Date.now(); St.touch('ach', x); St.emit('achUnlocked', x); }
-  }
-
+  // Phase 6: achievements are defined in OC.PlayData.ACH and checked by OC.Achieve (js/play/achieve.js)
+  function checkAch() { if (OC.Achieve) OC.Achieve.check(); }
   // ---------------- life goals ----------------
   const GOALS = [
     { id: 'designer', zh: '夢想小島', d: '擺放 8 件家具', ic: 'sofa', v: () => Object.values(S().rooms || {}).reduce((a, r) => a + r.length, 0), n: 8 },
@@ -170,5 +145,5 @@
     { id: 'artist', zh: '動畫創作者', d: '在工坊完成 5 段逐格動畫', ic: 'film', v: () => st().anims, n: 5 },
   ];
 
-  OC.Game = { NEEDS, tickNeeds, moodFace, NPCS, npc, friendLevel, LEVELS, LEVEL_ZH, addFriend, memory, dialogue, talked, gift, eat, sell, buy, wearOptions, QUEST_POOL, todayQuests, progress, claim, ACH, checkAch, GOALS, COLLECTIBLE, has };
+  OC.Game = { NEEDS, tickNeeds, moodFace, NPCS, npc, friendLevel, LEVELS, LEVEL_ZH, addFriend, memory, dialogue, talked, gift, eat, sell, buy, wearOptions, QUEST_POOL, todayQuests, progress, claim, get ACH() { return OC.PlayData ? OC.PlayData.ACH : []; }, checkAch, GOALS, COLLECTIBLE, has };
 })();

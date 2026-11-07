@@ -30,7 +30,7 @@
     const sleeping = ctx.act === 'sleep' || ctx.act === 'nap';
     switch (id) {
       case 'food': m = (has(c, 'foodie') ? 1.15 : 1) * (sleeping ? 0.5 : 1); break;
-      case 'energy': m = (has(c, 'lazy') ? 0.85 : 1) * (n.sleep < 25 ? 1.6 : 1) * (n.food < 15 ? 1.3 : 1) * (ctx.sed ? 0.6 : 1) * (sleeping ? 0 : 1); break;
+      case 'energy': m = (has(c, 'lazy') ? 0.85 : 1) * (OC.Growth && OC.Growth.has(c, 'stamina') ? 0.85 : 1) * (n.sleep < 25 ? 1.6 : 1) * (n.food < 15 ? 1.3 : 1) * (ctx.sed ? 0.6 : 1) * (sleeping ? 0 : 1); break;
       case 'sleep': m = (has(c, 'nightowl') && phase() === 'night' ? 0.7 : 1) * (has(c, 'sleepy') ? 1.25 : 1) * (sleeping ? 0 : 1); break;
       case 'fun': m = (has(c, 'curious') ? 1.1 : 1) * (has(c, 'lazy') ? 0.9 : 1) * (0.8 + 0.4 * p.energy / 100) * (sleeping ? 0.2 : 1); break;
       case 'social': m = (has(c, 'shy') ? 0.6 : 1) * (has(c, 'outgoing') || has(c, 'social') ? 1.3 : 1) * (0.6 + 0.8 * p.social / 100) * (sleeping ? 0.3 : 1); break;
@@ -172,6 +172,8 @@
     R.lastAct = act;
     if (phase() === 'night' && act !== 'sleep') R.nightAwake = (R.nightAwake || 0) + 1;
     if (o.skill) skill(c, o.skill, gmDur / 6);
+    // Phase 6: one progress event per finished activity (quests, requests, aspirations…)
+    if (OC.Progress && gmDur >= 1) { const pl = o.place && String(o.place).startsWith('place:') ? String(o.place).slice(6) : (c.life.loc && c.id !== S().activeId && c.life.loc !== (OC.World.area && OC.World.area.id) ? c.life.loc : OC.World.area ? OC.World.area.id : null); OC.Progress.emit('act', { oc: c.id, act, place: pl, min: Math.round(gmDur) }); }
   }
   // ======================= skills =======================
   const SKILLS = { reading: '閱讀', garden: '園藝', sport: '運動', cook: '料理', social: '社交', fishing: '釣魚' };

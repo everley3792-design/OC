@@ -41,7 +41,10 @@
     if (first) setTimeout(() => toast(`新地點：${p.zh}`, 'compass'), 500);
     if (OC.Events) OC.Events.trigger('arrive', { a: c && c.id, place: id, placeZh: p.zh });
     setupVisuals(id);
-    S().stats.visits[id] = (S().stats.visits[id] || 0) + 1; if (from && OC.Game.progress) OC.Game.progress('visit');
+    S().stats.visits[id] = (S().stats.visits[id] || 0) + 1;
+    // Phase 6: the player arriving somewhere (quests: visit) and the played OC arriving (requests / aspirations: arrive)
+    if (OC.Progress) { const today = (S().play.visitDay = S().play.visitDay || {}); const dk = OC.Clock.dayKey(); const fresh = today[id] !== dk; today[id] = dk; OC.Progress.emit('visit', { place: id, first, fresh, from }); if (c) OC.Progress.emit('arrive', { oc: c.id, place: id }); }
+    if (OC.Sound) { OC.Sound.play('door'); OC.Sound.ambient({ area: id, wx: OC.Clock.weather(), night: OC.Clock.phase(OC.Clock.hour()) === 'night' }); }
   }
 
   // ======================= live visuals (garden, forage, critters) =======================
@@ -97,7 +100,7 @@
   function doForage(it) {
     const r = PL().forage(it.area, it.i, it.kind); if (!r.ok) { toast(r.why, 'leaf'); return; }
     haptic(); A().floatText(A().player, `+${r.n} ${I(r.item).zh}`); OC.Brain.playerAct(S().activeId); OC.World.setAction(A().player, 'tend', { dur: 1.2, priority: 4 });
-    const c = A().me(); M().skill(c, 'garden', 0.6); St.stat('picked'); OC.Game.progress('pick'); if (r.firsts && r.firsts.length) discovered(r.firsts);
+    const c = A().me(); M().skill(c, 'garden', 0.6); St.stat('picked'); if (r.firsts && r.firsts.length) discovered(r.firsts);
     refreshVisuals();
   }
   function gardenSheet(it) {
@@ -117,7 +120,8 @@
     });
   }
   /** first discovery feedback (collection) */
-  function discovered(ids) { for (const id of ids) setTimeout(() => toast(`圖鑑新增：${I(id).zh}`, 'book'), 300); }
+  /** first-time items are announced once, centrally (app: OC.Progress 'discover' → discovery card) */
+  function discovered() { /* kept for callers; the card comes from the transaction itself */ }
 
   OC.WorldUI = { travel, arrived, setupVisuals, refreshVisuals, tick, tap, useBy, gardenSheet, discovered, get busy() { return busy; } };
 })();

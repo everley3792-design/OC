@@ -134,6 +134,7 @@
     const ek = M().intensity(c, emo); if (EM[emo] && EM[emo][act]) add(EM[emo][act] * Math.min(1, ek + 0.3), '情緒');
     // habits, wishes, novelty
     add(M().habitBonus(c, act, null), '習慣');
+    if (OC.Growth) add(OC.Growth.actBonus(c, act), '人生目標');
     for (const w of M().activeWishes(c)) { if (w.type === 'stars' && act === 'observe' && ph === 'night') add(0.6, '願望'); if (w.type === 'read_n' && act === 'read') add(0.3, '願望'); if (w.type === 'tend_n' && act === 'tend') add(0.3, '願望'); }
     const rec = b ? b.last.slice(0, 4).filter((x) => x === act).length : 0; if (rec) add(-0.18 * rec - (b.last[0] === act ? 0.3 : 0), '剛做過');
     if (S().life.settings.autonomy === 'lessSocial' && act === 'explore') add(0.05, '');
@@ -210,7 +211,7 @@
     const manualIdle = b.manual && !st.playerAuto && !(b.manualOverride > nowR());
     const low = ['food', 'sleep', 'energy'].filter((k) => c.needs[k] < 25).sort((x, y) => c.needs[x] - c.needs[y])[0];
     for (const act of Object.keys(D().ACTS)) {
-      if (denied(act)) continue;
+      if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
       if (manualIdle && A.verb && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;
@@ -296,6 +297,7 @@
       const first = s && !(c.life.rec.act[act].place[s.obj.id] > 1);
       if (first || gm > 60 || Sim().rnd() < 0.08) M().remember(c, { type: 'activity', imp: first ? 0.45 : 0.3, place: s ? s.obj.id : '', text: `${s ? '在' + s.obj.zh : ''}${A.zh}${first ? '（第一次）' : ''}`, data: { act, gm: Math.round(gm) }, key: first ? `first:${act}:${s.obj.id}` : undefined });
       M().wishEvent(c, { type: 'act', act });
+      if (OC.Growth && gm > 0.5) OC.Growth.onFinish(c, act, b, gm);
       if (s && s.obj.kind === 'plot' && act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
       if (act === 'sleep') OC.Events && OC.Events.trigger('wake', { a: c.id });
     }
@@ -407,7 +409,7 @@
       if (pl === cur || !OC.Places.open(pl)) continue;
       const tm = OC.Places.travelMin(cur, pl), af = OC.Places.affinity(c, pl);
       for (const act of placeActs(pl)) {
-        const A = D().ACTS[act]; if (!A || denied(act) || !A.verb || A.verb === 'wander' || A.verb === 'explore') continue;
+        const A = D().ACTS[act]; if (!A || denied(act) || !A.verb || A.verb === 'wander' || A.verb === 'explore' || (OC.Growth && !OC.Growth.allowed(c, act))) continue;
         if (local.has(A.verb) && af < 0.3) continue;
         if (act === 'sleep' && pl !== 'home') continue;
         const sc = actScore(c, b, act), seen = c.life.places && c.life.places[pl];
@@ -447,6 +449,7 @@
   }
   /** first time somewhere → memory + emotion (both for visible and abstract arrivals) */
   function noteArrival(c, pl) {
+    if (OC.Progress) OC.Progress.emit('arrive', { oc: c.id, place: pl });
     c.life.places = c.life.places || {}; const r = c.life.places[pl] = c.life.places[pl] || { visits: 0, last: 0 }; r.visits++; r.last = Sim().now();
     if (r.visits === 1) { M().remember(c, { type: 'discover', imp: 0.6, place: 'place:' + pl, text: `第一次來到${OC.Places.get(pl).zh}`, key: 'place:first:' + pl + ':' + c.id }); M().feel(c, 'curious', 0.4, '第一次來到' + OC.Places.get(pl).zh); }
   }
@@ -474,7 +477,7 @@
       if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
       const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
-      let list = here2.filter((x) => D().ACTS[x] && !denied(x) && x !== 'explore').map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
+      let list = here2.filter((x) => D().ACTS[x] && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
       if (placeOK() && !o.offline && settings().travel !== false && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
@@ -517,7 +520,7 @@
       if (bb.st === 'do' && D().ACTS[bb.act] && D().ACTS[bb.act].lock) return { ans: 'no', why: '正在' + D().ACTS[bb.act].zh, busy: true };
       if (bb.holds.size) return { ans: 'no', why: '在忙' };
       const urg = M().urgent(c); if (urg && urg !== 'social' && !(kind === 'food' && urg === 'food') && !(D().SOCIAL[kind].joint === 'rest' && (urg === 'energy'))) return { ans: 'no', why: { food: '肚子太餓', sleep: '太睏了', energy: '太累了', fun: '提不起勁', comfort: '不太舒服' }[urg] || '不太方便', need: true };
-      let p = 0.55 + r.aff / 140 - r.conflict / 90 + (c.personality.social - 50) / 160 + (c.needs.social < 40 ? 0.2 : 0);
+      let p = 0.55 + r.aff / 140 - r.conflict / 90 + (c.personality.social - 50) / 160 + (c.needs.social < 40 ? 0.2 : 0) + (OC.Growth && OC.Growth.has(o, 'charm') ? 0.1 : 0);
       if (emo === 'annoyed') p -= 0.35; if (emo === 'down') p -= 0.1; if (emo === 'happy' || emo === 'excited') p += 0.15;
       if (has(c, 'shy') && r.type === 'stranger') p -= 0.2;
       const joint = D().SOCIAL[kind].joint;
@@ -642,6 +645,9 @@
         A.life.rec.social = (A.life.rec.social || 0) + 1; B.life.rec.social = (B.life.rec.social || 0) + 1;
         M().skill(A, 'social', 1.2); M().skill(B, 'social', 0.8);
         M().wishEvent(A, { type: 'social', other: B.id }); M().wishEvent(B, { type: 'social', other: A.id });
+        // Phase 6 skill effects: a well-read OC teaches what it read; good hosts make it more fun
+        if (OC.Growth && OC.Growth.has(A, 'teach') && ['chat', 'share'].includes(kind)) { M().skill(B, 'reading', 2); M().remember(B, { type: 'social', imp: 0.35, who: [A.id], text: `${OC.Chars.name(A)}教了我書裡讀到的事`, key: conv.id + 'teach' }); }
+        if (OC.Progress) OC.Progress.emit('social', { oc: A.id, other: B.id, ocs: [A.id, B.id], kind, place: OC.World.area && OC.World.area.id });
         for (const [x, y] of [[A, B], [B, A]]) { const r = M().rel(x.id, y.id); M().wishEvent(x, { type: 'rel', other: y.id, to: r.type }); }
       }
       Social.end(conv, early ? 'urgent' : 'done');
@@ -668,7 +674,7 @@
         x.prevSt = null;
         if (conv.answer && conv.answer.ans === 'yes' || conv.st === 'joint') { x.last.unshift('social:' + conv.kind); x.last.length = Math.min(x.last.length, 6); }
       }
-      if (conv.st === 'joint' && conv.started && why !== 'broken') { const A = charOf(conv.a), B = charOf(conv.b); if (A && B) { const def = D().SOCIAL[conv.kind]; M().relPair(A.id, B.id, { fam: 4, aff: 4, intim: 2 }, def.zh); M().remember(A, { type: 'social', imp: 0.5, who: [B.id], text: `和${OC.Chars.name(B)}${def.zh}`, place: conv.a.slot ? conv.a.slot.obj.id : '' }); M().remember(B, { type: 'social', imp: 0.5, who: [A.id], text: `和${OC.Chars.name(A)}${def.zh}` }); A.needs.social = Math.min(100, A.needs.social + 14); B.needs.social = Math.min(100, B.needs.social + 14); M().wishEvent(A, { type: 'social', other: B.id }); M().wishEvent(B, { type: 'social', other: A.id }); if (OC.Events) OC.Events.trigger('jointEnd', { a: A.id, b: B.id, kind: conv.kind }); } }
+      if (conv.st === 'joint' && conv.started && why !== 'broken') { const A = charOf(conv.a), B = charOf(conv.b); if (A && B && OC.Progress) OC.Progress.emit('social', { oc: A.id, other: B.id, ocs: [A.id, B.id], kind: conv.kind, joint: conv.joint }); if (A && B && OC.Growth && (OC.Growth.has(A, 'host') || OC.Growth.has(B, 'host'))) { M().needs(A, { fun: 8, mood: 4 }); M().needs(B, { fun: 8, mood: 4 }); } if (A && B) { const def = D().SOCIAL[conv.kind]; M().relPair(A.id, B.id, { fam: 4, aff: 4, intim: 2 }, def.zh); M().remember(A, { type: 'social', imp: 0.5, who: [B.id], text: `和${OC.Chars.name(B)}${def.zh}`, place: conv.a.slot ? conv.a.slot.obj.id : '' }); M().remember(B, { type: 'social', imp: 0.5, who: [A.id], text: `和${OC.Chars.name(A)}${def.zh}` }); A.needs.social = Math.min(100, A.needs.social + 14); B.needs.social = Math.min(100, B.needs.social + 14); M().wishEvent(A, { type: 'social', other: B.id }); M().wishEvent(B, { type: 'social', other: A.id }); if (OC.Events) OC.Events.trigger('jointEnd', { a: A.id, b: B.id, kind: conv.kind }); } }
       dlog(conv.a, `社交結束（${why}）`);
     },
   };

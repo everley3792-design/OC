@@ -360,13 +360,13 @@
   function pickDrop(d) {
     if (!Wd.drops.includes(d)) return;
     const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`);
-    if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick'); if (Gm.has('curious') && Math.random() < 0.25 && OC.Tx.run((d.key || 'drop') + ':bonus', { get: { items: { [d.id]: 1 } } }, '好奇心多找到').ok) { toast('好奇心發作，多找到一個！', 'sparkle'); } }
+    if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick', 1, { item: d.id }); if (Gm.has('curious') && Math.random() < 0.25 && OC.Tx.run((d.key || 'drop') + ':bonus', { get: { items: { [d.id]: 1 } } }, '好奇心多找到').ok) { toast('好奇心發作，多找到一個！', 'sparkle'); } }
     if (tray.classList.contains('open')) renderSlots();
   }
   function pickFlower(it) {
     face(player, 0, -1); const k = it.id, last = S().world.trees[k] || 0, left = 8 - (Date.now() - last) / 60000;
     if (left > 0) { toast(`花還沒長好，約 ${Math.ceil(left)} 分鐘後再來`, 'leaf'); return; }
-    S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { flower: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick');
+    S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { flower: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick', 1, { item: 'flower' });
     floatAt(it.x, it.y, it.lvl || 0, '+1 小雛菊'); haptic();
   }
   function spawnDailies() {
@@ -550,7 +550,7 @@
     const f = Object.assign({}, g.f), R = room();
     if (placing.mode === 'new') { const r = OC.Tx.run(OC.Tx.uid('place'), { pay: { items: { [f.id]: 1 } } }, `佈置 ${Sty.ITEMS[f.id].zh}`, { place: Wd.area.id }); if (!r.ok) { toast(r.why[0], 'info'); endPlacementUI(); return; } f.uid = 'f' + Date.now().toString(36) + Math.floor(Math.random() * 1e3); R.push(f); }
     else { const i = R.findIndex((p) => p.uid === placing.orig.uid); f.uid = placing.orig.uid; R[i] = f; }
-    Wd.addFurniture(f); OC.Brain.rebuild(); OC.Brain.noticeNew('furn:' + f.uid); St.stat('placed'); Gm.progress('place'); St.needs({ mood: Gm.has('tidy') ? 8 : 3 }); St.touch('placed');
+    Wd.addFurniture(f); OC.Brain.rebuild(); OC.Brain.noticeNew('furn:' + f.uid); St.stat('placed'); Gm.progress('place', 1, { item: f.id, place: Wd.area.id }); OC.Sound && OC.Sound.play('place'); St.needs({ mood: Gm.has('tidy') ? 8 : 3 }); St.touch('placed');
     endPlacementUI(); haptic(); toast('佈置完成！', 'check');
   }
   function storeFurniture() {
@@ -635,7 +635,11 @@
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
     OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
     if (now - presT > 1000) { presT = now; syncPresence(); }
+    OC.Stage.tick(dt); OC.Sound.tick(dt); if (curTab === 'island') OC.Requests.frame();
+    if (now - reqT > 2000) { reqT = now; OC.Requests.tick(); OC.Quests.refresh(); }
+    if (now - aspT > 20000) { aspT = now; OC.Growth.tick(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
+    const night = OC.Clock.phase(OC.Clock.hour()) === 'night'; if (Wd.area && (night !== lastNight || wx !== lastAmbWx)) { lastNight = night; lastAmbWx = wx; OC.Sound.ambient({ area: Wd.area.id, wx, night }); }
     if (now - holdT > 400) { holdT = now; syncEditorHolds(); }   // real time (dt is capped per frame)
     drawLives(now);
     if (player) {
@@ -648,7 +652,7 @@
     if (hud.name) updateHUD();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
-  let world_rendered_once = false;
+  let world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }
   /** OCs open in the editor / workshop are "dressing": they pause their life until the page closes */
   function syncEditorHolds() {
@@ -675,8 +679,17 @@
 
   // ---- store events → feedback ----
   St.on('questDone', (q) => toast(`任務完成：${q.zh}（到「更多 → 今日任務」領取）`, 'flag'));
-  St.on('achUnlocked', (a) => toast(`解鎖成就：${a.zh}（+${a.reward || OC.Shops.INCOME.ach} 星幣）`, 'trophy'));
-  St.on('reward', (r) => { if (r.why !== '成就') setTimeout(() => toast(`${r.why} +${r.coins} 星幣`, 'coin'), 900); });
+  // ---- Phase 6 feedback: small cards (never a big panel), performances when the OC is on screen ----
+  St.on('achUnlocked', (a) => OC.Stage.card({ kind: 'ach', ic: 'trophy', title: `達成成就：${a.zh}`, sub: `${a.d}・到「日常 › 成就」領取獎勵` }));
+  St.on('play:questDone', (e) => OC.Stage.card({ kind: 'quest', ic: e.hidden ? 'star' : 'flag', title: e.hidden ? `發現隱藏任務：${e.q.zh}` : `任務完成：${e.q.zh}`, sub: '到「日常 › 任務」領取獎勵' }));
+  St.on('inv', (e) => { if (e && e.first && e.n > 0 && OC.Style.ITEMS[e.id]) { const it = OC.Style.ITEMS[e.id]; OC.Stage.card({ kind: 'discover', item: e.id, title: `圖鑑新增：${it.zh}`, sub: `${(OC.Items.KINDS[it.kind] || {}).zh || ''}・${OC.Items.RARITY[it.rarity || 1]}・+${OC.Shops.INCOME.find} 星幣` }); } });
+  St.on('play:skillUp', (e) => OC.Stage.perform('levelup', Object.assign({}, e)));
+  St.on('play:aspDone', (e) => OC.Stage.perform('aspDone', e));
+  St.on('play:aspStep', (e) => OC.Stage.perform('aspStep', Object.assign({ zh: e.zh }, e)));
+  St.on('play:aspNew', (e) => { const x = OC.PlayData.ASPIRATIONS[e.id]; if (e.by === 'auto' && x) OC.Stage.perform('aspNew', { oc: e.oc, zh: x.zh, vars: { asp: x.zh } }); });
+  St.on('play:title', (e) => OC.Stage.card({ kind: 'title', ic: 'star', title: `新稱號：「${e.zh}」`, sub: '可以在角色檔案的「成長」讓 OC 戴上' }));
+  St.on('play:found', (e) => { const it = OC.Style.ITEMS[e.item]; const c = OC.Chars.get(e.oc); if (it && c) OC.Stage.card({ kind: 'discover', item: e.item, title: e.gift ? `${OC.Chars.name(c)}送你${it.zh}` : `${OC.Chars.name(c)}找到了${it.zh}`, sub: '技能帶來的驚喜' }); });
+  St.on('reward', (r) => { if (r.why !== '成就' && r.why !== '新發現') setTimeout(() => toast(`${r.why} +${r.coins} 星幣`, 'coin'), 900); });
   St.on('friendUp', (e) => toast(`和${Gm.NPCS[e.id].zh}的友情升到「${Gm.LEVEL_ZH[e.level]}」！`, 'heart'));
   St.on('inv', (e) => { if (e.first && e.n > 0) toast(`圖鑑新增：${Sty.ITEMS[e.id].zh}`, 'book'); });
   St.on('saveError', () => toast('存檔空間不足：請刪除一些作品', 'info'));
@@ -696,7 +709,11 @@
     await OC.Assets.init();
     // Phase 4 life simulation: engines + absence catch-up (capped, no events, no rewards)
     OC.Items.registerCustom();                       // workshop products → item catalogue
-    OC.Shops.income();                               // achievement / exploration / discovery income (idempotent)
+    OC.Shops.income();                               // exploration / discovery income (idempotent)
+    // Phase 6: one progress bus feeds quests, requests, aspirations, achievements; feedback = cards + performances + sound
+    OC.Growth.extendSkills(); OC.Progress.wire();
+    OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
+    OC.Sound.boot();
     OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks);
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');

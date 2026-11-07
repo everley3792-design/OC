@@ -100,7 +100,7 @@
       act: () => D().ACTS[X.act || X.recent] ? D().ACTS[X.act || X.recent].zh : '散步', days: () => (X.days != null ? X.days : X.r && X.r.since != null ? Sim().day() - X.r.since : null),
       emo: () => D().EMOTIONS[M().dominant(sp)].zh, habit: () => (sp.life.habits[0] ? sp.life.habits[0].zh : null), player: () => '你',
     };
-    const out = text.replace(/\{(\w+)\}/g, (m, k) => { const f = v[k]; if (!f) return m; const r = f(); if (r == null || r === '') { ok = false; return ''; } return r; });
+    const out = text.replace(/\{(\w+)\}/g, (m, k) => { const f = v[k] || (X.vars && X.vars[k] != null ? () => X.vars[k] : null); if (!f) return m; const r = f(); if (r == null || r === '') { ok = false; return ''; } return r; });
     return ok ? out : null;
   }
 

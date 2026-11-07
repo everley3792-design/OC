@@ -112,7 +112,7 @@
     const annoyed = M().dominant(c) === 'annoyed';
     if (!annoyed) { M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'happy', 0.35, '被你摸摸頭'); M().needs(c, { social: 6 }); }
     const P = M().player(c); if (!P.petAt || Sim().now() - P.petAt > 10) { M().player(c, { aff: annoyed ? 0 : 1, fam: 1 }); P.petAt = Sim().now(); }
-    react(c, a, 'pet');
+    react(c, a, 'pet'); if (OC.Progress) OC.Progress.emit('pet', { oc: id }); OC.Sound && OC.Sound.play('pickup');
     setTimeout(() => B().unhold(id, 'pet'), 2400);
   }
   function call(id) {
@@ -152,10 +152,13 @@
   }
   function chat(id) {
     const c = Ch().get(id), a = A().actorOf(id); if (!c) return;
-    B().hold(id, 'dialogue');
+    B().hold(id, 'dialogue'); if (OC.Progress) OC.Progress.emit('chat', { oc: id });
     const say = (cat, extra) => { const ln = OC.Talk.say(cat, c, null, extra); return ln ? ln.text : null; };
     const recentWith = M().memories(c, { type: 'social' })[0]; const o = recentWith && recentWith.who[0] && Ch().get(recentWith.who[0]);
     const lines = [say('chat_player', o ? { recentWith: true, act: (recentWith.data && recentWith.data.act) || null } : {}), say('chat_player')].filter(Boolean);
+    // Phase 6: the OC sometimes brings up a request you helped with (the story continues)
+    const helped = c.life.mem.long.concat(c.life.mem.recent).filter((m) => m.data && m.data.req).sort((x, y) => y.gm - x.gm)[0];
+    if (helped && Math.random() < 0.5) { const t = say('req_recall', { vars: { memshort: helped.text.replace(/^你幫我實現了/, '').replace(/[「」]/g, '') } }); if (t) lines.splice(1, 0, t); }
     const neg = D().EMOTIONS[M().dominant(c)].v < -0.2, wish = M().activeWishes(c)[0];
     const choices = [
       { label: '稱讚牠', fx: () => { M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'happy', 0.45, '被你稱讚'); M().player(c, { aff: 2 }); return [say('compliment_r')].filter(Boolean); } },

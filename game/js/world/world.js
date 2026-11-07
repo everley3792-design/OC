@@ -230,6 +230,7 @@
   /** design point (+height in world units) → CSS px on screen */
   function project(x, y, lvl = 0, up = 0) { tmpV.copy(V3(x, y, lvl, up)).project(cam); return { x: (tmpV.x * 0.5 + 0.5) * W, y: (-tmpV.y * 0.5 + 0.5) * H }; }
   function setZoom(z, ax, ay) {
+    zoomGoal = null;
     const nz = clamp(z, 1.15, 3.2); if (ax != null) { const before = screenToDesign(ax, ay); zoom = nz; const after = screenToDesign(ax, ay); panX += before.x - after.x; panY += before.y - after.y; } else zoom = nz;
     follow = false;
   }
@@ -338,7 +339,7 @@
     grid = null; buildGrid();
     (opts.furniture || []).forEach(addFurniture);
     const sp = opts.pos && walkable(opts.pos.x, opts.pos.y) ? opts.pos : area.spawn;
-    camX = sp.x; camY = sp.y; panX = panY = 0; follow = true;
+    camX = sp.x; camY = sp.y; panX = panY = 0; follow = true; zoomGoal = null; camTarget = null;
     // rooms fit the screen width; outdoor places keep the player's own zoom
     if (def.room) { if (!area0Room) outdoorZoom = zoom; zoom = clamp(W / (def.room.x1 - def.room.x0 + 40), 1.1, 2.4); area0Room = true; } else { if (area0Room) zoom = outdoorZoom; area0Room = false; }
     return ctx;
@@ -433,6 +434,9 @@
   function tickActors(dt) { if (!area) return; for (const a of actors.slice()) updateActor(a, dt); }
   /** camera follows another actor (observe / important events); null = back to the player */
   function focus(a, z) { camTarget = a || null; if (a) { panX = panY = 0; follow = true; if (z) zoom = clamp(z, 1.15, 3.2); } }
+  /** cinematic camera: ease toward an actor and a zoom (null actor = back to the player) */
+  let zoomGoal = null;
+  function camTo(a, z) { camTarget = a || null; panX = panY = 0; follow = true; if (z) zoomGoal = clamp(z, 1.15, 3.2); }
   function frame(now, dt) {
     if (!area) return;
     time += dt;
@@ -443,6 +447,7 @@
       const k = 1 - Math.exp(-dt * 5); camX = lerp(camX, pl.x, k); camY = lerp(camY, pl.y - 14, k);
       if ((pl.path || (pl.joy && Math.hypot(pl.joy.jx, pl.joy.jy) > 0.15)) && !follow) { panX = lerp(panX, 0, 1 - Math.exp(-dt * 2.2)); panY = lerp(panY, 0, 1 - Math.exp(-dt * 2.2)); if (Math.abs(panX) + Math.abs(panY) < 1) follow = true; }
     }
+    if (zoomGoal != null) { zoom = lerp(zoom, zoomGoal, 1 - Math.exp(-dt * (reduce ? 20 : 3.2))); if (Math.abs(zoom - zoomGoal) < 0.005) { zoom = zoomGoal; zoomGoal = null; } }
     const { cx, cy } = applyCam();
     if (envCur) bbTint.set(OC.mix(OC.mix('#FFFFFF', '#FFE3CC', clamp(1 - Math.abs(h - 18) / 1.6) * 0.8), '#A9B1E4', envCur.night * 0.85)).multiplyScalar(1 - envCur.rain * 0.12);
     for (const a of actors.slice()) updateActor(a, dt);
@@ -464,7 +469,7 @@
   }
 
   OC.World = {
-    init, resize, setQuality, loadArea, frame, tickActors, focus, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
+    init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
     get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },

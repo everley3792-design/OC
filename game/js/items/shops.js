@@ -49,7 +49,7 @@
     const r = OC.Tx.run(OC.Tx.uid('buy'), { pay: { coins: total }, get: { items: { [item]: n } } }, `${SHOPS[shop].zh}：${I()[item].zh} ×${n}`, { shop });
     if (!r.ok) return { ok: false, why: r.why[0] };
     if (SHOPS[shop].stock) { const st = S().shops[shop]; st.sold[item] = (st.sold[item] || 0) + n; St.touch('shops'); }
-    St.stat('bought', n); OC.Game.progress('buy', n); return { ok: true, total, firsts: r.firsts };
+    St.stat('bought', n); OC.Game.progress('buy', n, { shop, item }); return { ok: true, total, firsts: r.firsts };
   }
   /** shops that buy back: general store & market */
   function sell(item, n = 1) { return OC.Game.sell(item, n); }
@@ -57,9 +57,9 @@
   /* other income (each with an idempotent key, so restarts / repeated events never pay twice):
    *   achievements +ach.reward (default 150) · first visit to a place +80 · each new discovery +10
    *   (quests, OC wishes, selling, foraging / fishing / harvest are paid where they happen) */
-  const INCOME = { visit: 80, find: 10, ach: 150 };
+  const INCOME = { visit: 80, find: 10 };
   function income() {
-    St.on('achUnlocked', (x) => { const n = x.reward || INCOME.ach; if (OC.Tx.run(`ach:${x.id}`, { get: { coins: n } }, `成就：${x.zh}`).ok) St.emit('reward', { coins: n, why: '成就' }); });
+    // achievements are claimed by the player since Phase 6 (OC.Achieve.claim, same idempotency key ach:<id>)
     St.on('inv', (e) => { if (e && e.first && OC.Tx.run(`find:${e.id}`, { get: { coins: INCOME.find } }, `新發現：${I()[e.id] ? I()[e.id].zh : e.id}`).ok) St.emit('reward', { coins: INCOME.find, why: '新發現' }); });
     St.on('places', (e) => { if (e && e.first && OC.Places.get(e.id) && OC.Tx.run(`visit:${e.id}`, { get: { coins: INCOME.visit } }, `第一次造訪${OC.Places.get(e.id).zh}`).ok) St.emit('reward', { coins: INCOME.visit, why: '探索新地點' }); });
   }

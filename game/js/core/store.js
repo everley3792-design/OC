@@ -14,7 +14,7 @@
 
   function fresh() {
     return {
-      v: 4, created: Date.now(), onboarded: false,
+      v: 5, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
@@ -31,6 +31,9 @@
       stats: { steps: 0, shakes: 0, talks: 0, gifts: 0, placed: 0, anims: 0, eaten: 0, sold: 0, bought: 0, picked: 0, visits: {} },
       quests: { day: '', done: {}, claimed: {} },
       ach: {},                       // id → unlocked timestamp
+      // Phase 6: quests (q), character requests (req), claimed achievements, titles, tallies for achievements,
+      // special events seen, collection favourites / spotted items, journal favourites
+      play: { v: 1, q: { day: '', week: '', list: [], hidden: {}, hprog: {}, chal: {}, n: {} }, req: { list: [], cd: {}, nextAt: 0, n: 0, seq: 0 }, ach: {}, titles: {}, tally: {}, sets: {}, events: {}, spotted: {}, collFav: {}, memFav: {} },
       seen: { apple: Date.now(), flower: Date.now() },   // collection: item id → first obtained timestamp (starter items)
       goal: null,                    // life goal id
       world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {} },
@@ -49,6 +52,7 @@
       settings: {
         theme: 'system', perf: 'balanced', custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
         time: 'real', timeSpeed: 1, weather: 'auto', control: 'tap', haptics: true, showFps: false, reduceMotion: false, petScale: 1,
+        sound: { on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8 },
       },
     };
   }
@@ -69,7 +73,8 @@
     if (data && data.v === 1) data = OC.Chars.migrateV1(data);   // single OC → roster; dataURL anims migrate to assets later
     if (data && data.v === 2) data = migrateV2(data);             // Phase 3 → Phase 4: add life state (additive, nothing removed)
     if (data && data.v === 3) data = migrateV3(data);             // Phase 4 → Phase 5: furniture per place, ledger, workshop products
-    S = data && data.v === 4 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 4) data = migrateV4(data);             // Phase 5 → Phase 6: quests / requests / achievements (additive)
+    S = data && data.v === 5 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
   }
@@ -84,6 +89,8 @@
     d.v = 4; d.rooms = d.rooms || {}; d.rooms.isle = (d.rooms.isle || []).concat(d.placed || []); delete d.placed;
     d.migratedV3 = Date.now(); return d;
   }
+  /** v4 → v5: play state is added by fresh(); the old daily quest block stays (unused) so nothing is lost */
+  function migrateV4(d) { d.v = 5; d.migratedV4 = Date.now(); return d; }
   function persist() {
     dirty = false; clearTimeout(saveTimer);
     const json = JSON.stringify(S);
@@ -120,10 +127,11 @@
 
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4].includes(d.v)) throw new Error(d && d.v > 4 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5].includes(d.v)) throw new Error(d && d.v > 5 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
     if (d.v === 2) d = migrateV2(d);
     if (d.v === 3) d = migrateV3(d);
+    if (d.v === 4) d = migrateV4(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }

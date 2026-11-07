@@ -66,21 +66,22 @@
   function growAll(g) {
     for (const [id, p] of Object.entries(S().garden)) {
       if (!p.seed || p.growth >= 1) continue;
-      if (wet(p)) { if (OC.Clock.weather() === 'rain' && p.wateredDay !== day()) p.wateredDay = day(); const it = OC.Style.ITEMS[p.seed]; const days = (it && it.grow && it.grow.days) || 2; const before = stageOf(p); p.growth = Math.min(1, p.growth + g / (days * 1440)); if (stageOf(p) !== before) St.emit('garden', { id, stage: stageOf(p) }); }
+      if (wet(p)) { if (OC.Clock.weather() === 'rain' && p.wateredDay !== day()) p.wateredDay = day(); const it = OC.Style.ITEMS[p.seed]; const days = (it && it.grow && it.grow.days) || 2; const before = stageOf(p); p.growth = Math.min(1, p.growth + (g / (days * 1440)) * (OC.Growth && OC.Growth.anyHas('fast_grow') ? 1.25 : 1)); if (stageOf(p) !== before) St.emit('garden', { id, stage: stageOf(p) }); }
     }
   }
   function plant(id, seed) {
     const p = plot(id), it = OC.Style.ITEMS[seed]; if (p.seed) return { ok: false, why: '這塊菜園已經種了東西' }; if (!it || !it.grow) return { ok: false, why: '這不是種子' };
     const r = OC.Tx.run(OC.Tx.uid('plant'), { pay: { items: { [seed]: 1 } } }, `種下${it.zh}`); if (!r.ok) return { ok: false, why: r.why[0] };
-    Object.assign(p, { seed, at: Sim().now(), growth: 0, wateredDay: -1 }); St.touch('garden', { id }); return { ok: true };
+    Object.assign(p, { seed, at: Sim().now(), growth: 0, wateredDay: -1 }); St.touch('garden', { id }); OC.Progress && OC.Progress.emit('plant', { item: seed, plot: id, place: 'isle' }); return { ok: true };
   }
-  function water(id, who) { const p = plot(id); if (!p.seed || p.growth >= 1) return false; if (p.wateredDay === day()) return 'already'; p.wateredDay = day(); p.wateredBy = who || 'player'; St.touch('garden', { id, water: true }); return true; }
+  function water(id, who) { const p = plot(id); if (!p.seed || p.growth >= 1) return false; if (p.wateredDay === day()) return 'already'; p.wateredDay = day(); p.wateredBy = who || 'player'; St.touch('garden', { id, water: true }); OC.Progress && OC.Progress.emit('water', { plot: id, by: who || 'player', oc: who && who !== 'player' ? who : undefined, place: 'isle' }); return true; }
   function harvest(id) {
     const p = plot(id); if (!p.seed || p.growth < 1) return { ok: false, why: '還沒長好' };
-    const it = OC.Style.ITEMS[p.seed], g = it.grow, n = g.n[0] + (OC.hash(p.at * 0.0137) * (g.n[1] - g.n[0] + 1) | 0);
+    const it = OC.Style.ITEMS[p.seed], g = it.grow, me = OC.Chars.active(), n = g.n[0] + (OC.hash(p.at * 0.0137) * (g.n[1] - g.n[0] + 1) | 0) + (OC.Growth && OC.Growth.has(me, 'harvest_plus') ? 1 : 0);
     const r = OC.Tx.run(`harvest:${id}:${p.at}`, { get: { items: { [g.crop]: n } } }, `收成${OC.Style.ITEMS[g.crop].zh}`);
     if (!r.ok && !r.dup) return { ok: false, why: r.why[0] };
     const crop = g.crop; Object.assign(p, { seed: null, at: 0, growth: 0, wateredDay: -1 }); St.touch('garden', { id, harvested: crop });
+    if (r.ok && OC.Progress) { OC.Progress.emit('harvest', { item: crop, count: 1, n, plot: id, place: 'isle', oc: me && me.id }); if (me) OC.Mind.skill(me, 'garden', 3); }
     return { ok: true, crop, n, firsts: r.firsts || [] };
   }
 
@@ -88,8 +89,10 @@
   function forageAvail(area, i) { const f = (S().world.forage = S().world.forage || {}); const k = area + ':' + i; return f[k] !== day(); }
   function forage(area, i, kind) {
     const k = `${area}:${i}`, f = (S().world.forage = S().world.forage || {}); if (f[k] === day()) return { ok: false, why: '今天已經採過了，明天再來' };
-    const n = kind === 'berry' ? 2 : 1, r = OC.Tx.run(`forage:${k}:${day()}`, { get: { items: { [kind]: n } } }, '採集'); f[k] = day(); St.touch('world');
-    return r.ok ? { ok: true, item: kind, n, firsts: r.firsts } : { ok: false, why: r.why[0] };
+    const me = OC.Chars.active(), extra = OC.Growth && OC.Growth.has(me, 'keen_eye') && OC.hash(day() * 3.1 + i * 7.7) < 0.5 ? 1 : 0;
+    const n = (kind === 'berry' ? 2 : 1) + extra, r = OC.Tx.run(`forage:${k}:${day()}`, { get: { items: { [kind]: n } } }, '採集'); f[k] = day(); St.touch('world');
+    if (r.ok && OC.Progress) { OC.Progress.emit('forage', { item: kind, place: area, oc: me && me.id, n }); if (me) OC.Mind.skill(me, 'explore', 1.5); }
+    return r.ok ? { ok: true, item: kind, n, extra, firsts: r.firsts } : { ok: false, why: r.why[0] };
   }
   /** a critter spot shows its species when conditions match; once per half game-day */
   function critterAt(area, i) {
