@@ -146,7 +146,8 @@ class MainActivity : Activity() {
     }
 
     // ---------------- system UI ----------------
-    private fun setupEdgeToEdge() {
+    private fun setupEdgeToEdge() = runCatching { edgeToEdge() }.onFailure { android.util.Log.w("OCDiag", "edge-to-edge", it) }
+    private fun edgeToEdge() {
         if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
         else @Suppress("DEPRECATION") {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -161,9 +162,12 @@ class MainActivity : Activity() {
         val bg = Theme.background(dark)
         window.setBackgroundDrawable(ColorDrawable(bg))
         if (::web.isInitialized) web.setBackgroundColor(bg)
-        if (Build.VERSION.SDK_INT >= 30) {
+        // Cosmetic only — must never take the app down. NOTE: Window.getInsetsController() dereferences
+        // the DecorView without a null check and throws before setContentView (0.2.1 crash on Android 15);
+        // window.decorView creates the DecorView first, and its controller works before attachment.
+        if (Build.VERSION.SDK_INT >= 30) runCatching {
             val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
+            window.decorView.windowInsetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
         } else @Suppress("DEPRECATION") {
             var f = window.decorView.systemUiVisibility
             f = if (dark) f and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv() else f or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR

@@ -32,7 +32,7 @@ deliverables/         apk/（Debug APK + sha256）phase2/（截圖）videos/ ove
 cd game && python3 -m http.server 8765        # 開 http://localhost:8765/index.html（手機尺寸 393×852 檢視）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（18 個）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.2.1-alpha-debug.apk（複製一份到 deliverables/apk/）
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.2.2-alpha-debug.apk（複製一份到 deliverables/apk/）
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -50,6 +50,7 @@ Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加
 - `core:*` 模組不得依賴 Android；動畫數值以 `prototype/shared/core.js` 與 `android/core/anim/Motion.kt` 為準（有單元測試）。
 - 離線 APK 管線每個 Exec 任務都要宣告 inputs/outputs，否則會產生過期 APK。
 - **dx 不會改寫 Java 8 lambda**：APK 必須經過 `desugar`（ProGuard）且 `checkNoIndy` 通過，否則手機上會閃退（0.2.0 的教訓）。不要移除這兩步。
+- **不要在 `setContentView` 之前呼叫 `window.insetsController`**（Android 11+ 框架內部 NPE，0.2.0/0.2.1 實機閃退原因）；用 `window.decorView.windowInsetsController`。純外觀的視窗設定一律 `runCatching`。
 - 診斷：App 失敗時要顯示原因（`Diagnostics.kt`、`index.html` 開機防護），不可靜默失敗；改動開機流程後用 `?safe=1`、無 WebGL、舊 WebView 情境測試。
 - **懸浮桌寵與實機行為尚未驗證**（無模擬器）。在實機跑完 `docs/architecture.md` 驗證清單前不可宣稱完成。
 - 金鑰：release keystore 只能經環境變數 `OC_RELEASE_*` 提供，絕不提交。

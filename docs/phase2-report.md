@@ -1,6 +1,6 @@
 # 第二階段完成紀錄與測試報告
 
-版本 **0.2.1-alpha（versionCode 3）**（0.2.0 實機無法開啟，見下方「實機回報 #1」）　分支 `claude/oc-shimeji-visual-design-qcc3xy`
+版本 **0.2.2-alpha（versionCode 4）**（0.2.0／0.2.1 實機無法開啟，見下方「實機回報」）　分支 `claude/oc-shimeji-visual-design-qcc3xy`
 標示：✅ 已實作且在本環境驗證　🟡 已實作，但只能在實機驗證（本環境沒有 Android 裝置/模擬器）　🔒 刻意標示「未開放」　⏭ 依指示延後
 
 ## 交付物
@@ -8,12 +8,12 @@
 |---|---|
 | 遊戲原始碼（離線網頁，打包進 APK） | `game/` |
 | Android 專案 | `android/`（`app` 外殼、`core:*` 純 Kotlin） |
-| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.1-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
-| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.1-alpha-debug.apk` |
+| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
+| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.2-alpha-debug.apk` |
 | 截圖（25 張，2×） | `deliverables/phase2/screens/`、總覽 `deliverables/phase2/screens-contact-sheet.jpg` |
 | 文件 | `docs/design-system.md`、`docs/ui-components.md`、`docs/art-guidelines.md`、`docs/android-build.md`、`docs/architecture.md`、`docs/roadmap.md`、`CLAUDE.md` |
 
-安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.1-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
+安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
 
 ## 一、3D 場景與模型
 | 項目 | 狀態 |
@@ -100,6 +100,24 @@
 | 因此 0.2.1 另外加入 | 閃退紀錄與下次開啟的錯誤畫面、`onRenderProcessGone`、WebView 版本檢查、網頁開機防護與 20 秒看門狗、弱機自動省電（見 `docs/android-build.md` §7）。以 Chromium 模擬：無 WebGL、舊 WebView、啟動例外、逾時、原生交接都會顯示正確說明 |
 
 **下一步需要使用者協助**：安裝 0.2.1。若仍無法開啟，畫面會顯示錯誤資訊（或在下次開啟時顯示），請按「複製錯誤資訊」貼回，即可定位真正原因。
+
+## 實機回報 #2（0.2.1-alpha）：診斷畫面抓到真正原因 → 0.2.2-alpha
+
+0.2.1 的閃退紀錄畫面在使用者手機上正常運作，回傳了確切錯誤：
+
+- 裝置：Samsung SM-S9210，Android 15（API 35），WebView 156.0.8078.47（夠新，不是 WebView 問題）
+- 錯誤：`NullPointerException … DecorView.getWindowInsetsController() on a null object reference`
+  於 `PhoneWindow.getInsetsController` ← `MainActivity.applySystemBars` ← `MainActivity.onCreate`
+
+**原因**：Android 11 以上，`Window.getInsetsController()` 直接呼叫 `mDecor.getWindowInsetsController()`，沒有判斷 null；
+在 `setContentView` 之前 DecorView 還不存在，所以框架內部丟出 NPE。原本的 `window.insetsController?.` 只保護「回傳值為 null」，保護不了框架內部的 null——
+先前的靜態檢查錯誤地認為這樣是安全的。0.2.0 也是同一個原因（Android 11+ 的手機開啟就閃退）。
+
+**修正（0.2.2）**：改用 `window.decorView.windowInsetsController`（`getDecorView()` 會先建立 DecorView，且未附加前也能取得控制器）；
+系統列樣式與 edge-to-edge 設定包在 `runCatching` 中，外觀設定失敗不再能讓 App 閃退。已在編譯後的 bytecode 確認 `Window.getInsetsController` 呼叫已移除。
+（0.2.1 修掉的 lambda 問題仍是真實錯誤，只是不在啟動路徑上。）
+
+仍無法在本環境實機執行；請安裝 0.2.2 回報。
 
 ## 尚未驗證（必須在實機確認，不宣稱完成）
 1. 安裝與啟動、WebView WebGL 在實機的畫面與 **60fps**、記憶體、發熱。
