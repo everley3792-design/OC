@@ -157,7 +157,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 .drag-ghost.hit { transform: scale(1.18); }
 
 /* ---------- world overlays ---------- */
-.float-text { position: absolute; transform: translate(-50%, -100%); pointer-events: none; font-weight: 700; color: var(--accent); text-shadow: 0 1px 0 var(--surface), 0 0 6px var(--surface); animation: float-up 1.4s var(--ease-out) forwards; z-index: 35; white-space: nowrap; }
+.float-text { position: absolute; transform: translate(-50%, -100%); pointer-events: none; font-weight: 700; color: var(--accent); text-shadow: 0 1px 0 var(--surface), 0 0 6px var(--surface); animation: float-up 1.4s var(--ease-out) forwards; z-index: 19; white-space: nowrap; }
 @keyframes float-up { from { opacity: 0; transform: translate(-50%, -80%); } 15% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -190%); } }
 .prompt { position: absolute; transform: translate(-50%, -100%); padding: 6px 12px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--shadow-2); font-size: var(--fs-s); white-space: nowrap; z-index: 33; animation: toast-in var(--t-base) var(--ease-pop) both; }
 .place-bar .btn { white-space: nowrap; }
@@ -207,7 +207,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
 :root.reduce-motion * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
-.speech { position: absolute; transform: translate(-50%, -100%); max-width: 220px; padding: 7px 12px; border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-2); font-size: var(--fs-s); text-align: center; pointer-events: none; z-index: 36; animation: toast-in var(--t-base) var(--ease-pop) both; }
+.speech { position: absolute; transform: translate(-50%, -100%); max-width: 220px; padding: 7px 12px; border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-2); font-size: var(--fs-s); text-align: center; pointer-events: none; z-index: 19; animation: toast-in var(--t-base) var(--ease-pop) both; }
 .speech::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--surface); }
 
 /* ================= Phase 3: creation tools ================= */

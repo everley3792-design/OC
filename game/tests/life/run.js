@@ -231,8 +231,9 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await page.evaluate((id) => OC.Pages.open('charedit', { id }), id); await wait(page, 1200);
       const ed = await page.evaluate((id) => [...OC.Brain.get(id).holds], id);
       await page.evaluate(() => { for (let n = 0; n < 6 && OC.Pages.pages.charedit.el.classList.contains('open'); n++) OC.UI.back(); }); await wait(page, 1200);
-      const ed2 = await page.evaluate((id) => OC.Brain.get(id).holds.size, id);
-      check('7c 打開編輯器（換裝）時暫停、關閉後恢復', ed.includes('editor') && ed2 === 0, { ed, ed2 });
+      const ed2 = await page.evaluate((id) => [...OC.Brain.get(id).holds], id);   // (an event may legitimately start right after; only the editor hold matters)
+      const edInfo = await page.evaluate(() => ({ stack: OC.UI.stack.length, open: OC.Pages.pages.charedit.el.classList.contains('open'), dirty: OC.Pages.pages.charedit.dirty, sheets: [...document.querySelectorAll('.sheet h2')].map((e) => e.textContent) }));
+      check('7c 打開編輯器（換裝）時暫停、關閉後恢復', ed.includes('editor') && !ed2.includes('editor'), { ed, ed2, edInfo });
       await page.evaluate((id) => OC.LifeUI.chat(id), id); await wait(page, 500);
       const ch = await page.evaluate((id) => [...OC.Brain.get(id).holds], id);
       await page.evaluate(() => OC.UI.back()); await wait(page, 300);

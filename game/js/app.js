@@ -577,12 +577,13 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     // render the world only while it is visible (a tab page covers it fully otherwise)
     const covered = curTab !== 'island' || OC.UI.stack.some((l) => l.close && Object.values(OC.Pages.pages).some((p) => p.layer === l));
+    const ov = overlays(); if (ov && ov.style.visibility !== (covered ? 'hidden' : '')) ov.style.visibility = covered ? 'hidden' : '';   // world bubbles never show over pages
     if (!covered || !world_rendered_once) { Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
     // life simulation: fixed steps fed with REAL elapsed time (independent of the fps cap)
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
     OC.Events.update(dt); updateObserve();
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
-    holdT += dt; if (holdT > 0.5) { holdT = 0; syncEditorHolds(); }
+    if (now - holdT > 400) { holdT = now; syncEditorHolds(); }   // real time (dt is capped per frame)
     drawLives(now);
     if (player) {
       // footsteps → stats, auto-pick drops the player walks over
