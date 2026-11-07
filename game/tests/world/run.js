@@ -42,7 +42,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
         out.stock = (() => { const id = OC.Shops.stock('market')[0], left = OC.Shops.left('market', id); const big = OC.Shops.buy('market', id, left + 1); return !big.ok && OC.Shops.left('market', id) === left; })();
         out.buy = (() => { const id = 'egg', n0 = OC.Store.count(id), m0 = S.coins, pr = OC.Shops.price('food', id).price, bonus = OC.Tx.done('find:' + id) ? 0 : OC.Shops.INCOME.find, b = OC.Shops.buy('food', id, 2); return b.ok && OC.Store.count(id) === n0 + 2 && S.coins === m0 - pr * 2 + bonus; })();
         out.ledger = OC.Tx.log.length >= 2 && OC.Tx.log[0].key && OC.Tx.done('t:a');
-        out.quest = (() => { const q = OC.Game.todayQuests()[0]; (S.quests.prog = S.quests.prog || {})[q.id] = q.n; const m = S.coins, a = OC.Game.claim(q.id), m1 = S.coins, b = OC.Game.claim(q.id); return !!a && m1 > m && !b && S.coins === m1; })();
+        out.quest = (() => { const q = OC.Game.todayQuests()[0]; const inst = S.play.q.list.find((x) => x.key === q.id); inst.prog.n = q.n; inst.done = Date.now(); const m = S.coins, a = OC.Game.claim(q.id), m1 = S.coins, b = OC.Game.claim(q.id); return !!a && m1 > m && !b && S.coins === m1; })();
         return out;
       });
       check('T1 交易：同一個 key 只會入帳一次（防重複獎勵）', r.a && r.dupOk);

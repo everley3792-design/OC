@@ -93,7 +93,7 @@
         case 'prop': if (a) { a.overrides = Object.assign({}, a.overrides || {}, { held: st[2] }); a.key = ''; const aa = a; setTimeout(() => { if (aa.overrides) { delete aa.overrides.held; aa.key = ''; } }, ((st[3] || 2) * 1000) / (cur ? cur.speed : 1)); } break;
         case 'emote': if (a && !cur.skip) A().floatText(a, st[2]); break;
         case 'wait': await sleep(st[1]); break;
-        case 'card': if (cur.card) card(cur.card); break;
+        case 'card': if (cur.card) OC.Stage.card(cur.card); break;
       }
     }
   }
@@ -112,7 +112,7 @@
     const { kind, o } = job, def = STAGES[kind], c = o.oc && OC.Chars.get(o.oc), a = o.oc && A().actorOf(o.oc);
     // no actor on screen → only the card (if any)
     const cardData = makeCard(kind, o);
-    if (!def || !a || a.hidden || A().curTab !== 'island') { if (cardData) card(cardData); job.resolve(false); next(); return; }
+    if (!def || !a || a.hidden || A().curTab !== 'island') { if (cardData) OC.Stage.card(cardData); job.resolve(false); next(); return; }
     const variant = def.steps[style(c)] || def.steps.plain;
     cur = { kind, skip: false, speed: 1, card: cardData };
     const cast = { a: { a, c } }; if (o.other && A().actorOf(o.other)) cast.b = { a: A().actorOf(o.other), c: OC.Chars.get(o.other) };

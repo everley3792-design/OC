@@ -297,7 +297,12 @@
       // phase 5 (read-only for the pet core): where the OC is, favourite foods, the bag's food the pet could ask for
       place: (() => { const pl = OC.Places && OC.Places.get(c.id === S().activeId && OC.World.area ? OC.World.area.id : c.life.loc || 'isle'); return pl ? pl.zh : null; })(),
       favFoods: OC.Taste ? Object.entries(OC.Taste.prefs(c).food).filter(([, p]) => p.lv === 2).map(([id]) => OC.Style.ITEMS[id] ? OC.Style.ITEMS[id].zh : id).slice(0, 5) : [],
-      hasFood: Object.keys(S().inv).some((id) => OC.Items && OC.Items.isFood(id) && OC.Store.count(id) > 0) };
+      hasFood: Object.keys(S().inv).some((id) => OC.Items && OC.Items.isFood(id) && OC.Store.count(id) > 0),
+      // phase 6 (read-only for the pet core): title, current dream, an open request, top skill — same action names as the game
+      title: OC.Growth ? OC.Growth.titleOf(c) || null : null,
+      dream: c.life.asp && c.life.asp.id && OC.PlayData ? OC.PlayData.ASPIRATIONS[c.life.asp.id].zh : null,
+      request: OC.Requests && OC.Requests.ofOC(c.id) ? OC.Requests.ofOC(c.id).text : null,
+      action: (() => { const a = OC.App && OC.App.actorOf(c.id); return a && a.act ? a.act.action : 'idle'; })() };
   }
 
   // ============================== pages ==============================

@@ -58,7 +58,7 @@
     for (const r of open()) {
       if (r.state !== 'offer' || (r.laterUntil && Sim().now() < r.laterUntil)) continue;
       const a = A().actorOf(r.oc); if (!a || a.hidden) continue; want.add(r.oc);
-      let el = badges[r.oc]; if (!el) { el = badges[r.oc] = h('button.req-badge', { 'aria-label': '有話想說', on: { click: (e) => { e.stopPropagation(); openSheet(r.id); } } }, icon(PD().REQUESTS[r.type].ic || 'chat', 's')); ov.append(el); }
+      let el = badges[r.oc]; if (!el) { el = badges[r.oc] = h('button.req-badge', { 'aria-label': '有話想說' }, icon(PD().REQUESTS[r.type].ic || 'chat', 's')); ov.append(el); }
       el.dataset.r = r.id; el.onclick = (e) => { e.stopPropagation(); openSheet(el.dataset.r); };
       const p = OC.World.project(a.x, a.y, a.lvl, (a.gy - a.lvl * OC.World.HY) + 54); el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
     }

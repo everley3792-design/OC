@@ -261,8 +261,8 @@
   // ======================= new activities (unlocked by skills) =======================
   const D = OC.LifeData;
   Object.assign(D.ACTS, {
-    sketch: { zh: '畫素描', ic: '✏️', verb: 'observe', fx: { fun: 30, interest: 35, mood: 10 }, dur: [15, 30], anim: 'sketch', sk: 'art', cat: 'fun', unlock: 'sketch' },
-    sing: { zh: '唱歌', ic: '🎵', verb: 'observe', fx: { fun: 40, mood: 18, social: 6 }, dur: [6, 12], anim: 'sing', sk: 'music', cat: 'fun', unlock: 'sing' },
+    sketch: { zh: '畫素描', ic: '✏️', verb: 'view', fx: { fun: 30, interest: 35, mood: 10 }, dur: [15, 30], anim: 'sketch', sk: 'art', cat: 'fun', unlock: 'sketch' },
+    sing: { zh: '唱歌', ic: '🎵', verb: 'view', fx: { fun: 40, mood: 18, social: 6 }, dur: [6, 12], anim: 'sing', sk: 'music', cat: 'fun', unlock: 'sing' },
   });
 
   // places where the new activities can also happen while the OC is away (abstract life)

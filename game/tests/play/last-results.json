@@ -1,0 +1,81 @@
+{
+ "at": "2026-11-07T22:36:05.241Z",
+ "results": [
+  {
+   "name": "3a 藝術 Lv.1 前不會畫素描，升級後解鎖新活動",
+   "ok": true,
+   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+  },
+  {
+   "name": "3b 料理升級解鎖新食譜（Lv.1 鬆餅布丁、Lv.2 咖哩水果塔）",
+   "ok": true,
+   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+  },
+  {
+   "name": "3c 料理清單：學會的可以做，還沒學會的明確顯示「還不會」與需要的等級",
+   "ok": true,
+   "detail": "晴日咖哩白米×1、馬鈴薯×1、胡蘿蔔×1材料不足 | 鹽烤魚料理 Lv.3 學會（麻糬現在 Lv.2）還不會"
+  },
+  {
+   "name": "3d 升級後生活 AI 會把新活動列入考慮",
+   "ok": true
+  },
+  {
+   "name": "3e 技能升級有演出卡片（含解鎖內容）",
+   "ok": true,
+   "detail": "麻糬的藝術 Lv.1 | 麻糬的料理 Lv.2"
+  },
+  {
+   "name": "5a 新取得的物品寫入圖鑑；用掉後仍保留發現紀錄（曾經持有）",
+   "ok": true,
+   "detail": "{\"d\":2,\"star\":true,\"past\":true}"
+  },
+  {
+   "name": "5b 圖鑑分清楚：未發現（剪影）／看過（商店）／持有中／曾經持有",
+   "ok": true,
+   "detail": "{\"spotted\":8,\"past\":1}"
+  },
+  {
+   "name": "5c 地點、活動、特殊事件也在圖鑑",
+   "ok": true
+  },
+  {
+   "name": "6a 達成條件後自動解鎖（第一盤料理、三顆星）",
+   "ok": true,
+   "detail": "{\"cook1\":true,\"star3\":true}"
+  },
+  {
+   "name": "6b 領取成就獎勵入帳；同一個成就不能領兩次",
+   "ok": true,
+   "detail": "400 → 500"
+  },
+  {
+   "name": "6c 已領的再領全部被拒絕",
+   "ok": true,
+   "detail": "再領成功 0 次"
+  },
+  {
+   "name": "6d 隱藏成就顯示提示但不洩漏內容",
+   "ok": true
+  },
+  {
+   "name": "7a 「成長」顯示的技能等級＝角色資料（同一份）",
+   "ok": true,
+   "detail": "0,0,0,0,0,0,0,0,0"
+  },
+  {
+   "name": "7b 「日誌」直接讀角色回憶（新回憶立即出現，重要的有故事時間軸）",
+   "ok": true,
+   "detail": "2 → 3"
+  },
+  {
+   "name": "7c 回憶可以珍藏",
+   "ok": true
+  },
+  {
+   "name": "全程沒有 JavaScript 錯誤",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}
