@@ -32,6 +32,15 @@
         if (b.greet === 'jump') { s.lift = Math.max(0, Math.sin(Math.min(1, at * 2) * Math.PI)) * b.jumpHeight; s.armL = s.armR = -1.4; s.eyes = 'happy'; s.mouth = 'open'; }
         if (b.greet === 'shy') { s.blush = 1; s.headDy = Math.sin(Math.min(1, at * 2) * Math.PI) * 1.5; s.mouth = 'wave'; }
         break;
+      // Phase 4 life actions
+      case 'read': s.squash = 0.9; s.lift = -3; s.lookY = 0.9; s.armL = -0.7; s.armR = -0.7; s.book = true; if (Math.sin(at * 0.9) > 0.97) s.eyes = 'line'; break;
+      case 'think': s.lookY = -0.6; s.lookX = Math.sin(at * 0.4) * 0.6; s.armR = -1.1; s.mouth = 'flat'; s.tilt = Math.sin(at * 0.5) * 0.06; s.thought = true; break;
+      case 'stretch': { const q = Math.sin(at * 1.6); s.armL = s.armR = -2.3 - q * 0.2; s.eyes = 'line'; s.mouth = 'o'; s.lift = Math.max(0, q) * 2; s.squash = 1 + Math.max(0, q) * 0.05; break; }
+      case 'tend': s.headDy = 1.5; s.lookY = 1; s.armR = -0.6 + Math.sin(at * 3) * 0.25; s.mouth = 'smile'; s.can = true; break;
+      case 'talk': s.mouth = Math.sin(at * 14) > 0 ? 'open' : 'smile'; s.armR = -0.4 + Math.sin(at * 3) * 0.2; break;
+      case 'dance': s.lift = Math.abs(Math.sin(at * 5)) * 4; s.lean = Math.sin(at * 2.5) * 0.12; s.armL = -1.8 + Math.sin(at * 5) * 0.5; s.armR = -1.8 - Math.sin(at * 5) * 0.5; s.eyes = 'happy'; s.mouth = 'open'; break;
+      case 'cry': s.brows = 'worry'; s.mouth = 'wave'; s.eyes = 'line'; s.tear = true; s.lookY = 0.8; break;
+      case 'laugh': s.eyes = 'happy'; s.mouth = 'open'; s.lift = Math.abs(Math.sin(at * 9)) * 2; s.lean = Math.sin(at * 9) * 0.03; break;
       case 'pet': s.eyes = 'happy'; s.blush = 0.8; s.tail = Math.sin(at * 8) * 0.4; break;
       case 'drag': s.eyes = 'wide'; s.mouth = 'o'; s.armL = s.armR = -1.3; break;
       case 'climb': s.walk = 1; s.armL = -1.6 + Math.sin(at * 8) * 0.4; s.armR = -1.6 - Math.sin(at * 8) * 0.4; break;

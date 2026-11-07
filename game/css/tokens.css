@@ -49,6 +49,7 @@
   --green: #6CCB5F;   --blue: #5BC0EB; --purple: #9B7BE0; --pink: #F48FB1;
   --danger: #E5534B;  --success: #4CB86A;
   --need-food: #F2766A; --need-energy: #F2B33D; --need-mood: #F07FAE; --need-social: #4FAEE0; --need-clean: #5DBE8A;
+  --need-sleep: #8E7BE0; --need-fun: #FF9A3C; --need-comfort: #C49A6C; --need-interest: #3FC1B0; --need-active: #6CCB5F;
   --heart: #F26B7A;
   --locked: rgba(107, 79, 58, .38);
   color-scheme: light;
@@ -77,6 +78,7 @@
   --green: #7FD673;   --blue: #74C8EE; --purple: #B49AF0; --pink: #F7A8C6;
   --danger: #FF7A70;  --success: #6FD38B;
   --need-food: #FF8C80; --need-energy: #FFC55C; --need-mood: #F79BC1; --need-social: #6FC0EE; --need-clean: #7AD3A2;
+  --need-sleep: #A897F0; --need-fun: #FFB066; --need-comfort: #D9B48A; --need-interest: #5ED3C2; --need-active: #7FD673;
   --heart: #FF8C9A;
   --locked: rgba(245, 238, 223, .34);
   color-scheme: dark;

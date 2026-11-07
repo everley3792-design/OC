@@ -37,6 +37,22 @@ UI: creator / charedit / charpages / library / paint / animstudio
 ```
 詳見 `docs/character-format.md`、`docs/animation-system.md`、`docs/asset-io.md`。
 
+### 第四階段：生活模擬層（0.4.0-alpha）
+```
+OC.Sim (life/sim.js)      唯一的固定步長排程器（0.2 現實秒／步）＋遊戲時鐘（現實／循環 ×1–×10／固定）＋離線補算
+  └─ 每步 → OC.Brain.lifeStep
+        ├─ OC.Mind (life/mind.js)   需求 9 種、情緒、回憶、生活紀錄、關係（有方向）、願望、技能、作息、成長建議（需同意）
+        ├─ OC.Brain (life/brain.js) Utility AI、活動狀態機、可供性與預約、社交編排、分層／離線模擬
+        ├─ OC.Talk (life/talk.js)   資料驅動對話（條件、變數、權重、冷卻、匯入匯出）
+        └─ OC.Events (life/events.js) 事件生命週期（條件、優先、冷卻、一次性、演出、結果、確認）
+OC.LifeData (life/data.js)  需求／情緒／活動／社交／習慣規則／台詞／事件的資料表
+UI: ui/lifeui.js（互動選單、通知、檔案「生活／關係／回憶」、生活設定、對話編輯、開發者診斷）
+app.js：把現實經過時間交給 OC.Sim.update()；hooks（泡泡、表情、通知、鏡頭、選項）；拖曳 OC；觀察模式
+world.js：tickActors（頁面蓋住時仍移動）、focus（鏡頭跟隨）、隱藏室內角色、拖曳手勢
+```
+詳見 `docs/behavior-engine.md`、`docs/life-format.md`、`docs/event-rules.md`、`docs/memory-model.md`。
+桌寵同步：`OCApp.petContext(app)` 回傳桌寵角色的情緒／正在做的事／需求／一句台詞（JSON）；`savePetSprites` 也附帶 `life` 欄位（舊版原生層只讀 frames/fps，不受影響）。
+
 懸浮桌寵的驗證清單（下方）**仍未在實機執行**。
 
 ---

@@ -84,6 +84,15 @@
   const isle = {
     id: 'isle', zh: '晴日島', bounds: { x0: 0, y0: 200, x1: 600, y1: 1000 }, spawn: { x: 300, y: 660 }, seaY: -6,
     NPC: { kuri: { home: { x: 120, y: 700 }, r: 80 }, sora: { home: { x: 500, y: 570 }, r: 70 } },
+    // Phase 4 affordance spots (life AI): verbs = what OCs can do there; n = capacity
+    spots: [
+      { id: 'plaza', zh: '廣場', x: 290, y: 624, verbs: ['play', 'view'], n: 4, r: 24 },
+      { id: 'pier', zh: '碼頭盡頭', x: 300, y: 948, verbs: ['view'], n: 2, r: 9 },
+      { id: 'bridge', zh: '小橋', x: 401, y: 578, verbs: ['view'], n: 2, r: 11 },
+      { id: 'terrace', zh: '高台邊', x: 236, y: 452, lvl: 1, verbs: ['view', 'play'], n: 2, r: 12 },
+      { id: 'beach', zh: '南邊沙灘', x: 200, y: 900, verbs: ['view', 'play'], n: 3, r: 18 },
+      { id: 'falls', zh: '瀑布前', x: 330, y: 512, verbs: ['view'], n: 2, r: 10 },
+    ],
     ramp(x, y) { for (const r of RAMPS) if (Math.abs(x - r.xc) <= r.w / 2 && y >= r.yTop && y <= r.yTop + RAMP_RUN) return r; return null; },
     level(x, y) { const r = this.ramp(x, y); if (r) return clamp(1 - (y - r.yTop) / RAMP_RUN); return inBlob(TER, x, y) ? 1 : 0; },
     ground(x, y, l) { if (l > 0.001 && l < 0.999) return 1.6; if (l >= 0.999) return 1.5; if (inRect(PIER, x, y) && !inBlob(MAIN, x, y, -6)) return 0.5; return inBlob(GRASS, x, y) ? 1.5 : -0.6; },
@@ -215,7 +224,8 @@
   const WOOD = { cx: 200, cy: 380, rx: 176, ry: 300, seed: 2.2 };
   const POND = { x: 214, y: 330, rx: 44, ry: 30 };
   const forest = {
-    id: 'forest', zh: '苔光森林', bounds: { x0: 0, y0: 40, x1: 400, y1: 720 }, spawn: { x: 200, y: 630 }, bg: '#2E6B3E',
+    id: 'forest', zh: '苔光森林',
+    spots: [{ id: 'pond', zh: '池塘邊', x: 214, y: 372, verbs: ['view'], n: 3, r: 18 }, { id: 'glade', zh: '林間空地', x: 200, y: 600, verbs: ['play', 'view'], n: 3, r: 18 }], bounds: { x0: 0, y0: 40, x1: 400, y1: 720 }, spawn: { x: 200, y: 630 }, bg: '#2E6B3E',
     level: () => 0, ground: () => 1.5,
     walk(x, y) { if (!inBlob(WOOD, x, y, -12)) return false; if (((x - POND.x) / POND.rx) ** 2 + ((y - POND.y) / POND.ry) ** 2 < 1.15) return false; return true; },
     noBuild: () => true,

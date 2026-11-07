@@ -11,7 +11,7 @@
   const Ch = () => OC.Chars, S = () => OC.Store.s, St = OC.Store, Pg = () => OC.Pages;
   const T = (t, small) => h('div.section-title', null, t, small ? h('small', null, small) : null);
   const bar = (v, c) => h('div.bar', null, h('i', { style: { width: Math.round(v) + '%', '--c': c } }));
-  const moodOf = (c) => { const n = c.needs, avg = (n.food + n.energy + n.mood + n.social) / 4; return n.energy < 22 ? '好睏' : n.food < 22 ? '肚子餓' : avg > 75 ? '心情超好' : avg > 50 ? '還不錯' : '普普通通'; };
+  const moodOf = (c) => { const d = OC.LifeUI.doingText(c); return OC.Mind.label(c) + (d ? '・' + d : ''); };
   const statusOf = (c) => [S().activeId === c.id ? ['操控中', 'accent'] : null, c.status.onIsland ? ['在島上', 'teal'] : ['休息中', ''], S().petId === c.id ? ['桌寵', 'sun'] : null].filter(Boolean);
   function thumb(c, px = 112) { const cv = h('canvas', { width: px, height: px }); cv.style.cssText = `width:${px / 2}px;height:${px / 2}px;flex:none;border-radius:16px;background:var(--surface-2)`; OC.Assets.init().then(() => { const preload = Object.values(c.actions.idle || {}).map((id) => OC.Anim.get(id)).filter(Boolean).map((d) => OC.Anim.preload(d)); Promise.all(preload).then(() => OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile' } })); }); OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile' } }); return cv; }
 
@@ -68,11 +68,14 @@
     sub: true,
     build(p, el) {
       p.cv = h('canvas', { width: 320, height: 320 }); p.top = h('div'); p.body = h('div');
-      el.append(h('div.card', null, h('div.hero', null, h('div.portrait', null, p.cv), p.top)), h('div.hstack', { style: { marginTop: '12px' } }, h('button.btn.primary.block', { on: { click: () => Pg().open('charedit', { id: p.params.id }) } }, icon('edit', 's'), '編輯角色'), h('button.btn.block', { on: { click: () => Pg().open('charedit', { id: p.params.id, tab: 'anims' }) } }, icon('film', 's'), '動畫')), p.body);
+      p.ptab = 'info'; p.tabs = seg([['info', '檔案'], ['life', '生活'], ['rel', '關係'], ['mem', '回憶']], 'info', (v) => { p.ptab = v; p.refresh(p); });
+      el.append(h('div.card', null, h('div.hero', null, h('div.portrait', null, p.cv), p.top)), h('div.hstack', { style: { marginTop: '12px' } }, h('button.btn.primary.block', { on: { click: () => Pg().open('charedit', { id: p.params.id }) } }, icon('edit', 's'), '編輯角色'), h('button.btn.block', { on: { click: () => Pg().open('charedit', { id: p.params.id, tab: 'anims' }) } }, icon('film', 's'), '動畫')), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body);
       OC.App.live(p.cv, () => ({ char: Ch().get(p.params.id), pose: { face: 0.2 } }));
     },
     refresh(p) {
-      const c = Ch().get(p.params.id) || Ch().active(); if (!c) return; p.params.id = c.id;
+      const c = Ch().get(p.params.id) || Ch().active(); if (!c) return;
+      if (p.lastId !== c.id) { p.lastId = c.id; p.memF = null; if (!p.params.tab) { p.ptab = 'info'; } }
+      if (p.params.tab) { p.ptab = p.params.tab; p.params.tab = null; } p.tabs.set(p.ptab); p.params.id = c.id;
       const P = c.profile, pers = c.personality;
       p.el.querySelector('h1').textContent = Ch().name(c);
       p.top.replaceChildren(h('h2', null, P.name || '無名氏'), P.nickname ? h('div.muted', null, `暱稱：${P.nickname}`) : null, h('div.tag.teal', { style: { marginTop: '4px' } }, Ch().typeTitle(c)), h('div.muted', { style: { marginTop: '4px', fontSize: 'var(--fs-s)' } }, moodOf(c)), h('div.hstack', { style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, ...statusOf(c).map(([t, k]) => h('span.tag' + (k ? '.' + k : ''), null, t))));
@@ -81,10 +84,12 @@
       const traits = pers.traits.map((t) => (Ch().TRAITS.find((q) => q.id === t) || {}).zh).filter(Boolean).concat(pers.customTraits.map((t) => t.name));
       const q = c.quirks, qz = (k) => (Ch().QUIRKS[k].opts.find((o) => o[0] === q[k]) || [0, ''])[1];
       const g = c.growth;
+      if (p.ptab === 'life') { p.body.replaceChildren(OC.LifeUI.lifeSection(c, () => p.refresh(p))); return; }
+      if (p.ptab === 'rel') { p.body.replaceChildren(OC.LifeUI.relSection(c, () => p.refresh(p))); return; }
+      if (p.ptab === 'mem') { p.body.replaceChildren(OC.LifeUI.memSection(c, p)); return; }
       p.body.replaceChildren(
-        g.suggestions.length ? h('div.card', { style: { marginTop: '12px', boxShadow: '0 0 0 2px var(--sun), var(--shadow-1)' } }, h('b', null, '新的發現'), ...g.suggestions.map((s) => h('div', { style: { marginTop: '8px' } }, h('div', null, `${Ch().name(c)}好像${s.type === 'trait' ? '有了新特質' : '發現了新興趣'}：「${s.type === 'trait' ? (Ch().TRAITS.find((t) => t.id === s.value) || { zh: s.value }).zh : s.value}」`), h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, s.reason),
-          h('div.hstack', { style: { marginTop: '6px' } }, h('button.btn.s.primary', { on: { click: () => { Ch().resolve(c, s.id, 'accept'); p.refresh(p); } } }, '接受'), h('button.btn.s', { on: { click: () => { Ch().resolve(c, s.id, 'reject'); p.refresh(p); } } }, '不要'), h('button.btn.s', { on: { click: () => { Ch().resolve(c, s.id, 'lock'); p.refresh(p); toast('之後不會再提出', 'lock'); } } }, '永遠不要'))))) : null,
-        T('需求'), h('div.card', null, ...OC.Game.NEEDS.map((n) => h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('span', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))))),
+        g.suggestions.length ? h('div', { style: { marginTop: '12px' } }, h('b', null, '新的發現'), ...g.suggestions.map((sg) => h('div', { style: { marginTop: '8px' } }, OC.LifeUI.suggestionCard(c, sg, () => p.refresh(p))))) : null,
+        T('需求', '完整內容在「生活」'), h('div.card', null, ...OC.Game.NEEDS.filter((n) => ['food', 'energy', 'sleep', 'mood'].includes(n.id)).map((n) => h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('span', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))))),
         T('基本資料'), h('div.card', null, kv('代稱', P.pronoun), kv('性別', P.gender), kv('年齡', P.age), kv('生日', P.birthday), kv('種族', (Ch().SPECIES.find((s) => s[0] === P.species) || [0, P.species])[1]), kv('介紹', P.intro), ...(P.custom || []).filter((r) => r.k).map((r) => kv(r.k, r.v)), !P.pronoun && !P.gender && !P.age && !P.birthday && !P.intro ? h('span.faint', null, '（可在編輯角色補充）') : null),
         P.backstory ? h('div', null, T('背景故事'), h('div.card', { style: { whiteSpace: 'pre-wrap' } }, P.backstory)) : null,
         T('性格'), h('div.card', null, ...Ch().SLIDERS.map((d) => h('div', { style: { margin: '4px 0' } }, h('div.hstack', { style: { fontSize: 'var(--fs-s)' } }, h('span.grow', null, d.zh), h('span.muted', null, pers[d.id] < 40 ? d.lo : pers[d.id] > 60 ? d.hi : '普通')), bar(pers[d.id], 'var(--teal)')))),
@@ -94,7 +99,7 @@
         T('喜好'), h('div.card', null, h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '喜歡'), chips(P.likes), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '討厭'), chips(P.dislikes, 'sun'), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '興趣'), chips(P.hobbies, 'teal'), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '習慣'), chips(P.habits, 'teal'),
           c.tastes.likeItems.length ? h('div', { style: { marginTop: '8px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '喜歡的物品'), chips(c.tastes.likeItems.map((i) => OC.Style.ITEMS[i].zh))) : null),
         T('動畫配置'), h('div.card', null, (() => { const cov = OC.Anim.coverage(c); return cov.length ? chips(cov.map((a) => Ch().ACTION_ZH[a] || a), 'accent') : h('span.faint', null, c.appearance.mode === 'sprite' ? '使用圖片外觀' : '使用內建角色骨架動作'); })()),
-        g.history.length ? h('div', null, T('成長紀錄'), h('div.list', null, ...g.history.slice(0, 6).map((x) => row(null, `${x.value}`, `${{ accept: '接受', reject: '拒絕', lock: '鎖定不再提出' }[x.decision]}・${new Date(x.at).toLocaleDateString('zh-TW')}`)))) : null);
+        g.history.length ? h('div', null, T('成長紀錄'), h('div.list', null, ...g.history.slice(0, 6).map((x) => row(null, `${x.value}`, `${({ accept: '接受', reject: '拒絕', lock: '鎖定不再提出', mute: '關閉同類建議' }[x.decision] || x.decision)}・${new Date(x.at).toLocaleDateString('zh-TW')}`)))) : null);
     },
   });
 

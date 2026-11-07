@@ -69,7 +69,8 @@
     plant: { zh: '小盆栽', kind: 'furniture', price: 60, sell: 25, d: '綠意盎然的盆栽。', fp: [1, 1] },
     rug: { zh: '貓掌地毯', kind: 'furniture', price: 150, sell: 55, d: '圓圓的地毯，可以在上面走。', fp: [2, 2], walk: true },
     chair: { zh: '木頭椅', kind: 'furniture', price: 120, sell: 45, d: '可以坐下休息。', fp: [1, 1], sit: true },
-    table: { zh: '野餐圓桌', kind: 'furniture', price: 180, sell: 70, d: '放在戶外的小圓桌。', fp: [2, 2] },
+    table: { zh: '野餐圓桌', kind: 'furniture', price: 180, sell: 70, d: '放在戶外的小圓桌。OC 會在這裡吃點心、聊天。', fp: [2, 2] },
+    bed: { zh: '星星小床', kind: 'furniture', price: 220, sell: 80, d: '軟綿綿的小床。累了的 OC 會自己走過來睡覺。', fp: [1, 2] },
     // clothing unlocks (owned once → available in the wardrobe)
     'acc-scarf': { zh: '暖暖圍巾', kind: 'clothing', price: 140, d: '在衣櫥裡選用。', slot: 'acc', val: 'scarf' },
     'acc-hood': { zh: '小兜帽', kind: 'clothing', price: 160, d: '在衣櫥裡選用。', slot: 'acc', val: 'hood' },
@@ -79,7 +80,7 @@
   };
   // free wardrobe basics
   const FREE_WEAR = { acc: ['none', 'beanie'], clip: ['none', 'flower'], pattern: ['none', 'stripe'] };
-  const SHOP = ['milk', 'cake', 'star', 'plant', 'cushion', 'chair', 'lamp', 'rug', 'table', 'clip-leaf', 'clip-star', 'pat-star', 'acc-scarf', 'acc-hood'];
+  const SHOP = ['milk', 'cake', 'star', 'plant', 'cushion', 'chair', 'bed', 'lamp', 'rug', 'table', 'clip-leaf', 'clip-star', 'pat-star', 'acc-scarf', 'acc-hood'];
   const KIND_ZH = { food: '食物', material: '素材', gift: '禮物', furniture: '家具', clothing: '服飾' };
 
   // ---- item icon art (24-unit grid, flat toy shading) ----
@@ -93,6 +94,7 @@
       case 'mushroom': Rr(9.4, 11, 5.2, 8.5, 2.4, '#FFF4DC'); V.paint(ctx, (ox, oy) => { ctx.beginPath(); ctx.ellipse(12 + ox, 11.5 + oy, 8.5, 6.5, 0, Math.PI, TAU); ctx.closePath(); }, M('#F26B5B')); ctx.fillStyle = '#fff'; for (const [a, b, r] of [[8.5, 8.6, 1.3], [13.5, 7, 1.1], [15.5, 10, 0.9]]) { ellipse(ctx, a, b, r, r); ctx.fill(); } return true;
       case 'chair': Rr(6, 4, 12, 9, 3, '#D9A26A'); Rr(5, 12, 14, 4, 2, '#C88B55'); Rr(6, 15, 2.4, 6, 1, '#A06A3C'); Rr(15.6, 15, 2.4, 6, 1, '#A06A3C'); return true;
       case 'table': El(12, 9.5, 9.5, 4.2, '#D9A26A'); Rr(10.6, 10, 2.8, 9.5, 1.2, '#A06A3C'); El(12, 19.6, 4.5, 1.4, '#A06A3C'); ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.6; ellipse(ctx, 9, 8.5, 3, 1.2); ctx.fill(); ctx.globalAlpha = 1; return true;
+      case 'bed': Rr(4, 9, 16, 11, 3, '#D9A26A'); Rr(4, 6, 4, 13, 2, '#B07E4B'); Rr(6, 10, 13, 6, 2.5, '#9FD3FF'); Rr(6.5, 8, 5, 4, 2, '#FFFFFF'); V.icon(ctx, 'star', 15, 13, 5, '#FFD23F'); return true;
       case 'acc-scarf': Rr(4, 8, 16, 5, 2.5, '#F26B5B'); Rr(13, 10, 4.5, 10, 2, '#E0574A'); ctx.fillStyle = 'rgba(255,255,255,.6)'; for (let i = 0; i < 3; i++) ctx.fillRect(5 + i * 5, 9.2, 2, 2.6); return true;
       case 'acc-hood': V.paint(ctx, (ox, oy) => { ctx.beginPath(); ctx.ellipse(12 + ox, 12 + oy, 8.5, 8, 0, Math.PI * 0.85, Math.PI * 2.15); ctx.quadraticCurveTo(12 + ox, 9 + oy, 4.6 + ox, 15.5 + oy); ctx.closePath(); }, M('#3FC1B0')); return true;
       case 'clip-star': V.icon(ctx, 'star', 12, 12, 18, '#FFD23F'); return true;

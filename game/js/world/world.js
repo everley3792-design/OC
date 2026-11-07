@@ -204,6 +204,8 @@
     if (a.sil) { a.sil.position.copy(a.m.position); a.sil.scale.copy(a.m.scale); a.sil.rotation.copy(a.m.rotation); }
     const lift = a.lift / 30; a.sh.position.set(a.x, a.gy + 0.25, z + 1.5); a.sh.scale.set(26 * (a.sc || 1) * (1 - lift * 0.4), 14 * (a.sc || 1) * (1 - lift * 0.4), 1);
     a.m.material.color.copy(bbTint);
+    // inside a building (life AI): hidden but still simulated
+    const vis = !a.hidden; if (a.m.visible !== vis) { a.m.visible = vis; a.sh.visible = vis; if (a.sil) a.sil.visible = vis; }
   }
   function removeActor(a) { root.remove(a.m); root.remove(a.sh); if (a.sil) root.remove(a.sil); a.tex.dispose(); actors = actors.filter((b) => b !== a); }
   function walkTo(a, x, y, onArrive) {
@@ -331,7 +333,7 @@
       if (ghost) { const d = screenToDesign(e.clientX, e.clientY); if (Math.abs(d.x - ghost.f.x) < 26 && Math.abs(d.y - ghost.f.y) < 26) g.kind = 'ghost'; }
       gesture = g;
       clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => { if (gesture === g && !g.moved && g.kind === 'press') { g.kind = 'long'; hooks.longPress && hooks.longPress(pick(p.x, p.y)); } }, 480);
+      pressTimer = setTimeout(() => { if (gesture === g && !g.moved && g.kind === 'press') { g.kind = 'long'; const r = hooks.longPress && hooks.longPress(pick(p.x, p.y)); if (r && r.drag) g.kind = 'drag'; } }, 480);
     } else if (ptrs.size === 2) {
       clearTimeout(pressTimer);
       const [a, b] = [...ptrs.values()]; gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), z0: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
@@ -347,6 +349,7 @@
       panX -= (mx - gesture.mx) / zoom; panY -= (my - gesture.my) / zoom; gesture.mx = mx; gesture.my = my; follow = false;
       return;
     }
+    if (gesture.kind === 'drag') { hooks.dragMove && hooks.dragMove(screenToDesign(p.x, p.y)); return; }
     if (Math.hypot(p.x - p.x0, p.y - p.y0) > 9) gesture.moved = true;
     if (gesture.kind === 'ghost' && gesture.moved) { const d = screenToDesign(p.x, p.y); moveGhost(d.x, d.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); return; }
     if ((gesture.kind === 'press' || gesture.kind === 'pan') && gesture.moved) { gesture.kind = 'pan'; clearTimeout(pressTimer); panX -= dx / zoom; panY -= dy / zoom; follow = false; hooks.panned && hooks.panned(); }
@@ -355,6 +358,7 @@
     const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); clearTimeout(pressTimer);
     if (!gesture) return;
     if (gesture.kind === 'pinch') { if (ptrs.size === 0) gesture = null; return; }
+    if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
       const r = pick(p.x, p.y);
       if (ghost) { moveGhost(r.p.x, r.p.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); }
@@ -380,6 +384,7 @@
     resize();
   }
   function resize() {
+    if (!canvas || !R) return;
     const r = canvas.getBoundingClientRect(); W = Math.max(1, r.width); H = Math.max(1, r.height);
     R.setPixelRatio(quality.ratio); R.setSize(W, H, false);
   }
@@ -397,13 +402,17 @@
     OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = q.lights !== false; });
     if (bbChanged) actors.forEach(resizeActorCanvas);
   }
-  let last = 0, envCur = null;
+  let last = 0, envCur = null, camTarget = null;
+  /** move actors without rendering (the world is covered by a page) — keeps the life simulation moving */
+  function tickActors(dt) { if (!area) return; for (const a of actors.slice()) updateActor(a, dt); }
+  /** camera follows another actor (observe / important events); null = back to the player */
+  function focus(a, z) { camTarget = a || null; if (a) { panX = panY = 0; follow = true; if (z) zoom = clamp(z, 1.15, 3.2); } }
   function frame(now, dt) {
     if (!area) return;
     time += dt;
     const h = hourFn(), wx = weatherFn();
     // camera follows the player gently; manual pan decays back when the player moves
-    const pl = actors.find((a) => a.player);
+    const pl = (camTarget && actors.includes(camTarget) && camTarget) || actors.find((a) => a.player);
     if (pl) {
       const k = 1 - Math.exp(-dt * 5); camX = lerp(camX, pl.x, k); camY = lerp(camY, pl.y - 14, k);
       if ((pl.path || (pl.joy && Math.hypot(pl.joy.jx, pl.joy.jy) > 0.15)) && !follow) { panX = lerp(panX, 0, 1 - Math.exp(-dt * 2.2)); panY = lerp(panY, 0, 1 - Math.exp(-dt * 2.2)); if (Math.abs(panX) + Math.abs(panY) < 1) follow = true; }
@@ -429,10 +438,10 @@
   }
 
   OC.World = {
-    init, resize, setQuality, loadArea, frame, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
+    init, resize, setQuality, loadArea, frame, tickActors, focus, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
-    get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
+    get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
     set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
     recenter() { panX = 0; panY = 0; follow = true; },
     stopGesture() { ptrs.clear(); gesture = null; clearTimeout(pressTimer); },

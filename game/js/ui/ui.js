@@ -71,6 +71,7 @@
     dice: '<rect x="4.5" y="4.5" width="15" height="15" rx="4"/><circle cx="8.8" cy="8.8" r="1.2" fill="currentColor"/><circle cx="15.2" cy="15.2" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
     redo: '<path d="M15 7l4 4-4 4"/><path d="M19 11h-9a5 5 0 0 0 0 10h2"/>',
     clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
+    bell: '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     home: '<path d="M4.5 11 12 4.5l7.5 6.5M6.5 9.5V19h11V9.5"/><path d="M10 19v-5h4v5"/>', sleep: '<path d="M4 18h16M5 18v-6h14v6M7 12V9.5A1.5 1.5 0 0 1 8.5 8H11v4"/><path d="M14 4.5h3l-3 3h3"/>',
   };
   function icon(name, cls = '') { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ic ' + cls); s.setAttribute('aria-hidden', 'true'); s.innerHTML = IC[name] || IC.info; return s; }

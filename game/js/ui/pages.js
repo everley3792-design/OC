@@ -50,8 +50,8 @@
   define('needs', '需求', {
     sub: true,
     refresh(p, el) {
-      const r = { food: 0.5, energy: Gm.has('lazy') ? 0.28 : 0.35, mood: Gm.has('cheerful') ? 0.2 : Gm.has('pessimist') ? 0.38 : 0.3, social: Gm.has('shy') ? 0.25 : 0.4 };
-      el.replaceChildren(...Gm.NEEDS.map((n) => card(h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('b', null, n.zh), bar(OC.Chars.active().needs[n.id], n.c), h('span.val.num', null, Math.round(OC.Chars.active().needs[n.id]))), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '恢復：', n.how), h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '2px' } }, `每分鐘約下降 ${r[n.id]}；離開遊戲時最多計算 6 小時，且不會低於 15。`))));
+      const c = OC.Chars.active();
+      el.replaceChildren(h('p.muted', null, `${OC.Chars.name(c)}現在：${OC.Mind.label(c)}。需求依照遊戲時間變化；OC 會自己去滿足它們，你也可以幫忙。`), ...Gm.NEEDS.map((n) => card(h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('b', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '恢復：', n.how), n.decay ? h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '2px' } }, `基本每遊戲小時下降約 ${n.decay}（會依個性、天氣與正在做的事改變）；離開遊戲時最多模擬 8 小時，且不會低於 15。`) : null)));
     },
   });
 
@@ -221,14 +221,17 @@
         h('div.hstack', null, h('span.grow', null, '天氣與環境特效（雨、螢火蟲、雲影）'), toggle(c().fx, (v) => setC('fx', v))),
         h('div.hstack', null, h('span.grow', null, '隨風擺動的草'), toggle(c().grass, (v) => setC('grass', v))),
         h('div', null, h('div.muted', null, '畫面解析度'), h('input', { type: 'range', min: 0.75, max: 2, step: 0.25, value: c().scale, 'aria-label': '畫面解析度', on: { change: (e) => setC('scale', +e.target.value) } })));
-      p.time = seg([['real', '現實'], ['morning', '早晨'], ['noon', '中午'], ['dusk', '黃昏'], ['night', '夜晚']], s().time, (v) => set('time', v));
+      p.time = seg([['real', '現實'], ['cycle', '循環'], ['morning', '早'], ['noon', '午'], ['dusk', '昏'], ['night', '夜']], s().time, (v) => { OC.Sim.setMode(v); p.refresh(p); });
+      p.speed = seg(OC.Sim.SPEEDS.map((v) => [String(v), '×' + v]), String(s().timeSpeed || 1), (v) => { OC.Sim.setSpeed(+v); p.refresh(p); });
+      p.speedBox = h('div', { style: { marginTop: '10px' } }, h('div.muted', null, '循環速度'), p.speed, h('div.faint', { 'data-speed-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }));
       p.wx = seg([['auto', '自動'], ['clear', '晴'], ['cloudy', '多雲'], ['rain', '雨'], ['fog', '霧']], s().weather, (v) => set('weather', v));
       p.ctrl = seg([['tap', '點擊移動'], ['joy', '虛擬搖桿']], s().control, (v) => { set('control', v); app().applyControl(); });
       const fileIn = h('input', { type: 'file', accept: 'application/json,.json', style: { display: 'none' }, on: { change: async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const txt = await f.text(); if (await confirm('匯入存檔', '目前的進度會被覆蓋，確定嗎？', '匯入', true)) { St.importJSON(txt); location.reload(); } } catch (err) { toast('匯入失敗：' + err.message, 'info'); } } } });
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
         title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
-        title('世界'), card(h('div.muted', null, '時間'), p.time, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx),
+        title('世界'), card(h('div.muted', null, '時間'), p.time, p.speedBox, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx),
+        title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); }))),
         title('聲音'), h('div.list', null, lockedRow('music', '音樂與音效', '音訊系統尚未實作')),
         title('資料'), fileIn, h('div.list', null,
@@ -238,7 +241,8 @@
         h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '10px 4px' }, 'data-saved': '' }, ''));
     },
     refresh(p) {
-      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf); p.time.set(s.time); p.wx.set(s.weather); p.ctrl.set(s.control);
+      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf); p.time.set(s.time); p.speed.set(String(s.timeSpeed || 1)); p.speedBox.hidden = s.time !== 'cycle';
+      p.el.querySelector('[data-speed-desc]').textContent = `一天約 ${Math.round(24 / (s.timeSpeed || 1))} 分鐘。需求、作息與活動都依遊戲時間計算，所以不同速度下結果一致；關掉 App 時循環時間會暫停。`; p.wx.set(s.weather); p.ctrl.set(s.control);
       p.custom.hidden = s.perf !== 'custom';
       const q = app().perfOf(s.perf);
       p.el.querySelector('[data-perf-desc]').textContent = `${q.fps} fps・陰影${q.shadows ? (q.shadows >= 2048 ? '高' : '低') : '關'}・特效${q.fx ? '開' : '關'}・草${q.grass ? '開' : '關'}・解析度 ×${q.ratio}`;
@@ -249,7 +253,7 @@
     sub: true,
     refresh(p, el) {
       const v = St.NATIVE ? St.NATIVE.appVersion() : 'Web 預覽';
-      el.replaceChildren(h('div.center', { style: { margin: '20px 0' } }, h('div.logo', null, 'OC ', h('b', null, 'Shimeji')), h('div.muted', null, '原創角色生活模擬＋桌寵')), h('div.list', null, row('info', '版本', v), row('layers', '畫面', '3D 固定視角世界（three.js r158）＋ 2D 角色')), title('授權'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)', lineHeight: 1.7 } }, 'three.js — MIT License', h('br'), 'jf open 粉圓（Huninn）— SIL Open Font License 1.1', h('br'), 'Nunito — SIL Open Font License 1.1', h('br'), '所有角色、場景與介面美術皆為原創。')), title('隱私'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '遊戲完全離線運作，不連網、不蒐集任何資料；存檔只保存在這台裝置上。')));
+      el.replaceChildren(h('div.center', { style: { margin: '20px 0' } }, h('div.logo', null, 'OC ', h('b', null, 'Shimeji')), h('div.muted', null, '原創角色生活模擬＋桌寵')), h('div.list', null, row('info', '版本', v + (S().settings.dev ? '・開發者模式' : ''), null, () => { p.taps = (p.taps || 0) + 1; if (p.taps >= 5) { p.taps = 0; S().settings.dev = !S().settings.dev; St.touch('settings'); toast(S().settings.dev ? '已開啟開發者診斷（設定 → 生活）' : '已關閉開發者模式', 'info'); p.refresh(p, el); } }), row('layers', '畫面', '3D 固定視角世界（three.js r158）＋ 2D 角色')), title('授權'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)', lineHeight: 1.7 } }, 'three.js — MIT License', h('br'), 'jf open 粉圓（Huninn）— SIL Open Font License 1.1', h('br'), 'Nunito — SIL Open Font License 1.1', h('br'), '所有角色、場景與介面美術皆為原創。')), title('隱私'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '遊戲完全離線運作，不連網、不蒐集任何資料；存檔只保存在這台裝置上。')));
     },
   });
 

@@ -9,37 +9,17 @@
   const me = () => OC.Chars.active();
   const has = (t) => { const c = me(); return !!c && c.personality.traits.includes(t); };
 
-  // ---------------- needs ----------------
-  const NEEDS = [
-    { id: 'food', zh: '飽足', ic: 'apple', c: 'var(--need-food)', how: '吃背包裡的食物（拖到角色身上，或在背包點「吃」）' },
-    { id: 'energy', zh: '精力', ic: 'zap', c: 'var(--need-energy)', how: '坐在長椅／椅子上休息，或回家睡一下' },
-    { id: 'mood', zh: '心情', ic: 'smile', c: 'var(--need-mood)', how: '吃甜點、摘花、佈置家具、完成動畫' },
-    { id: 'social', zh: '社交', ic: 'users', c: 'var(--need-social)', how: '和居民聊天或送禮' },
-  ];
-  function decayRates(c = me()) {
-    const t = (x) => c && c.personality.traits.includes(x);
-    const night = OC.Clock.phase() === 'night';
-    return { food: 0.5, energy: (t('lazy') ? 0.28 : 0.35) * (t('nightowl') && night ? 0.6 : 1), mood: t('cheerful') ? 0.2 : t('pessimist') ? 0.38 : 0.3, social: t('shy') ? 0.25 : 0.4 };   // per real minute
-  }
-  /** apply real-time decay since the last tick (offline time capped at 6 h, never below 15) */
-  function tickNeeds(now = Date.now()) { for (const c of OC.Chars.all()) tickChar(c, now); }
-  function tickChar(c, now) {
-    const n = c.needs, dtMin = Math.min(360, Math.max(0, (now - (n.t || now)) / 60000));
-    if (dtMin < 0.05) return;
-    const r = decayRates(c), d = {};
-    for (const k of Object.keys(r)) { const floor = dtMin > 5 ? 15 : 0; d[k] = Math.max(-(n[k] - Math.min(n[k], floor)), -r[k] * dtMin); }
-    n.t = now; St.needs(d, true, c.id);
-  }
+  // ---------------- needs (Phase 4: 9 needs simulated in game time by js/life/*) ----------------
+  const NEEDS = OC.LifeData.NEEDS;
+  /** per game hour, for the needs page (personality multipliers are applied by OC.Mind) */
+  function decayRates(c = me()) { const o = {}; for (const n of NEEDS) if (n.decay) o[n.id] = n.decay; return o; }
+  /** kept for older callers: absences are simulated by OC.Sim.catchUp (capped, idempotent) */
+  function tickNeeds() { if (OC.Sim) OC.Sim.catchUp('tick'); }
+  /** face + label of the played OC from its dominant emotion (OC.Mind) */
   function moodFace() {
     const c = me(); if (!c) return { eyes: 'round', mouth: 'cat', label: '' };
-    const n = c.needs;
-    if (n.energy < 22) return { eyes: 'sleepy', mouth: 'flat', label: '好睏…' };
-    if (n.food < 22) return { eyes: 'round', mouth: 'frown', label: '肚子餓了' };
-    if (n.social < 20) return { eyes: 'round', mouth: 'flat', label: '有點寂寞' };
-    const avg = (n.food + n.energy + n.mood + n.social) / 4;
-    if (avg > 75) return { eyes: 'happy', mouth: 'smile', label: '心情超好' };
-    if (avg > 50) return { eyes: 'round', mouth: 'cat', label: '還不錯' };
-    return { eyes: 'round', mouth: 'flat', label: '普普通通' };
+    const f = OC.Mind.face(c);
+    return { eyes: f.eyes || 'round', mouth: f.mouth || 'cat', brows: f.brows, blush: f.blush, sweat: f.sweat, lookY: f.lookY, label: OC.Mind.label(c) };
   }
 
   // ---------------- residents ----------------

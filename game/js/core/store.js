@@ -14,7 +14,7 @@
 
   function fresh() {
     return {
-      v: 2, created: Date.now(), onboarded: false,
+      v: 3, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
@@ -29,10 +29,20 @@
       goal: null,                    // life goal id
       world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {} },
       pos: { area: 'isle', x: 300, y: 470 },
-      imports: [],                   // import log {at, kind, name, n, ok, msg}
+      imports: [],
+      // Phase 4: shared life state (js/life/*). Per-OC parts live in chars[id].life
+      life: {
+        v: 1, clock: { gm: 0 }, lastReal: 0, offline: null,
+        rel: {},                     // 'a>b' → directed relationship metrics (OC.Mind.rel)
+        flags: {}, said: {},         // story flags; dialogue cooldown memory  charId → lineId → game minute
+        ev: { last: {}, once: {}, lastAny: 0, log: [] },   // event engine bookkeeping (no repeats / duplicates)
+        dlg: { custom: [], off: [], events: [] },          // player-made dialogue lines / events; disabled built-ins
+        notices: [], log: [],
+        settings: { autonomy: 'full', playerAuto: false, deny: [], lockRel: false, growth: true, bubbles: true, romance: { enabled: false, adult: {}, forbid: [], fixed: {} } },
+      },                   // import log {at, kind, name, n, ok, msg}
       settings: {
         theme: 'system', perf: 'balanced', custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
-        time: 'real', weather: 'auto', control: 'tap', haptics: true, showFps: false, reduceMotion: false, petScale: 1,
+        time: 'real', timeSpeed: 1, weather: 'auto', control: 'tap', haptics: true, showFps: false, reduceMotion: false, petScale: 1,
       },
     };
   }
@@ -51,9 +61,16 @@
     let data = null;
     if (raw) { try { data = JSON.parse(raw); } catch (e) { console.warn('[store] corrupt save, starting fresh'); } }
     if (data && data.v === 1) data = OC.Chars.migrateV1(data);   // single OC → roster; dataURL anims migrate to assets later
-    S = data && data.v === 2 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 2) data = migrateV2(data);             // Phase 3 → Phase 4: add life state (additive, nothing removed)
+    S = data && data.v === 3 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
+  }
+  /** v2 → v3: life simulation fields. Characters get theirs from OC.Chars.normalize(); old needs keep their values */
+  function migrateV2(d) {
+    d.v = 3; d.life = d.life || {}; d.life.lastReal = Date.now();   // no offline catch-up across the upgrade
+    for (const c of Object.values(d.chars || {})) { if (c.needs) delete c.needs.t; if (c.growth) { c.growth.rejected = c.growth.rejected || {}; c.growth.muted = c.growth.muted || []; } }
+    d.migratedV2 = Date.now(); return d;
   }
   function persist() {
     dirty = false; clearTimeout(saveTimer);
@@ -91,9 +108,10 @@
 
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || (d.v !== 1 && d.v !== 2)) throw new Error('不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3].includes(d.v)) throw new Error(d && d.v > 3 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
-    S = deepMerge(fresh(), d); persist(); emit('reset');
+    if (d.v === 2) d = migrateV2(d);
+    S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }
 

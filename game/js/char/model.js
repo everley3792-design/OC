@@ -63,6 +63,10 @@
     ['sad', '難過', 'loop', ['idle']], ['surprised', '驚訝', 'once', ['idle']], ['hurt', '受傷反應', 'once', ['surprised', 'idle']],
     ['greet', '打招呼', 'once', ['happy', 'idle']], ['pet', '被撫摸', 'loop', ['happy', 'idle']], ['drag', '被拖曳', 'loop', ['surprised', 'idle']],
     ['climb', '攀爬', 'loop', ['walk', 'idle']],
+    // Phase 4 life actions (procedural poses in render.js; players can replace them with frames)
+    ['read', '閱讀', 'loop', ['sit', 'idle']], ['think', '思考', 'loop', ['idle']], ['stretch', '伸展', 'loop', ['happy', 'idle']],
+    ['tend', '照顧植物', 'loop', ['idle']], ['talk', '說話', 'loop', ['idle']], ['dance', '跳舞', 'loop', ['play', 'happy', 'idle']],
+    ['cry', '哭泣', 'loop', ['sad', 'idle']], ['laugh', '大笑', 'loop', ['happy', 'idle']],
   ];
   const ACTION_ZH = Object.fromEntries(ACTIONS.map((a) => [a[0], a[1]]));
   const SPECIES = [['cat', '貓'], ['bunny', '兔'], ['bear', '熊'], ['dog', '狗'], ['fox', '狐'], ['sprite', '小精靈'], ['other', '其他']];
@@ -77,6 +81,15 @@
     // fur pattern
     furPattern: 'none', patternCol: '#E7A86A',
   };
+  /** per-OC life state (emotions, memories, records, habits, wishes, skills, routine, bond with the player) */
+  function lifeBlank() {
+    return {
+      emo: { list: [], dom: 'neutral', domAt: 0, recent: [], cd: {} },
+      mem: { recent: [], long: [], seq: 0 },
+      rec: { act: {}, seq: {}, place: {}, placeZh: {}, lastAct: null, social: 0, nightAwake: 0 },
+      habits: [], wishes: [], skills: {}, routine: { sleep: null, wake: null }, player: { aff: 0, fam: 0, last: 0 }, cur: null, log: [],
+    };
+  }
   function newId() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function blank(origin = 'custom') {
     return {
@@ -89,9 +102,10 @@
       look: clone(LOOK_DEFAULT), parts: [],
       appearance: { mode: 'rig', scale: 1 },
       actions: {},               // action → { any|front|back|left|right: animId }
-      needs: { food: 80, energy: 85, mood: 75, social: 60, t: Date.now() },
-      growth: { suggestions: [], locked: [], history: [] },
+      needs: { food: 80, energy: 85, sleep: 80, fun: 70, social: 60, comfort: 75, interest: 65, active: 70, mood: 75, t: Date.now() },
+      growth: { suggestions: [], locked: [], history: [], rejected: {}, muted: [] },
       status: { onIsland: true },
+      life: lifeBlank(),          // Phase 4 inner life (js/life/mind.js); see docs/life-format.md
     };
   }
   /** fill missing fields (schema evolution) */
@@ -124,7 +138,8 @@
   function duplicate(id) {
     const src = get(id); if (!src) return null; const c = clone(src); c.id = newId(); c.created = c.updated = Date.now(); c.profile.name = (src.profile.name || '') + ' 2';
     // animations: reference the same docs until edited (copy-on-write in the studio)
-    c.status.onIsland = false; c.growth = { suggestions: [], locked: [], history: [] };
+    c.status.onIsland = false; c.growth = { suggestions: [], locked: [], history: [], rejected: {}, muted: [] };
+    c.life = Object.assign(lifeBlank(), { routine: clone(src.life.routine) });   // a copy is a new OC: no shared memories
     const i = S().roster.indexOf(id); S().chars[c.id] = c; S().roster.splice(i + 1, 0, c.id); St.touch('chars', { id: c.id, added: true }); return c;
   }
   function remove(id) {
@@ -182,6 +197,7 @@
   // ---------------- growth: discoveries need consent ----------------
   /** propose a new trait/hobby; never applied silently */
   function suggest(c, type, value, reason) {
+    if (OC.Mind) return OC.Mind.suggest(c, type, value, reason);
     const g = c.growth; if (g.locked.includes(value)) return false;
     if (type === 'trait' && c.personality.traits.includes(value)) return false;
     if (type === 'hobby' && c.profile.hobbies.includes(value)) return false;
@@ -189,6 +205,7 @@
     g.suggestions.push({ id: 'g' + Date.now().toString(36), type, value, reason, at: Date.now() }); St.touch('growth', { id: c.id }); St.emit('growthSuggest', { c, type, value, reason }); return true;
   }
   function resolve(c, sid, decision) {
+    if (OC.Mind) return OC.Mind.resolve(c, sid, decision);
     const g = c.growth, s = g.suggestions.find((x) => x.id === sid); if (!s) return;
     g.suggestions = g.suggestions.filter((x) => x.id !== sid);
     if (decision === 'accept') { if (s.type === 'trait') c.personality.traits.push(s.value); else c.profile.hobbies.push(s.value); }
@@ -226,5 +243,5 @@
     s.legacyAnims = []; s.legacyAppearance = null; St.persist(); return n;
   }
 
-  OC.Chars = { SLIDERS, TRAITS, QUIRKS, SPEECH, ACTIONS, ACTION_ZH, SPECIES, LOOK_DEFAULT, blank, normalize, fromPreset, all, get, active, add, save, duplicate, remove, setActive, move, reorder, name, behavior, typeTitle, speak, suggest, resolve, has, migrateV1, migrateLegacyAnims, newId, clone };
+  OC.Chars = { lifeBlank, SLIDERS, TRAITS, QUIRKS, SPEECH, ACTIONS, ACTION_ZH, SPECIES, LOOK_DEFAULT, blank, normalize, fromPreset, all, get, active, add, save, duplicate, remove, setActive, move, reorder, name, behavior, typeTitle, speak, suggest, resolve, has, migrateV1, migrateLegacyAnims, newId, clone };
 })();

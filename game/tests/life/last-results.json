@@ -1,0 +1,177 @@
+{
+ "at": "2026-11-07T12:37:25.757Z",
+ "results": [
+  {
+   "name": "3a 兩個 OC 相遇並聊天（輪流說話、面對面）",
+   "ok": true,
+   "detail": "fam 0 → 4"
+  },
+  {
+   "name": "3b 雙方都留下共同回憶",
+   "ok": true,
+   "detail": {
+    "a": [
+     "和小空聊天"
+    ],
+    "b": [
+     "和栗子聊天"
+    ]
+   }
+  },
+  {
+   "name": "3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）",
+   "ok": true,
+   "detail": {
+    "sa": "bench@356#0",
+    "sb": "bench@356#1",
+    "d": 18
+   }
+  },
+  {
+   "name": "3d 關係提升並影響之後的互動傾向（社交分數上升、對話可引用回憶）",
+   "ok": false,
+   "detail": {
+    "aff": 31,
+    "score": "0.92 → 0.67",
+    "mem": "和小空一起休息"
+   }
+  },
+  {
+   "name": "3e 成為朋友 → 里程碑事件與回憶",
+   "ok": true,
+   "detail": {
+    "t": "friend",
+    "m": [
+     "和小空成為了朋友",
+     "第一次認識了小空"
+    ]
+   }
+  },
+  {
+   "name": "4a 雨天閱讀紀錄 → 提出「雨天閱讀」習慣建議（附原因）",
+   "ok": true,
+   "detail": {
+    "id": "gmw6e1l6g3xl",
+    "v": "rainread",
+    "ask": "麻糬最近總喜歡在雨天找個安靜的地方閱讀……要讓牠保留「雨天閱讀」這個習慣嗎？",
+    "why": "最近 8 次「閱讀」中有 8 次是在雨天（共約 4 小時）"
+   }
+  },
+  {
+   "name": "4b 長期閱讀 → 提出「熱愛閱讀」特質建議",
+   "ok": true,
+   "detail": "麻糬讀了好多書，要讓牠多一個特質「熱愛閱讀」嗎？"
+  },
+  {
+   "name": "4c 接受 → 習慣真的改變行為（雨天閱讀分數提高）",
+   "ok": true,
+   "detail": "1.54 → 1.99"
+  },
+  {
+   "name": "4d 拒絕 → 短期內不再提出；冷卻後才可能再提",
+   "ok": true,
+   "detail": {
+    "habits": [
+     "雨天閱讀"
+    ],
+    "before": 1.5448468331414045,
+    "afterS": 1.9948468331414044,
+    "again": false,
+    "came": true,
+    "locked": false,
+    "traits": [
+     "cheerful",
+     "curious"
+    ],
+    "hist": [
+     "熱愛閱讀:lock",
+     "熱愛閱讀:reject",
+     "雨天閱讀:accept"
+    ]
+   }
+  },
+  {
+   "name": "4e 鎖定 → 永遠不再提出，特質沒有被偷偷加上",
+   "ok": true,
+   "detail": [
+    "熱愛閱讀:lock",
+    "熱愛閱讀:reject",
+    "雨天閱讀:accept"
+   ]
+  },
+  {
+   "name": "4f 稍後決定（不再通知但保留）、關閉同類建議",
+   "ok": false,
+   "detail": {
+    "pend": false,
+    "stillListed": true,
+    "mutedHabit": true,
+    "muted": [
+     "habit"
+    ]
+   }
+  },
+  {
+   "name": "5a 天氣事件（下雨了）觸發且有冷卻、不重複",
+   "ok": false,
+   "detail": {
+    "wx": "no",
+    "again": true
+   }
+  },
+  {
+   "name": "5b 時間事件（起床時沒睡好／早晨）",
+   "ok": false,
+   "detail": {
+    "at": 1794055034760,
+    "gm": 29955342,
+    "id": "rainArrives",
+    "zh": "下雨了",
+    "a": "cmw6e0ipvu3y5",
+    "b": null,
+    "why": "done"
+   }
+  },
+  {
+   "name": "5c 物品事件：餵喜歡的食物 → 願望實現、情緒、和你的好感",
+   "ok": false,
+   "detail": {
+    "wish": "active",
+    "emo": [
+     "content:吃飯",
+     "happy:有了新的習慣",
+     "proud:閱讀升到 Lv.1"
+    ],
+    "aff": 0
+   }
+  },
+  {
+   "name": "5d 情緒／需求事件（寂寞的時候）",
+   "ok": true,
+   "detail": "stargaze·時段 stargaze·時段 giftPlayer·aff_player nostalgia·emo lonelyMoment✓ confess·romance confess·romance"
+  },
+  {
+   "name": "5e 關係事件（最好的朋友）",
+   "ok": false,
+   "detail": {
+    "t": "bestfriend",
+    "log": [
+     "rainArrives",
+     "becameFriends",
+     "firstMeet",
+     "rainArrives"
+    ]
+   }
+  },
+  {
+   "name": "5f 事件不會太頻繁（全域間隔）",
+   "ok": true,
+   "detail": 0
+  },
+  {
+   "name": "沒有 JavaScript 錯誤",
+   "ok": true,
+   "detail": []
+  }
+ ]
+}

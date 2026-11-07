@@ -194,6 +194,9 @@
     anchorDraw('tail', 'front', tailAt[0], tailAt[1], 0, tailSide < 0);
     anchorDraw('body', 'front', 0, bodyY, 0); anchorDraw('feet', 'front', 0, 0, 0);
     // comic overlays
+    if (s.book && back < 0.5) { ctx.save(); ctx.translate(fx * 3, bodyY + 3); ctx.fillStyle = '#F26B5B'; ctx.strokeStyle = '#8E3A33'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(-6, -2.5); ctx.lineTo(0, -1.2); ctx.lineTo(6, -2.5); ctx.lineTo(6, 2.5); ctx.lineTo(0, 3.6); ctx.lineTo(-6, 2.5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#FFF7EC'; ctx.fillRect(-5.2, -1.6, 4.6, 3.6); ctx.fillRect(0.6, -1.6, 4.6, 3.6); ctx.restore(); }
+    if (s.can) { ctx.save(); ctx.translate(11 + fx * 2, bodyY + 4); ctx.fillStyle = '#5BC0EB'; ctx.strokeStyle = '#2F7EA8'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.rect(-3, -3, 6, 5); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(3, -1); ctx.lineTo(7, -3.5); ctx.stroke(); const q = (t * 2) % 1; ctx.fillStyle = 'rgba(127,196,245,' + (1 - q) + ')'; ctx.fillRect(7, -3 + q * 6, 0.8, 1.4); ctx.restore(); }
+    if (s.thought) { const q = (t * 0.5) % 1; ctx.fillStyle = rgba('#9AA3B5', 0.8); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(10 + i * 3.2, headY - Hry - 1 - i * 3 - q * 1.5, 0.8 + i * 0.45, 0, Math.PI * 2); ctx.fill(); } }
     if (s.zzz) { const q = (t * 0.6) % 1; ctx.fillStyle = rgba('#8E7BE0', 1 - q); ctx.font = 'bold 7px sans-serif'; ctx.fillText('z', 12 + q * 6, headY - Hry - q * 10); ctx.fillText('Z', 16 + q * 8, headY - Hry - 6 - q * 10); }
     ctx.restore();
 
@@ -259,6 +262,7 @@
     else mouth(ctx, L, s, s.mouth || L.mouthStyle || 'cat', t);
     ctx.restore();
     if (s.sweat) { ctx.save(); ctx.translate(13, -8); ctx.fillStyle = '#9FD3FF'; ctx.strokeStyle = '#4C8DD0'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(0, -4); ctx.quadraticCurveTo(3, 1, 0, 2.5); ctx.quadraticCurveTo(-3, 1, 0, -4); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    if (s.tear) { ctx.save(); ctx.fillStyle = '#7FC4F5'; const q = (t * 0.9) % 1; ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.ellipse(-5.5, -4 + q * 6, 0.9, 1.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(5.5, -3 + ((q + 0.5) % 1) * 6, 0.9, 1.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     if (s.shock) { ctx.save(); ctx.strokeStyle = rgba('#5B6FD6', 0.75); ctx.lineWidth = 1; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 2.4, -12); ctx.lineTo(i * 2.4, -7.5); ctx.stroke(); } ctx.restore(); }
   }
   /** rig-space anchor positions in the neutral pose (for editor handles) */

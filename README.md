@@ -2,9 +2,12 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.3.0-alpha（第三階段：角色創作）
+## 目前版本 0.4.0-alpha（第四階段：深度生活模擬）
 
-- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+）
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.4.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.4.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+）
+- 第四階段完成紀錄、測試結果與未完成項目：[`docs/phase4-report.md`](docs/phase4-report.md)；截圖：`deliverables/phase4/`
+- 生活系統規格：[行為引擎](docs/behavior-engine.md) · [生活資料格式](docs/life-format.md) · [事件規則](docs/event-rules.md) · [情緒與回憶](docs/memory-model.md)
+- 自動化情境測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/life/run.js`
 - **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）
 - 截圖：[`deliverables/phase2/screens-contact-sheet.jpg`](deliverables/phase2/screens-contact-sheet.jpg)
 - 第三階段完成紀錄與測試：[`docs/phase3-report.md`](docs/phase3-report.md)（第二階段：[`docs/phase2-report.md`](docs/phase2-report.md)）
