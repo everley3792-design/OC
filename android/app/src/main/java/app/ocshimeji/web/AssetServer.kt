@@ -15,7 +15,17 @@ import java.io.IOException
  * uses — implemented here with framework APIs only. Everything is local: no network or dev
  * server is needed; localStorage persists per origin across launches.
  */
-class AssetServer(private val ctx: Context) : WebViewClient() {
+class AssetServer(private val ctx: Context, private val listener: Listener? = null) : WebViewClient() {
+    interface Listener { fun onRendererGone(crashed: Boolean): Boolean; fun onMainFrameError(detail: String) }
+
+    /** Without this override a WebView renderer crash (e.g. GPU/WebGL) kills the whole app process. */
+    override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean =
+        listener?.onRendererGone(detail.didCrash()) ?: true
+
+    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+        if (request.isForMainFrame) listener?.onMainFrameError("${error.errorCode} ${error.description} — ${request.url}")
+    }
+
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val url = request.url

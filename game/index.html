@@ -29,6 +29,38 @@
   <div id="fade" style="position:absolute;inset:0;background:var(--bg);opacity:0;pointer-events:none;z-index:80;transition:opacity 420ms var(--ease-in-out)"></div>
   <div id="boot"><div class="logo">OC <b>Shimeji</b></div></div>
 </div>
+<script>
+  // Boot guard — deliberately old-style JS so it runs (and can explain the problem) on any WebView.
+  (function () {
+    var errs = [];
+    window.__ocErrs = errs;
+    window.addEventListener('error', function (e) { errs.push((e.message || 'error') + ' @ ' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || 0)); }, true);
+    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; errs.push('Promise: ' + (r && r.message ? r.message : r)); });
+    var done = false;
+    function fail(title, msg, detail) {
+      if (done) return; done = true; window.__ocFailed = true;
+      detail = (detail || '') + '\nURL: ' + location.href + '\nUA: ' + navigator.userAgent + (errs.length ? '\n\n' + errs.join('\n') : '');
+      try { if (window.OCNative && OCNative.bootFailed) { OCNative.bootFailed(title, msg, detail); return; } } catch (x) {}
+      var show = function () {
+        var b = document.getElementById('boot'); if (!b) { b = document.createElement('div'); b.id = 'boot'; document.body.appendChild(b); }
+        b.className = ''; b.style.cssText = 'position:absolute;inset:0;z-index:200;background:#FFF8E7;color:#5B4433;padding:48px 20px;overflow:auto;font:15px sans-serif;display:block';
+        b.innerHTML = '<h2 style="margin:0 0 8px">' + title + '</h2><p>' + msg + '</p><pre style="white-space:pre-wrap;font-size:11px;background:#FFF3D6;padding:12px;border-radius:12px"></pre>';
+        b.getElementsByTagName('pre')[0].textContent = detail;
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+    }
+    window.__ocFail = fail;
+    var miss = [];
+    try { new Function('a', 'return a ?? 1'); } catch (e) { miss.push('ES2020 (??)'); }
+    if (!Element.prototype.replaceChildren) miss.push('Element.replaceChildren');
+    if (!(window.CSS && CSS.supports && CSS.supports('aspect-ratio', '1'))) miss.push('CSS aspect-ratio');
+    var gl = null;
+    try { var c = document.createElement('canvas'); gl = c.getContext('webgl2') || c.getContext('webgl'); if (gl && gl.getExtension('WEBGL_lose_context')) gl.getExtension('WEBGL_lose_context').loseContext(); } catch (e) {}
+    if (miss.length) fail('系統 WebView 版本太舊', '這支手機的網頁引擎缺少遊戲需要的功能。請更新「Android System WebView」或 Chrome 後再開啟。', '缺少：' + miss.join(', '));
+    else if (!gl) fail('無法使用 3D 顯示（WebGL）', '這支手機的網頁引擎目前不能使用 WebGL。請更新「Android System WebView」，或在開發者選項中確認沒有停用 GPU 繪圖。', 'WebGL context unavailable');
+    else setTimeout(function () { if (!window.__ocBooted) fail('遊戲沒有順利啟動', '啟動花了太久或發生錯誤。請試試「用省電模式重新開啟」。', 'boot timeout (20 s)'); }, 20000);
+  })();
+</script>
 <script src="lib/three.min.js"></script>
 <script src="js/core/oc.js"></script>
 <script src="js/art/vec.js"></script>

@@ -35,9 +35,11 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_1_8); freeCompilerArgs.ad
 sourceSets["main"].kotlin.srcDir("src/main/java")
 sourceSets["main"].java.srcDir(gen)
 
+val proguardTool by configurations.creating
 dependencies {
     compileOnly(files(compileJar))
     implementation(project(":core:pet"))
+    proguardTool("com.guardsquare:proguard-base:7.10.0")
 }
 
 val checkToolchain by tasks.registering {
@@ -73,12 +75,31 @@ val dexInputs by tasks.registering(Sync::class) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+// dx passes Java 8 invokedynamic lambdas straight through (as invoke-custom → LambdaMetafactory),
+// which ART does not implement: the app would crash at launch. ProGuard backports them first.
+val desugaredJar = layout.buildDirectory.file("desugared/classes.jar")
+val desugar by tasks.registering(JavaExec::class) {
+    dependsOn(dexInputs, checkToolchain)
+    val rules = file("proguard-offline.pro")
+    inputs.dir(layout.buildDirectory.dir("dexin")); inputs.file(rules); outputs.file(desugaredJar)
+    classpath = proguardTool; mainClass.set("proguard.ProGuard")
+    doFirst { desugaredJar.get().asFile.parentFile.mkdirs() }
+    args("@" + rules.path, "-injars", layout.buildDirectory.dir("dexin").get().asFile.path, "-outjars", desugaredJar.get().asFile.path, "-libraryjars", compileJar.path)
+}
+// fail the build if any lambda bootstrap survived (would crash on device)
+val checkNoIndy by tasks.registering {
+    dependsOn(desugar); inputs.file(desugaredJar)
+    doLast {
+        val bad = zipTree(desugaredJar).matching { include("**/*.class") }.filter { f -> f.readBytes().let { b -> String(b, Charsets.ISO_8859_1).let { it.contains("LambdaMetafactory") || it.contains("StringConcatFactory") } } }.files
+        require(bad.isEmpty()) { "invokedynamic bootstrap still present in: " + bad.take(10).joinToString { it.name } }
+    }
+}
 val dex by tasks.registering(Exec::class) {
-    dependsOn(dexInputs)
+    dependsOn(desugar, checkNoIndy)
     val out = apkDir.map { it.file("classes.dex") }
-    inputs.dir(layout.buildDirectory.dir("dexin")); outputs.file(out)
+    inputs.file(desugaredJar); outputs.file(out)
     doFirst { apkDir.get().asFile.mkdirs() }
-    commandLine(dxTool, "--dex", "--min-sdk-version=26", "--output=${out.get().asFile.path}", layout.buildDirectory.dir("dexin").get().asFile.path)
+    commandLine(dxTool, "--dex", "--min-sdk-version=26", "--output=${out.get().asFile.path}", desugaredJar.get().asFile.path)
 }
 
 val packageRes by tasks.registering(Exec::class) {

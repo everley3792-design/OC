@@ -1,6 +1,6 @@
 # 第二階段完成紀錄與測試報告
 
-版本 **0.2.0-alpha（versionCode 2）**　分支 `claude/oc-shimeji-visual-design-qcc3xy`
+版本 **0.2.1-alpha（versionCode 3）**（0.2.0 實機無法開啟，見下方「實機回報 #1」）　分支 `claude/oc-shimeji-visual-design-qcc3xy`
 標示：✅ 已實作且在本環境驗證　🟡 已實作，但只能在實機驗證（本環境沒有 Android 裝置/模擬器）　🔒 刻意標示「未開放」　⏭ 依指示延後
 
 ## 交付物
@@ -8,12 +8,12 @@
 |---|---|
 | 遊戲原始碼（離線網頁，打包進 APK） | `game/` |
 | Android 專案 | `android/`（`app` 外殼、`core:*` 純 Kotlin） |
-| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.0-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
-| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.0-alpha-debug.apk` |
+| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.1-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
+| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.1-alpha-debug.apk` |
 | 截圖（25 張，2×） | `deliverables/phase2/screens/`、總覽 `deliverables/phase2/screens-contact-sheet.jpg` |
 | 文件 | `docs/design-system.md`、`docs/ui-components.md`、`docs/art-guidelines.md`、`docs/android-build.md`、`docs/architecture.md`、`docs/roadmap.md`、`CLAUDE.md` |
 
-安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.0-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
+安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.1-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
 
 ## 一、3D 場景與模型
 | 項目 | 狀態 |
@@ -86,6 +86,20 @@
   - 模擬 `OCNative`：開機主題、安全區、桌寵影格輸出、啟動桌寵、返回鍵堆疊、生命週期存檔、匯出存檔分享。
   - APK 內的 `assets/game` 與原始碼逐檔一致，解包後的遊戲可無錯誤啟動。
 - 測試中找到並修正：x-ray 剪影 z-fighting、草葉觸發剪影、子頁按鈕被導覽列蓋住、托盤收起時露出、對話/佈置與托盤重疊、CSS 自訂屬性未套用（色票/需求色）、佈置幽靈預設在無效位置、取消佈置留下底框、可放置未擁有家具、首次啟動主題來源、APK 管線未宣告輸入導致 APK 過期、開關熱區過小。
+
+## 實機回報 #1（0.2.0-alpha）：「程式無法開啟」→ 0.2.1-alpha
+
+使用者在手機上安裝 0.2.0 後無法開啟。本環境沒有裝置、也拿不到 logcat，因此做了以下調查與處理：
+
+| 檢查 | 結果 |
+|---|---|
+| Manifest、資源 ID（R.java ↔ resources.arsc）、啟動流程的 API 等級 | 正常 |
+| dex 內容 | **發現錯誤**：Kotlin 標準庫與 core 模組含 Java 8 `invokedynamic` lambda，`dx` 原樣輸出為 `invoke-custom` → `LambdaMetafactory`，而 Android 框架沒有這個類別（已用 android-all 確認）→ 執行到相關程式就會閃退 |
+| 修正 | 建置流程加入 ProGuard 改寫 lambda（`desugar`），並加 `checkNoIndy` 防止再發生。新 dex：0 個 call site、類別數 1433 → 305 |
+| 是否就是「打不開」的原因 | **不確定**。啟動流程直接呼叫的標準庫函式本身不含 lambda，因此這個錯誤可能是在稍後（桌寵、匯出等）才觸發。另外兩個常見原因（WebView 繪圖程序崩潰會帶走整個 App、系統 WebView 太舊）在 0.2.0 都沒有處理 |
+| 因此 0.2.1 另外加入 | 閃退紀錄與下次開啟的錯誤畫面、`onRenderProcessGone`、WebView 版本檢查、網頁開機防護與 20 秒看門狗、弱機自動省電（見 `docs/android-build.md` §7）。以 Chromium 模擬：無 WebGL、舊 WebView、啟動例外、逾時、原生交接都會顯示正確說明 |
+
+**下一步需要使用者協助**：安裝 0.2.1。若仍無法開啟，畫面會顯示錯誤資訊（或在下次開啟時顯示），請按「複製錯誤資訊」貼回，即可定位真正原因。
 
 ## 尚未驗證（必須在實機確認，不宣稱完成）
 1. 安裝與啟動、WebView WebGL 在實機的畫面與 **60fps**、記憶體、發熱。

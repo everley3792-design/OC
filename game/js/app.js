@@ -540,17 +540,22 @@
 
   // =============================== boot ===============================
   async function boot() {
+    if (window.__ocFailed) return;   // the boot guard already explained a fatal problem
     St.load();
     // the native preference also drives the splash / window background → it is the source of truth
     if (NATIVE) { try { const m = NATIVE.getThemeMode(); if (['light', 'dark', 'system'].includes(m)) S().settings.theme = m; } catch (e) { /* */ } }
     applyTheme(); applyMotion();
+    // low-power start: explicit (?safe=1 from the native error screen) or a weak phone on first run
+    const weak = (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+    if (/[?&]safe=1/.test(location.search) || (!S().onboarded && weak)) { S().settings.perf = 'saver'; St.touch(); }
     if (!S().oc) S().oc = null;
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
-    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, ghostMoved: () => syncPlace(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => toast('畫面需要重新整理', 'refresh'), panned: () => {} } });
+    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, ghostMoved: () => syncPlace(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
     Wd.hourFn = () => OC.Clock.hour(); Wd.weatherFn = () => OC.Clock.weather();
     requestAnimationFrame(loop);
-    $('#boot').classList.add('done'); setTimeout(() => $('#boot').remove(), 500);
+    window.__ocBooted = true;
+    $('#boot').classList.add('done'); setTimeout(() => { const b = $('#boot'); if (b && b.classList.contains('done')) b.remove(); }, 500);
     if (!S().onboarded || !S().oc) await onboarding();
     buildHUD(); buildTabbar(); buildBag(); buildDialogue(); buildJoystick();
     Gm.tickNeeds();
@@ -561,5 +566,5 @@
   }
 
   OC.App = { tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, spriteOf, mySprite, invalidateSprite, exportPet, importImage, exportSave, travel, startPlacement, reactEat, goToNpc, get player() { return player; }, get npcs() { return npcs; }, setDecorate };
-  boot().catch((e) => { console.error(e); const b = document.getElementById('boot'); if (b) b.textContent = '啟動失敗：' + e.message; });
+  boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

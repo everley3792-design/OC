@@ -73,5 +73,8 @@ class NativeBridge(private val act: MainActivity) {
 
     @JavascriptInterface fun shareSave(json: String, name: String) = act.runOnUiThread { runCatching { act.shareSave(json, name) } }
 
+    /** the web boot guard reports a fatal start-up problem (old WebView, no WebGL, script error, timeout) */
+    @JavascriptInterface fun bootFailed(title: String, message: String, detail: String) = act.runOnUiThread { act.failWeb(title, message, detail) }
+
     @JavascriptInterface fun haptic() = act.runOnUiThread { act.web.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP) }
 }
