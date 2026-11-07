@@ -8,12 +8,12 @@
 |---|---|
 | 遊戲原始碼（離線網頁，打包進 APK） | `game/` |
 | Android 專案 | `android/`（`app` 外殼、`core:*` 純 Kotlin） |
-| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
-| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.3-alpha-debug.apk` |
+| **Debug APK** | `deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
+| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.3.0-alpha-debug.apk` |
 | 截圖（25 張，2×） | `deliverables/phase2/screens/`、總覽 `deliverables/phase2/screens-contact-sheet.jpg` |
 | 文件 | `docs/design-system.md`、`docs/ui-components.md`、`docs/art-guidelines.md`、`docs/android-build.md`、`docs/architecture.md`、`docs/roadmap.md`、`CLAUDE.md` |
 
-安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
+安裝：`adb install -r deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
 
 ## 一、3D 場景與模型
 | 項目 | 狀態 |

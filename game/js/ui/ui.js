@@ -4,6 +4,8 @@
  */
 (function () {
   'use strict';
+  // conditional children (cond ? node : null) are common in the UI code: never render them as "null"
+  for (const P of [Element.prototype, DocumentFragment.prototype]) for (const m of ['append', 'replaceChildren', 'prepend']) { const orig = P[m]; P[m] = function (...k) { return orig.apply(this, k.filter((x) => x != null && x !== false)); }; }
   function h(tag, attrs, ...kids) {
     const [t, ...cls] = tag.split('.'); const el = document.createElement(t || 'div');
     if (cls.length) el.className = cls.join(' ');
@@ -66,6 +68,9 @@
     phone: '<rect x="6.5" y="3" width="11" height="18" rx="3"/><path d="M11 17.5h2"/>', layers: '<path d="m12 4.5 8 4.5-8 4.5-8-4.5z"/><path d="m4 13 8 4.5 8-4.5"/>', hand: '<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11V5a1.5 1.5 0 0 1 3 0v6M14 11V6.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 6.5-6 6.5-2.5 0-4-1.2-5.5-3.6L4 14.3a1.4 1.4 0 0 1 2.3-1.5L8 15"/>',
     walk: '<circle cx="13" cy="5" r="2"/><path d="M12 9l-1.5 5 2.5 2-.5 4M10.5 14 8 19.5M11.5 10 8 12.5M12.3 10.5 16 12.5"/>',
     music: '<path d="M9 17V5.5L18 4v11.5"/><ellipse cx="7" cy="17" rx="2.5" ry="2"/><ellipse cx="16" cy="15.5" rx="2.5" ry="2"/>',
+    dice: '<rect x="4.5" y="4.5" width="15" height="15" rx="4"/><circle cx="8.8" cy="8.8" r="1.2" fill="currentColor"/><circle cx="15.2" cy="15.2" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+    redo: '<path d="M15 7l4 4-4 4"/><path d="M19 11h-9a5 5 0 0 0 0 10h2"/>',
+    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
     home: '<path d="M4.5 11 12 4.5l7.5 6.5M6.5 9.5V19h11V9.5"/><path d="M10 19v-5h4v5"/>', sleep: '<path d="M4 18h16M5 18v-6h14v6M7 12V9.5A1.5 1.5 0 0 1 8.5 8H11v4"/><path d="M14 4.5h3l-3 3h3"/>',
   };
   function icon(name, cls = '') { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ic ' + cls); s.setAttribute('aria-hidden', 'true'); s.innerHTML = IC[name] || IC.info; return s; }

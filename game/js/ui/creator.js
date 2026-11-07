@@ -50,7 +50,7 @@
         const s = STEPS[step];
         stepTitle.textContent = s.t; backBtn.style.visibility = step ? 'visible' : 'hidden'; skipBtn.style.visibility = s.skip ? 'visible' : 'hidden';
         dots.replaceChildren(...STEPS.map((_, i) => h('i', { class: i === step ? 'on' : '' })));
-        next.replaceChildren(s.id === 'debut' ? icon('sparkle', 's') : null, s.id === 'debut' ? '登場！' : '下一步');
+        next.replaceChildren(...(s.id === 'debut' ? [icon('sparkle', 's'), '登場！'] : ['下一步']));
         stageBox.replaceChildren(s.id === 'method' ? h('div.center', { style: { margin: '4px 0 8px' } }, h('div.logo', { style: { fontSize: o.first ? '34px' : '24px' } }, 'OC ', h('b', null, 'Shimeji')), o.first ? h('p.muted', { style: { margin: '6px 0 0' } }, '創造你的原創角色，讓他住進小島與手機桌面。') : null) : stage.el);
         stage.restart();
         body.replaceChildren(...build(s.id));
@@ -87,7 +87,7 @@
           out.push(S_.expressions(c, ctx));
           return out;
         }
-        if (id === 'profile') { ctx.full = level === 'detailed'; return [S_.profile(c, Object.assign(ctx, { level }))]; }
+        if (id === 'profile') { ctx.full = level === 'detailed'; return [S_.profile(c, ctx)]; }
         if (id === 'personality') return [S_.personality(c, ctx)];
         if (id === 'traits') return [S_.traits(c, ctx)];
         if (id === 'quirks') return [S_.quirks(c, ctx)];

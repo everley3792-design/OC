@@ -49,7 +49,7 @@
     const n = count(doc); if (!n) return { i: 0, done: true };
     const T = total(doc), ms = Math.max(0, t * 1000 * (doc.speed || 1) * speed);
     let k = ms, cycle = 0, rev = false;
-    if (doc.loop === 'pingpong' && n > 1) { const span = T * 2 - dur(doc, 0) - dur(doc, n - 1); cycle = Math.floor(ms / span); k = ms % span; if (k >= T) { k = k - T + dur(doc, n - 1); rev = true; } }
+    if (doc.loop === 'pingpong' && n > 1) { const span = T * 2 - dur(doc, 0) - dur(doc, n - 1); cycle = Math.floor(ms / span); k = ms % span; if (k >= T) { k = k - T; rev = true; } }
     else { cycle = Math.floor(ms / T); k = ms % T; }
     const finite = doc.loop === 'once' || (doc.repeat || 0) > 0;
     const cycles = doc.loop === 'once' ? 1 : doc.repeat || Infinity;

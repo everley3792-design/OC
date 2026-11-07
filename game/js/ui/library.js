@@ -78,7 +78,7 @@
     try { toast('讀取中…', 'image'); src = await framesFromFiles(files); } catch (e) { toast(e.message, 'info'); S().imports.unshift({ at: Date.now(), kind: 'file', name: files[0].name, ok: false, msg: e.message }); St.touch(); return null; }
     src.warnings.forEach((w) => toast(w, 'info'));
     return new Promise((resolve) => {
-      const opts = { keyOut: hasOpaqueCorners(src.frames[0].canvas), trim: true, scale: 1, rotate: 0, flip: false, as: o.purpose === 'anim' ? 'anim' : src.frames.length > 1 ? 'anim' : 'assets', sheet: null, fps: 8 };
+      const opts = { keyOut: hasOpaqueCorners(src.frames[0].canvas), trim: true, scale: 1, rotate: 0, flip: false, as: o.returnFrames ? 'anim' : o.purpose === 'anim' ? 'anim' : src.frames.length > 1 ? 'anim' : 'assets', sheet: null, fps: 8 };
       let result = null;
       sheet(`匯入 ${src.frames.length} 張圖片`, (b, api) => {
         const grid = h('div.grid.c4', { style: { marginTop: '8px' } }), info = h('div.muted', { style: { fontSize: 'var(--fs-s)' } });
@@ -92,7 +92,7 @@
           info.textContent = current.length ? `${current.length} 張・${current[0].width}×${current[0].height}px${current.length > 48 ? '（只預覽前 48 張）' : ''}` : '';
         }
         const sheetFields = () => {
-          if (!opts.sheet) { sheetBox.replaceChildren(h('div.hstack', null, h('span.grow', null, '這是 Sprite Sheet（一張圖裡有很多格）'), h('button.btn.s', { on: { click: () => { opts.sheet = { cols: 4, rows: 1, margin: 0, spacing: 0, order: 'row', skipEmpty: true }; opts.as = 'anim'; sheetFields(); preview(); } } }, '切割'))); return; }
+          if (!opts.sheet) { sheetBox.replaceChildren(h('div.hstack', null, h('span.grow', null, '這是 Sprite Sheet（一張圖裡有很多格）'), h('button.btn.s', { on: { click: () => { const sw = src.frames[0].canvas.width, shh = src.frames[0].canvas.height, cols = Math.max(1, Math.round(sw / Math.min(sw, shh))); opts.sheet = { cols, rows: Math.max(1, Math.round(shh / (sw / cols))), margin: 0, spacing: 0, order: 'row', skipEmpty: true }; opts.as = 'anim'; sheetFields(); preview(); } } }, '切割'))); return; }
           const n = (label, k, min, max) => h('label.hstack', { style: { flex: 1, minWidth: '120px' } }, h('span.muted', { style: { fontSize: 'var(--fs-s)' } }, label), h('div.field', { style: { height: '40px', flex: 1 } }, h('input', { type: 'number', min, max, value: opts.sheet[k] || '', placeholder: '自動', on: { change: (e) => { opts.sheet[k] = e.target.value ? +e.target.value : undefined; preview(); } } })));
           sheetBox.replaceChildren(h('div.hstack', null, h('b.grow', null, 'Sprite Sheet 切割'), h('button.btn.s.ghost', { on: { click: () => { opts.sheet = null; sheetFields(); preview(); } } }, '取消切割')),
             h('div.hstack', { style: { flexWrap: 'wrap', marginTop: '8px' } }, n('欄', 'cols', 1, 64), n('列', 'rows', 1, 64), n('格寬', 'cellW', 2, 4096), n('格高', 'cellH', 2, 4096), n('邊界', 'margin', 0, 256), n('間距', 'spacing', 0, 256)),
@@ -105,7 +105,7 @@
           src.frames.length === 1 ? sheetBox : null,
           h('div.card', { style: { marginTop: '10px' } }, opt('去除背景（以角落顏色為準）', 'keyOut'), opt('裁掉透明留白', 'trim'), opt('左右鏡像', 'flip'),
             h('div.hstack', { style: { marginTop: '6px' } }, h('span.grow', null, '旋轉'), seg([['0', '0°'], ['1', '90°'], ['2', '180°'], ['3', '270°']], '0', (v) => { opts.rotate = +v; preview(); })),
-            h('div', { style: { marginTop: '6px' } }, OC.UI.slider({ zh: '縮放' }, 1, (v) => { opts.scale = v; if (!this) preview(); }, { min: 0.1, max: 2, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` }))),
+            h('div', { style: { marginTop: '6px' } }, OC.UI.slider({ zh: '縮放' }, 1, (v) => { opts.scale = v; }, { min: 0.1, max: 2, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` }))),
           h('div.section-title', null, '匯入成'),
           seg([['assets', '個別素材'], ['anim', '動畫影格'], ['part', '角色部件']], opts.as, (v) => { opts.as = v; }),
           h('div', { style: { marginTop: '8px' } }, OC.UI.slider({ zh: '播放速度（作為動畫時）' }, opts.fps, (v) => { opts.fps = v; }, { min: 1, max: 30, step: 1, fmt: (v) => `${v} fps` })),
@@ -119,9 +119,18 @@
       }, { onClose: () => resolve(result) });
     });
   }
+  /** place frames on a fixed canvas (studio frame size), bottom-centre, shrink if larger */
+  function fitTo(canvases, w, hh) { return canvases.map((c) => { if (c.width === w && c.height === hh) return c; const s = Math.min(1, w / c.width, hh / c.height), k = OC.makeCanvas(w, hh), x = k.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, Math.round((w - c.width * s) / 2), Math.round(hh - c.height * s), c.width * s, c.height * s); return k; }); }
   async function commit(canvases, opts, o, rawFrames) {
     const name = (o.name || '匯入').slice(0, 16);
     let result;
+    if (o.returnFrames) {
+      const cs = o.fitTo ? fitTo(canvases, o.fitTo[0], o.fitTo[1]) : canvases, ids = [];
+      for (let i = 0; i < cs.length; i++) ids.push((await A().put(cs[i], { kind: 'frame', name: `${name} ${i + 1}`, owner: o.owner || null })).id);
+      const delays = opts.sheet ? cs.map(() => null) : rawFrames.map((f) => (f.delay && f.delay !== 100 ? f.delay : null));
+      result = { frames: ids, delays, w: cs[0].width, h: cs[0].height, fps: opts.fps };
+      S().imports.unshift({ at: Date.now(), kind: 'frames', name, n: ids.length, ok: true }); St.touch(); o.onDone && o.onDone(result); return result;
+    }
     if (opts.as === 'anim') {
       const delays = opts.sheet ? null : rawFrames.map((f) => f.delay);
       result = await makeAnim(canvases, { name, owner: o.owner, action: o.action || 'idle', dir: o.dir || 'any', fps: opts.fps, delays: delays && rawFrames.length > 1 && rawFrames.some((f) => f.delay && f.delay !== 100) ? delays : null });
@@ -157,7 +166,7 @@
       }, { onClose: () => resolve(done) });
     });
   }
-  async function importPackFile() { const files = await chooseFiles({ multiple: false, accept: '.ocpack,.zip,application/zip' }); if (!files.length) return null; try { const pack = await OC.IO.readPack(await files[0].arrayBuffer()); return packDialog(pack); } catch (e) { toast(e.message, 'info'); return null; } }
+  async function importPackFile() { const files = await chooseFiles({ multiple: false, accept: '.ocpack,.zip,application/zip' }); if (!files.length) return null; if ((await OC.IO.sniff(await files[0].slice(0, 64).arrayBuffer())) !== 'application/zip') { toast(`「${files[0].name}」不是 OC Shimeji 角色包（.ocpack）`, 'info'); return null; } try { const pack = await OC.IO.readPack(await files[0].arrayBuffer()); return packDialog(pack); } catch (e) { toast(e.message, 'info'); return null; } }
 
   // ---------------- picker ----------------
   function pick(o = {}) {

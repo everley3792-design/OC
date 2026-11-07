@@ -71,6 +71,13 @@ class NativeBridge(private val act: MainActivity) {
         true
     }.getOrDefault(false)
 
+    /** binary files from the game (base64), e.g. .ocpack character packs, PNG, sprite sheets. Returns false if too large / invalid. */
+    @JavascriptInterface fun shareFile(name: String, mime: String, base64: String): Boolean {
+        val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull() ?: return false
+        if (bytes.size > 64 * 1024 * 1024) return false
+        act.runOnUiThread { runCatching { act.shareFile(name, mime, bytes) } }
+        return true
+    }
     @JavascriptInterface fun shareSave(json: String, name: String) = act.runOnUiThread { runCatching { act.shareSave(json, name) } }
 
     /** the web boot guard reports a fatal start-up problem (old WebView, no WebGL, script error, timeout) */

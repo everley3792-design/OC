@@ -2,12 +2,13 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 第二階段（目前版本 0.2.3-alpha）
+## 目前版本 0.3.0-alpha（第三階段：角色創作）
 
-- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk)（`adb install -r …`，Android 8.0+）
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.3.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+）
 - **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）
 - 截圖：[`deliverables/phase2/screens-contact-sheet.jpg`](deliverables/phase2/screens-contact-sheet.jpg)
-- 完成紀錄與測試報告（含**尚未在實機驗證**的項目）：[`docs/phase2-report.md`](docs/phase2-report.md)
+- 第三階段完成紀錄與測試：[`docs/phase3-report.md`](docs/phase3-report.md)（第二階段：[`docs/phase2-report.md`](docs/phase2-report.md)）
+- 規格：[角色資料格式](docs/character-format.md) · [動畫系統](docs/animation-system.md) · [素材匯入匯出](docs/asset-io.md)
 - 文件：[Design System](docs/design-system.md) · [UI 元件](docs/ui-components.md) · [美術素材規範](docs/art-guidelines.md) · [Android 建置](docs/android-build.md) · [架構](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [CLAUDE.md](CLAUDE.md)
 
 ---

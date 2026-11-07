@@ -314,7 +314,7 @@
     testChar = c; tab('island'); if (player) { player.key = ''; Wd.setAction(player, action, { priority: 6 }); }
     testBar = h('div.place-bar', { style: { top: 'calc(var(--sat) + 104px)', bottom: 'auto' } },
       h('button.btn.s', { on: { click: () => player && Wd.setAction(player, action, { priority: 6 }) } }, icon('play', 's'), '播放動作'),
-      h('button.btn.s', { on: { click: () => { const t = Wd.nearestWalkable(player.x + (Math.random() - 0.5) * 120, player.y + (Math.random() - 0.5) * 80, 40); if (t) { Wd.setAction(player, 'idle'); Wd.walkTo(player, t.x, t.y); } } } }, icon('walk', 's'), '走走看'),
+      h('button.btn.s', { on: { click: () => { Wd.setAction(player, 'idle'); for (let k = 0; k < 12; k++) { const a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 60, t = Wd.nearestWalkable(player.x + Math.cos(a) * r, player.y + Math.sin(a) * r * 0.7, 30); if (t && Wd.walkTo(player, t.x, t.y)) return; } toast('附近沒有可以走的地方', 'info'); } } }, icon('walk', 's'), '走走看'),
       h('button.btn.s.primary', { on: { click: () => endTest(onReturn) } }, icon('back', 's'), '回工作室'));
     $('#app').append(testBar); testBar.layer = { scrim: false, close: () => endTest(onReturn) }; OC.UI.pushLayer(testBar.layer);
     toast('測試模式：點地面讓角色移動，看看動作在場景中的樣子', 'film');
@@ -557,6 +557,15 @@
   let charsT = 0;
   St.on('chars', () => { clearTimeout(charsT); charsT = setTimeout(() => { if (hud.name) { lastHudKey = ''; updateHUD(); } if (player) player.key = ''; refreshActors(); }, 60); });
   St.on('animations', () => { if (player) player.key = ''; for (const a of Wd.actors) a.key = ''; });
+  // life experience → suggestions (never applied without the player's consent; see OC.Chars.suggest/resolve)
+  St.on('stat', (e) => {
+    const c = me(); if (!c) return; const st = S().stats;
+    if (e.k === 'picked' && st.picked >= 15) OC.Chars.suggest(c, 'trait', 'nature', '最近常常摘花、撿貝殼');
+    if (e.k === 'eaten' && st.eaten >= 15) OC.Chars.suggest(c, 'trait', 'foodie', '吃了好多好吃的東西');
+    if (e.k === 'anims' && st.anims >= 3) OC.Chars.suggest(c, 'trait', 'creative', '做了好幾段動畫');
+    if (e.k === 'talks' && st.talks >= 20) OC.Chars.suggest(c, 'trait', 'social', '常常和居民聊天');
+    if (e.k === 'shakes' && st.shakes >= 10) OC.Chars.suggest(c, 'hobby', '照顧果樹', '搖了很多次果樹');
+  });
   St.on('growthSuggest', (e) => toast(`${OC.Chars.name(e.c)}好像${e.type === 'trait' ? '有了新的個性' : '發現了新興趣'}：「${e.value}」（到角色檔案決定）`, 'sparkle'));
 
   OC.App = { tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, setDecorate, me };

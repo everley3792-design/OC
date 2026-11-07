@@ -111,10 +111,18 @@ class MainActivity : Activity() {
             // <input type=file> (image import / save import) → system document picker
             override fun onShowFileChooser(view: WebView, cb: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 fileCallback?.onReceiveValue(null); fileCallback = cb
-                val accept = params.acceptTypes.firstOrNull { it.isNotBlank() } ?: "*/*"
-                val mime = if (accept.startsWith("image")) "image/*" else if (accept.contains("json")) "application/json" else "*/*"
-                val i = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType(mime)
-                if (mime == "application/json") i.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain", "application/octet-stream"))
+                // accept may be "image/*,.gif,.zip,.ocpack" — map to MIME types the system picker understands
+                val accept = params.acceptTypes.flatMap { it.split(',') }.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                val mimes = LinkedHashSet<String>()
+                for (a in accept) when {
+                    a.contains('/') -> mimes.add(a)
+                    a == ".png" || a == ".gif" || a == ".webp" || a == ".jpg" || a == ".jpeg" || a == ".apng" -> mimes.add("image/*")
+                    a == ".zip" || a == ".ocpack" -> { mimes.add("application/zip"); mimes.add("application/octet-stream"); mimes.add("application/x-zip-compressed") }
+                    a == ".json" -> { mimes.add("application/json"); mimes.add("text/plain") }
+                }
+                val i = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE)
+                if (mimes.size == 1) i.type = mimes.first() else { i.type = "*/*"; if (mimes.isNotEmpty()) i.putExtra(Intent.EXTRA_MIME_TYPES, mimes.toTypedArray()) }
+                if (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 return runCatching { startActivityForResult(Intent.createChooser(i, null), REQ_FILE); true }.getOrElse { fileCallback = null; false }
             }
         }
@@ -231,10 +239,25 @@ class MainActivity : Activity() {
     @Deprecated("startActivityForResult is the API available on the plain Activity base class.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQ_FILE) {
-            val uri = if (resultCode == RESULT_OK) data?.data else null
-            fileCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null); fileCallback = null; return
+            val uris = ArrayList<Uri>()
+            if (resultCode == RESULT_OK && data != null) {
+                val clip = data.clipData
+                if (clip != null) for (k in 0 until clip.itemCount) clip.getItemAt(k).uri?.let { uris.add(it) }
+                else data.data?.let { uris.add(it) }
+            }
+            fileCallback?.onReceiveValue(if (uris.isNotEmpty()) uris.toTypedArray() else null); fileCallback = null; return
         }
         @Suppress("DEPRECATION") super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    /** share any generated file (character pack, PNG, sprite sheet) through the system share sheet */
+    fun shareFile(name: String, mime: String, bytes: ByteArray) {
+        val dir = java.io.File(cacheDir, "share").apply { mkdirs() }
+        dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3_600_000L) it.delete() }   // tidy old shares
+        val f = java.io.File(dir, name.replace(Regex("[^A-Za-z0-9._\\-\\u4e00-\\u9fff]"), "_")); f.writeBytes(bytes)
+        val uri = app.ocshimeji.web.ShareProvider.uriFor(this, f)
+        val send = Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(Intent.createChooser(send, "分享"))
     }
 
     /** share the save JSON as a file through the system share sheet (no storage permission needed) */

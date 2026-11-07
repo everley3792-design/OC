@@ -22,7 +22,9 @@ class ShareProvider : ContentProvider() {
         return if (f.canonicalPath.startsWith(File(ctx.cacheDir, "share").canonicalPath)) f else null
     }
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? = file(uri)?.let { ParcelFileDescriptor.open(it, ParcelFileDescriptor.MODE_READ_ONLY) }
-    override fun getType(uri: Uri) = "application/json"
+    override fun getType(uri: Uri): String = when ((uri.lastPathSegment ?: "").substringAfterLast('.', "").lowercase()) {
+        "png" -> "image/png"; "gif" -> "image/gif"; "webp" -> "image/webp"; "zip", "ocpack" -> "application/zip"; "json" -> "application/json"; else -> "application/octet-stream"
+    }
     override fun query(uri: Uri, projection: Array<out String>?, s: String?, a: Array<out String>?, o: String?): Cursor? {
         val f = file(uri) ?: return null
         return MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)).apply { addRow(arrayOf<Any>(f.name, f.length())) }

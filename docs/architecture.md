@@ -25,6 +25,18 @@ Android App (app.ocshimeji)
 | 存檔 | localStorage JSON（schema v1）＋原生檔案備份 | `game/js/core/store.js` |
 | 建置 | Gradle：離線管線（aapt/dx/zipalign/apksigner）或 AGP | `docs/android-build.md` |
 
+### 第三階段：角色創作層
+```
+save.chars ─┬─ OC.Chars (model.js)      資料、性格→行為、成長建議
+            ├─ OC.CharRender (render.js) ← OC.Rig（rig.js：骨架＋部件）／OC.Anim（anim.js：影格）
+            │        ↑ 世界看板、頭像、編輯器舞台、工作室參考、桌寵輸出
+save.animations ─ OC.Anim                 播放、方向/動作 fallback、疊加、事件
+IndexedDB oc-assets ─ OC.Assets           圖片 blob、縮圖、草稿、LRU 解碼快取
+OC.IO                                     GIF/APNG/WebP/Sprite Sheet/ZIP 解碼、.ocpack 讀寫
+UI: creator / charedit / charpages / library / paint / animstudio
+```
+詳見 `docs/character-format.md`、`docs/animation-system.md`、`docs/asset-io.md`。
+
 懸浮桌寵的驗證清單（下方）**仍未在實機執行**。
 
 ---
