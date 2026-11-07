@@ -131,6 +131,13 @@
       for (const [x, y, s] of [[480, 470, 0.9], [160, 420, 0.7]]) { const r = Mo.rock(s, x); place(ctx, r, x, y, 0, 0); ctx.block(x, y, 13 * s, 8 * s); }
       const sg = Mo.signpost(); place(ctx, sg, 300, 340, 0, 0.4); ctx.block(300, 340, 6, 4);
       ctx.interact({ type: 'exit', to: 'map', x: 300, y: 340, hit: { w: 40, h: 36, d: 6 }, at: { x: 300, y: 358 }, label: '路牌：前往其他地方' });
+      // Phase 6: a welcoming entrance — boardwalk from the signpost, warm lamps for the evening, dune grass, driftwood, shells
+      const wA = Mo.mat('#D9A26A'), wB = Mo.mat('#C88B55');
+      for (let i = 0; i < 6; i++) { const pl = new THREE.Mesh(Mo.rbox(46, 1.4, 9, 0.6), i % 2 ? wA : wB); pl.receiveShadow = true; place(ctx, pl, 300, 374 + i * 13, 0, 0.5); }
+      for (const [x, y] of [[262, 396], [338, 396]]) { const lp = Mo.lampPost(ctx.quality.lights !== false); place(ctx, lp, x, y, 0, 0.4); ctx.block(x, y, 6, 5); }
+      for (const [x, y, sd] of [[232, 364, 1], [372, 370, 2], [205, 470, 3], [425, 455, 4], [150, 520, 5], [470, 565, 6], [560, 470, 7]]) { if (!inBlob(SAND, x, y, -10)) continue; const g = Mo.bush(sd, '#9BCB6A').group; g.scale.set(0.5, 0.75, 0.5); place(ctx, g, x, y, 0, 0.4); ctx.sway(g, sd * 1.7, 0.05); }
+      { const lg = new THREE.Mesh(Mo.cyl(2.6, 3.2, 42, 10), Mo.mat('#A98A6A')); lg.rotation.z = Math.PI / 2; lg.rotation.y = 0.45; lg.castShadow = true; place(ctx, lg, 405, 505, 0, 3); ctx.block(405, 505, 22, 7); }
+      for (const [x, y, c] of [[250, 452, '#F7B8C8'], [352, 440, '#FFE3A8'], [178, 600, '#FFFFFF'], [500, 640, '#F7B8C8']]) { const sh = new THREE.Mesh(Mo.sphere(2.2, 8, 6), Mo.mat(c)); sh.scale.set(1, 0.45, 0.8); place(ctx, sh, x, y, 0, 1); }
       // fishing: pier end + shoreline
       for (const [x, y, lab] of [[430, 928, '碼頭釣魚點'], [200, 800, '海邊釣魚點']]) { const rp = Mo.ripple(); place(ctx, rp, x, y + 22, 0, -5); ctx.tick((t) => { const q = (t * 0.6 + x) % 1; rp.scale.setScalar(0.6 + q * 0.8); rp.material.opacity = 0.7 * (1 - q); }); ctx.interact({ type: 'fishing', water: 'sea', x, y: y + 10, hit: { w: 36, h: 24, d: 12 }, at: { x, y }, label: lab }); }
       beach.shellSpots = [[120, 790], [260, 800], [340, 790], [480, 760], [560, 600], [40, 560], [180, 330], [420, 330], [300, 810], [520, 520]];

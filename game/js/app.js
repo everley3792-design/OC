@@ -82,7 +82,7 @@
   }
 
   // =============================== tab bar ===============================
-  const TABS = [['island', '小島', 'island'], ['char', '角色', 'person'], ['workshop', '工坊', 'brush'], ['explore', '探索', 'compass'], ['more', '更多', 'more']];
+  const TABS = [['island', '小島', 'island'], ['char', '角色', 'person'], ['workshop', '工坊', 'brush'], ['explore', '探索', 'compass'], ['more', '日常', 'flag']];
   let tabEls = {}, ink;
   function buildTabbar() {
     const bar = h('nav.tabbar', { 'aria-label': '主選單' }); ink = h('div.tab-ink'); bar.append(ink);

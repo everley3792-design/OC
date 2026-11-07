@@ -68,7 +68,7 @@
     sub: true,
     build(p, el) {
       p.cv = h('canvas', { width: 320, height: 320 }); p.top = h('div'); p.body = h('div');
-      p.ptab = 'info'; p.tabs = seg([['info', '檔案'], ['life', '生活'], ['rel', '關係'], ['mem', '回憶']], 'info', (v) => { p.ptab = v; p.refresh(p); });
+      p.ptab = 'info'; p.tabs = seg([['info', '檔案'], ['life', '生活'], ['grow', '成長'], ['rel', '關係'], ['mem', '日誌']], 'info', (v) => { p.ptab = v; p.refresh(p); });
       el.append(h('div.card', null, h('div.hero', null, h('div.portrait', null, p.cv), p.top)), h('div.hstack', { style: { marginTop: '12px' } }, h('button.btn.primary.block', { on: { click: () => Pg().open('charedit', { id: p.params.id }) } }, icon('edit', 's'), '編輯角色'), h('button.btn.block', { on: { click: () => Pg().open('charedit', { id: p.params.id, tab: 'anims' }) } }, icon('film', 's'), '動畫')), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body);
       OC.App.live(p.cv, () => ({ char: Ch().get(p.params.id), pose: { face: 0.2 } }));
     },
@@ -78,7 +78,7 @@
       if (p.params.tab) { p.ptab = p.params.tab; p.params.tab = null; } p.tabs.set(p.ptab); p.params.id = c.id;
       const P = c.profile, pers = c.personality;
       p.el.querySelector('h1').textContent = Ch().name(c);
-      p.top.replaceChildren(h('h2', null, P.name || '無名氏'), P.nickname ? h('div.muted', null, `暱稱：${P.nickname}`) : null, h('div.tag.teal', { style: { marginTop: '4px' } }, Ch().typeTitle(c)), h('div.muted', { style: { marginTop: '4px', fontSize: 'var(--fs-s)' } }, moodOf(c)), h('div.hstack', { style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, ...statusOf(c).map(([t, k]) => h('span.tag' + (k ? '.' + k : ''), null, t))));
+      p.top.replaceChildren(h('h2', null, P.name || '無名氏'), OC.Growth && OC.Growth.titleOf(c) ? h('div.title-chip', null, '「' + OC.Growth.titleOf(c) + '」') : null, P.nickname ? h('div.muted', null, `暱稱：${P.nickname}`) : null, h('div.tag.teal', { style: { marginTop: '4px' } }, Ch().typeTitle(c)), h('div.muted', { style: { marginTop: '4px', fontSize: 'var(--fs-s)' } }, moodOf(c)), h('div.hstack', { style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, ...statusOf(c).map(([t, k]) => h('span.tag' + (k ? '.' + k : ''), null, t))));
       const kv = (k, v) => (v ? h('div.hstack', { style: { padding: '6px 0', borderBottom: '1px solid var(--line)' } }, h('span.muted', { style: { width: '72px', flex: 'none' } }, k), h('span', { style: { flex: 1 } }, v)) : null);
       const chips = (arr, k = 'accent') => (arr.length ? h('div.hstack', { style: { flexWrap: 'wrap', gap: '6px' } }, ...arr.map((t) => h('span.tag.' + k, null, t))) : h('span.faint', null, '（未設定）'));
       const traits = pers.traits.map((t) => (Ch().TRAITS.find((q) => q.id === t) || {}).zh).filter(Boolean).concat(pers.customTraits.map((t) => t.name));
@@ -86,7 +86,8 @@
       const g = c.growth;
       if (p.ptab === 'life') { p.body.replaceChildren(OC.LifeUI.lifeSection(c, () => p.refresh(p)), OC.P5UI ? OC.P5UI.foodCard(c) : null); return; }
       if (p.ptab === 'rel') { p.body.replaceChildren(OC.LifeUI.relSection(c, () => p.refresh(p))); return; }
-      if (p.ptab === 'mem') { p.body.replaceChildren(OC.LifeUI.memSection(c, p)); return; }
+      if (p.ptab === 'grow') { p.body.replaceChildren(OC.P6UI.growth(c, p)); return; }
+      if (p.ptab === 'mem') { p.body.replaceChildren(OC.P6UI.journal(c, p)); return; }
       p.body.replaceChildren(
         g.suggestions.length ? h('div', { style: { marginTop: '12px' } }, h('b', null, '新的發現'), ...g.suggestions.map((sg) => h('div', { style: { marginTop: '8px' } }, OC.LifeUI.suggestionCard(c, sg, () => p.refresh(p))))) : null,
         T('需求', '完整內容在「生活」'), h('div.card', null, ...OC.Game.NEEDS.filter((n) => ['food', 'energy', 'sleep', 'mood'].includes(n.id)).map((n) => h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('span', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))))),
