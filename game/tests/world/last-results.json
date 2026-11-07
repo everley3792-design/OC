@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T18:07:53.278Z",
+ "at": "2026-11-07T18:28:42.911Z",
  "results": [
   {
    "name": "T1 交易：同一個 key 只會入帳一次（防重複獎勵）",
@@ -34,32 +34,42 @@
    "ok": true
   },
   {
-   "name": "2a 不在玩家身邊的 OC 會自己決定去別的地方（26 遊戲小時內）",
+   "name": "6a 釣魚：蓄力→等待→上鉤點擊→收線，真的釣到魚並入背包",
    "ok": true,
-   "detail": "栗子:isle/cafe/street 小空:library/cafe/home"
+   "detail": "{\"n\":1,\"skill\":0,\"xp\":5,\"mem\":true}"
   },
   {
-   "name": "2b 行程寫進生活紀錄（前往…）",
+   "name": "6b 釣魚給技能經驗並寫入回憶",
    "ok": true
   },
   {
-   "name": "2c 不同個性的 OC 去的地方不完全一樣",
+   "name": "6c 料理：切菜→攪拌→火候，完成才扣材料並得到料理",
+   "ok": true,
+   "detail": "{\"rice\":1,\"oni\":2,\"log\":\"新發現：飯糰\"}"
+  },
+  {
+   "name": "6d 料理中途放棄＝材料都還在",
    "ok": true
   },
   {
-   "name": "2d 地圖上的「大家在哪裡」列出每個 OC 的所在地與活動",
+   "name": "6h 個性影響玩法：勤奮／好奇＝收線區更寬、上鉤反應時間更長；懶散＝收線較慢",
    "ok": true,
-   "detail": "在晴日商店街・事件中 | 在晴日商店街 | 在葉影圖書館・在葉影圖書館打盹"
+   "detail": "{\"a\":{\"pz\":0.03,\"pb\":0.25,\"pr\":1},\"b\":{\"pz\":0,\"pb\":0,\"pr\":0.85}}"
   },
   {
-   "name": "2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）",
+   "name": "6e 採集：入背包；同一個點一天只能採一次",
    "ok": true,
-   "detail": "{\"from\":\"isle\",\"to\":\"beach\",\"act\":\"fish\",\"eta\":29902937.70918335}"
+   "detail": "今天已經採過了，明天再來"
   },
   {
-   "name": "2f 玩家跟過去：在海灘看到栗子並繼續牠的活動",
+   "name": "6f 種田：播種扣種子→澆水在遊戲時間內成長→收成入背包，不能重複收成",
    "ok": true,
-   "detail": "do/stretch"
+   "detail": "{\"planted\":true,\"seedUsed\":true,\"growth\":0,\"got\":2,\"again\":false}"
+  },
+  {
+   "name": "6g OC 也會使用活動設施（OC 走去菜園澆水，菜園記得是誰澆的）",
+   "ok": true,
+   "detail": "think/tend/cmw6ql43fkhl3 verbs=tend res= reason=照顧植物（玩家安排、需求 interest0.47 fun0.36 active0.47、地點+0.05） cands=[{\"id\":\"tend\",\"s\":6.358,\"why\":\"玩家安排、需求 interest0.47 fun0.36 active0.47、地點+0.05\"},{\"id\":\"read\",\"s\":1.949,\"why\":\"需求 fun0.38 interest0.58 comfort0.35、特質+0.40、悠哉+0.04、願望+0.30、地點-0.11\"},{\"id\":\"stretch\",\"s\":1.174,\"why\":\"需求 active0.73 comfort0.49、活力-0.09\"}] loc=isle mate=true plot={\"seed\":\"seed_carrot\",\"at\":29910840,\"growth\":0.0006944444444444445,\"last\":0,\"wateredDay\":20771,\"wateredBy\":\"cmw6ql43fkhl3\"} day=20771 wx=clear log=結束 照顧植物（急需comfort，4 分鐘） / 照顧植物（玩家安排、需求 interest0.47 fun0.36 active0.47、地點+0.05）"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",

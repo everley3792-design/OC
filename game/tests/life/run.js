@@ -65,7 +65,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       check('2b 吃完飽足恢復並記錄', fed && after.food > 60, after);
       // tired at night with a bed placed nearby → walks to the bed, aligns, sleeps
       const bed = await page.evaluate((id) => {
-        const a = OC.Brain.get(id).a; for (let r = 30; r < 200; r += 6) for (let k = 0; k < 16; k++) { const f = { id: 'bed', x: Math.round((a.x + Math.cos(k / 16 * 6.28) * r) / 6) * 6, y: Math.round((a.y + Math.sin(k / 16 * 6.28) * r * 0.7) / 6) * 6, rot: 0 }; if (OC.World.canPlace(f)) { f.uid = 'ftest'; OC.Store.s.placed.push(f); OC.World.addFurniture(f); OC.Brain.rebuild(); return f; } } return null;
+        const a = OC.Brain.get(id).a; for (let r = 30; r < 200; r += 6) for (let k = 0; k < 16; k++) { const f = { id: 'bed', x: Math.round((a.x + Math.cos(k / 16 * 6.28) * r) / 6) * 6, y: Math.round((a.y + Math.sin(k / 16 * 6.28) * r * 0.7) / 6) * 6, rot: 0 }; if (OC.World.canPlace(f)) { f.uid = 'ftest'; OC.Places.room(OC.World.area.id).push(f); OC.World.addFurniture(f); OC.Brain.rebuild(); return f; } } return null;
       }, I['小空']);
       await setHour(page, 23.5);
       await page.evaluate((id) => { const c = OC.Chars.get(id); c.needs.sleep = 12; c.needs.energy = 15; c.needs.food = 90; const b = OC.Brain.get(id); if (b.st === 'do') OC.Brain.finish(b, 'test'); if (b.st === 'social') OC.Brain.Social.end(b.conv || OC.Brain.convs[0], 't'); b.st = 'think'; b.thinkAt = 0; }, I['小空']);
@@ -161,7 +161,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await until(page, () => !OC.Events.current, null, 30000);
       await freeze(page, [I['麻糬']], { food: 50 }); await page.evaluate(() => { OC.Store.s.inv.cake = 1; });
       await page.evaluate((id) => OC.LifeUI.feed(id), I['麻糬']); await page.waitForSelector('.item-btn'); await page.click('.item-btn >> text=蛋糕');
-      await wait(page, 600);
+      await until(page, (id) => OC.Chars.get(id).life.wishes.find((w) => w.id === 'wt').state === 'done', I['麻糬'], 10000);   // phase 5: eaten (and the wish fulfilled) after the eating animation
       const fedR = await page.evaluate((id) => { const c = OC.Chars.get(id); return { wish: c.life.wishes.find((w) => w.id === 'wt').state, emo: c.life.emo.recent.slice(0, 3).map((e) => e.id + ':' + e.cause), aff: c.life.player.aff }; }, I['麻糬']);
       check('5c 物品事件：餵喜歡的食物 → 願望實現、情緒、和你的好感', item && fedR.wish === 'done' && fedR.aff > 0, fedR);
       await until(page, () => !OC.Events.current, null, 30000); await freeze(page, [I['小空']]);

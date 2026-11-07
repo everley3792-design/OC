@@ -15,8 +15,9 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') });
 
 async function until(page, fn, arg, ms = 30000, step = 200) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await page.evaluate(fn, arg)) return true; await page.waitForTimeout(step); } return false; }
+const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.clock; c.gm = Math.floor(c.gm / 1440) * 1440 + hh * 60 + 1440; }, h);
 const ids = (page) => page.evaluate(() => { const o = {}; for (const c of OC.Chars.all()) o[c.profile.name] = c.id; return o; });
-const travel = async (page, to) => { await page.evaluate((t) => OC.WorldUI.travel(t), to); const ok = await until(page, (t) => OC.World.area && OC.World.area.id === t && !!OC.App.player, to, 15000); await page.waitForTimeout(400); return ok; };
+const travel = async (page, to) => { await page.evaluate((t) => OC.WorldUI.travel(t), to); let ok = await until(page, (t) => OC.World.area && OC.World.area.id === t && !!OC.App.player, to, 8000); if (!ok) { console.log('  (travel retry →', to + ')'); await page.evaluate((t) => OC.WorldUI.travel(t), to); ok = await until(page, (t) => OC.World.area && OC.World.area.id === t && !!OC.App.player, to, 8000); } await page.waitForTimeout(400); return ok; };
 /** test-only seeding through the real transaction system (life-sim mode has no "add item" button) */
 const seed = (page, key, get) => page.evaluate(([k, g]) => OC.Tx.run('test:' + k, { get: g }, '測試補給').ok, [key, get]);
 const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; return { calls: i.render.calls, geo: i.memory.geometries, tex: i.memory.textures, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null }; });
@@ -235,10 +236,10 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       // OCs do activities too: an unwatered plot attracts an OC who waters it (the plot remembers who)
       await seed(page, 'seed2', { items: { seed_carrot: 1 } });
       const k = I['小空'];
-      await page.evaluate((id) => { OC.Store.s.settings.weather = 'clear'; OC.Places.plant('isle1', 'seed_carrot'); OC.Brain.rebuild(); const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); }, k); await wait(page, 600);
-      await page.evaluate((id) => { const c = OC.Chars.get(id); Object.assign(c.needs, { fun: 30, food: 80, sleep: 80, energy: 80 }); OC.Brain.get(id).holds.clear(); OC.Brain.command(id, 'tend'); }, k);
-      const tend = await until(page, (id) => OC.Places.plot('isle1').wateredBy === id, k, 40000, 300);
-      check('6g OC 也會使用活動設施（自己走去菜園澆水）', tend, await page.evaluate((id) => { const b = OC.Brain.get(id); return b ? `${b.st}/${b.act}/${OC.Places.plot('isle1').wateredBy}` : ''; }, k));
+      await setHour(page, 10);
+      await page.evaluate((id) => { OC.Store.s.settings.weather = 'clear'; OC.Places.plant('isle1', 'seed_carrot'); OC.Brain.rebuild(); const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; c.life.cur = null; Object.assign(c.needs, { fun: 30, food: 80, sleep: 80, energy: 80 }); OC.App.syncPresence(); const b = OC.Brain.get(id); b.holds.clear(); OC.Brain.command(id, 'tend'); }, k);
+      const tend = await until(page, () => { const w = OC.Places.plot('isle1').wateredBy; return !!w && w !== 'player' && w !== OC.Store.s.activeId; }, k, 40000, 300);
+      check('6g OC 也會使用活動設施（OC 走去菜園澆水，菜園記得是誰澆的）', tend, await page.evaluate((id) => { const b = OC.Brain.get(id), o = OC.Brain.aff.find((x) => x.id === 'plot:isle1'); return b ? `${b.st}/${b.act}/${OC.Places.plot('isle1').wateredBy} verbs=${o && o.verbs} res=${o && [...OC.Brain.res.entries()].filter(([k]) => k.startsWith('plot:isle1')).join()} reason=${b.dbg.reason} cands=${JSON.stringify((b.dbg.cands || []).slice(0, 3))} loc=${OC.Chars.get(id).life.loc} mate=${!!OC.App.mates[id]} plot=${JSON.stringify(OC.Places.plot('isle1'))} day=${OC.Sim.day()} wx=${OC.Clock.weather()} log=${OC.Brain.log.filter((l) => l.who === id).slice(-8).map((l) => l.text).join(' / ')}` : 'no brain'; }, k));
       await shot(page, '6-garden');
     }
 

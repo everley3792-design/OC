@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T18:01:52.920Z",
+ "at": "2026-11-07T18:09:12.710Z",
  "results": [
   {
    "name": "1a 三個 OC 的說話聲線不同",
@@ -19,12 +19,12 @@
      "voice": "bright",
      "speed": 64,
      "greet": [
+      "嗨，你喵～～",
       "哇，是你！好巧喔喵～～",
-      "初次見面，我是麻糬喵～～",
-      "嗨，你喵～～"
+      "初次見面，我是麻糬喵～～"
      ],
      "shy": 0.62,
-     "readScore": 0.33,
+     "readScore": 0.32,
      "playScore": 0.54,
      "routine": {
       "sleep": 23,
@@ -43,7 +43,7 @@
       "初次見面，我是栗子！！"
      ],
      "shy": 0.26,
-     "readScore": 0.17,
+     "readScore": 0.16,
      "playScore": 0.54,
      "routine": {
       "sleep": 22,
@@ -57,9 +57,9 @@
      "voice": "cool",
      "speed": 47,
      "greet": [
+      "（小聲）初次見面，我是小空…。",
       "（小聲）那、那個……你好…。",
-      "（小聲）……嗯，你…。",
-      "（小聲）初次見面，我是小空…。"
+      "（小聲）嗨，你……"
      ],
      "shy": 0.67,
      "readScore": 0.7,
@@ -83,9 +83,9 @@
    "name": "1e 實際生活紀錄不同",
    "ok": true,
    "detail": {
-    "麻糬": "explore1,drink1,eat1|social1|asked0",
-    "栗子": "eat1|social1|asked1",
-    "小空": "read4,eat1,nap1|social0|asked0"
+    "麻糬": "explore1,observe2,eat1,walk1,stretch1,nap1|social0|asked0",
+    "栗子": "eat1|social1|asked2",
+    "小空": "read2|social1|asked0"
    }
   },
   {
@@ -104,11 +104,11 @@
    "name": "2b 吃完飽足恢復並記錄",
    "ok": true,
    "detail": {
-    "food": 72,
+    "food": 76,
     "rec": {
      "n": 1,
-     "gm": 30,
-     "last": 29902382,
+     "gm": 32,
+     "last": 29902384,
      "ctx": {
       "noon": 1,
       "rain": 1
@@ -122,7 +122,7 @@
   {
    "name": "執行沒有例外",
    "ok": false,
-   "detail": "page.evaluate: TypeError: Cannot read properties of null (reading 'a')\n    at eval (eval at evaluate (:311:30), <anonymous>:2:35)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /home/user/OC/game/tests/life/run.js:67:30"
+   "detail": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'push')\n    at eval (eval at evaluate (:311:30), <anonymous>:2:326)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /home/user/OC/game/tests/life/run.js:67:30"
   },
   {
    "name": "沒有 JavaScript 錯誤",

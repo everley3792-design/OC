@@ -148,7 +148,7 @@
         if (!free(s, c.id)) continue;
         if (!s.inside && (!clearPoint(s.x, s.y, c.id, 10) || !clearPoint(s.ax, s.ay, c.id, 8))) continue;   // someone is standing there
         const d = Math.hypot(s.ax - a.x, s.ay - a.y); if (d > 900) continue;
-        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (novel[o.id] && novel[o.id] > Sim().now() ? 0.45 : 0) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
+        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (novel[o.id] && novel[o.id] > Sim().now() ? 0.45 : 0) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (o.kind === 'plot' && verb === 'tend' ? 0.35 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
         v += (Sim().rnd() - 0.5) * 0.04;
         if (!best || v > best.s) best = { slot: s, s: v };
       }
@@ -238,7 +238,8 @@
     if (settings().autonomy === 'paused' && !b.queued) { b.thinkAt = nowR() + 2; return; }
     if (b.invited && convs.includes(b.invited)) { b.thinkAt = nowR() + 1; return; }
     if (b.manual && !settings().playerAuto && !(b.manualOverride > nowR()) && (nowR() - b.cmdAt < 40 || b.a.path || b.a.joy || b.a.mode === 'sit' || b.a.mode === 'talk')) { b.thinkAt = nowR() + 2; return; }
-    const list = candidates(b); b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
+    let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
+    b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
     b.byPlayer = !!(b.queued && ch.kind === 'act' && ch.act === b.queued); if (b.queued) b.queued = null;
@@ -315,7 +316,7 @@
       }
     }
   }
-  function abort(b, why) { if (b.st === 'go' && b.a) b.a.path = null; dlog(b, '放棄：' + why); cleanup(b); b.act = null; b.st = 'think'; b.thinkAt = nowR() + 1.2; }
+  function abort(b, why) { if (b.st === 'go' && b.a) b.a.path = null; dlog(b, '放棄：' + why); b.leaving = null; cleanup(b); b.act = null; b.st = 'think'; b.thinkAt = nowR() + 1.2; }
 
   // ---------------- player control / interruptions ----------------
   /** hold (suspend) an OC: reason = call | drag | editor | dialogue | event | player | pet … */
@@ -369,8 +370,8 @@
     if (b.st === 'think') { if (t >= b.thinkAt) decide(b); return; }
     if (b.st === 'go') {
       if (!a.path && !b.aligning) { if (b.leaving) { depart(b); return; } if (b.dest && Math.hypot(a.x - b.dest.x, a.y - b.dest.y) < 6) arrive(b); else abort(b, '路被擋住'); return; }
-      if (t - b.stuck.t > 3) { const m = Math.hypot(a.x - b.stuck.x, a.y - b.stuck.y); if (m < 3) { b.stuck.n++; if (b.stuck.n > 1 || !Wd().walkTo(a, b.dest.x, b.dest.y, () => { if (b.st === 'go') arrive(b); })) { abort(b, '卡住了'); return; } } b.stuck = { x: a.x, y: a.y, t, n: b.stuck.n }; }
-      if (t - b.goT > 60) abort(b, '太遠了');
+      if (t - b.stuck.t > 3) { const m = Math.hypot(a.x - b.stuck.x, a.y - b.stuck.y); if (m < 3) { b.stuck.n++; if (b.leaving) { depart(b); return; } if (b.stuck.n > 1 || !Wd().walkTo(a, b.dest.x, b.dest.y, () => { if (b.st === 'go') arrive(b); })) { abort(b, '卡住了'); return; } } b.stuck = { x: a.x, y: a.y, t, n: b.stuck.n }; }
+      if (t - b.goT > 60) { if (b.leaving) depart(b); else abort(b, '太遠了'); }
       return;
     }
     if (b.st === 'do') {

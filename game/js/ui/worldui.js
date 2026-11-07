@@ -12,13 +12,13 @@
   let critterMeshes = [], forageMeshes = [], plotMeshes = [];
 
   // ======================= travel =======================
-  let busy = false;
+  let busy = false, pending = null;
   /** go to a place. 'map' opens the world map. from = the place we leave (for the door we appear at) */
   function travel(to, o = {}) {
     if (to === 'map') { A().tab('explore'); return; }
     const p = PL().get(to); if (!p || p.locked) { toast(p ? p.why || '尚未開放' : '沒有這個地方', 'lock'); return; }
     const from = Wd().area ? Wd().area.id : null; if (from === to) { A().tab('island'); return; }
-    if (busy) return; busy = true;
+    if (busy) { pending = to; return; } busy = true;   // a request during the fade is kept (the last one wins), not dropped
     const f = document.getElementById('fade'), lab = h('div.travel-label', null, h('b', null, p.zh), h('span', null, PL().TYPES[p.type] || ''), h('i.dots', null, h('i'), h('i'), h('i')));
     f.replaceChildren(lab); f.style.opacity = 1; f.style.pointerEvents = 'auto';
     setTimeout(() => {
@@ -30,7 +30,7 @@
         A().loadArea(to, pos ? Object.assign({ area: to }, pos) : null, { from });
         A().tab('island');
       } catch (e) { console.error(e); toast('移動時發生錯誤：' + e.message, 'info'); }
-      setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; busy = false; setTimeout(() => f.replaceChildren(), 400); }, 220);
+      setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; busy = false; setTimeout(() => f.replaceChildren(), 400); if (pending) { const nx = pending; pending = null; if (nx !== (Wd().area && Wd().area.id)) travel(nx); } }, 220);
     }, o.instant ? 0 : 380);
   }
   /** after a place is built: visits, discoveries, visuals */
