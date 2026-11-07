@@ -101,7 +101,8 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await advance(page, 40);
       const done = await until(page, ([a]) => !OC.Brain.convs.some((c) => c.a.id === a), [A], 30000);
       const C = I['麻糬'];
-      await freeze(page, [A, B, C], { social: 30, food: 85, sleep: 85, energy: 70, fun: 70, comfort: 70 });
+      await advance(page, 120);     // the "just talked" cool-down (45 min) and fresh-memory delay (30 min) pass
+      await freeze(page, [A, B, C],{ social: 30, food: 85, sleep: 85, energy: 70, fun: 70, comfort: 70 });
       const later = await page.evaluate(([a, b, c]) => { const cs = OC.Brain.candidates(OC.Brain.get(a)); const best = (o) => Math.max(...cs.filter((x) => x.other === o && x.social === 'chat').map((x) => x.s)); return { r: OC.Mind.rel(a, b), rc: OC.Mind.rel(a, c), friend: best(b), other: best(c), mem: OC.Talk.ctx(OC.Chars.get(a), OC.Chars.get(b)).mem }; }, [A, B, C]);
       check('3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）', done && later.r.aff > post.r.aff && later.friend > later.other && !!later.mem, { aff: `${later.r.aff} vs ${later.rc.aff}`, score: `朋友 ${later.friend.toFixed(2)} > 其他 ${later.other.toFixed(2)}`, mem: later.mem && later.mem.text });
       // milestone: becoming friends emits relUp → event (memory "成為了朋友")
@@ -194,14 +195,14 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
             if (b.st === 'do' && b.until && OC.Sim.now() > b.until + 30 && b.act !== 'sleep') out.endless++;
           }
           const still = bs.filter((b) => !b.a.hidden && !b.a.path && b.st !== 'go');
-          for (let x = 0; x < still.length; x++) for (let y = x + 1; y < still.length; y++) { const d = Math.hypot(still[x].a.x - still[y].a.x, still[x].a.y - still[y].a.y); if (d < 6) { out.overlap++; if (out.worst.length < 8) out.worst.push(`overlap ${d.toFixed(1)} ${still[x].st}/${still[y].st}`); } }
+          for (let x = 0; x < still.length; x++) for (let y = x + 1; y < still.length; y++) { const d = Math.hypot(still[x].a.x - still[y].a.x, still[x].a.y - still[y].a.y); if (d < 6) { out.overlap++; if (out.worst.length < 8) { const info = (b) => { const cv = OC.Brain.convs.find((c) => c.a === b || c.b === b || (c.more || []).includes(b)); return `${b.st}/${b.act || ''}/${b.slot ? b.slot.k : ''}/${cv ? cv.kind + ':' + cv.st + (cv.a === b ? 'A' : 'B') : ''}@${Math.round(b.a.x)},${Math.round(b.a.y)}`; }; out.worst.push(`overlap ${d.toFixed(1)} ${info(still[x])} | ${info(still[y])}`); } } }
           out.samples++;
         }
         out.res = OC.Brain.res.size; out.decisions = OC.Brain.log.length; out.convs = OC.Store.s.life.ev.log.length;
         return out;
       });
       check('6a 6 個 OC 同時生活 30 秒：沒有瞬移', r.teleport === 0, r);
-      check('6b 靜止時沒有重疊', r.overlap <= 3, `${r.overlap} 次（${r.samples} 個取樣）`);
+      check('6b 靜止時沒有重疊', r.overlap === 0, `${r.overlap} 次（${r.samples} 個取樣）`);
       check('6c 沒有卡住、沒有無限活動', r.stuck === 0 && r.endless === 0, r);
       await page.screenshot({ path: path.join(SHOTS, '6-six-ocs.png') });
       await H.boot(page, { chars: 3, seed: 7 });
@@ -211,14 +212,18 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     if (want(7)) {
       const I = await ids(page); const id = I['小空'];
       await setHour(page, 14);
-      await page.evaluate((id) => { const b = OC.Brain.get(id); OC.Brain.start(b, 'read', { slot: OC.Brain.aff.flatMap((o) => o.slots).find((s) => s.obj.verbs.includes('read') && OC.Brain.free(s, id)) }); }, id);
-      await until(page, (id) => OC.Brain.get(id).st === 'do', id, 30000);
+      await until(page, () => !OC.Events.current, null, 30000);
+      await freeze(page, [id], { food: 85, sleep: 85, energy: 75, fun: 50, social: 70, comfort: 60 });
+      await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'paused'; });   // no events / other decisions during this check
+      await page.evaluate((id) => { const b = OC.Brain.get(id); const slot = OC.Brain.aff.flatMap((o) => o.slots).filter((s) => s.obj.verbs.includes('read') && OC.Brain.free(s, id)).sort((p, q) => Math.hypot(p.ax - b.a.x, p.ay - b.a.y) - Math.hypot(q.ax - b.a.x, q.ay - b.a.y))[0]; OC.Brain.start(b, 'read', { slot }); }, id);
+      await until(page, (id) => OC.Brain.get(id).st === 'do' && OC.Brain.get(id).act === 'read', id, 30000);
       await page.evaluate((id) => OC.LifeUI.call(id), id);
       const called = await page.evaluate((id) => ({ st: OC.Brain.get(id).st, holds: [...OC.Brain.get(id).holds], susp: OC.Brain.get(id).susp && OC.Brain.get(id).susp.act }), id);
       const arrived = await until(page, (id) => { const b = OC.Brain.get(id), p = OC.App.player; return Math.hypot(b.a.x - p.x, b.a.y - p.y) < 30; }, id, 30000);
       await wait(page, 7800);
       const resumed = await page.evaluate((id) => ({ st: OC.Brain.get(id).st, act: OC.Brain.get(id).act, holds: OC.Brain.get(id).holds.size }), id);
-      check('7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動', called.holds.includes('call') && called.susp === 'read' && arrived && resumed.holds === 0 && (resumed.act === 'read'), { called, resumed });
+      check('7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動', called.holds.includes('call') && called.susp === 'read' && arrived && resumed.holds === 0 && resumed.act === 'read' && ['go', 'do'].includes(resumed.st), { called, resumed });
+      await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'full'; });
       const drag = await page.evaluate((id) => { const a = OC.App.actorOf(id); OC.App.startCarry(id); const h1 = OC.Brain.get(id).holds.has('drag'); OC.App.dragMove({ x: a.x + 40, y: a.y + 10 }); const moved = { x: a.x, y: a.y }; OC.App.dragEnd(); return { h1, moved, act: a.act && a.act.action }; }, id);
       await wait(page, 1500);
       const dragAfter = await page.evaluate((id) => OC.Brain.get(id).holds.size, id);
@@ -266,10 +271,13 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       const fps = {};
       for (const [mode, sp] of [['saver', 5], ['high', 5], ['saver', 10]]) {
         await page.evaluate(([m, s]) => { OC.Store.s.settings.perf = m; OC.App.applyPerf(); OC.Sim.setSpeed(s); }, [mode, sp]);
-        const g0 = await page.evaluate(() => OC.Sim.now()); const t0 = Date.now(); await wait(page, 4000); const g1 = await page.evaluate(() => OC.Sim.now());
-        fps[mode + sp] = +(((g1 - g0) / ((Date.now() - t0) / 1000)) / sp).toFixed(2);
+        // game time and real time sampled together inside the page (software rendering makes frames slow; a stalled
+        // frame's time is simulated on the next frame, so measure over a long window and between two frames)
+        const frameMark = () => page.evaluate(() => new Promise((res) => requestAnimationFrame(() => setTimeout(() => res({ g: OC.Sim.now(), t: performance.now() }), 0))));
+        await wait(page, 1500); const a0 = await frameMark(); await wait(page, 8000); const a1 = await frameMark();
+        fps[mode + sp] = +(((a1.g - a0.g) / ((a1.t - a0.t) / 1000)) / sp).toFixed(2);
       }
-      check('9b 遊戲時間跟幀率無關（30 / 60 fps、×5 / ×10 每現實秒的遊戲分鐘 ≈ 速度）', Object.values(fps).every((v) => v > 0.85 && v < 1.1), fps);
+      check('9b 遊戲時間跟幀率無關（30 / 60 fps、×5 / ×10 每現實秒的遊戲分鐘 ≈ 速度）', Object.values(fps).every((v) => v > 0.88 && v < 1.12), fps);
       const keep = await page.evaluate(() => { const ids = OC.World.actors.map((a) => a.m.uuid).join(); const br = Object.values(OC.Brain.brains).map((b) => b.st + b.act).join(); OC.App.setTheme('dark'); OC.App.setTheme('light'); OC.Store.s.settings.weather = 'rain'; OC.Store.s.settings.perf = 'balanced'; OC.App.applyPerf(); return { same: ids === OC.World.actors.map((a) => a.m.uuid).join(), br, br2: Object.values(OC.Brain.brains).map((b) => b.st + b.act).join() }; });
       check('9c 切換主題／天氣／效能不重建場景、不打斷生活', keep.same && keep.br === keep.br2, keep);
       await wait(page, 1500); await page.evaluate(() => { OC.Store.s.settings.weather = 'auto'; OC.Sim.setSpeed(10); });
@@ -278,6 +286,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     // ================= 10. save & restart =================
     if (want(10)) {
       await H.boot(page, { chars: 3, seed: 3 });
+      await setHour(page, 13);
       await wait(page, 6000);
       await until(page, () => Object.values(OC.Brain.brains).some((b) => b.st === 'do' && b.until > OC.Sim.now() + 40 && !b.manual), null, 60000);
       const before = await page.evaluate(() => { OC.Mind.relPair(OC.Store.s.roster[1], OC.Store.s.roster[2], { aff: 12 }); OC.Store.persist(); return { rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), cur: Object.values(OC.Brain.brains).filter((b) => b.st === 'do' && !b.manual).map((b) => b.id + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }; });

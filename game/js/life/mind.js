@@ -145,7 +145,7 @@
   function consolidate(c, overflow) {
     const M = c.life.mem, today = Sim().day();
     const keep = [], promote = [];
-    M.recent.forEach((m, i) => { const old = today - m.day >= 1 || (overflow && i >= CAP_RECENT - 10); if (!old) keep.push(m); else if (m.imp >= 0.55 || m.type === 'milestone' || m.pin) promote.push(m); });
+    M.recent.forEach((m, i) => { const old = today - m.day >= 2 || (overflow && i >= CAP_RECENT - 10); if (!old) keep.push(m); else if (m.imp >= 0.55 || m.type === 'milestone' || m.pin) promote.push(m); });
     M.recent = keep.slice(0, CAP_RECENT);
     for (const m of promote) if (!M.long.some((x) => x.id === m.id)) M.long.unshift(m);
     if (M.long.length > CAP_LONG) {

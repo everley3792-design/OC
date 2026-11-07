@@ -1,47 +1,40 @@
 {
- "at": "2026-11-07T12:46:56.338Z",
+ "at": "2026-11-07T13:16:24.379Z",
  "results": [
   {
-   "name": "13a 對話資料：錯誤檔案被拒絕並說明原因",
+   "name": "6a 6 個 OC 同時生活 30 秒：沒有瞬移",
    "ok": true,
    "detail": {
-    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
-    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
-    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
-    "added": 1,
-    "said": "測試台詞小空！！",
-    "exported": 1,
-    "cool": 7,
-    "picks": 7,
-    "eligible": 7,
-    "det": true
+    "overlap": 0,
+    "teleport": 0,
+    "stuck": 0,
+    "endless": 0,
+    "samples": 300,
+    "worst": [],
+    "res": 0,
+    "decisions": 36,
+    "convs": 6
    }
   },
   {
-   "name": "13b 匯入角色專屬台詞後真的會被說出、可再匯出",
+   "name": "6b 靜止時沒有重疊",
+   "ok": true,
+   "detail": "0 次（300 個取樣）"
+  },
+  {
+   "name": "6c 沒有卡住、沒有無限活動",
    "ok": true,
    "detail": {
-    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
-    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
-    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
-    "added": 1,
-    "said": "測試台詞小空！！",
-    "exported": 1,
-    "cool": 7,
-    "picks": 7,
-    "eligible": 7,
-    "det": true
+    "overlap": 0,
+    "teleport": 0,
+    "stuck": 0,
+    "endless": 0,
+    "samples": 300,
+    "worst": [],
+    "res": 0,
+    "decisions": 36,
+    "convs": 6
    }
-  },
-  {
-   "name": "13c 台詞冷卻：可選的台詞全部用過之前不重複",
-   "ok": true,
-   "detail": "7 種／7 次（可選 7 句）"
-  },
-  {
-   "name": "13d 決策在相同種子下可重現",
-   "ok": true,
-   "detail": true
   },
   {
    "name": "沒有 JavaScript 錯誤",

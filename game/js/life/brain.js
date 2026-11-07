@@ -63,7 +63,7 @@
   function reserve(s, id) { if (!free(s, id)) return false; release(id); res.set(s.k, id); return true; }
   function release(id) { for (const [k, v] of res) if (v === id) res.delete(k); }
   /** is a standing point clear of other OCs (no overlapping)? */
-  function clearPoint(x, y, id, r = 14) { for (const b of Object.values(brains)) { if (b.id === id || !b.a) continue; const px = b.st === 'go' && b.dest ? b.dest.x : b.a.x, py = b.st === 'go' && b.dest ? b.dest.y : b.a.y; if (Math.hypot(px - x, py - y) < r) return false; } return true; }
+  function clearPoint(x, y, id, r = 14) { for (const b of Object.values(brains)) { if (b.id === id || !b.a) continue; const end = b.a.path && b.a.path.length ? b.a.path[b.a.path.length - 1] : b.st === 'go' && b.dest ? b.dest : b.a; if (Math.hypot(end.x - x, end.y - y) < r || Math.hypot(b.a.x - x, b.a.y - y) < r * 0.6) return false; } return true; }
 
   // ======================= brains =======================
   function attach(a, c, o = {}) {
@@ -99,11 +99,11 @@
     const h = OC.Clock.hour(), ph = OC.Clock.phase(h), wx = OC.Clock.weather(), p = c.personality, emo = M().dominant(c);
     const add = (v, r) => { if (!v) return; s += v; why.push(`${r}${v > 0 ? '+' : ''}${v.toFixed(2)}`); };
     const sleepy = M().sleepTime(c, h);
-    if (act === 'sleep') { if (sleepy) add(c.needs.sleep < 85 ? 1.1 + (c.needs.sleep < 50 ? 0.6 : 0) : 0.2, '作息'); else add(c.needs.sleep < 15 ? 0.4 : -1.2, '白天'); }
+    if (act === 'sleep') { if (sleepy) add(c.needs.sleep < 85 ? 1.1 + (c.needs.sleep < 50 ? 0.6 : 0) : 0.2, '作息'); else add(c.needs.sleep < 15 ? 0.4 : -1.2, '白天'); if (c.needs.food < 25) add(-1.6, '太餓睡不著'); }
     if (act === 'nap') { if (sleepy) add(-0.4, '該睡覺了'); if (has(c, 'lazy') || has(c, 'sleepy')) add(0.15, '個性'); if (c.needs.sleep > 70 && c.needs.energy > 60) add(-0.4, '不睏'); }
     if (act === 'eat') { const meal = (h >= 7 && h < 9) || (h >= 12 && h < 13.5) || (h >= 18 && h < 20); if (meal && c.needs.food < 80) add(0.3, '用餐時間'); if (c.needs.food > 85) add(-0.8, '吃飽了'); if (has(c, 'foodie')) add(0.15, '貪吃'); }
     if (act === 'drink' && has(c, 'foodie')) add(0.12, '貪吃');
-    if (sleepy && !['sleep', 'read', 'rest', 'daydream'].includes(act)) add(-0.35, '睡覺時間');
+    if (sleepy && !['sleep', 'read', 'rest', 'daydream'].includes(act) && !((act === 'eat' || act === 'drink') && c.needs.food < 30)) add(-0.35, '睡覺時間');
     if (sleepy && act === 'read' && has(c, 'bookworm')) add(0.15, '睡前');
     // personality
     const TB = { bookworm: { read: 0.4 }, nature: { tend: 0.3, observe: 0.3 }, curious: { explore: 0.35, observe: 0.12 }, lazy: { rest: 0.25, nap: 0.2, daydream: 0.25, walk: -0.15, play: -0.15, tidy: -0.15 }, diligent: { tidy: 0.2, tend: 0.2, daydream: -0.1 }, tidy: { tidy: 0.4 }, artsy: { daydream: 0.15, observe: 0.15 }, creative: { daydream: 0.15 }, sleepy: { nap: 0.2 }, cheerful: { play: 0.12 }, nightowl: {} };
@@ -135,6 +135,7 @@
       if (!o.verbs.includes(verb)) continue;
       for (const s of o.slots) {
         if (!free(s, c.id)) continue;
+        if (!s.inside && (!clearPoint(s.x, s.y, c.id, 10) || !clearPoint(s.ax, s.ay, c.id, 8))) continue;   // someone is standing there
         const d = Math.hypot(s.ax - a.x, s.ay - a.y); if (d > 900) continue;
         let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
         v += (Sim().rnd() - 0.5) * 0.04;
@@ -286,9 +287,18 @@
     dlog(b, `結束 ${A.zh}（${why}，${Math.round(gm)} 分鐘）`);
   }
   function cleanup(b) {
-    const a = b.a; release(b.id); b.slot = null; b.dest = null; b.aligning = false;
+    const a = b.a, s = b.slot; release(b.id); b.slot = null; b.dest = null; b.aligning = false;
     const c = charOf(b); if (c) c.life.cur = null;
-    if (a) { if (a.hidden) { a.hidden = false; hooks.hide(a, false); } a.seatY = 0; if (a.act && a.act.priority >= 4) { a.act = null; a.key = ''; } }
+    if (a) {
+      if (a.hidden) { a.hidden = false; hooks.hide(a, false); }
+      a.seatY = 0; if (a.act && a.act.priority >= 4) { a.act = null; a.key = ''; }
+      // step off the seat / spot so the next OC can use it (never stand on a slot you no longer own)
+      if (s && !s.inside) {
+        let off = Math.hypot(a.x - s.ax, a.y - s.ay) > 1 && clearPoint(s.ax, s.ay, b.id, 12) ? { x: s.ax, y: s.ay } : null;
+        for (const [dx, dy] of [[-16, 10], [16, 10], [0, 18], [-22, 0], [22, 0], [0, 28]]) { if (off) break; const q = Wd().nearestWalkable(s.ax + dx, s.ay + dy, 10); if (q && clearPoint(q.x, q.y, b.id, 12)) off = q; }
+        if (off) { a.path = [{ x: off.x, y: off.y }]; a.onArrive = null; }
+      }
+    }
   }
   function abort(b, why) { if (b.st === 'go' && b.a) b.a.path = null; dlog(b, '放棄：' + why); cleanup(b); b.act = null; b.st = 'think'; b.thinkAt = nowR() + 1.2; }
 
