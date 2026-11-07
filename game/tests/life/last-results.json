@@ -1,100 +1,70 @@
 {
- "at": "2026-11-07T19:43:21.170Z",
+ "at": "2026-11-07T19:54:08.141Z",
  "results": [
   {
-   "name": "2a 肚子餓 → 選擇吃飯 → 走到用餐地點",
+   "name": "10a 存檔重開：關係、回憶、願望、生活紀錄完整",
    "ok": true,
    "detail": {
-    "slot": "stall#0",
-    "reason": "吃飯（需求 food1.31、用餐時間+0.30、貪吃+0.15）",
-    "x": 276,
-    "y": 598,
-    "sx": 276,
-    "sy": 598
-   }
-  },
-  {
-   "name": "2b 吃完飽足恢復並記錄",
-   "ok": true,
-   "detail": {
-    "food": 78,
-    "rec": {
-     "n": 1,
-     "gm": 30,
-     "last": 29902404,
-     "ctx": {
-      "noon": 1,
-      "rain": 1
-     },
-     "place": {
-      "stall": 1
-     }
-    }
-   }
-  },
-  {
-   "name": "2c 疲倦 → 走到床邊 → 對齊 → 睡覺（看板動作 sleep）",
-   "ok": true,
-   "detail": {
-    "bed": true,
-    "slot": "furn:ftest#0",
-    "kind": "bed",
-    "dx": 0,
-    "dy": 0,
-    "seatY": 6,
-    "act": "sleep",
-    "e0": 11.348526107975541
-   }
-  },
-  {
-   "name": "2d 睡覺期間精力恢復",
-   "ok": true,
-   "detail": "11 → 31"
-  },
-  {
-   "name": "3a 兩個 OC 相遇並聊天（輪流說話、面對面）",
-   "ok": true,
-   "detail": "fam 6 → 10"
-  },
-  {
-   "name": "3b 雙方都留下共同回憶",
-   "ok": true,
-   "detail": {
-    "a": [
-     "和小空聊天"
+    "before": [
+     2,
+     0,
+     0
     ],
-    "b": [
-     "願望實現了：想和栗子聊聊天",
-     "和栗子聊天"
+    "after": [
+     2,
+     0,
+     0
+    ],
+    "differs": [],
+    "wishes": [
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ]
+    ],
+    "rec": [
+     [
+      2,
+      79,
+      2
+     ],
+     [
+      2,
+      79,
+      2
+     ]
     ]
    }
   },
   {
-   "name": "3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）",
+   "name": "10b 重開後繼續進行中的活動",
    "ok": true,
    "detail": {
-    "sa": "bench@356#0",
-    "sb": "bench@356#1",
-    "d": 18
-   }
-  },
-  {
-   "name": "3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）",
-   "ok": true,
-   "detail": {
-    "aff": "49 vs 0",
-    "score": "朋友 0.79 > 其他 0.31",
-    "mem": "和小空一起休息"
-   }
-  },
-  {
-   "name": "3e 成為朋友 → 里程碑事件與回憶",
-   "ok": true,
-   "detail": {
-    "t": "friend",
-    "m": [
-     "和小空成為了朋友"
+    "before": [
+     "cmw6tnakfktpo:read"
+    ],
+    "after": [
+     "cmw6tnakfktpo:read"
     ]
+   }
+  },
+  {
+   "name": "10c 第三階段（v2）存檔自動遷移（v2→v3→v4），舊需求數值保留",
+   "ok": true,
+   "detail": {
+    "social0": 40,
+    "v": 4,
+    "life": true,
+    "chars": 3,
+    "needs": "active,comfort,energy,food,fun,interest,mood,sleep,social,t",
+    "food": 50,
+    "emo": "neutral"
    }
   },
   {

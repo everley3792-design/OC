@@ -295,6 +295,8 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       const tgt2 = await page.evaluate((id) => { const a = OC.App.actorOf(id); return OC.World.project(a.x, a.y, a.lvl, (a.gy - a.lvl * OC.World.HY) + 18); }, k);
       await page.mouse.move(tgt2.x, tgt2.y, { steps: 8 }); const hot = await page.evaluate(() => !!document.querySelector('.drag-ghost.hit'));
       await shot(page, '8-drag-food');
+      const tgt3 = await page.evaluate((id) => { const a = OC.App.actorOf(id); return OC.World.project(a.x, a.y, a.lvl, (a.gy - a.lvl * OC.World.HY) + 18); }, k);   // the camera may have eased during the screenshot
+      await page.mouse.move(tgt3.x, tgt3.y, { steps: 2 });
       await page.mouse.up();
       const during = await page.evaluate(() => OC.Store.count('cookie'));
       await until(page, (n) => OC.Store.count('cookie') === n - 1, n0, 10000);
