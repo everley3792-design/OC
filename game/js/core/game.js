@@ -6,7 +6,8 @@
   'use strict';
   const S = () => OC.Store.s, St = OC.Store;
   const ITEMS = () => OC.Style.ITEMS;
-  const has = (t) => (S().oc && S().oc.traits || []).includes(t);
+  const me = () => OC.Chars.active();
+  const has = (t) => { const c = me(); return !!c && c.personality.traits.includes(t); };
 
   // ---------------- needs ----------------
   const NEEDS = [
@@ -15,19 +16,23 @@
     { id: 'mood', zh: '心情', ic: 'smile', c: 'var(--need-mood)', how: '吃甜點、摘花、佈置家具、完成動畫' },
     { id: 'social', zh: '社交', ic: 'users', c: 'var(--need-social)', how: '和居民聊天或送禮' },
   ];
-  function decayRates() {
-    return { food: 0.5, energy: 0.35, mood: has('cheerful') ? 0.2 : 0.3, social: has('shy') ? 0.25 : 0.4 };   // per real minute
+  function decayRates(c = me()) {
+    const t = (x) => c && c.personality.traits.includes(x);
+    const night = OC.Clock.phase() === 'night';
+    return { food: 0.5, energy: (t('lazy') ? 0.28 : 0.35) * (t('nightowl') && night ? 0.6 : 1), mood: t('cheerful') ? 0.2 : t('pessimist') ? 0.38 : 0.3, social: t('shy') ? 0.25 : 0.4 };   // per real minute
   }
   /** apply real-time decay since the last tick (offline time capped at 6 h, never below 15) */
-  function tickNeeds(now = Date.now()) {
-    const n = S().needs, dtMin = Math.min(360, Math.max(0, (now - (n.t || now)) / 60000));
+  function tickNeeds(now = Date.now()) { for (const c of OC.Chars.all()) tickChar(c, now); }
+  function tickChar(c, now) {
+    const n = c.needs, dtMin = Math.min(360, Math.max(0, (now - (n.t || now)) / 60000));
     if (dtMin < 0.05) return;
-    const r = decayRates(), d = {};
+    const r = decayRates(c), d = {};
     for (const k of Object.keys(r)) { const floor = dtMin > 5 ? 15 : 0; d[k] = Math.max(-(n[k] - Math.min(n[k], floor)), -r[k] * dtMin); }
-    n.t = now; St.needs(d, true);
+    n.t = now; St.needs(d, true, c.id);
   }
   function moodFace() {
-    const n = S().needs;
+    const c = me(); if (!c) return { eyes: 'round', mouth: 'cat', label: '' };
+    const n = c.needs;
     if (n.energy < 22) return { eyes: 'sleepy', mouth: 'flat', label: '好睏…' };
     if (n.food < 22) return { eyes: 'round', mouth: 'frown', label: '肚子餓了' };
     if (n.social < 20) return { eyes: 'round', mouth: 'flat', label: '有點寂寞' };
@@ -56,10 +61,10 @@
 
   /** build a dialogue for talking to a resident: { lines:[..], choices:[{label, fx}] } */
   function dialogue(id) {
-    const n = npc(id), d = NPCS[id], me = S().oc.name, ph = OC.Clock.phase(), wx = OC.Clock.weather();
+    const n = npc(id), d = NPCS[id], myName = OC.Chars.name(me()), ph = OC.Clock.phase(), wx = OC.Clock.weather();
     const now = Date.now(), fresh = now - n.lastTalk > 30 * 60000;
     if (!n.met) {
-      return { event: 'meet', lines: [`你好！你就是新搬來的${me}吧？`, `我是${d.zh}。${d.who.replace('。', '')}，請多指教！`], choices: [
+      return { event: 'meet', lines: [`你好！你就是新搬來的${myName}吧？`, `我是${d.zh}。${d.who.replace('。', '')}，請多指教！`], choices: [
         { label: '請多指教！', fx: () => { n.met = true; memory(id, '第一次見面'); addFriend(id, 6, 'meet'); } },
         { label: '你的衣服好可愛', fx: () => { n.met = true; memory(id, '第一次見面，稱讚了衣服'); addFriend(id, 9, 'meet'); } },
       ] };
@@ -76,7 +81,7 @@
     const lines = [pool[(new Date().getHours() + lv) % pool.length]];
     if (wxLine) lines.push(wxLine);
     if (lv >= 1 && !n.liked.length) lines.push(`對了，我最近很想要${like}耶…`);
-    if (lv >= 2) lines.push(`${me}，有你在島上真好！`);
+    if (lv >= 2) lines.push(`${myName}，有你在島上真好！`);
     if (!fresh) return { lines: [['又見面啦！', '嘿嘿～', '今天過得怎樣？'][now % 3]], choices: [] };
     return { lines, choices: [
       { label: '聊聊今天的事', fx: () => { addFriend(id, 3, 'talk'); } },

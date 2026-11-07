@@ -110,7 +110,8 @@
     });
   }
   function actor(o) {
-    const a = Object.assign({ x: 0, y: 0, lvl: 0, gy: 0, path: null, speed: 62, face: 0.3, back: 0, tFace: 0.3, tBack: 0, walk: 0, phase: 0, mode: 'idle', blinkT: 2 + Math.random() * 3, blink: 0, t: 0, eyes: 'round', mouth: 'cat', lift: 0, squash: 1, flip: 1, flipT: 1, key: '', sprite: null }, o);
+    // o.char(): the character record (roster OC, or a preset for residents)
+    const a = Object.assign({ x: 0, y: 0, lvl: 0, gy: 0, path: null, speed: 62, face: 0.3, back: 0, tFace: 0.3, tBack: 0, walk: 0, phase: 0, blinkT: 2 + Math.random() * 3, blink: 0, t: 0, lift: 0, squash: 1, key: '', dir: 'front', act: null, turnT: 0, lastMirror: false, sc: 1 }, o);
     const res = quality.bb, c = OC.makeCanvas(res, res), tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
     const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false }));
     m.renderOrder = 2;
@@ -122,48 +123,56 @@
     actors.push(a); return a;
   }
   function resizeActorCanvas(a) { const r = quality.bb; if (a.c.width === r) return; a.c.width = a.c.height = r; a.key = ''; a.tex.dispose(); a.tex = new THREE.CanvasTexture(a.c); a.tex.colorSpace = THREE.SRGBColorSpace; a.tex.generateMipmaps = false; a.tex.minFilter = THREE.LinearFilter; a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; }
-  const SPR_TEX = new Map();
-  function spriteTex(img) { let t = SPR_TEX.get(img); if (!t) { t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; SPR_TEX.set(img, t); } return t; }
 
+  /** start an action on an actor. o = { dur (s), priority, once } — lower priority never interrupts higher */
+  function setAction(a, action, o = {}) {
+    if (a.act && a.act.priority > (o.priority || 0) && (a.act.until == null || a.t < a.act.until) && action !== 'idle') return false;
+    a.act = action === 'idle' ? null : { action, t0: a.t, until: o.dur != null ? a.t + o.dur : null, priority: o.priority || 0, once: !!o.once, keepMoving: !!o.keepMoving };
+    a.key = ''; return true;
+  }
+  function currentAction(a) {
+    if (a.act && a.act.until != null && a.t >= a.act.until) a.act = null;
+    const moving = a.walk > 0.3;
+    if (a.act && (!moving || a.act.keepMoving)) return { action: a.act.action, at: a.t - a.act.t0 };
+    if (a.act && moving && a.act.priority < 5) a.act = null;
+    if (moving) return { action: a.run ? 'run' : 'walk', at: a.t };
+    return { action: 'idle', at: a.t };
+  }
   function poseOf(a) {
-    const q = (v, n) => Math.round(v * n) / n;
-    return {
-      face: q(a.face, 4), back: q(a.back, 3), walk: a.walk > 0.05 ? 1 : 0, phase: a.walk > 0.05 ? q(a.phase % 2, 4) : 0,
-      blink: a.blink > 0.5 ? 1 : 0, eyes: a.eyes, mouth: a.mouth, armL: a.armL != null ? q(a.armL, 4) : undefined, armR: a.armR != null ? q(a.armR, 4) : undefined,
-      blush: a.blush || 0, ears: undefined, tail: q(a.tail || 0, 4), tilt: q(a.tilt || 0, 10), lookX: q(a.lookX || 0, 2),
-    };
+    const ca = currentAction(a);
+    return { action: ca.action, at: ca.at, dir: a.dir, face: a.face, back: a.back, walk: a.walk, phase: a.phase, blink: a.blink, breath: 0, lookX: a.lookX || 0, eyes: a.eyes, mouth: a.mouth, blush: a.blush || 0, overrides: a.overrides || null };
   }
   function paintActor(a) {
-    const sp = a.sprite && a.sprite();
-    if (sp && sp.frames && sp.frames.length) {
-      const set = (a.walk > 0.05 && sp.walk && sp.walk.length) ? sp.walk : sp.frames;
-      const fi = Math.floor(a.t * (sp.fps || 6)) % set.length, img = set[fi];
-      if (img && img.complete && img.naturalWidth) { const t = spriteTex(img); if (a.m.material.map !== t) { a.m.material.map = t; if (a.sil) a.sil.material.uniforms.map.value = t; a.key = 'spr'; } }
-      a.isSprite = true; return;
-    }
-    if (a.isSprite) { a.isSprite = false; a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; a.key = ''; }
-    const s = poseOf(a), key = JSON.stringify(s) + (a.ocKey || '');
+    const ch = a.char(); if (!ch) return;
+    const p = poseOf(a), pl = OC.CharRender.plan(ch, p);
+    // a sprite that mirrors (left ↔ right) does a quick squash-turn instead of snapping
+    if (pl.sprite && pl.mirror !== a.lastMirror) { a.turnT = 0.16; a.lastMirror = pl.mirror; }
+    if (pl.sprite && pl.done && a.act && a.act.once) a.act = null;
+    a.isSprite = pl.sprite;
+    const key = OC.CharRender.key(ch, p, pl);
     if (key === a.key) return;
     a.key = key;
     const r = a.c.width, x = a.c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, r, r);
-    s.noShadow = true; s.breath = 0;
-    OC.Style.drawOC(x, a.oc(), s, r / 2, r * FEET, r / 120, a.t);
+    const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / 120, a.t);
+    if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
     a.tex.needsUpdate = true;
   }
   function updateActor(a, dt) {
     a.t += dt;
-    // blink
-    a.blinkT -= dt; if (a.blinkT < 0) { a.blink = 1; if (a.blinkT < -0.12) { a.blink = 0; a.blinkT = 2.2 + Math.random() * 3.5; } }
-    if (a.mode === 'sleep') a.blink = 1;
+    const ch = a.char && a.char(), beh = ch ? OC.Chars.behavior(ch) : null;
+    if (beh && !a.fixedSpeed) a.speed = beh.speed * (a.run ? 1.6 : 1);
+    // blink (rate follows personality)
+    a.blinkT -= dt; if (a.blinkT < 0) { a.blink = 1; if (a.blinkT < -0.12) { a.blink = 0; a.blinkT = (beh ? beh.blinkEvery : 2.8) * (0.7 + Math.random() * 0.6); } }
     // path following
     let moving = false;
-    if (a.path && a.path.length) {
+    const busy = a.act && a.act.priority >= 5 && (a.act.until == null || a.t < a.act.until);
+    if (a.path && a.path.length && !busy) {
       const p = a.path[0], dx = p.x - a.x, dy = p.y - a.y, d = Math.hypot(dx, dy), step = a.speed * dt;
       if (d <= step) { a.x = p.x; a.y = p.y; a.path.shift(); if (!a.path.length) { a.path = null; a.onArrive && (a.onArrive(a), (a.onArrive = null)); } }
       else { a.x += (dx / d) * step; a.y += (dy / d) * step; }
       if (d > 0.01) { a.tFace = clamp((dx / d) * 1.1, -1, 1); a.tBack = dy < -0.45 * d ? 1 : 0; }
       moving = true; a.dist = (a.dist || 0) + Math.min(d, step);
-    } else if (a.joy) {
+    } else if (a.joy && !busy) {
       const { jx, jy } = a.joy, m = Math.hypot(jx, jy);
       if (m > 0.15) {
         const sp = a.speed * Math.min(1, m) * dt, nx = a.x + (jx / m) * sp, ny = a.y + (jy / m) * sp;
@@ -173,27 +182,25 @@
         a.tFace = clamp((jx / m) * 1.1, -1, 1); a.tBack = jy < -0.45 * m ? 1 : 0; moving = true; a.dist = (a.dist || 0) + sp;
       }
     }
-    const wk = moving ? 1 : 0;
-    a.walk = lerp(a.walk, wk, 1 - Math.exp(-dt * 12)); if (moving) a.phase += dt * (a.speed / 15);
-    // smooth turning (never snaps): face −1…1 and back 0…1 ease toward targets
+    a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) a.phase += dt * (a.speed / 15);
+    // smooth turning for the rig; 4 directions (with hysteresis) for frame animations
     a.face = lerp(a.face, a.tFace, 1 - Math.exp(-dt * 7)); a.back = lerp(a.back, a.tBack, 1 - Math.exp(-dt * 6));
-    // sprites mirror instead (scale through 0 over ~150 ms)
-    const wantFlip = a.tFace < -0.1 ? -1 : a.tFace > 0.1 ? 1 : a.flipT; a.flipT = wantFlip; a.flip = lerp(a.flip, a.flipT, 1 - Math.exp(-dt * 16));
-    // jumps / squash
-    if (a.jumpT != null) { a.jumpT += dt; const q = a.jumpT / 0.5; if (q >= 1) { a.jumpT = null; a.lift = 0; a.squashT = 0; } else a.lift = Math.sin(q * Math.PI) * 14; }
+    const want = a.tBack > 0.5 ? 'back' : a.tFace < -0.55 ? 'left' : a.tFace > 0.55 ? 'right' : a.dir === 'back' || (Math.abs(a.tFace) < 0.35) ? 'front' : a.dir;
+    if (want !== a.dir) { a.dirHold = (a.dirHold || 0) + dt; if (a.dirHold > 0.08) { a.dir = want; a.dirHold = 0; } } else a.dirHold = 0;
+    if (a.jumpT != null) { a.jumpT += dt; const q = a.jumpT / 0.5; if (q >= 1) { a.jumpT = null; a.lift = 0; a.squashT = 0; } else a.lift = Math.sin(q * Math.PI) * (beh ? beh.jumpHeight : 14); }
     if (a.squashT != null) { a.squashT += dt; const q = a.squashT / 0.3; a.squash = q >= 1 ? 1 : 1 - Math.sin(q * Math.PI) * 0.12; if (q >= 1) a.squashT = null; }
+    if (a.turnT > 0) a.turnT = Math.max(0, a.turnT - dt);
     if (a.update) a.update(a, dt);
-    // terrain height (smoothed so ramps / sand ↔ grass are gentle)
     a.lvl = levelAt(a.x, a.y);
     const gy = groundY(a.x, a.y) + (a.seatY || 0); a.gy = lerp(a.gy, gy, 1 - Math.exp(-dt * 14));
     paintActor(a);
-    // place billboard
-    const z = Zof(a.y, a.lvl), br = a.mode === 'sleep' ? Math.sin(a.t * 1.6) * 0.02 : Math.sin(a.t * 2.4) * 0.012;
-    const bob = a.walk * Math.abs(Math.sin(a.phase * Math.PI)) * 1.2;
-    a.m.position.set(a.x, a.gy + 0.6 + (a.lift + (a.isSprite ? bob : 0)) * RIG_UNIT, z + 1.5);
-    const sx = (a.isSprite ? a.flip : 1) * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
+    const z = Zof(a.y, a.lvl), br = (a.act && a.act.action === 'sleep') ? Math.sin(a.t * 1.6) * 0.02 : Math.sin(a.t * 2.4) * 0.012;
+    const bob = a.isSprite ? a.walk * Math.abs(Math.sin(a.phase * Math.PI)) * 1.2 * (beh ? beh.bounce : 1) : 0;
+    a.m.position.set(a.x, a.gy + 0.6 + (a.lift + bob) * RIG_UNIT, z + 1.5);
+    const turn = a.turnT > 0 ? Math.max(0.08, Math.abs(1 - 2 * (1 - a.turnT / 0.16))) : 1;
+    const sx = turn * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
     a.m.scale.set(sx / Math.sqrt(a.squash), sy, 1);
-    a.m.rotation.z = a.isSprite ? a.walk * Math.sin(a.phase * Math.PI) * 0.06 : 0;
+    a.m.rotation.z = a.isSprite ? a.walk * Math.sin(a.phase * Math.PI) * (beh ? beh.sway : 0.04) : 0;
     if (a.sil) { a.sil.position.copy(a.m.position); a.sil.scale.copy(a.m.scale); a.sil.rotation.copy(a.m.rotation); }
     const lift = a.lift / 30; a.sh.position.set(a.x, a.gy + 0.25, z + 1.5); a.sh.scale.set(26 * (a.sc || 1) * (1 - lift * 0.4), 14 * (a.sc || 1) * (1 - lift * 0.4), 1);
     a.m.material.color.copy(bbTint);
@@ -422,7 +429,7 @@
   }
 
   OC.World = {
-    init, resize, setQuality, loadArea, frame, actor, removeActor, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
+    init, resize, setQuality, loadArea, frame, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
     get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },

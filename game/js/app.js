@@ -35,38 +35,20 @@
   function applyMotion() { const r = S().settings.reduceMotion; document.documentElement.classList.toggle('reduce-motion', r); Wd.reduce = r; }
 
   // =============================== live portraits ===============================
+  // a canvas that shows a character with idle life (blink / breath); fn() → { char, pose }
   const lives = [];
-  function live(canvas, fn) { lives.push({ canvas, fn, blinkAt: performance.now() + 2000 }); }
+  function live(canvas, fn) { lives.push({ canvas, fn, blinkAt: performance.now() + 2000, t0: performance.now() }); }
   let lastLive = 0;
   function drawLives(now) {
-    if (now - lastLive < 80) return; lastLive = now;
+    if (now - lastLive < 66) return; lastLive = now;
     for (const L of lives) {
       if (!L.canvas.isConnected || L.canvas.offsetParent === null) continue;
-      const o = L.fn(); if (!o || !o.oc) continue;
+      const o = L.fn(); if (!o || !o.char) continue;
       if (now > L.blinkAt + 130) L.blinkAt = now + 2200 + Math.random() * 2600;
-      const st = Object.assign({ blink: now > L.blinkAt ? 1 : 0, breath: Math.sin(now / 600) }, o.state || {});
-      Sty.portrait(L.canvas, o.oc, { sprite: o.sprite ? { img: o.sprite.frames[Math.floor(now / 1000 * (o.sprite.fps || 6)) % o.sprite.frames.length] } : null, state: st, t: now / 1000 });
+      const pose = Object.assign({ action: 'idle', at: (now - L.t0) / 1000, blink: now > L.blinkAt ? 1 : 0, breath: Math.sin(now / 600) }, o.pose || {});
+      OC.CharRender.portrait(L.canvas, o.char, { pose, t: (now - L.t0) / 1000, fill: o.fill });
     }
   }
-
-  // =============================== sprites (player-made appearance) ===============================
-  const spriteCache = {};
-  function spriteOf(id) {
-    if (!id) return null; const a = S().anims.find((x) => x.id === id); if (!a) return null;
-    let c = spriteCache[id]; if (c && c.n === a.frames.length && c.src0 === a.frames[0]) return c.ready ? c : null;
-    c = spriteCache[id] = { n: a.frames.length, src0: a.frames[0], fps: a.fps, frames: a.frames.map((src) => { const i = new Image(); i.src = src; return i; }), ready: false };
-    Promise.all(c.frames.map((i) => (i.decode ? i.decode().catch(() => 0) : 0))).then(() => { c.ready = true; c.frames = c.frames.map(trimSprite); });
-    return null;
-  }
-  // re-pad imported/drawn frames so the feet sit on the billboard's ground line (bottom 10%)
-  function trimSprite(img) {
-    const N = 256, c = OC.makeCanvas(N, N), x = c.getContext('2d'); x.drawImage(img, 0, 0, N, N);
-    const d = x.getImageData(0, 0, N, N).data; let bottom = 0; for (let y = N - 1; y >= 0 && !bottom; y--) for (let k = 0; k < N; k++) if (d[(y * N + k) * 4 + 3] > 20) { bottom = y; break; }
-    const out = OC.makeCanvas(N, N), o = out.getContext('2d'), shift = Math.round(N * 0.9 - bottom); o.drawImage(c, 0, shift);
-    const i = new Image(); i.src = out.toDataURL(); return i;
-  }
-  function invalidateSprite(id) { delete spriteCache[id]; }
-  const mySprite = () => (S().appearance.mode === 'sprite' ? spriteOf(S().appearance.animId) : null);
 
   // =============================== HUD ===============================
   let hud = {}, fpsEl;
@@ -78,15 +60,15 @@
     hud.coins = h('span.num');
     hud.deco = h('button.icon-btn', { 'aria-label': '佈置模式', on: { click: () => setDecorate(!decorate) } }, icon('sofa'));
     el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timeSheet() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '金幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.deco)));
-    live(hud.av, () => ({ oc: S().oc, sprite: mySprite(), state: Object.assign({ face: 0.2 }, Gm.moodFace()) }));
+    live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();
   }
   let lastHudKey = '';
   function updateHUD() {
-    const L = OC.Clock.label(), key = [S().oc.name, Gm.moodFace().label, L.time, L.wx, S().coins, L.date].join('|');
+    const L = OC.Clock.label(), key = [OC.Chars.name(me()), Gm.moodFace().label, L.time, L.wx, S().coins, L.date].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
-    hud.name.textContent = S().oc.name; hud.mood.textContent = Gm.moodFace().label;
+    hud.name.textContent = OC.Chars.name(me()); hud.mood.textContent = Gm.moodFace().label;
     hud.time.textContent = `${L.date} ${L.time}`; hud.wx.textContent = L.wxZh; hud.wxIc.replaceChildren(icon(L.phase === 'night' ? 'moon' : L.wxIcon, 's'));
     hud.coins.textContent = S().coins.toLocaleString();
   }
@@ -171,21 +153,54 @@
   }
 
   // =============================== actors ===============================
+  const me = () => OC.Chars.active();
   function makePlayer(pos) {
-    player = Wd.actor({ player: true, xray: true, x: pos.x, y: pos.y, speed: 66, oc: () => S().oc, interact: { type: 'self', hit: { w: 26, h: 40, d: 6 }, prio: 3 } });
-    player.sprite = () => mySprite();
-    player.update = (a) => { const mf = Gm.moodFace(); if (a.mode !== 'talk' && a.mode !== 'react') { a.eyes = a.mode === 'sit' && S().needs.energy < 60 ? 'sleepy' : mf.eyes; a.mouth = mf.mouth; } a.ocKey = JSON.stringify(S().oc); };
+    player = Wd.actor({ player: true, xray: true, x: pos.x, y: pos.y, char: () => testChar || me(), interact: { type: 'self', hit: { w: 26, h: 40, d: 6 }, prio: 3 } });
+    player.update = (a, dt) => {
+      const mf = Gm.moodFace(); if (!a.act) { a.eyes = mf.eyes === 'round' ? undefined : mf.eyes; a.mouth = mf.mouth === 'cat' ? undefined : mf.mouth; }
+      personalityIdle(a, dt, me());
+    };
+  }
+  /** small personality-driven idle behaviours (observable differences between OCs) */
+  function personalityIdle(a, dt, c) {
+    if (!c || a.path || a.joy || a.act || a.mode === 'talk') { a.idleT = 0; return; }
+    const b = OC.Chars.behavior(c); a.idleT = (a.idleT || 0) + dt;
+    if (a.idleT < b.fidgetEvery) return; a.idleT = 0;
+    const r = Math.random();
+    if (r < b.sitChance) Wd.setAction(a, 'sit', { dur: 4 + Math.random() * 4, priority: 1 });
+    else if (b.habit === 'hum' && r < 0.7) emote(a, '♪');
+    else if (b.habit === 'stretch' && r < 0.6) Wd.setAction(a, 'happy', { dur: 1.2, priority: 1 });
+    else if (b.lookAround) { a.tFace = (Math.random() - 0.5) * 1.6; }
+    else if (r > 0.85 && b.emoteScale > 1) Wd.setAction(a, 'happy', { dur: 1, priority: 1 });
   }
   function makeNPCs() {
     npcs = {};
     if (Wd.area.id !== 'isle') return;
     for (const [id, cfg] of Object.entries(Wd.area.NPC)) {
-      const d = Gm.NPCS[id], o = Sty.PRESETS[d.preset];
-      const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, speed: 34, oc: () => o, interact: { type: 'npc', id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: d.zh }, ocKey: id });
+      const d = Gm.NPCS[id], c = OC.CharRender.presetChar(d.preset);
+      const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
       a.home = cfg.home; a.r = cfg.r; a.wait = 1 + Math.random() * 3;
-      a.update = (b, dt) => { if (b.mode === 'talk') return; if (!b.path) { b.wait -= dt; if (b.wait < 0) { b.wait = 4 + Math.random() * 6; const ang = Math.random() * Math.PI * 2, rr = Math.random() * b.r; Wd.walkTo(b, b.home.x + Math.cos(ang) * rr, b.home.y + Math.sin(ang) * rr * 0.7); } } b.mouth = 'cat'; b.eyes = OC.Clock.phase() === 'night' && Math.random() < 0.002 ? 'sleepy' : b.eyes; };
+      a.update = (b, dt) => wander(b, dt);
       npcs[id] = a;
     }
+    // the player's other OCs who live on the island
+    mates = {};
+    const spots = [[260, 700], [330, 720], [210, 600], [380, 650]];
+    OC.Chars.all().filter((c) => c.id !== S().activeId && c.status.onIsland).slice(0, 4).forEach((c, i) => {
+      const [x, y] = spots[i]; const a = Wd.actor({ mate: c.id, x, y, char: () => OC.Chars.get(c.id), interact: { type: 'mate', id: c.id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: OC.Chars.name(c) } });
+      a.home = { x, y }; a.r = 60; a.wait = 2 + Math.random() * 4; a.update = (b, dt) => { wander(b, dt); personalityIdle(b, dt, OC.Chars.get(c.id)); };
+      mates[c.id] = a;
+    });
+  }
+  let mates = {};
+  function wander(b, dt) { if (b.mode === 'talk' || b.act) return; if (!b.path) { b.wait -= dt; if (b.wait < 0) { b.wait = 4 + Math.random() * 6; const ang = Math.random() * Math.PI * 2, rr = Math.random() * b.r; Wd.walkTo(b, b.home.x + Math.cos(ang) * rr, b.home.y + Math.sin(ang) * rr * 0.7); } } }
+  function refreshActors() { if (!Wd.area) return; for (const a of Object.values(mates)) Wd.removeActor(a); mates = {}; for (const a of Object.values(npcs)) Wd.removeActor(a); makeNPCs(); if (player) player.key = ''; }
+  /** greeting in the OC's own style + a line in its speech style */
+  function greetFrom(a, c) {
+    const b = OC.Chars.behavior(c); Wd.setAction(a, 'greet', { dur: 1.4, priority: 3 }); if (b.greet === 'jump') Wd.jump(a);
+    const lines = c.speech.catchphrase ? [c.speech.catchphrase] : ['你好呀！', '今天天氣真好。', '嗨！', '要一起玩嗎？'];
+    bubble(a, OC.Chars.speak(c, lines[Math.floor(Math.random() * lines.length)]));
+    if (b.blushOnTalk) a.blush = 1, setTimeout(() => (a.blush = 0), 1600);
   }
 
   // =============================== world overlays (emotes / float text / prompts) ===============================
@@ -212,7 +227,8 @@
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
     haptic();
     switch (it.type) {
-      case 'self': Wd.jump(player); player.squashT = 0; emote(player, ['♪', '✦', '♥'][Math.floor(Math.random() * 3)]); break;
+      case 'self': greetFrom(player, me()); break;
+      case 'mate': { const a = mates[it.id], c = OC.Chars.get(it.id); if (a && c) { face(a, player.x - a.x, 0.1); greetFrom(a, c); } break; }
       case 'npc': approachNpc(it.id); break;
       case 'drop': goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)); break;
       case 'tree': goThen(it.at.x, it.at.y, () => shakeTree(it)); break;
@@ -233,16 +249,17 @@
     if (it.type === 'tree') { const left = treeReadyIn(it); toast(left <= 0 ? `${it.label}・果實成熟了，點一下就能搖` : `${it.label}・還要約 ${Math.ceil(left)} 分鐘長出果實`, 'leaf'); return; }
     if (it.type === 'npc') { const n = Gm.npc(it.id); toast(`${Gm.NPCS[it.id].zh}・${n.met ? Gm.LEVEL_ZH[Gm.friendLevel(n.fr)] : '還沒見過面'}`, 'heart'); return; }
     if (it.type === 'furn') { toast(`${Sty.ITEMS[it.id].zh}・開啟佈置模式即可移動`, 'sofa'); return; }
-    toast(it.label || (it.type === 'self' ? S().oc.name : '物品'), 'info');
+    toast(it.label || (it.type === 'self' ? `${OC.Chars.name(me())}・${OC.Chars.typeTitle(me())}` : '物品'), 'info');
   }
   let mk = null;
   function marker(p) { if (!mk) { mk = h('div', { style: { position: 'absolute', width: '22px', height: '12px', margin: '-6px 0 0 -11px', borderRadius: '50%', border: '2.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.15)', pointerEvents: 'none', transition: 'opacity 300ms' } }); overlays().append(mk); } mk.dataset.x = p.x; mk.dataset.y = p.y; mk.style.opacity = 1; clearTimeout(mk._t); mk._t = setTimeout(() => (mk.style.opacity = 0), 900); }
   function goThen(x, y, fn) { const near = Math.hypot(player.x - x, player.y - y) < 8; if (near) { fn(); return; } if (!Wd.walkTo(player, x, y, () => fn())) toast('到不了那裡', 'info'); }
   function face(a, dx, dy) { a.tFace = Math.max(-1, Math.min(1, dx)); a.tBack = dy < 0 ? 1 : 0; }
-  function standUp() { if (player && player.mode === 'sit') { player.mode = 'idle'; player.seatY = 0; player.squash = 1; } }
-  function sit(seat) { player.x = seat.x; player.y = seat.y; player.seatY = seat.up; player.mode = 'sit'; player.path = null; face(player, 0, 1); emote(player, '♪'); toast('坐下來休息…（精力會慢慢恢復）', 'zap'); }
+  function standUp() { if (player && player.mode === 'sit') { player.mode = 'idle'; player.seatY = 0; Wd.setAction(player, 'idle'); } }
+  function sit(seat) { player.x = seat.x; player.y = seat.y; player.seatY = seat.up; player.mode = 'sit'; player.path = null; face(player, 0, 1); Wd.setAction(player, 'sit', { priority: 4 }); emote(player, '♪'); toast('坐下來休息…（精力會慢慢恢復）', 'zap'); }
   function restHome() {
     face(player, 0, -1); const f = $('#fade'); f.style.opacity = 1; f.style.pointerEvents = 'auto';
+    Wd.setAction(player, 'sleep', { dur: 1.2, priority: 5 });
     setTimeout(() => { St.needs({ energy: Gm.has('sleepy') ? 60 : 45, mood: 5 }); f.style.opacity = 0; f.style.pointerEvents = 'none'; toast('在家休息了一下，精神好多了！', 'home'); face(player, 0, 1); }, 1100);
   }
   // trees: fruit regrows 20 real minutes after a shake
@@ -286,7 +303,24 @@
     if (it.id === 'lamp') { const L = S().world.lamps; L[it.uid] = L[it.uid] === false; St.touch(); toast(L[it.uid] === false ? '關掉了檯燈' : '打開了檯燈（晚上會亮）', 'sun'); return; }
     toast(`${def.zh}・長按或開啟佈置模式可以移動`, 'sofa');
   }
-  function reactEat() { if (!player) return; player.mode = 'react'; player.mouth = 'chew'; player.eyes = 'happy'; emote(player, '♥'); setTimeout(() => { if (player.mode === 'react') player.mode = 'idle'; }, 1600); }
+  function reactEat() { if (!player) return; const b = OC.Chars.behavior(me()); Wd.setAction(player, 'eat', { dur: b.chew, priority: 4 }); emote(player, '♥'); }
+  function moodPose() { const m = Gm.moodFace(); return { eyes: m.eyes === 'round' ? undefined : m.eyes, mouth: m.mouth === 'cat' ? undefined : m.mouth }; }
+  // speech bubble above an actor
+  function bubble(a, text) { const el = h('div.speech', null, text); overlays().append(el); floats.push({ el, a, up: 52, t: 0, dur: 2.6, keep: true }); }
+
+  // ---------- test an animation on the island (from the animation studio) ----------
+  let testChar = null, testBar = null;
+  function testOnIsland(c, action, onReturn) {
+    testChar = c; tab('island'); if (player) { player.key = ''; Wd.setAction(player, action, { priority: 6 }); }
+    testBar = h('div.place-bar', { style: { top: 'calc(var(--sat) + 104px)', bottom: 'auto' } },
+      h('button.btn.s', { on: { click: () => player && Wd.setAction(player, action, { priority: 6 }) } }, icon('play', 's'), '播放動作'),
+      h('button.btn.s', { on: { click: () => { const t = Wd.nearestWalkable(player.x + (Math.random() - 0.5) * 120, player.y + (Math.random() - 0.5) * 80, 40); if (t) { Wd.setAction(player, 'idle'); Wd.walkTo(player, t.x, t.y); } } } }, icon('walk', 's'), '走走看'),
+      h('button.btn.s.primary', { on: { click: () => endTest(onReturn) } }, icon('back', 's'), '回工作室'));
+    $('#app').append(testBar); testBar.layer = { scrim: false, close: () => endTest(onReturn) }; OC.UI.pushLayer(testBar.layer);
+    toast('測試模式：點地面讓角色移動，看看動作在場景中的樣子', 'film');
+  }
+  function endTest(onReturn) { if (!testBar) return; OC.UI.popLayer(testBar.layer); testBar.remove(); testBar = null; testChar = null; if (player) { Wd.setAction(player, 'idle'); player.key = ''; } onReturn && onReturn(); }
+
 
   // ---- NPC talk & gifts ----
   function approachNpc(id) {
@@ -398,48 +432,29 @@
   }
 
   // =============================== desktop pet export ===============================
+  /** render the chosen OC's real actions (frames or rig) into the overlay pet's sprite sets */
   async function exportPet() {
     if (!NATIVE) return false;
-    const px = 192, out = { fps: { idle: 4, walk: 8, drag: 6, sit: 3, sleep: 2, happy: 8 }, frames: {} };
-    const sp = mySprite();
-    const frame = (st) => { const c = OC.makeCanvas(px, px), x = c.getContext('2d');
-      if (sp) { const img = sp.frames[st.fi % sp.frames.length]; x.save(); x.translate(px / 2, px); x.scale(1, st.sq || 1); x.translate(-px / 2, -px - (st.lift || 0)); x.drawImage(img, 0, 0, px, px); x.restore(); }
-      else OC.Style.drawOC(x, S().oc, Object.assign({ noShadow: true }, st), px / 2, px * 0.94, px / 74, st.t || 0);
-      return c.toDataURL('image/png'); };
-    const seq = (n, f) => Array.from({ length: n }, (_, i) => frame(Object.assign({ fi: i }, f(i, n))));
-    out.frames.idle = seq(4, (i) => ({ breath: Math.sin((i / 4) * Math.PI * 2), blink: i === 3 ? 1 : 0, mouth: 'cat', face: 0.25 }));
-    out.frames.walk = seq(8, (i) => ({ walk: 1, phase: i / 4, face: 0.9, mouth: 'cat' }));
-    out.frames.drag = seq(2, (i) => ({ eyes: 'wide', mouth: 'o', lift: 0, armL: -1.2 - i * 0.2, armR: -1.2 - i * 0.2, face: 0 }));
-    out.frames.sit = seq(2, (i) => ({ eyes: 'happy', mouth: 'smile', breath: i ? 1 : -1, face: 0.3, sq: 0.94 }));
-    out.frames.sleep = seq(2, (i) => ({ blink: 1, eyes: 'sleepy', mouth: 'flat', breath: i ? 1 : -1, face: 0.2 }));
-    out.frames.happy = seq(4, (i) => ({ eyes: 'happy', mouth: 'open', lift: [0, 8, 12, 6][i], armL: -1, armR: -1, face: 0, blush: 1 }));
+    const c = OC.Chars.get(S().petId) || me(); if (!c) return false;
+    for (const id of Object.values(c.actions || {}).flatMap((m) => Object.values(m))) { const d = OC.Anim.get(id); if (d) await OC.Anim.preload(d); }
+    const px = 192, out = { fps: {}, frames: {} };
+    const sample = (action, n, fps, extra) => {
+      const r = OC.Anim.resolve(c, action, 'right'); const frames = [];
+      const count = r && r.doc && c.actions[r.action] ? Math.min(12, OC.Anim.count(r.doc)) : n;
+      const rate = r && r.doc && c.actions[r.action] ? r.doc.fps : fps;
+      for (let i = 0; i < count; i++) {
+        const k = OC.makeCanvas(px, px), x = k.getContext('2d');
+        const at = r && r.doc && c.actions[r.action] ? (i / rate) + 0.001 : i / fps;
+        OC.CharRender.draw(x, c, Object.assign({ action, at, dir: 'right', face: 0.6, noShadow: true }, extra ? extra(i, count) : {}), px / 2, px * 0.94, px / 74, at);
+        frames.push(k.toDataURL('image/png'));
+      }
+      out.frames[action === 'greet' ? 'happy' : action] = frames; out.fps[action === 'greet' ? 'happy' : action] = rate;
+    };
+    sample('idle', 4, 4, (i) => ({ breath: Math.sin((i / 4) * Math.PI * 2), blink: i === 3 ? 1 : 0 }));
+    sample('walk', 8, 8, (i) => ({ walk: 1, phase: i / 4 }));
+    sample('drag', 2, 6); sample('sit', 2, 3); sample('sleep', 2, 2); sample('happy', 4, 8);
     try { return !!NATIVE.savePetSprites(JSON.stringify(out)); } catch (e) { console.error(e); return false; }
   }
-
-  // =============================== image import ===============================
-  function importImage(file) {
-    const img = new Image(); const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const N = 256;
-      const render = (removeBg) => { const c = OC.makeCanvas(N, N), x = c.getContext('2d'); const s = Math.min((N * 0.86) / img.width, (N * 0.86) / img.height), w = img.width * s, hh = img.height * s; x.drawImage(img, (N - w) / 2, N * 0.9 - hh, w, hh);
-        if (removeBg) { const d = x.getImageData(0, 0, N, N); const a = d.data; const bg = [a[(Math.round(N * 0.06) * N + Math.round(N * 0.06)) * 4], a[(Math.round(N * 0.06) * N + Math.round(N * 0.06)) * 4 + 1], a[(Math.round(N * 0.06) * N + Math.round(N * 0.06)) * 4 + 2]]; for (let i = 0; i < a.length; i += 4) { const dd = Math.abs(a[i] - bg[0]) + Math.abs(a[i + 1] - bg[1]) + Math.abs(a[i + 2] - bg[2]); if (dd < 48) a[i + 3] = 0; else if (dd < 80) a[i + 3] = Math.min(a[i + 3], (dd - 48) * 8); } x.putImageData(d, 0, 0); }
-        return c; };
-      let rm = true;
-      sheet('匯入圖片', (b, api) => {
-        const prev = h('canvas', { width: N, height: N }); Object.assign(prev.style, { width: '200px', height: '200px', borderRadius: '16px', background: 'repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/20px 20px' });
-        const draw = () => { const c = render(rm), x = prev.getContext('2d'); x.clearRect(0, 0, N, N); x.drawImage(c, 0, 0); };
-        const name = h('input', { value: file.name.replace(/\.[^.]+$/, '').slice(0, 16), maxLength: 16, 'aria-label': '名稱' });
-        b.append(h('div.center', null, prev), h('div.hstack', { style: { margin: '12px 0' } }, h('span.grow', null, '自動去除背景（以左上角顏色為準）'), OC.UI.toggle(rm, (v) => { rm = v; draw(); })), h('div.field', null, name),
-          h('div.lock-note', { style: { margin: '10px 0' } }, icon('info', 's'), '單張圖片是「單向素材」：島上會用左右翻轉與彈跳來表現轉身與走路。'),
-          h('button.btn.primary.block', { on: { click: () => { const rec = { id: 'a' + Date.now().toString(36), name: name.value.trim() || '匯入圖片', fps: 6, w: N, h: N, frames: [render(rm).toDataURL('image/png')], imported: true }; S().anims.push(rec); St.touch('anims'); api.close(); toast('已加入我的作品', 'check'); OC.Pages.refreshOpen(); OC.Pages.pages.workshop.el && setTimeout(() => askUseAsLook(rec), 350); } } }, icon('check', 's'), '加入我的作品'));
-        draw();
-      });
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => toast('無法讀取這張圖片', 'info');
-    img.src = url;
-  }
-  function askUseAsLook(rec) { OC.UI.confirm('設為角色外觀？', `要讓「${rec.name}」成為你在島上的樣子嗎？之後也可以在「編輯角色 → 外觀來源」更改。`, '設為外觀').then((ok) => { if (ok) { S().appearance = { mode: 'sprite', animId: rec.id }; St.touch('oc'); OC.Pages.refreshOpen(); toast('外觀已更新', 'check'); } }); }
 
   // =============================== save export ===============================
   function exportSave() {
@@ -460,35 +475,6 @@
     $('#app').append(joy);
   }
   function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; }
-
-  // =============================== onboarding ===============================
-  function onboarding() {
-    return new Promise((done) => {
-      const draft = Sty.defaultOC(); let step = 0;
-      const el = h('div.onb', { role: 'dialog', 'aria-label': '開始' }); const stage = h('div.stage'); const cv = h('canvas', { width: 440, height: 440 }); stage.append(cv);
-      const body = h('div'), dots = h('div.dots', null, h('i'), h('i'), h('i')), btn = h('button.btn.primary.block', { on: { click: () => next() } });
-      el.append(stage, body, dots, btn); $('#app').append(el);
-      live(cv, () => ({ oc: draft, state: { face: Math.sin(performance.now() / 1300) * 0.4, mouth: 'smile', eyes: step === 2 ? 'happy' : 'round' } }));
-      const render = () => {
-        [...dots.children].forEach((d, i) => d.classList.toggle('on', i === step));
-        if (step === 0) { body.replaceChildren(h('div.logo.center', null, 'OC ', h('b', null, 'Shimeji')), h('p.center.muted', null, '和你的原創角色一起在小島上生活，', h('br'), '還能讓他跑到手機桌面上陪你。')); btn.textContent = '開始創造角色'; }
-        if (step === 1) {
-          const name = h('input', { value: draft.name, maxLength: 10, 'aria-label': '名字', on: { input: (e) => (draft.name = e.target.value) } });
-          const pre = h('div.grid.c3'); Object.entries(Sty.PRESETS).forEach(([k, v]) => { const c = h('canvas', { width: 120, height: 120 }); Sty.portrait(c, v, { scale: 1.1, state: { mouth: 'smile' } }); pre.append(h('button.tile', { 'data-v': k, on: { click: () => { Object.assign(draft, JSON.parse(JSON.stringify(v)), { name: draft.name }); [...pre.children].forEach((b) => b.classList.toggle('on', b.dataset.v === k)); } } }, c, v.name)); });
-          pre.firstChild.classList.add('on');
-          body.replaceChildren(h('h2', { style: { margin: '0 0 8px' } }, '你的角色'), h('div.field', null, name), h('div', { style: { marginTop: '10px' } }, pre), h('div', { style: { marginTop: '10px' } }, OC.UI.swatches(Sty.FURS.slice(0, 8), draft.fur, (c) => (draft.fur = c))), h('p.faint', { style: { fontSize: 'var(--fs-xs)' } }, '之後都可以在「角色 → 編輯角色」修改，也能用自己畫的圖。'));
-          btn.textContent = '下一步';
-        }
-        if (step === 2) {
-          const tr = h('div.grid.c2'); const sync = () => [...tr.children].forEach((c) => c.classList.toggle('on', draft.traits.includes(c.dataset.v)));
-          Sty.TRAITS.forEach((t) => tr.append(h('button.tile', { 'data-v': t.id, style: { aspectRatio: 'auto', minHeight: '58px' }, on: { click: () => { if (draft.traits.includes(t.id)) draft.traits = draft.traits.filter((x) => x !== t.id); else if (draft.traits.length < 3) draft.traits.push(t.id); sync(); } } }, h('b', { style: { color: 'var(--ink)' } }, t.zh), t.d))); sync();
-          body.replaceChildren(h('h2', { style: { margin: '0 0 8px' } }, '選擇個性（最多 3 個）'), tr); btn.textContent = '搬到晴日島！';
-        }
-      };
-      const next = () => { haptic(); if (step < 2) { step++; render(); return; } draft.name = draft.name.trim() || '麻糬'; S().oc = draft; S().onboarded = true; St.persist(); el.style.transition = 'opacity 380ms'; el.style.opacity = 0; setTimeout(() => { el.remove(); done(); }, 400); };
-      render();
-    });
-  }
 
   // =============================== main loop ===============================
   let autoSaveT = 0, last = performance.now(), acc = 0, fpsN = 0, fpsT = 0, needT = 0, saveStepT = 0;
@@ -535,7 +521,7 @@
   St.on('friendUp', (e) => toast(`和${Gm.NPCS[e.id].zh}的友情升到「${Gm.LEVEL_ZH[e.level]}」！`, 'heart'));
   St.on('inv', (e) => { if (e.first && e.n > 0) toast(`圖鑑新增：${Sty.ITEMS[e.id].zh}`, 'book'); });
   St.on('saveError', () => toast('存檔空間不足：請刪除一些作品', 'info'));
-  ['inv', 'coins', 'needs', 'npc', 'oc', 'anims', 'quest', 'ach', 'goal', 'placed'].forEach((ev) => St.on(ev, () => { clearTimeout(refreshT); refreshT = setTimeout(() => OC.Pages.refreshOpen(), 120); }));
+  ['inv', 'coins', 'needs', 'npc', 'chars', 'animations', 'assets', 'quest', 'ach', 'goal', 'placed', 'growth'].forEach((ev) => St.on(ev, () => { clearTimeout(refreshT); refreshT = setTimeout(() => OC.Pages.refreshOpen(), 120); }));
   let refreshT = 0;
 
   // =============================== boot ===============================
@@ -548,7 +534,7 @@
     // low-power start: explicit (?safe=1 from the native error screen) or a weak phone on first run
     const weak = (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
     if (/[?&]safe=1/.test(location.search) || (!S().onboarded && weak)) { S().settings.perf = 'saver'; St.touch(); }
-    if (!S().oc) S().oc = null;
+    await OC.Assets.init();
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
     Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, ghostMoved: () => syncPlace(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
@@ -556,7 +542,9 @@
     requestAnimationFrame(loop);
     window.__ocBooted = true;
     $('#boot').classList.add('done'); setTimeout(() => { const b = $('#boot'); if (b && b.classList.contains('done')) b.remove(); }, 500);
-    if (!S().onboarded || !S().oc) await onboarding();
+    if (!S().onboarded || !OC.Chars.all().length) await OC.Creator.start({ first: true });
+    if (S().legacyAnims && S().legacyAnims.length) OC.Chars.migrateLegacyAnims().then((n) => n && toast(`已把 ${n} 段舊作品搬到新的素材庫`, 'film')).catch((e) => console.error('[migrate]', e));
+    if (!S().activeId || !OC.Chars.get(S().activeId)) S().activeId = S().roster[0];
     buildHUD(); buildTabbar(); buildBag(); buildDialogue(); buildJoystick();
     Gm.tickNeeds();
     const pos = S().pos || {}; loadArea(OC.Areas[pos.area] ? pos.area : 'isle', pos.area ? pos : null);
@@ -565,6 +553,12 @@
     window.__ocReady = true;
   }
 
-  OC.App = { tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, spriteOf, mySprite, invalidateSprite, exportPet, importImage, exportSave, travel, startPlacement, reactEat, goToNpc, get player() { return player; }, get npcs() { return npcs; }, setDecorate };
+  // roster changes (new OC, switch, join/leave island) → refresh actors without reloading the area
+  let charsT = 0;
+  St.on('chars', () => { clearTimeout(charsT); charsT = setTimeout(() => { if (hud.name) { lastHudKey = ''; updateHUD(); } if (player) player.key = ''; refreshActors(); }, 60); });
+  St.on('animations', () => { if (player) player.key = ''; for (const a of Wd.actors) a.key = ''; });
+  St.on('growthSuggest', (e) => toast(`${OC.Chars.name(e.c)}好像${e.type === 'trait' ? '有了新的個性' : '發現了新興趣'}：「${e.value}」（到角色檔案決定）`, 'sparkle'));
+
+  OC.App = { tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();
