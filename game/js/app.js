@@ -288,6 +288,7 @@
   // =============================== interactions ===============================
   function busy() { return dlgOpen || placing; }
   function onTap(r) {
+    if (window.__ocInputLog) window.__ocInputLog.push(`onTap dlg=${!!dlgOpen} placing=${!!placing} decorate=${decorate} covered=${curTab}`);
     if (dlgOpen) { advanceDialogue(); return; }
     if (placing) return;
     if (observing) { stopObserve(); }

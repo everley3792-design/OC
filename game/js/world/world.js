@@ -385,7 +385,7 @@
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
     if (gesture.kind === 'ghost' && gesture.moved) hooks.ghostDone && hooks.ghostDone();
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
-      const r = pick(p.x, p.y);
+      const r = pick(p.x, p.y); if (window.__ocInputLog) window.__ocInputLog.push(`tap pick=${r.it ? r.it.type + ':' + (r.it.shop || r.it.id || '') : 'none'} ghost=${!!ghost}`);
       if (ghost) { moveGhost(r.p.x, r.p.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); }
       else hooks.tap && hooks.tap(r);
     }
