@@ -19,6 +19,7 @@
   const small = (t) => h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, t);
   const img = (id, px = 40) => { const im = OC.Style.itemImg(id); im.style.width = im.style.height = px + 'px'; return im; };
   const name = (c) => OC.Chars.name(c);
+  const av = (c) => { const cv = h('canvas', { width: 80, height: 80 }); cv.style.cssText = 'width:40px;height:40px;flex:none;border-radius:12px;background:var(--surface-2)'; OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile' } }); return cv; };
   const coin = (n) => h('span.price', null, h('span', { style: { color: 'var(--sun)', display: 'inline-grid' } }, icon('coin', 's')), h('b.num', null, n.toLocaleString()));
 
   // ======================= world map =======================
@@ -62,7 +63,7 @@
       for (const [id, pin] of Object.entries(p.pins)) { pin.classList.toggle('on', id === p.sel); pin.classList.toggle('here', id === curTop); const ocs = OCS_AT(id).concat(Object.entries(PL().P).filter(([, q]) => q.parent === id).flatMap(([k]) => OCS_AT(k))); pin.querySelector('.pin-ocs').replaceChildren(...ocs.slice(0, 4).map((c) => h('i', { title: name(c) }, name(c).slice(0, 1)))); }
       const subs = [p.sel].concat(Object.entries(PL().P).filter(([, q]) => q.parent === p.sel).map(([k]) => k));
       p.info.replaceChildren(...subs.map((id) => placeCard(id, cur)));
-      p.who.replaceChildren(T('大家在哪裡', `${OC.Chars.all().filter((c) => c.status.onIsland).length} 位`), h('div.list', null, ...OC.Chars.all().filter((c) => c.status.onIsland).map((c) => { const w = where(c), P0 = PL().get(w.pl); const d = OC.LifeUI.doingText(c); return row(OC.LifeUI.avatar ? OC.LifeUI.avatar(c) : null, `${name(c)}${c.id === S().activeId ? '（操控中）' : ''}`, `${w.tr ? '正在前往' : '在'}${P0 ? P0.zh : '?'}${d && !w.tr ? '・' + d : ''}`, w.pl !== cur && c.id !== S().activeId && P0 && !P0.locked ? h('button.btn.s', { on: { click: () => OC.WorldUI.travel(w.pl) } }, '前往') : null); })));
+      p.who.replaceChildren(T('大家在哪裡', `${OC.Chars.all().filter((c) => c.status.onIsland).length} 位`), h('div.list', null, ...OC.Chars.all().filter((c) => c.status.onIsland).map((c) => { const w = where(c), P0 = PL().get(w.pl); const d = OC.LifeUI.doingText(c); return row(av(c), `${name(c)}${c.id === S().activeId ? '（操控中）' : ''}`, `${w.tr ? '正在前往' : '在'}${P0 ? P0.zh : '?'}${d && !w.tr ? '・' + d : ''}`, w.pl !== cur && c.id !== S().activeId && P0 && !P0.locked ? h('button.btn.s', { on: { click: () => OC.WorldUI.travel(w.pl) } }, '前往') : null); })));
     },
   });
   function placeCard(id, cur) {
@@ -77,6 +78,28 @@
       ocs.length ? h('div', { style: { marginTop: '8px', fontSize: 'var(--fs-s)' } }, '在這裡：', ocs.map(name).join('、')) : null,
       !here ? h('button.btn.primary.block', { style: { marginTop: '12px' }, on: { click: () => OC.WorldUI.travel(id) } }, icon('compass', 's'), `前往${pl.zh}`) : null);
   }
+
+  Pg().define('more', '更多', {
+    build(p, el) { p.list = h('div'); el.append(p.list); },
+    refresh(p) {
+      const Gm = OC.Game, claimable = Gm.todayQuests().filter((q) => q.prog >= q.n && !q.claimed).length;
+      const all = Object.keys(OC.Style.ITEMS).filter((id) => !I(id).custom), seen = all.filter((id) => S().seen[id]).length;
+      p.list.replaceChildren(
+        h('div.list', null,
+          row('flag', '今日任務', `${Gm.todayQuests().filter((q) => q.claimed).length}/4 已領取`, h('div.hstack', null, claimable ? h('span.badge', null, claimable) : null, icon('chev', 'chev')), () => Pg().open('quests')),
+          row('trophy', '成就', `${Object.keys(S().ach).length}/${Gm.ACH.length}`, null, () => Pg().open('ach')),
+          row('book', '圖鑑', `${seen}/${all.length}`, null, () => Pg().open('collection')),
+          row('target', '人生目標', (Gm.GOALS.find((g) => g.id === S().goal) || { zh: '尚未選擇' }).zh, null, () => Pg().open('goals'))),
+        h('div.list', { style: { marginTop: '12px' } },
+          row('bag', '背包', `${Object.values(S().inv).reduce((a, b) => a + b, 0)} 件物品`, null, () => Pg().open('bag')),
+          row('cart', '晴日雜貨攤', '其他商店在晴日商店街', null, () => Pg().open('shop', { shop: 'general' })),
+          row('cart', '工坊商品', `${Object.keys((S().custom || {}).items || {}).length} 件`, null, () => Pg().open('products')),
+          row('coin', '交易紀錄', `${S().coins.toLocaleString()} 星幣`, null, () => Pg().open('ledger'))),
+        h('div.list', { style: { marginTop: '12px' } },
+          row('gear', '設定', '主題、效能、時間天氣、操作、資料', null, () => Pg().open('settings')),
+          row('info', '關於', null, null, () => Pg().open('about'))));
+    },
+  });
 
   // ======================= item use (OC.Use) =======================
   /** OCs that can receive an item now (present, awake / not busy) → [{ c, a, why }] */
@@ -93,7 +116,7 @@
   function chooseOC(id, verb, fn) {
     const list = receivers(id); if (!list.length) { toast('這裡沒有 OC 可以給', 'info'); return; }
     if (list.length === 1 && !list[0].why) { fn(list[0].c.id); return; }
-    sheet(`${verb}給誰？`, (b, api) => b.append(h('div.list', null, ...list.map(({ c, why }) => row(OC.LifeUI.avatar(c), name(c), why || `${M().label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, why ? h('span.tag', null, why) : null, why ? null : () => { api.close(); fn(c.id); })))));
+    sheet(`${verb}給誰？`, (b, api) => b.append(h('div.list', null, ...list.map(({ c, why }) => row(av(c), name(c), why || `${M().label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, why ? h('span.tag', null, why) : null, why ? null : () => { api.close(); fn(c.id); })))));
   }
   /** eat / drink: animation first; the item is used only if the OC finishes */
   function feed(ocId, id) {

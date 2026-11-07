@@ -122,39 +122,61 @@
   function openTray() { renderSlots(); tray.classList.add('open'); bagFab.classList.add('hide'); }
   function closeTray() { tray.classList.remove('open'); if (curTab === 'island') bagFab.classList.remove('hide'); }
   function renderSlots() {
-    const ids = Object.keys(S().inv).filter((id) => Sty.ITEMS[id] && Sty.ITEMS[id].kind !== 'clothing');
+    const fav = S().favs || {};
+    const ids = Object.keys(S().inv).filter((id) => Sty.ITEMS[id] && St.count(id) > 0).sort((a, b) => (fav[b] ? 1 : 0) - (fav[a] ? 1 : 0) || OC.Items.groupOf(a).localeCompare(OC.Items.groupOf(b)));
     if (!ids.length) { slots.replaceChildren(h('div.empty', { style: { padding: '14px' } }, '背包是空的')); return; }
-    slots.replaceChildren(...ids.map((id) => { const c = Sty.itemCanvas(id, 96); const cv = h('canvas', { width: 96, height: 96 }); cv.getContext('2d').drawImage(c, 0, 0); const sl = h('div.slot', { role: 'button', 'aria-label': `${Sty.ITEMS[id].zh} ${St.count(id)} 個`, 'data-id': id }, cv, h('span.count', null, St.count(id))); bindSlot(sl, id); return sl; }));
+    slots.replaceChildren(...ids.map((id) => { const c = Sty.itemCanvas(id, 96); const cv = h('canvas', { width: 96, height: 96 }); cv.getContext('2d').drawImage(c, 0, 0); const sl = h('div.slot', { role: 'button', 'aria-label': `${Sty.ITEMS[id].zh} ${St.count(id)} 個`, 'data-id': id }, cv, h('span.count', null, St.count(id)), fav[id] ? h('span.fav', null, '★') : null); bindSlot(sl, id); return sl; }));
+  }
+  // drag priority: a vertical move (or a held horizontal move) starts a drag; a quick horizontal swipe scrolls the tray; a tap opens details
+  let rings = [];
+  function showRings(id) {
+    clearRings(); const k = OC.Items.useKind(id);
+    for (const t of dropCands(id)) { const el = h('div.drop-ring' + (t.why ? '.no' : ''), null, t.why ? h('span', null, t.why) : null); overlays().append(el); rings.push({ el, a: t.a }); }
+    if (k === 'place' && !(OC.Places.get(Wd.area.id) || {}).decor) toast('這裡不能擺家具（到晴日島或家裡吧）', 'info');
+    placeRings();
+  }
+  function placeRings() { for (const r of rings) { if (r.a.hidden || r.a.dead) { r.el.hidden = true; continue; } const p = Wd.project(r.a.x, r.a.y, r.a.lvl, (r.a.gy - r.a.lvl * Wd.HY) + 20); r.el.hidden = false; r.el.style.left = p.x + 'px'; r.el.style.top = p.y + 'px'; } }
+  function clearRings() { rings.forEach((r) => r.el.remove()); rings = []; }
+  /** OCs (and residents for gifts) the item can be dropped on, with a reason when not allowed now */
+  function dropCands(id) {
+    const k = OC.Items.useKind(id), out = [];
+    if (k === 'place') return out;
+    for (const r of OC.Use.receivers(id)) out.push({ a: r.a, oc: r.c.id, why: r.why });
+    if (k === 'gift' || k === 'eat' || k === 'drink' || k === 'play') for (const [nid, n] of Object.entries(npcs)) if (Sty.ITEMS[id].kind !== 'furniture') out.push({ a: n, npc: nid, why: null });
+    return out;
   }
   function bindSlot(sl, id) {
     let st = null, ghost = null;
     sl.addEventListener('pointerdown', (e) => { sl.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY, t: performance.now(), drag: false }; });
     sl.addEventListener('pointermove', (e) => {
       if (!st) return;
-      if (!st.drag && (Math.abs(e.clientY - st.y) > 12 || (Math.abs(e.clientX - st.x) > 12 && performance.now() - st.t > 220))) { st.drag = true; ghost = h('div.drag-ghost'); ghost.append(Sty.itemImg(id)); ghost.firstChild.style.width = '100%'; $('#app').append(ghost); haptic(); }
-      if (st.drag) { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; const t = dropTarget(e.clientX, e.clientY, id); ghost.classList.toggle('hit', !!t); }
+      if (!st.drag && (Math.abs(e.clientY - st.y) > 12 || (Math.abs(e.clientX - st.x) > 12 && performance.now() - st.t > 220))) { st.drag = true; ghost = h('div.drag-ghost'); ghost.append(Sty.itemImg(id)); ghost.firstChild.style.width = '100%'; $('#app').append(ghost); haptic(); showRings(id); }
+      if (st.drag) { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; const t = dropTarget(e.clientX, e.clientY, id); ghost.classList.toggle('hit', !!(t && !t.why)); ghost.classList.toggle('bad', !!(t && t.why)); rings.forEach((r) => r.el.classList.toggle('hot', !!(t && t.a === r.a))); }
     });
     const end = (e) => {
       if (!st) return; const was = st; st = null;
-      if (was.drag) { ghost.remove(); ghost = null; if (e.type !== 'pointercancel') dropItem(e.clientX, e.clientY, id); return; }
+      if (was.drag) { ghost.remove(); ghost = null; clearRings(); if (e.type !== 'pointercancel') dropItem(e.clientX, e.clientY, id); else toast('取消了', 'info'); return; }
       if (e.type !== 'pointercancel') OC.Pages.itemSheet(id, renderSlots);
     };
     sl.addEventListener('pointerup', end); sl.addEventListener('pointercancel', end);
   }
   function dropTarget(sx, sy, id) {
-    const r = Wd.pick(sx, sy - 24); const it = r.it, def = Sty.ITEMS[id];
-    if (it && it.type === 'self' && def.use) return { kind: 'eat' };
-    if (it && it.type === 'npc') return { kind: 'gift', npc: it.id };
-    if (def.kind === 'furniture' && Wd.area.id === 'isle') return { kind: 'place', p: r.p };
+    const r = Wd.pick(sx, sy - 24); const it = r.it, k = OC.Items.useKind(id);
+    if (k === 'place') return (OC.Places.get(Wd.area.id) || {}).decor ? { kind: 'place', p: r.p } : { kind: 'place', why: '這裡不能擺家具' };
+    if (it && (it.type === 'self' || it.type === 'mate')) { const oc = it.type === 'self' ? S().activeId : it.id; const c = dropCands(id).find((t) => t.oc === oc); return c ? Object.assign({ kind: 'oc' }, c) : null; }
+    if (it && it.type === 'npc') return { kind: 'npc', npc: it.id, a: npcs[it.id] };
     return null;
   }
   function dropItem(sx, sy, id) {
-    const t = dropTarget(sx, sy, id); if (!t) { toast('拖到角色身上可以使用，拖到居民身上可以送禮', 'info'); return; }
-    if (t.kind === 'eat') { const fx = Gm.eat(id); if (fx) { floatText(player, `+${Object.values(fx).reduce((a, b) => a + b, 0)}`, 'var(--need-food)'); reactEat(); } }
-    if (t.kind === 'gift') giveGift(t.npc, id);
+    const t = dropTarget(sx, sy, id);
+    if (!t) { toast('拖到 OC 身上使用，拖到居民身上送禮。放開在空白處＝取消', 'info'); return; }
+    if (t.why) { toast(t.why, 'info'); return; }
+    if (t.kind === 'oc') { const r = OC.Use.use(id, t.oc); if (r && r.then) r.then(() => renderSlots()); }
+    if (t.kind === 'npc') giveGift(t.npc, id);
     if (t.kind === 'place') { closeTray(); startPlacement({ id }, t.p); }
     renderSlots();
   }
+  St.on && St.on('inv', () => { if (tray && tray.classList.contains('open')) renderSlots(); });
 
   // =============================== actors ===============================
   const me = () => OC.Chars.active();
@@ -248,6 +270,7 @@
   function floatText(a, text, color) { const el = h('div.float-text', { style: { color: color || 'var(--accent)' } }, text); overlays().append(el); floats.push({ el, a, up: 40, t: 0, dur: 1.4 }); }
   function floatAt(x, y, lvl, text, color) { const el = h('div.float-text', { style: { color: color || 'var(--accent)' } }, text); overlays().append(el); floats.push({ el, pos: { x, y, lvl }, up: 20, t: 0, dur: 1.4 }); }
   function updateOverlays(dt) {
+    if (rings.length) placeRings();
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.t += dt; if (f.t > f.dur) { f.el.remove(); floats.splice(i, 1); continue; }
       const p = f.a ? Wd.project(f.a.x, f.a.y, f.a.lvl, (f.a.gy - f.a.lvl * Wd.HY) + f.up) : Wd.project(f.pos.x, f.pos.y, f.pos.lvl, f.up);

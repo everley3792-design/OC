@@ -84,7 +84,7 @@
       const traits = pers.traits.map((t) => (Ch().TRAITS.find((q) => q.id === t) || {}).zh).filter(Boolean).concat(pers.customTraits.map((t) => t.name));
       const q = c.quirks, qz = (k) => (Ch().QUIRKS[k].opts.find((o) => o[0] === q[k]) || [0, ''])[1];
       const g = c.growth;
-      if (p.ptab === 'life') { p.body.replaceChildren(OC.LifeUI.lifeSection(c, () => p.refresh(p))); return; }
+      if (p.ptab === 'life') { p.body.replaceChildren(OC.LifeUI.lifeSection(c, () => p.refresh(p)), OC.P5UI ? OC.P5UI.foodCard(c) : null); return; }
       if (p.ptab === 'rel') { p.body.replaceChildren(OC.LifeUI.relSection(c, () => p.refresh(p))); return; }
       if (p.ptab === 'mem') { p.body.replaceChildren(OC.LifeUI.memSection(c, p)); return; }
       p.body.replaceChildren(
@@ -159,6 +159,7 @@
           row('upload', '匯入圖片／動畫', 'PNG、JPEG、WebP、GIF、APNG、多張連續圖、Sprite Sheet、ZIP', null, async () => { await OC.Library.importDialog({ owner: Ch().active().id, purpose: 'anim' }); p.refresh(p); }),
           row('download', '匯入角色／動作包', '.ocpack', null, async () => { await OC.Library.importPackFile(); p.refresh(p); }),
           row('layers', '匯出備份', '選擇要匯出的角色、動作與遊戲進度', null, () => backupSheet()),
+          row('cart', '工坊商品', '把畫好或匯入的圖片做成食物、家具、服飾、玩具…上架到商店', null, () => Pg().open('products')),
           row('paw', '桌寵', '讓 OC 出現在手機桌面上', null, () => Pg().open('pet'))),
         T('動畫作品'), p.anims);
     },

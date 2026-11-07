@@ -130,33 +130,9 @@
       b.append(h('div.item-grid', null, ...ids.map((i) => { const im = OC.Style.itemImg(i); im.style.width = im.style.height = '44px'; return h('button.item-btn', { on: { click: () => { api.close(); onPick(i); } } }, im, h('span', null, OC.Style.ITEMS[i].zh), h('small.num', null, '×' + St.count(i))); })));
     });
   }
-  function feed(id) {
-    const c = Ch().get(id); itemPicker(`餵${name(c)}吃東西`, ['food'], (item) => {
-      const a = A().actorOf(id); if (!a) return;
-      if (c.needs.food > 92) { react(c, a, 'fed_full'); return; }
-      if (!St.take(item)) return;
-      const it = OC.Style.ITEMS[item], likes = c.tastes.likeItems.includes(item), dislikes = c.tastes.dislikeItems.includes(item) || (Ch().has(c, 'picky') && !likes);
-      const fx = Object.assign({}, it.use || { food: 15 }); M().needs(c, fx, '你餵的' + it.zh);
-      B().hold(id, 'feed'); OC.World.setAction(a, 'eat', { dur: Ch().behavior(c).chew, priority: 7 });
-      M().feel(c, likes ? 'excited' : dislikes ? 'confused' : 'happy', likes ? 0.6 : 0.3, `吃了你給的${it.zh}`);
-      M().player(c, { aff: likes ? 3 : dislikes ? 0 : 1, fam: 1 }); M().wishEvent(c, { type: 'fed', item }, 'player');
-      M().remember(c, { type: 'player', imp: likes ? 0.5 : 0.3, text: `吃了你給的${it.zh}${likes ? '，是最喜歡的！' : ''}`, data: { item } });
-      St.stat('eaten'); OC.Game.progress('eat');
-      setTimeout(() => react(c, a, likes ? 'fed_like' : dislikes ? 'fed_bad' : 'fed_ok', { item }), 400);
-      setTimeout(() => B().unhold(id, 'feed'), Ch().behavior(c).chew * 1000 + 600);
-    });
-  }
-  function gift(id) {
-    const c = Ch().get(id); itemPicker(`送禮物給${name(c)}`, ['gift', 'material', 'food'], (item) => {
-      const a = A().actorOf(id); if (!a || !St.take(item)) return;
-      const it = OC.Style.ITEMS[item], likes = c.tastes.likeItems.includes(item) || c.profile.likes.includes(it.zh), dislikes = c.tastes.dislikeItems.includes(item);
-      M().feel(c, likes ? 'excited' : dislikes ? 'confused' : 'happy', likes ? 0.7 : 0.35, `收到你送的${it.zh}`);
-      M().player(c, { aff: likes ? 4 : dislikes ? 0 : 2, fam: 1 }); M().needs(c, { social: 6 });
-      M().remember(c, { type: 'player', imp: likes ? 0.65 : 0.4, text: `收到你送的${it.zh}`, data: { item } });
-      OC.World.setAction(a, likes ? 'happy' : dislikes ? 'shy' : 'greet', { dur: 1.6, priority: 7 });
-      react(c, a, likes ? 'fed_like' : dislikes ? 'fed_bad' : 'gift_r', { item }); St.stat('gifts');
-    });
-  }
+  // feeding / gifts go through OC.Use (p5pages.js): the item is used only after the OC actually finishes
+  function feed(id) { const c = Ch().get(id); itemPicker(`餵${name(c)}吃東西`, ['food', 'drink'], (item) => OC.Use.feed(id, item)); }
+  function gift(id) { const c = Ch().get(id); itemPicker(`送禮物給${name(c)}`, ['gift', 'material', 'toy', 'sea', 'bug', 'crop'], (item) => (OC.Items.useKind(item) === 'play' ? OC.Use.play(id, item) : OC.Use.give(id, item))); }
   function play(id) {
     const c = Ch().get(id), a = A().actorOf(id); if (!c || !a) return;
     if (c.needs.energy < 15) { react(c, a, 'decline', { need: true }); M().feel(c, 'tired', 0.2, '太累了'); return; }
