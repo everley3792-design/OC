@@ -120,7 +120,9 @@
     ['talk', '我好餓……你有吃的嗎？', { need: { food: '<35' } }, 3], ['talk', '呼啊……我有點想睡了。', { need: { sleep: '<35' } }, 3], ['talk', '好無聊喔，要不要一起做點什麼？', { need: { fun: '<35' } }, 3],
     ['talk', '還記得{mem}嗎？', { hasMem: true }, 3], ['talk', '我最近有個小願望：{wish}。', { hasWish: true }, 3], ['talk', '你也喜歡{shared}嗎？太好了！', { hasShared: true }, 3],
     ['talk', '最近大家都好嗎？', C], ['talk', '我剛剛{act}，很開心！', { hasRecent: true }, 2], ['talk', '島上的花又開了。', { trait: 'nature' }, 3], ['talk', '我剛讀到一個很有趣的故事。', { trait: 'bookworm' }, 3],
-    ['talk_r', '真的嗎？好有趣！', B], ['talk_r', '嗯嗯，我懂。', C], ['talk_r', '原來如此。', K], ['talk_r', '對呀對呀！', P], ['talk_r', '……嗯。', { rel: ['rival'] }, 3], ['talk_r', '我也是這麼想的！', { aff: '>=40' }, 2], ['talk_r', '哈哈，你好好笑。', { emo: ['happy', 'excited'] }, 2],
+    ['talk_r', '真的嗎？好有趣！', B], ['talk_r', '哇，然後呢？', P], ['talk_r', '嗯？說來聽聽。', P], ['talk_r', '好像在哪裡聽過耶。', P], ['talk_r', '哈哈，我也這樣覺得。', P], ['talk_r', '欸——真的假的！', B],
+    ['talk', '你今天做了什麼？', P], ['talk', '我剛剛看到一隻好大的蝴蝶。', P], ['talk', '你覺得明天會下雨嗎？', P], ['talk', '突然好想吃{like}。', P],
+    ['greet_r', '嗨～', P], ['greet_r', '你也在這裡呀。', P], ['bye', '下次再聊！', P], ['bye', '我去{act}囉。', P], ['accept', '可以呀！', P], ['decline', '現在不太方便耶……', P], ['talk_r', '嗯嗯，我懂。', C], ['talk_r', '原來如此。', K], ['talk_r', '對呀對呀！', P], ['talk_r', '……嗯。', { rel: ['rival'] }, 3], ['talk_r', '我也是這麼想的！', { aff: '>=40' }, 2], ['talk_r', '哈哈，你好好笑。', { emo: ['happy', 'excited'] }, 2],
     ['talk_r', '我現在不太想說話……', { emo: ['down', 'annoyed'] }, 4], ['talk_r', '（點點頭）', { trait: 'shy' }, 2],
     // ---- interests ----
     ['share', '我最近在研究{hobby}，你要聽聽看嗎？', P], ['share', '跟你說喔，{hobby}真的超好玩！', B], ['share', '關於{hobby}……我有一些小小的想法。', C],

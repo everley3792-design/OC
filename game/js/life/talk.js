@@ -44,7 +44,7 @@
     const sp = X.sp, ot = X.ot, fail = (k) => { if (why) why.push(k); return false; };
     for (const [k, v] of Object.entries(c)) {
       switch (k) {
-        case 'voice': if (!any(v).includes(voice(sp))) return fail(k); break;
+        case 'voice': if (!any(v).includes(voice(sp)) && !any(v).includes('plain')) return fail(k); break;   // plain lines are shared by every voice (variety); own-voice lines weigh more
         case 'trait': if (!any(v).some((t) => has(sp, t))) return fail(k); break;
         case 'notrait': if (any(v).some((t) => has(sp, t))) return fail(k); break;
         case 'otrait': if (!ot || !ot.personality || !any(v).some((t) => has(ot, t))) return fail(k); break;
@@ -117,7 +117,7 @@
     if (!pool.length) return null;
     const fresh = pool.filter((l) => !(said[l.id] && gm - said[l.id] < (l.cd != null ? l.cd : 90)));
     if (fresh.length) pool = fresh; else pool = pool.slice().sort((a, b) => (said[a.id] || 0) - (said[b.id] || 0)).slice(0, 2);
-    const spec = (l) => 1 + 0.35 * (l.c ? Object.keys(l.c).filter((k) => k !== 'voice').length : 0) + (l.c && l.c.voice ? 0.6 : 0);
+    const vo = voice(sp), spec = (l) => 1 + 0.35 * (l.c ? Object.keys(l.c).filter((k) => k !== 'voice').length : 0) + (l.c && l.c.voice && [].concat(l.c.voice).includes(vo) ? 1.2 : 0);
     for (let tries = 0; tries < 4 && pool.length; tries++) {
       const l = Sim().wpick(pool, (x) => (x.w || 1) * spec(x) * (x.char ? 4 : 1) * (x.prio || 1));
       const t = fill(l.text, X);

@@ -1,107 +1,47 @@
 {
- "at": "2026-11-07T12:44:56.824Z",
+ "at": "2026-11-07T12:46:56.338Z",
  "results": [
   {
-   "name": "10a 存檔重開：關係、回憶、願望、生活紀錄完整",
+   "name": "13a 對話資料：錯誤檔案被拒絕並說明原因",
    "ok": true,
    "detail": {
-    "before": [
-     2,
-     5,
-     7
-    ],
-    "after": [
-     2,
-     5,
-     7
-    ]
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！！",
+    "exported": 1,
+    "cool": 7,
+    "picks": 7,
+    "eligible": 7,
+    "det": true
    }
   },
   {
-   "name": "10b 重開後繼續進行中的活動",
+   "name": "13b 匯入角色專屬台詞後真的會被說出、可再匯出",
    "ok": true,
    "detail": {
-    "before": [
-     "cmw6eab3yp13e:read"
-    ],
-    "after": [
-     "cmw6eab3yp13e:read"
-    ]
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！！",
+    "exported": 1,
+    "cool": 7,
+    "picks": 7,
+    "eligible": 7,
+    "det": true
    }
   },
   {
-   "name": "10c 第三階段（v2）存檔自動遷移到 v3，舊需求數值保留",
+   "name": "13c 台詞冷卻：可選的台詞全部用過之前不重複",
    "ok": true,
-   "detail": {
-    "social0": 40,
-    "v": 3,
-    "life": true,
-    "chars": 3,
-    "needs": "active,comfort,energy,food,fun,interest,mood,sleep,social,t",
-    "food": 50,
-    "emo": "neutral"
-   }
+   "detail": "7 種／7 次（可選 7 句）"
   },
   {
-   "name": "11a 離線 30 小時：只模擬上限 8 小時、需求不低於 15",
+   "name": "13d 決策在相同種子下可重現",
    "ok": true,
-   "detail": {
-    "o": {
-     "at": 1794055495606,
-     "min": 1800,
-     "simulated": 480,
-     "capped": true,
-     "reason": "boot"
-    },
-    "needs": [
-     24,
-     15,
-     43
-    ],
-    "sum": [
-     1,
-     1,
-     1
-    ],
-    "ev": 0,
-    "inv": "{\"apple\":2,\"flower\":1}"
-   }
-  },
-  {
-   "name": "11b 離線期間不觸發事件、不發獎勵",
-   "ok": true,
-   "detail": {
-    "ev": 0
-   }
-  },
-  {
-   "name": "11c 重開不會重複計算離線（摘要只有一份）",
-   "ok": true,
-   "detail": {
-    "sum": [
-     1,
-     1,
-     1
-    ],
-    "o": {
-     "at": 1794055495606,
-     "min": 1800,
-     "simulated": 480,
-     "capped": true,
-     "reason": "boot"
-    }
-   }
-  },
-  {
-   "name": "11d 背景 2 小時後回來：補算 120 分鐘",
-   "ok": true,
-   "detail": {
-    "at": 1794055496819,
-    "min": 120,
-    "simulated": 120,
-    "capped": false,
-    "reason": "resume"
-   }
+   "detail": true
   },
   {
    "name": "沒有 JavaScript 錯誤",

@@ -338,14 +338,15 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
         const ok = OC.Talk.importData(JSON.stringify({ format: 'ocshimeji-life', version: 1, lines: [{ cat: 'greet', text: '測試台詞{other}！', char: c.id, w: 50, c: { phase: ['morning', 'noon', 'dusk', 'night'] } }] }));
         const said = OC.Talk.say('greet', c, o);
         const ex = JSON.parse(OC.Talk.exportData());
-        const seen = new Set(); for (let i = 0; i < 4; i++) { const l = OC.Talk.pick('talk_r', c, o); if (l) seen.add(l.line.id); }
+        const X = OC.Talk.ctx(c, o), eligible = OC.Talk.lines().filter((l) => l.cat === 'talk_r' && !l.char && OC.Talk.test(l.c, X)).length;
+        const seen = new Set(); let n = 0; for (let i = 0; i < eligible; i++) { const l = OC.Talk.pick('talk_r', c, o); if (l) { seen.add(l.line.id); n++; } }
         OC.Sim.seed(123); const s1 = OC.Brain.candidates(OC.Brain.get(c.id)).slice(0, 5).map((x) => (x.act || x.social) + x.s.toFixed(3));
         OC.Sim.seed(123); const s2 = OC.Brain.candidates(OC.Brain.get(c.id)).slice(0, 5).map((x) => (x.act || x.social) + x.s.toFixed(3));
-        return { bad: bad.errors[0], broken: broken.errors[0], newer: newer.errors[0], added: ok.added, said: said && said.text, exported: ex.lines.length, cool: seen.size, det: JSON.stringify(s1) === JSON.stringify(s2) };
+        return { bad: bad.errors[0], broken: broken.errors[0], newer: newer.errors[0], added: ok.added, said: said && said.text, exported: ex.lines.length, cool: seen.size, picks: n, eligible, det: JSON.stringify(s1) === JSON.stringify(s2) };
       });
       check('13a 對話資料：錯誤檔案被拒絕並說明原因', !!r.bad && !!r.broken && /新/.test(r.newer), r);
       check('13b 匯入角色專屬台詞後真的會被說出、可再匯出', r.added === 1 && /測試台詞/.test(r.said || '') && r.exported === 1, r);
-      check('13c 台詞冷卻：連續挑選不重複', r.cool >= 3, r.cool);
+      check('13c 台詞冷卻：可選的台詞全部用過之前不重複', r.eligible >= 3 && r.cool === r.picks, `${r.cool} 種／${r.picks} 次（可選 ${r.eligible} 句）`);
       check('13d 決策在相同種子下可重現', r.det, r.det);
     }
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
