@@ -325,7 +325,7 @@
     if (!b.holds.size) {
       if (b.st === 'social') endConvOf(b, 'interrupted');
       if (b.st === 'do' && b.act && reason !== 'pet') { const A = D().ACTS[b.act]; b.susp = { act: b.act, slot: b.slot ? b.slot.k : null, left: Math.max(0, b.until - Sim().now()), t0: b.t0, resumable: A.cat !== 'body' }; finishPartial(b); }
-      else if (b.st === 'go') { abort(b, '被打斷'); }
+      else if (b.st === 'go') { const q = b.byPlayer ? b.act : null; abort(b, '被打斷'); if (q) b.queued = q; }   // a player request resumes after the interruption
       if (reason !== 'pet' && b.a) { b.a.path = null; }
     }
     b.holds.add(reason); b.st = reason === 'event' || b.st === 'event' ? 'event' : 'held'; return true;

@@ -102,7 +102,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; c.life.cur = null; OC.App.syncPresence(); }, kuri); await until(page, (id) => !!OC.App.mates[id], kuri, 5000);
       await page.evaluate((id) => { const b = OC.Brain.get(id); OC.Brain.startTravel(b, 'beach', 'fish'); }, kuri);
       const left = await until(page, (id) => !OC.App.mates[id] && OC.Chars.get(id).life.loc === 'beach', kuri, 60000, 300);
-      check('2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）', left, await page.evaluate((id) => JSON.stringify(OC.Chars.get(id).life.trip), kuri));
+      check('2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）', left, await page.evaluate(([id, left]) => { const b = OC.Brain.get(id); return JSON.stringify(OC.Chars.get(id).life.trip) + (left ? '' : ` st=${b && b.st}/${b && b.act} leaving=${JSON.stringify(b && b.leaving)} holds=${b && [...b.holds]} ev=${OC.Events.current ? OC.Events.current.ev.id : '-'} log=${OC.Brain.log.filter((l) => l.who === id).slice(0, 6).map((l) => l.text).join(' / ')}`); }, [kuri, left]));
       await page.evaluate(() => OC.Sim.advance(30));
       await travel(page, 'beach');
       const met = await until(page, (id) => !!OC.App.mates[id], kuri, 8000);
@@ -118,7 +118,8 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
         const a = OC.App.player, W = OC.World; const samples = [];
         const to = W.nearestWalkable(300, 300, 40) || { x: 300, y: 300 };
         W.walkTo(a, to.x, to.y);
-        for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 120)); samples.push({ x: a.x, y: a.y, gy: a.gy, g: W.groundY(a.x, a.y), face: a.face, back: a.back, lvl: a.lvl, my: a.mesh ? a.mesh.position.y : null }); }
+        // sampled every rendered frame: an instant flip would change face/back by ~2 in one frame
+        const t0 = performance.now(); while (performance.now() - t0 < 4800) { await new Promise((r) => requestAnimationFrame(r)); samples.push({ x: a.x, y: a.y, gy: a.gy, g: W.groundY(a.x, a.y), face: a.face, back: a.back, lvl: a.lvl }); }
         return samples;
       });
       const moved = Math.hypot(r[r.length - 1].x - r[0].x, r[r.length - 1].y - r[0].y);
@@ -126,7 +127,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       const maxTurn = Math.max(...r.slice(1).map((s, i) => Math.abs(s.face - r[i].face) + Math.abs(s.back - r[i].back)));
       check('3a 角色在 3D 地形上移動（走了一段路）', moved > 40, `${moved.toFixed(0)} 單位`);
       check('3b 腳底貼地：看板高度跟地面高度一致（含台階）', maxGap < 6, `最大差 ${maxGap.toFixed(2)}；層 ${[...new Set(r.map((s) => s.lvl))].join(',')}`);
-      check('3c 轉身平滑：方向不會瞬間翻轉', maxTurn < 0.9, `每 120ms 最大變化 ${maxTurn.toFixed(2)}`);
+      check('3c 轉身平滑：方向不會瞬間翻轉（逐幀取樣，瞬間翻轉＝2）', maxTurn < 1.2, `每幀最大變化 ${maxTurn.toFixed(2)}，${r.length} 幀`);
       const occl = await page.evaluate(() => { const a = OC.App.player; return { xray: !!a.xray, order: a.mesh ? a.mesh.renderOrder : null }; });
       check('3d 被建築遮住時有輪廓（x-ray）且使用深度排序', occl.xray, JSON.stringify(occl));
     }
@@ -294,7 +295,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.mouse.up();
       const during = await page.evaluate(() => OC.Store.count('cookie'));
       await until(page, (n) => OC.Store.count('cookie') === n - 1, n0, 10000);
-      const fed = await page.evaluate(([id, n]) => ({ n: OC.Store.count('cookie'), food: OC.Chars.get(id).needs.food, tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted.cookie || {}).n }), [k, n0]);
+      const fed = await page.evaluate(([id, n]) => { const b = OC.Brain.get(id); return { n: OC.Store.count('cookie'), food: OC.Chars.get(id).needs.food, tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted.cookie || {}).n, holds: b && [...b.holds], st: b && b.st, ev: OC.Events.current ? OC.Events.current.ev.id : '-', toasts: [...document.querySelectorAll('.toast')].map((t) => t.textContent).slice(-3), mate: !!OC.App.mates[id] }; }, [k, n0]);
       check('8c 拖到 OC 身上時有命中提示', hot);
       check('8d 動畫進行中還沒扣；吃完才扣 1 個並留下品嚐紀錄', during === n0 && fed.n === n0 - 1 && fed.tasted >= 1, JSON.stringify(fed));
       // 3) interrupted (picked up while eating) → not consumed
