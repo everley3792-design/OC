@@ -347,13 +347,17 @@
   // ====================== input ======================
   const ptrs = new Map(); let gesture = null, pressTimer = 0;
   function onDown(e) {
+    // a primary pointer starts a new gesture: drop stale pointers whose up never reached the canvas (they would turn a tap into a pinch)
+    if (window.__ocInputLog) window.__ocInputLog.push(`down ${e.pointerType} id=${e.pointerId} primary=${e.isPrimary} n=${ptrs.size} g=${gesture && gesture.kind}`);
+    if (e.isPrimary) { ptrs.clear(); if (gesture && gesture.kind === 'drag') hooks.dragEnd && hooks.dragEnd(null); gesture = null; }
     canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now() });
     if (ptrs.size === 1) {
       const p = ptrs.get(e.pointerId); const g = { kind: 'press', id: e.pointerId, moved: false };
       if (ghost) { const d = screenToDesign(e.clientX, e.clientY); if (Math.abs(d.x - ghost.f.x) < 26 && Math.abs(d.y - ghost.f.y) < 26) g.kind = 'ghost'; }
       gesture = g;
       clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => { if (gesture === g && !g.moved && g.kind === 'press') { g.kind = 'long'; const r = hooks.longPress && hooks.longPress(pick(p.x, p.y)); if (r && r.drag) g.kind = 'drag'; } }, 480);
+      // long press: the timer can fire late after a long frame while the pointerup is still queued → confirm on the next frame (queued input is dispatched first)
+      pressTimer = setTimeout(() => requestAnimationFrame(() => { if (gesture === g && !g.moved && g.kind === 'press' && ptrs.has(g.id)) { g.kind = 'long'; const r = hooks.longPress && hooks.longPress(pick(p.x, p.y)); if (r && r.drag) g.kind = 'drag'; } }), 480);
     } else if (ptrs.size === 2) {
       clearTimeout(pressTimer);
       const [a, b] = [...ptrs.values()]; gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), z0: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
@@ -375,7 +379,7 @@
     if ((gesture.kind === 'press' || gesture.kind === 'pan') && gesture.moved) { gesture.kind = 'pan'; clearTimeout(pressTimer); panX -= dx / zoom; panY -= dy / zoom; follow = false; hooks.panned && hooks.panned(); }
   }
   function onUp(e) {
-    const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId); clearTimeout(pressTimer);
+    const p = ptrs.get(e.pointerId); if (window.__ocInputLog) window.__ocInputLog.push(`up ${e.type} id=${e.pointerId} known=${!!p} n=${ptrs.size} g=${gesture && gesture.kind} moved=${gesture && gesture.moved}`); ptrs.delete(e.pointerId); clearTimeout(pressTimer);
     if (!gesture) return;
     if (gesture.kind === 'pinch') { if (ptrs.size === 0) gesture = null; return; }
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
@@ -399,6 +403,7 @@
     env = OC.Env.create(scene); env.setShadows(quality.shadows);
     canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onUp); canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('lostpointercapture', (e) => { if (ptrs.has(e.pointerId)) onUp(Object.assign({}, { pointerId: e.pointerId, type: 'pointercancel' })); });
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); hooks.contextLost && hooks.contextLost(); });

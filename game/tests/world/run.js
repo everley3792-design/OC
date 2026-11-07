@@ -387,15 +387,19 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       });
       check('13a 新介面的觸控目標 ≥ 40px（地圖、商店、背包）', sizes.length === 0, sizes.slice(0, 5).join(', '));
       // tap a shop door on the street → walk → shop opens → buy with taps
-      await page.evaluate(() => { const q = OC.World.nearestWalkable(300, 700, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 800);
-      const door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 80 && p.x < innerWidth - 80 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
+      let door = null;
+      for (const [sx, sy] of [[300, 700], [250, 690], [350, 690], [300, 740]]) {
+        await page.evaluate(([x, y]) => { const q = OC.World.nearestWalkable(x, y, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }, [sx, sy]); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 1200);
+      door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 80 && p.x < innerWidth - 80 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
+        if (door) break;
+      }
       console.log('  13b door', JSON.stringify(door));
       await page.evaluate(() => { window.__toasts13 = []; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList && (n.classList.contains('toast') || n.classList.contains('sheet')) && window.__toasts13.push((n.classList.contains('sheet') ? '[sheet] ' : '') + n.textContent.slice(0, 40))))).observe(document.getElementById('app'), { childList: true, subtree: true }); });
-      const pickAt = door ? await page.evaluate((d) => { const it = OC.World.pick(d.x, d.y).it; return it ? it.type + ':' + (it.shop || it.id || '') : null; }, door) : null;
+      const pickAt = door ? await page.evaluate((d) => { const it = OC.World.pick(d.x, d.y).it; window.__taps = []; window.__ocInputLog = []; const t0 = OC.WorldUI.tap; if (!window.__tapWrapped) { window.__tapWrapped = true; OC.WorldUI.tap = (x) => { window.__taps.push(x.type + ':' + (x.shop || '')); return t0(x); }; } return (it ? it.type + ':' + (it.shop || it.id || '') : null) + ` dlg=${!!OC.App.dlgOpen} stack=${OC.UI.stack.length} tab=${OC.App.curTab} el=${document.elementFromPoint(d.x, d.y).tagName}`; }, door) : null;
       if (door) await page.touchscreen.tap(door.x, door.y);
       const isOpen = () => until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
       let tries = 1, opened = !!door && await isOpen(); if (door && !opened) { tries = 2; await page.touchscreen.tap(door.x, door.y); opened = await isOpen(); }
-      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && `${door.zh}（點 ${tries} 次）` + (opened ? '' : ` pick=${pickAt} log=${JSON.stringify(await page.evaluate(() => window.__toasts13))} player=${JSON.stringify(await page.evaluate(() => ({ x: Math.round(OC.App.player.x), y: Math.round(OC.App.player.y), path: !!OC.App.player.path })))}`));
+      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && `${door.zh}（點 ${tries} 次）` + (opened ? '' : ` pick=${pickAt} log=${JSON.stringify(await page.evaluate(() => window.__toasts13))} player=${JSON.stringify(await page.evaluate(() => ({ x: Math.round(OC.App.player.x), y: Math.round(OC.App.player.y), path: !!OC.App.player.path, taps: window.__taps, input: window.__ocInputLog, dlg: !!OC.App.dlgOpen, stack: OC.UI.stack.length })))}`));
       if (opened) {
         const m0 = await page.evaluate(() => OC.Store.s.coins);
         await page.tap('[data-page="shop"] .shop-item'); await wait(page, 500); await shot(page, '13-buy-sheet');
