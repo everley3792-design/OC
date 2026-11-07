@@ -2,12 +2,13 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.5.0-alpha（第五階段：世界、地點、物品與經濟）
+## 目前版本 0.6.0-alpha（第六階段：任務、請求、成長、收藏、成就、動畫與音效）
 
-- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.5.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.5.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+，可直接覆蓋 0.4.0，存檔自動升級到 v4）
-- 第五階段完成紀錄、測試結果與未完成項目：[`docs/phase5-report.md`](docs/phase5-report.md)；截圖：`deliverables/phase5/`
-- 第五階段規格：[世界地圖與地點](docs/world-map.md) · [物品系統](docs/items.md) · [商店與經濟](docs/economy.md)
-- 自動化情境測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/world/run.js`（第五階段）與 `node game/tests/life/run.js`（第四階段）
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.6.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.6.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+，可直接覆蓋 0.5.0，存檔自動升級到 v5）
+- 第六階段完成紀錄、測試結果與未完成項目：[`docs/phase6-report.md`](docs/phase6-report.md)；截圖：`deliverables/phase6/`
+- 第六階段規格：[任務與請求](docs/quests.md) · [技能／目標／成就／圖鑑／日誌](docs/growth.md) · [動畫、演出與音效](docs/animation-performance.md)
+- 自動化測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/play/run.js`（第六階段）、`node game/tests/world/run.js`（第五階段）、`node game/tests/life/run.js`（第四階段）
+- 第五階段：[`docs/phase5-report.md`](docs/phase5-report.md) · [世界地圖與地點](docs/world-map.md) · [物品系統](docs/items.md) · [商店與經濟](docs/economy.md)
 - 第四階段：[`docs/phase4-report.md`](docs/phase4-report.md) · [行為引擎](docs/behavior-engine.md) · [生活資料格式](docs/life-format.md) · [事件規則](docs/event-rules.md) · [情緒與回憶](docs/memory-model.md)
 - **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）
 - 截圖：[`deliverables/phase2/screens-contact-sheet.jpg`](deliverables/phase2/screens-contact-sheet.jpg)

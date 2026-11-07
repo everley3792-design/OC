@@ -46,18 +46,18 @@
       bright: [['face', 'a', 'player'], ['prop', 'a', '{item}', 2.2], ['anim', 'a', 'receive', 0.9], ['say', 'a', 'receive'], ['wait', 0.7], ['jump', 'a'], ['anim', 'a', '{react}', 1.6], ['sfx', 'gift'], ['fx', 'a', '{fx}']],
       shy: [['face', 'a', 'player'], ['prop', 'a', '{item}', 2.6], ['anim', 'a', 'receive', 1.4], ['fx', 'a', 'blush'], ['wait', 1.0], ['anim', 'a', 'shy', 1.6], ['sfx', 'gift'], ['fx', 'a', '{fx}']],
     } },
-    accept: { steps: { plain: [['face', 'a', 'player'], ['anim', 'a', 'happy', 1.4], ['say', 'a', 'req_accept']], bright: [['face', 'a', 'player'], ['jump', 'a'], ['sfx', 'jump'], ['anim', 'a', 'cheer', 1.4], ['say', 'a', 'req_accept']], shy: [['face', 'a', 'player'], ['anim', 'a', 'shy', 1.4], ['fx', 'a', 'blush'], ['say', 'a', 'req_accept']], cool: [['face', 'a', 'player'], ['anim', 'a', 'nod', 1.0], ['say', 'a', 'req_accept']] } },
-    decline: { steps: { plain: [['face', 'a', 'player'], ['anim', 'a', 'sad', 1.2], ['say', 'a', 'req_decline']], bright: [['face', 'a', 'player'], ['anim', 'a', 'surprised', 0.5], ['wait', 0.4], ['anim', 'a', 'sad', 1.0], ['say', 'a', 'req_decline']], cool: [['face', 'a', 'player'], ['anim', 'a', 'shake', 0.8], ['say', 'a', 'req_decline']] } },
+    accept: { soft: true, steps: { plain: [['face', 'a', 'player'], ['anim', 'a', 'happy', 1.4], ['say', 'a', 'req_accept']], bright: [['face', 'a', 'player'], ['jump', 'a'], ['sfx', 'jump'], ['anim', 'a', 'cheer', 1.4], ['say', 'a', 'req_accept']], shy: [['face', 'a', 'player'], ['anim', 'a', 'shy', 1.4], ['fx', 'a', 'blush'], ['say', 'a', 'req_accept']], cool: [['face', 'a', 'player'], ['anim', 'a', 'nod', 1.0], ['say', 'a', 'req_accept']] } },
+    decline: { soft: true, steps: { plain: [['face', 'a', 'player'], ['anim', 'a', 'sad', 1.2], ['say', 'a', 'req_decline']], bright: [['face', 'a', 'player'], ['anim', 'a', 'surprised', 0.5], ['wait', 0.4], ['anim', 'a', 'sad', 1.0], ['say', 'a', 'req_decline']], cool: [['face', 'a', 'player'], ['anim', 'a', 'shake', 0.8], ['say', 'a', 'req_decline']] } },
     reqDone: { important: true, steps: {
       plain: [['walk', 'a', 'player'], ['face', 'a', 'player'], ['cam', 'a', 2.3], ['anim', 'a', 'surprised', 0.6], ['wait', 0.4], ['anim', 'a', 'cheer', 1.6], ['sfx', 'chime'], ['fx', 'a', 'hearts'], ['say', 'a', 'req_done'], ['wait', 1.4], ['card', 'req'], ['wait', 0.8]],
       bright: [['walk', 'a', 'player'], ['face', 'a', 'player'], ['cam', 'a', 2.3], ['jump', 'a'], ['sfx', 'jump'], ['anim', 'a', 'cheer', 1.2], ['fx', 'a', 'confetti'], ['sfx', 'chime'], ['wait', 0.6], ['anim', 'a', 'dance', 1.8], ['say', 'a', 'req_done'], ['wait', 1.2], ['card', 'req'], ['wait', 0.8]],
       shy: [['walk', 'a', 'player'], ['face', 'a', 'player'], ['cam', 'a', 2.4], ['anim', 'a', 'shy', 1.6], ['fx', 'a', 'blush'], ['wait', 0.8], ['anim', 'a', 'happy', 1.4], ['sfx', 'chime'], ['fx', 'a', 'hearts'], ['say', 'a', 'req_done'], ['wait', 1.4], ['card', 'req'], ['wait', 0.8]],
       cool: [['walk', 'a', 'player'], ['face', 'a', 'player'], ['cam', 'a', 2.2], ['anim', 'a', 'nod', 1.0], ['wait', 0.5], ['anim', 'a', 'proud', 1.4], ['sfx', 'chime'], ['fx', 'a', 'sparkle'], ['say', 'a', 'req_done'], ['wait', 1.2], ['card', 'req'], ['wait', 0.8]],
     } },
-    levelup: { steps: { plain: [['anim', 'a', 'proud', 1.8], ['sfx', 'levelup'], ['fx', 'a', 'sparkle'], ['say', 'a', 'skill_up'], ['card', 'skill']], bright: [['jump', 'a'], ['anim', 'a', 'cheer', 1.8], ['sfx', 'levelup'], ['fx', 'a', 'confetti'], ['say', 'a', 'skill_up'], ['card', 'skill']], shy: [['anim', 'a', 'shy', 1.2], ['sfx', 'levelup'], ['fx', 'a', 'sparkle'], ['wait', 0.6], ['anim', 'a', 'proud', 1.2], ['card', 'skill']] } },
+    levelup: { soft: true, steps: { plain: [['anim', 'a', 'proud', 1.8], ['sfx', 'levelup'], ['fx', 'a', 'sparkle'], ['say', 'a', 'skill_up'], ['card', 'skill']], bright: [['jump', 'a'], ['anim', 'a', 'cheer', 1.8], ['sfx', 'levelup'], ['fx', 'a', 'confetti'], ['say', 'a', 'skill_up'], ['card', 'skill']], shy: [['anim', 'a', 'shy', 1.2], ['sfx', 'levelup'], ['fx', 'a', 'sparkle'], ['wait', 0.6], ['anim', 'a', 'proud', 1.2], ['card', 'skill']] } },
     aspDone: { important: true, steps: { plain: [['walk', 'a', 'player'], ['face', 'a', 'player'], ['cam', 'a', 2.3], ['anim', 'a', 'cheer', 2.0], ['sfx', 'fanfare'], ['fx', 'a', 'confetti'], ['say', 'a', 'asp_done'], ['wait', 1.6], ['card', 'asp'], ['wait', 1.0]] } },
-    aspStep: { steps: { plain: [['anim', 'a', 'proud', 1.4], ['sfx', 'chime'], ['fx', 'a', 'sparkle'], ['say', 'a', 'asp_step'], ['card', 'aspstep']] } },
-    aspNew: { steps: { plain: [['anim', 'a', 'think', 1.4], ['wait', 0.8], ['anim', 'a', 'happy', 1.2], ['say', 'a', 'asp_new'], ['card', 'aspnew']] } },
+    aspStep: { soft: true, steps: { plain: [['anim', 'a', 'proud', 1.4], ['sfx', 'chime'], ['fx', 'a', 'sparkle'], ['say', 'a', 'asp_step'], ['card', 'aspstep']] } },
+    aspNew: { soft: true, steps: { plain: [['anim', 'a', 'think', 1.4], ['wait', 0.8], ['anim', 'a', 'happy', 1.2], ['say', 'a', 'asp_new'], ['card', 'aspnew']] } },
   };
 
   // ---------------- runner ----------------
@@ -117,8 +117,11 @@
     // no actor on screen → only the card (if any)
     const cardData = makeCard(kind, o);
     if (!def || !a || a.hidden || A().curTab !== 'island') { if (cardData) OC.Stage.card(cardData); job.resolve(false); return; }
+    // celebrations never interrupt: an OC that is chatting / in an event / held by the player only gets the card
+    { const bb = B().get(o.oc); if (def.soft && bb && (bb.st === 'social' || bb.holds.size || bb.invited || OC.Brain.convs.some((x) => x.a === bb || x.b === bb))) { if (cardData) OC.Stage.card(cardData); job.resolve(false); return; } }
     // a special event owns this OC right now → wait a little (the performance is only visual; data is already applied)
     for (let i = 0; i < 40 && B().get(o.oc) && B().get(o.oc).holds.has('event'); i++) await new Promise((r) => setTimeout(r, 250));
+    { const bb = B().get(o.oc); if (def.soft && bb && (bb.st === 'social' || bb.holds.size || bb.invited || OC.Brain.convs.some((x) => x.a === bb || x.b === bb))) { if (cardData) OC.Stage.card(cardData); job.resolve(false); return; } }
     const variant = def.steps[style(c)] || def.steps.plain;
     const mine = (cur = { kind, skip: false, speed: 1, card: cardData });
     const cast = { a: { a, c } }; if (o.other && A().actorOf(o.other)) cast.b = { a: A().actorOf(o.other), c: OC.Chars.get(o.other) };

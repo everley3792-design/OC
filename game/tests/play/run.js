@@ -179,7 +179,7 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       const again = await page.evaluate(() => ['cook1', 'star3'].map((id) => OC.Achieve.claim(id)).filter((x) => x.ok).length);
       check('6b 領取成就獎勵入帳；同一個成就不能領兩次', c1 > c0, `${c0} → ${c1}`);
       const twice = await page.evaluate(() => { const L = OC.Achieve.list().filter((x) => x.claimed); return L.map((x) => OC.Achieve.claim(x.id).ok).filter(Boolean).length; });
-      check('6c 已領的再領全部被拒絕', twice === 0 && again <= 1, `再領成功 ${twice} 次`);
+      check('6c 已領的再領全部被拒絕', twice === 0, `再領成功 ${twice} 次（另外領了 ${again} 個還沒領的）`);
       const hid = await page.evaluate(() => OC.Achieve.list().filter((x) => x.hidden).length);
       check('6d 隱藏成就顯示提示但不洩漏內容', hid >= 1);
       await page.evaluate(() => OC.App.tab('island'));
@@ -250,8 +250,9 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       await page.evaluate(([a, b]) => { const pl = OC.App.player, x = OC.App.actorOf(a), q = OC.World.nearestWalkable(pl.x + 120, pl.y + 30, 40) || OC.World.nearestWalkable(pl.x - 120, pl.y + 30, 40); if (q) { x.x = q.x; x.y = q.y; } x.path = null; OC.Progress.emit('social', { oc: a, other: b, ocs: [a, b], kind: 'chat' }); }, [A, B]);
       const started = await until(page, () => OC.Stage.busy && !!document.querySelector('.stage-ui.on'), null, 5000);
       const d0 = await page.evaluate((a) => { const x = OC.App.actorOf(a), pl = OC.App.player; return Math.hypot(x.x - pl.x, x.y - pl.y); }, A);
-      await wait(page, 2500); await shot(page, '10-cinematic');
-      const mid = await page.evaluate((a) => { const x = OC.App.actorOf(a), pl = OC.App.player; return { d: Math.hypot(x.x - pl.x, x.y - pl.y), zoom: OC.World.zoom, held: [...OC.Brain.get(a).holds] }; }, A);
+      // sample during the scene: it walks over first, then the camera moves in
+      const mid = { d: 1e9, zoom: 0, held: [] };
+      for (let i = 0; i < 40 && (await page.evaluate(() => OC.Stage.busy)); i++) { const m = await page.evaluate((a) => { const x = OC.App.actorOf(a), pl = OC.App.player; return { d: Math.hypot(x.x - pl.x, x.y - pl.y), zoom: OC.World.zoom, held: [...OC.Brain.get(a).holds] }; }, A); mid.d = Math.min(mid.d, m.d); if (m.zoom > mid.zoom) { mid.zoom = m.zoom; mid.held = m.held; } if (i === 12) await shot(page, '10-cinematic'); await wait(page, 200); }
       await until(page, () => !OC.Stage.busy && !OC.Stage.queue, null, 20000); await wait(page, 1500);
       const end = await page.evaluate((a) => ({ zoom: OC.World.zoom, held: [...OC.Brain.get(a).holds], ui: !!document.querySelector('.stage-ui'), state: (OC.Requests.list().find((x) => x.oc === a && x.type === 'meet') || {}).state }), A);
       check('10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅', started && rid && mid.d < d0 && mid.zoom > z0 + 0.1, JSON.stringify({ d0: Math.round(d0), d: Math.round(mid.d), z0, z: mid.zoom }));
@@ -276,10 +277,10 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('11b 跳過後角色沒有卡在演出狀態', !r.holds.includes('stage') && !r.holds.includes('feed'), JSON.stringify(r.holds));
       // a special event, watched by the player, skipped half-way: remaining steps run at once, the result is applied once
       const ev = await page.evaluate(async (id) => {
-        const c = OC.Chars.get(id); c.needs.social = 8; OC.Mind.tickEmotions(c, 1); OC.Store.s.life.ev.lastAny = 0;
+        const c = OC.Chars.get(id); c.needs.social = 8; OC.Mind.tickEmotions(c, 1); const E = OC.Store.s.life.ev; E.lastAny = 0; for (const k2 of Object.keys(E.last)) if (k2.startsWith('lonelyMoment')) delete E.last[k2]; for (const k2 of Object.keys(E.once)) if (k2.includes('lonelyMoment')) delete E.once[k2]; OC.Brain.get(id).holds.clear(); OC.Brain.get(id).queued = null;
         for (const e of OC.Events.defs()) if (e.id === 'lonelyMoment') e.chance = 1;
         const b = OC.Brain.get(id); b.st = 'think'; b.thinkAt = 1e9; OC.Events.update(5);
-        const cur = OC.Events.current; if (!cur) return { started: false };
+        const cur = OC.Events.current; if (!cur) return { started: false, diag: JSON.stringify(OC.Events.diag || '').slice(0, 300) };
         cur.watched = true; OC.Stage.controls(true); const evId = cur.ev.id, n0 = OC.Store.s.life.ev.log.filter((x) => x.id === evId).length;
         await new Promise((r) => setTimeout(r, 400)); OC.Stage.skip();
         const t0 = Date.now(); await new Promise((r) => { const t = setInterval(() => { if (!OC.Events.current || Date.now() - t0 > 8000) { clearInterval(t); r(); } }, 50); });

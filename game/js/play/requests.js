@@ -46,7 +46,7 @@
       if (r.state === 'offer' && now > r.until) { r.state = 'expired'; St.touch('play'); }
       if (r.state === 'active' && now > r.until) { r.state = 'expired'; const c = OC.Chars.get(r.oc); if (c) { M().note(c, 'request', `「${r.text}」的事，${name(c)}說沒關係了`); const ln = OC.Talk.say('req_expire', c, null); if (ln && A().actorOf(c.id)) A().bubble(A().actorOf(c.id), ln.text, name(c)); } St.touch('play'); }
     }
-    if (S().life.settings.autonomy === 'paused') return;
+    if (S().life.settings.autonomy === 'paused' || S().life.settings.requests === false) return;
     if (open().length < 2 && now >= s.nextAt) { const r = newRequest(); s.nextAt = now + (r ? 60 + Sim().rnd() * 90 : 20); }
   }
 

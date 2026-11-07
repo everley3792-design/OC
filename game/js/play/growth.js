@@ -85,7 +85,7 @@
     void locked;
   }
   /** called a few times per game day: OCs without an aspiration may find one (after a short rest) */
-  function tick() { for (const c of OC.Chars.all()) { const a = c.life.asp; if (a && (a.id || a.off)) continue; if (a && a.next && OC.Sim.now() < a.next) continue; ensureAsp(c); } }
+  function tick() { if (S().life.settings.aspAuto === false) return; for (const c of OC.Chars.all()) { const a = c.life.asp; if (a && (a.id || a.off)) continue; if (a && a.next && OC.Sim.now() < a.next) continue; ensureAsp(c); } }
 
   // ---------------- skill effects that happen when an activity ends ----------------
   function onFinish(c, act, b, gm) {

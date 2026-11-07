@@ -317,6 +317,8 @@
         T('細節'), card(
           h('div.hstack', null, h('span.grow', null, '操控中的角色也自己生活'), toggle(st.playerAuto, (v) => set('playerAuto', v))), small('關閉時，牠只在你一段時間沒操作後做些原地的小動作。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會向你提出請求'), toggle(st.requests !== false, (v) => set('requests', v))),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會自己找人生目標'), toggle(st.aspAuto !== false, (v) => set('aspAuto', v))), small('關閉後不會自動產生，你仍然可以在角色檔案「成長」幫牠選。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示自言自語泡泡'), toggle(st.bubbles, (v) => set('bubbles', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '成長建議（新習慣／特質）'), toggle(st.growth, (v) => set('growth', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '鎖定關係的自動變化'), toggle(st.lockRel, (v) => set('lockRel', v)))),

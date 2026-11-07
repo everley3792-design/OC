@@ -75,6 +75,22 @@ Brain（擴充）────────── travelCands / startTravel / depa
 - 存檔 v4：`rooms`、`ledger`、`custom`、`favs`、`shops`、`places`、`garden`；`migrateV3` 把 `placed` 搬到 `rooms.isle`。
 - 桌寵：`LifeUI.petState()` 另外提供 `place`、`favFoods`、`hasFood`（唯讀，沒有改動原生端）。
 
+### 第六階段：遊玩、成長與演出層（0.6.0-alpha）
+```
+遊戲行為 ──► OC.Progress.emit(ev, data) ──► enrich（地點、時間、天氣、物品屬性）──► tallies（成就統計）
+                                         ├─► OC.Quests.onEvent   每日／每週／地點／限時／隱藏／挑戰
+                                         ├─► OC.Requests.onEvent 角色請求（完成 → 演出 → 獎勵 → 回憶 → 後續）
+                                         ├─► OC.Growth.onEventAsp 人生目標（步驟 → 完成 → 稱號 → 成長建議）
+                                         └─► OC.Achieve.check    成就解鎖（玩家領取）
+獎勵：OC.Quests.grant(key) → OC.Tx（固定 key，防重複）
+回饋：OC.Stage.perform（劇本×個性版本；hold('stage')；跳過／×2）· OC.Stage.card（小卡片佇列）· OC.Sound（即時合成）
+資料：OC.PlayData（js/play/content.js）——新內容只改這裡
+```
+- 動畫：`CharRender.rigState` 依時間分段（預備／動作／跟隨／收尾）、`motion(c)` 依個性改變姿勢、次級動態（耳朵、尾巴、重心）；新動作在 `OC.Chars.ACTIONS` 有備用鏈。
+- 存檔 v5：`S.play`（任務、請求、成就領取、稱號、統計、圖鑑看過／收藏、日誌珍藏）、`S.settings.sound`；`migrateV4`。
+- 頁面：「日常」中心（任務、請求、成就、圖鑑＋其他入口）；角色檔案集中技能、人生目標、稱號、日誌與回憶。所有頁面只在資料改變時重建。
+- 桌寵：`petState()` 多了 `title`、`dream`、`request`、`action`（與遊戲同一套動作名稱），供第七階段使用。
+
 ## 第一階段規劃（歷史紀錄）
 
 

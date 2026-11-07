@@ -30,7 +30,7 @@ async function boot(page, o = {}) {
     const S = OC.Store.s; const keys = ['kuri', 'sora', 'mochi'];
     for (let i = 1; i < n; i++) { const c = OC.Chars.fromPreset(keys[(i - 1) % 3]); if (i >= 3) c.profile.name += i; c.status.onIsland = true; OC.Chars.add(c); }
     S.onboarded = true; OC.Sim.setMode('cycle'); OC.Sim.setSpeed(speed); OC.Sim.seed(seed);
-    S.life.settings.bubbles = true; S.life.settings.travel = o.travel === true; OC.Store.persist();   // phase 4 scenarios run on the island (phase 5 tests turn travel on)
+    S.life.settings.bubbles = true; S.life.settings.travel = o.travel === true; S.life.settings.aspAuto = S.life.settings.requests = o.travel === true;   // phase 6 extras only in phase 5/6 runs (phase 4 scenarios predate them) OC.Store.persist();   // phase 4 scenarios run on the island (phase 5 tests turn travel on)
   }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42, travel: !!o.travel });
   await page.waitForTimeout(400);
   return page;
