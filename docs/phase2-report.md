@@ -1,6 +1,6 @@
 # 第二階段完成紀錄與測試報告
 
-版本 **0.2.2-alpha（versionCode 4）**（0.2.0／0.2.1 實機無法開啟，見下方「實機回報」）　分支 `claude/oc-shimeji-visual-design-qcc3xy`
+版本 **0.2.3-alpha（versionCode 5）**（0.2.0–0.2.2 實機無法開啟，見下方「實機回報」）　分支 `claude/oc-shimeji-visual-design-qcc3xy`
 標示：✅ 已實作且在本環境驗證　🟡 已實作，但只能在實機驗證（本環境沒有 Android 裝置/模擬器）　🔒 刻意標示「未開放」　⏭ 依指示延後
 
 ## 交付物
@@ -8,12 +8,12 @@
 |---|---|
 | 遊戲原始碼（離線網頁，打包進 APK） | `game/` |
 | Android 專案 | `android/`（`app` 外殼、`core:*` 純 Kotlin） |
-| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
-| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.2-alpha-debug.apk` |
+| **Debug APK** | `deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`（4.2 MB，SHA-256 見同目錄 `.sha256`） |
+| 建置產出位置 | `android/app/build/outputs/apk/debug/oc-shimeji-0.2.3-alpha-debug.apk` |
 | 截圖（25 張，2×） | `deliverables/phase2/screens/`、總覽 `deliverables/phase2/screens-contact-sheet.jpg` |
 | 文件 | `docs/design-system.md`、`docs/ui-components.md`、`docs/art-guidelines.md`、`docs/android-build.md`、`docs/architecture.md`、`docs/roadmap.md`、`CLAUDE.md` |
 
-安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
+安裝：`adb install -r deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`（或傳到手機開啟，需允許未知來源）。最低 Android 8.0。
 
 ## 一、3D 場景與模型
 | 項目 | 狀態 |
@@ -118,6 +118,15 @@
 （0.2.1 修掉的 lambda 問題仍是真實錯誤，只是不在啟動路徑上。）
 
 仍無法在本環境實機執行；請安裝 0.2.2 回報。
+
+## 實機回報 #3（0.2.2-alpha）：Activity 已能啟動，WebView 載入時閃退 → 0.2.3-alpha
+
+- 錯誤（`Chrome_IOThread`）：`AbstractMethodError: abstract method "int java.util.Map.size()" on receiver kotlin.collections.EmptyMap`，於 WebView 的 `CommonApis.mapToArray`。
+- **原因（0.2.1 引入的建置錯誤）**：ProGuard 除了改寫 lambda 也做了「縮減」。框架 jar 不含 `java.*`，ProGuard 看不出 `EmptyMap` 實作 `java.util.Map`，
+  把 `size()`／`getSize()` 當成沒用到而刪除（已比對原始 stdlib 與輸出確認）。WebView 讀取 404 回應（例如自動要求的 favicon）的標頭 `emptyMap()` 時就閃退。
+- **修正（0.2.3）**：ProGuard 改為 `-dontshrink`（只改寫 lambda，不刪任何東西），並加入 JDK `java.base` 作為函式庫以取得完整類別階層；
+  `checkNoIndy` 另外檢查「輸入的每個類別都還在」與 `EmptyMap` 的 bridge 方法存在；`AssetServer` 的標頭改用 `java.util.HashMap`。
+- 逐方法比對 1454 個類別：除 kotlinx.serialization 介面的 static/default 方法被依 Java 7 規則搬到輔助類別（呼叫端同步改寫，App 執行期未使用）外，沒有任何方法遺失。
 
 ## 尚未驗證（必須在實機確認，不宣稱完成）
 1. 安裝與啟動、WebView WebGL 在實機的畫面與 **60fps**、記憶體、發熱。

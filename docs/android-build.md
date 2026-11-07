@@ -1,6 +1,6 @@
 # Android 建置說明（第二階段）
 
-App：**OC Shimeji**　套件名稱 `app.ocshimeji`　版本 `0.2.2-alpha`（versionCode 4）
+App：**OC Shimeji**　套件名稱 `app.ocshimeji`　版本 `0.2.3-alpha`（versionCode 5）
 minSdk 26（Android 8.0）／targetSdk 33／直向／完全離線（遊戲從 APK assets 載入，不需要開發伺服器）
 
 ## 1. 架構一句話
@@ -43,14 +43,14 @@ sudo apt-get install -y aapt dalvik-exchange zipalign apksigner android-sdk-plat
 ## 3. 產出
 
 ```
-android/app/build/outputs/apk/debug/oc-shimeji-0.2.2-alpha-debug.apk
+android/app/build/outputs/apk/debug/oc-shimeji-0.2.3-alpha-debug.apk
 ```
-一份副本放在 `deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk`（含 SHA-256）。
+一份副本放在 `deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk`（含 SHA-256）。
 
 ## 4. 安裝
 
 ```bash
-adb install -r deliverables/apk/oc-shimeji-0.2.2-alpha-debug.apk
+adb install -r deliverables/apk/oc-shimeji-0.2.3-alpha-debug.apk
 ```
 或把 APK 傳到手機，用檔案管理員開啟（需允許「安裝不明來源的應用程式」）。
 Debug 版使用本機自動產生的 debug keystore（`~/.android/debug.keystore`，不在版本庫中）簽署；
@@ -70,7 +70,7 @@ export OC_RELEASE_KEY_ALIAS=oc
 export OC_RELEASE_STORE_PASSWORD=…   # 建議由 CI 的 secret 注入
 export OC_RELEASE_KEY_PASSWORD=…
 cd android && gradle -Poc.build=offline :app:assembleRelease
-# → android/app/build/outputs/apk/release/oc-shimeji-0.2.2-alpha-release.apk
+# → android/app/build/outputs/apk/release/oc-shimeji-0.2.3-alpha-release.apk
 ```
 AGP 路徑（`build.gradle.kts`）讀同樣四個環境變數。
 本環境已用一把**拋棄式測試金鑰**（存放在版本庫外、用完即刪）實際跑過 `assembleRelease`，`apksigner verify` 通過。

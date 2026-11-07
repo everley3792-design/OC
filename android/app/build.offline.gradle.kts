@@ -84,7 +84,11 @@ val desugar by tasks.registering(JavaExec::class) {
     inputs.dir(layout.buildDirectory.dir("dexin")); inputs.file(rules); outputs.file(desugaredJar)
     classpath = proguardTool; mainClass.set("proguard.ProGuard")
     doFirst { desugaredJar.get().asFile.parentFile.mkdirs() }
-    args("@" + rules.path, "-injars", layout.buildDirectory.dir("dexin").get().asFile.path, "-outjars", desugaredJar.get().asFile.path, "-libraryjars", compileJar.path)
+    // java.* is not in the framework jar → also give ProGuard the JDK's java.base so the class hierarchy is complete
+    val jbase = File(System.getProperty("java.home"), "jmods/java.base.jmod")
+    val libs = mutableListOf("-libraryjars", compileJar.path)
+    if (jbase.exists()) libs += listOf("-libraryjars", jbase.path + "(!**.jar;!module-info.class)")
+    args(listOf("@" + rules.path, "-injars", layout.buildDirectory.dir("dexin").get().asFile.path, "-outjars", desugaredJar.get().asFile.path) + libs)
 }
 // fail the build if any lambda bootstrap survived (would crash on device)
 val checkNoIndy by tasks.registering {
@@ -92,6 +96,15 @@ val checkNoIndy by tasks.registering {
     doLast {
         val bad = zipTree(desugaredJar).matching { include("**/*.class") }.filter { f -> f.readBytes().let { b -> String(b, Charsets.ISO_8859_1).let { it.contains("LambdaMetafactory") || it.contains("StringConcatFactory") } } }.files
         require(bad.isEmpty()) { "invokedynamic bootstrap still present in: " + bad.take(10).joinToString { it.name } }
+        // nothing may be removed: every input class must still exist (backported lambdas only add classes)
+        val inDir = layout.buildDirectory.dir("dexin").get().asFile
+        val inNames = fileTree(inDir).matching { include("**/*.class"); exclude("**/module-info.class") }.files.map { it.relativeTo(inDir).invariantSeparatorsPath }.toSet()
+        val outNames = mutableSetOf<String>(); zipTree(desugaredJar).visit { if (!isDirectory && name.endsWith(".class")) outNames += relativePath.pathString }
+        val lost = inNames - outNames
+        require(lost.isEmpty()) { "desugar removed ${lost.size} classes, e.g. " + lost.take(5) }
+        // regression guard for the 0.2.2 crash: Kotlin's Map bridge methods must survive
+        val em = zipTree(desugaredJar).matching { include("kotlin/collections/EmptyMap.class") }.singleFile.readBytes()
+        require(String(em, Charsets.ISO_8859_1).contains("getSize")) { "kotlin.collections.EmptyMap lost its size()/getSize() bridge" }
     }
 }
 val dex by tasks.registering(Exec::class) {

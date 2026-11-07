@@ -35,7 +35,7 @@ class AssetServer(private val ctx: Context, private val listener: Listener? = nu
         return try {
             val stream = ctx.assets.open(path)
             WebResourceResponse(mime(path), if (isText(path)) "utf-8" else null, 200, "OK",
-                mapOf("Cache-Control" to "no-cache", "Access-Control-Allow-Origin" to "*"), stream)
+                headers(), stream)
         } catch (e: IOException) { notFound() }
     }
 
@@ -46,7 +46,9 @@ class AssetServer(private val ctx: Context, private val listener: Listener? = nu
         return true
     }
 
-    private fun notFound() = WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), "".byteInputStream())
+    // plain java.util.HashMap: these maps are read by WebView's native code, keep Kotlin collection types out of it
+    private fun headers(): MutableMap<String, String> = java.util.HashMap<String, String>().apply { put("Cache-Control", "no-cache"); put("Access-Control-Allow-Origin", "*") }
+    private fun notFound() = WebResourceResponse("text/plain", "utf-8", 404, "Not Found", java.util.HashMap<String, String>(), "".byteInputStream())
 
     companion object {
         const val HOST = "appassets.androidplatform.net"
