@@ -36,6 +36,11 @@
             </intent-filter>
         </activity>
 
+        <provider
+            android:name=".web.ShareProvider"
+            android:authorities="app.ocshimeji.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <service
             android:name=".overlay.OverlayPetService"
             android:exported="false" />

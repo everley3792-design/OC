@@ -93,6 +93,7 @@ val packageRes by tasks.registering(Exec::class) {
 val unsignedApk = apkDir.map { it.file("app-unsigned.apk") }
 val addDex by tasks.registering(Exec::class) {
     dependsOn(packageRes, dex)
+    inputs.file(apkDir.map { it.file("base.ap_") }); inputs.file(apkDir.map { it.file("classes.dex") })
     outputs.file(unsignedApk)
     workingDir(apkDir)
     doFirst { apkDir.get().file("base.ap_").asFile.copyTo(unsignedApk.get().asFile, overwrite = true) }
@@ -101,7 +102,7 @@ val addDex by tasks.registering(Exec::class) {
 
 val alignedApk = apkDir.map { it.file("app-aligned.apk") }
 val zipalign by tasks.registering(Exec::class) {
-    dependsOn(addDex); outputs.file(alignedApk)
+    dependsOn(addDex); inputs.file(unsignedApk); outputs.file(alignedApk)
     commandLine("zipalign", "-f", "-p", "4", unsignedApk.get().asFile.path, alignedApk.get().asFile.path)
 }
 
@@ -119,6 +120,7 @@ val debugApk = outDir.file("debug/oc-shimeji-$vName-debug.apk")
 val assembleDebug by tasks.registering(Exec::class) {
     group = "build"; description = "Builds and signs the debug APK (offline pipeline)."
     dependsOn(zipalign, ensureDebugKeystore)
+    inputs.file(alignedApk)
     outputs.file(debugApk)
     doFirst { debugApk.asFile.parentFile.mkdirs() }
     commandLine("apksigner", "sign", "--ks", debugKeystore.path, "--ks-pass", "pass:android", "--ks-key-alias", "androiddebugkey", "--key-pass", "pass:android",
@@ -130,6 +132,7 @@ val assembleDebug by tasks.registering(Exec::class) {
 val assembleRelease by tasks.registering(Exec::class) {
     group = "build"; description = "Builds a release APK signed with OC_RELEASE_KEYSTORE (offline pipeline)."
     dependsOn(zipalign)
+    inputs.file(alignedApk)
     val ks = System.getenv("OC_RELEASE_KEYSTORE")
     val out = outDir.file("release/oc-shimeji-$vName-release.apk")
     onlyIf { ks != null }

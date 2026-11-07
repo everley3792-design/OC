@@ -16,7 +16,9 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.net.Uri
 import android.webkit.ConsoleMessage
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -42,6 +44,7 @@ class MainActivity : Activity() {
         private set
     private var insetsCss = "0,0,0,0"
     var pendingPetStart = false
+    private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_OC) // leave the launch (splash) theme
@@ -76,6 +79,15 @@ class MainActivity : Activity() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                 Log.println(if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) Log.ERROR else Log.DEBUG, "OCWeb", "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
                 return true
+            }
+            // <input type=file> (image import / save import) → system document picker
+            override fun onShowFileChooser(view: WebView, cb: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                fileCallback?.onReceiveValue(null); fileCallback = cb
+                val accept = params.acceptTypes.firstOrNull { it.isNotBlank() } ?: "*/*"
+                val mime = if (accept.startsWith("image")) "image/*" else if (accept.contains("json")) "application/json" else "*/*"
+                val i = Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType(mime)
+                if (mime == "application/json") i.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain", "application/octet-stream"))
+                return runCatching { startActivityForResult(Intent.createChooser(i, null), REQ_FILE); true }.getOrElse { fileCallback = null; false }
             }
         }
         web.addJavascriptInterface(NativeBridge(this), "OCNative")
@@ -161,7 +173,25 @@ class MainActivity : Activity() {
 
     fun js(code: String) { if (::web.isInitialized) runOnUiThread { web.evaluateJavascript(code, null) } }
 
-    companion object { private const val REQ_NOTIF = 2 }
+    @Deprecated("startActivityForResult is the API available on the plain Activity base class.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQ_FILE) {
+            val uri = if (resultCode == RESULT_OK) data?.data else null
+            fileCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null); fileCallback = null; return
+        }
+        @Suppress("DEPRECATION") super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    /** share the save JSON as a file through the system share sheet (no storage permission needed) */
+    fun shareSave(json: String, name: String) {
+        val dir = java.io.File(cacheDir, "share").apply { mkdirs() }
+        val f = java.io.File(dir, name.replace(Regex("[^A-Za-z0-9._-]"), "_")); f.writeText(json)
+        val uri = app.ocshimeji.web.ShareProvider.uriFor(this, f)
+        val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(Intent.createChooser(send, "匯出存檔"))
+    }
+
+    companion object { private const val REQ_NOTIF = 2; private const val REQ_FILE = 3 }
 }
 
 /** Colours used before the web layer paints (must match game/css tokens --bg). */

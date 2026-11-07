@@ -71,5 +71,7 @@ class NativeBridge(private val act: MainActivity) {
         true
     }.getOrDefault(false)
 
+    @JavascriptInterface fun shareSave(json: String, name: String) = act.runOnUiThread { runCatching { act.shareSave(json, name) } }
+
     @JavascriptInterface fun haptic() = act.runOnUiThread { act.web.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP) }
 }

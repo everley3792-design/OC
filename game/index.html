@@ -1,1 +1,49 @@
-<!doctype html><meta charset=utf-8><title>OC Shimeji</title><p>loading</p>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>OC Shimeji</title>
+<script>
+  // Resolve the UI theme before the first paint (no white flash): native prefs → saved → system.
+  (function () {
+    var mode = 'system', sysDark = false;
+    try { var s = JSON.parse(localStorage.getItem('oc.save.v1') || 'null'); if (s && s.settings && s.settings.theme) mode = s.settings.theme; } catch (e) {}
+    try { if (window.OCNative) { mode = OCNative.getThemeMode() || mode; sysDark = OCNative.isSystemDark(); } else sysDark = matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+    var dark = mode === 'dark' || (mode === 'system' && sysDark);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  })();
+</script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="world" aria-label="小島"></canvas>
+  <div id="world-sky" aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:30%;pointer-events:none"></div>
+  <div id="world-vignette" aria-hidden="true"></div>
+  <div id="overlays" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;overflow:hidden"></div>
+  <div id="hud"></div>
+  <div id="pages"></div>
+  <div id="fade" style="position:absolute;inset:0;background:var(--bg);opacity:0;pointer-events:none;z-index:80;transition:opacity 420ms var(--ease-in-out)"></div>
+  <div id="boot"><div class="logo">OC <b>Shimeji</b></div></div>
+</div>
+<script src="lib/three.min.js"></script>
+<script src="js/core/oc.js"></script>
+<script src="js/art/vec.js"></script>
+<script src="js/art/vchar.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/clock.js"></script>
+<script src="js/art/style.js"></script>
+<script src="js/core/game.js"></script>
+<script src="js/world/models.js"></script>
+<script src="js/world/env.js"></script>
+<script src="js/world/world.js"></script>
+<script src="js/world/areas.js"></script>
+<script src="js/ui/ui.js"></script>
+<script src="js/ui/pages.js"></script>
+<script src="js/ui/studio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

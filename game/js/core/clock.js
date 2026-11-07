@@ -1,0 +1,41 @@
+/* OC Shimeji — world clock & weather.
+ * Default: the island follows the device's real time (cosy-life convention). Settings can
+ * pin the time of day or the weather. Weather is deterministic per 6-hour block of each
+ * real day (hash of the date) so it is stable across restarts and the same on every launch.
+ */
+(function () {
+  'use strict';
+  const PRESET_HOUR = { morning: 7.5, noon: 12.5, dusk: 17.8, night: 21.5 };
+  const WEATHERS = ['clear', 'cloudy', 'rain', 'fog'];
+  const WX_ZH = { clear: '晴朗', cloudy: '多雲', rain: '下雨', fog: '起霧' };
+  const WX_ICON = { clear: 'sun', cloudy: 'cloud', rain: 'rain', fog: 'fog' };
+  const PHASE_ZH = { morning: '早晨', noon: '中午', dusk: '黃昏', night: '夜晚' };
+  const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+
+  function dayKey(d = new Date()) { return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+  /** fractional hour 0..24 the world should show */
+  function hour() {
+    const s = OC.Store.s.settings;
+    if (s.time !== 'real' && PRESET_HOUR[s.time] != null) return PRESET_HOUR[s.time];
+    const d = new Date(); return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+  }
+  function phase(h = hour()) { return h >= 5 && h < 10 ? 'morning' : h >= 10 && h < 16 ? 'noon' : h >= 16 && h < 19.5 ? 'dusk' : 'night'; }
+  function autoWeather(d = new Date()) {
+    const block = Math.floor(d.getHours() / 6);
+    const r = OC.hash((d.getFullYear() % 100) * 500 + (d.getMonth() + 1) * 40 + d.getDate() + block * 0.173);
+    // fog only makes sense in the early blocks
+    if (block <= 1 && r > 0.88) return 'fog';
+    return r < 0.52 ? 'clear' : r < 0.78 ? 'cloudy' : r < 0.95 ? 'rain' : 'cloudy';
+  }
+  function weather() { const s = OC.Store.s.settings; return WEATHERS.includes(s.weather) ? s.weather : autoWeather(); }
+  function label() {
+    const d = new Date(), h = hour(), real = OC.Store.s.settings.time === 'real';
+    const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+    return {
+      date: `${d.getMonth() + 1}/${d.getDate()}`, week: `週${WEEK[d.getDay()]}`,
+      time: real ? `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}` : PHASE_ZH[phase(h)],
+      phase: phase(h), phaseZh: PHASE_ZH[phase(h)], wx: weather(), wxZh: WX_ZH[weather()], wxIcon: WX_ICON[weather()],
+    };
+  }
+  OC.Clock = { hour, phase, weather, autoWeather, label, dayKey, WEATHERS, WX_ZH, WX_ICON, PHASE_ZH, PRESET_HOUR };
+})();
