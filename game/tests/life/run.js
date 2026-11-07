@@ -101,7 +101,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await advance(page, 40);
       const done = await until(page, ([a]) => !OC.Brain.convs.some((c) => c.a.id === a), [A], 30000);
       const C = I['麻糬'];
-      await freeze(page, [A, B, C], { social: 30 });
+      await freeze(page, [A, B, C], { social: 30, food: 85, sleep: 85, energy: 70, fun: 70, comfort: 70 });
       const later = await page.evaluate(([a, b, c]) => { const cs = OC.Brain.candidates(OC.Brain.get(a)); const best = (o) => Math.max(...cs.filter((x) => x.other === o && x.social === 'chat').map((x) => x.s)); return { r: OC.Mind.rel(a, b), rc: OC.Mind.rel(a, c), friend: best(b), other: best(c), mem: OC.Talk.ctx(OC.Chars.get(a), OC.Chars.get(b)).mem }; }, [A, B, C]);
       check('3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）', done && later.r.aff > post.r.aff && later.friend > later.other && !!later.mem, { aff: `${later.r.aff} vs ${later.rc.aff}`, score: `朋友 ${later.friend.toFixed(2)} > 其他 ${later.other.toFixed(2)}`, mem: later.mem && later.mem.text });
       // milestone: becoming friends emits relUp → event (memory "成為了朋友")
