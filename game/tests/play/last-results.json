@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T22:45:25.837Z",
+ "at": "2026-11-07T23:02:59.630Z",
  "results": [
   {
    "name": "1a 不同個性的 OC 最想提出的請求不同",
@@ -107,7 +107,7 @@
   {
    "name": "3e 技能升級有演出卡片（含解鎖內容）",
    "ok": true,
-   "detail": "麻糬的藝術 Lv.1"
+   "detail": "麻糬的藝術 Lv.1 | 麻糬的料理 Lv.2"
   },
   {
    "name": "4a 人生目標影響自主行為（目標相關活動加分）",
@@ -122,7 +122,7 @@
   {
    "name": "4c 完成：獎勵、稱號、里程碑回憶，並提出（需同意的）成長建議",
    "ok": true,
-   "detail": "{\"coins\":610,\"title\":true,\"mem\":true,\"sugg\":[\"釣魚\"]}"
+   "detail": "{\"coins\":1210,\"title\":true,\"mem\":true,\"sugg\":[\"釣魚\"]}"
   },
   {
    "name": "5a 新取得的物品寫入圖鑑；用掉後仍保留發現紀錄（曾經持有）",
@@ -146,12 +146,12 @@
   {
    "name": "6b 領取成就獎勵入帳；同一個成就不能領兩次",
    "ok": true,
-   "detail": "1480 → 1580"
+   "detail": "2080 → 2180"
   },
   {
    "name": "6c 已領的再領全部被拒絕",
-   "ok": false,
-   "detail": "再領成功 0 次"
+   "ok": true,
+   "detail": "再領成功 0 次（另外領了 2 個還沒領的）"
   },
   {
    "name": "6d 隱藏成就顯示提示但不洩漏內容",
@@ -165,7 +165,7 @@
   {
    "name": "7b 「日誌」直接讀角色回憶（新回憶立即出現，重要的有故事時間軸）",
    "ok": true,
-   "detail": "6 → 7"
+   "detail": "7 → 8"
   },
   {
    "name": "7c 回憶可以珍藏",
@@ -174,12 +174,12 @@
   {
    "name": "8a 吃到最愛：期待（吃）→ 品嚐停頓 → 驚喜反應（多段動作，不是單一彈跳）",
    "ok": true,
-   "detail": "think → eat → taste → surprised → yum → dance → idle → play → idle → eat → idle"
+   "detail": "think → eat → taste → surprised → yum → dance → idle → tend → idle"
   },
   {
    "name": "8b 音效跟著演出（咀嚼 → 好吃）",
    "ok": true,
-   "detail": "chime,levelup,chew,chime,chime,jump,yum,sparkle,fanfare,fanfare,fanfare,levelup,levelup,card,card"
+   "detail": "chime,sparkle,chew,fanfare,fanfare,jump,yum,fanfare,levelup,card,card,card,card,card,sparkle,sparkle"
   },
   {
    "name": "8c 新動作有連續的姿勢變化（預備→動作→收尾）",
@@ -204,22 +204,22 @@
   {
    "name": "9c 自製角色也能播放升級演出（完整結束）",
    "ok": true,
-   "detail": "693ms"
+   "detail": "640ms"
   },
   {
    "name": "10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅",
-   "ok": false,
-   "detail": "{\"d0\":124,\"d\":26,\"z0\":1.9,\"z\":1.9}"
+   "ok": true,
+   "detail": "{\"d0\":111,\"d\":16,\"z0\":1.9201713755429128,\"z\":2.3}"
   },
   {
    "name": "10b 演出中角色被保留（不會被自主行為打斷），結束後鏡頭與保留都恢復",
    "ok": true,
-   "detail": "{\"zoom\":1.9201778314159708,\"held\":[],\"ui\":false,\"state\":\"done\"}"
+   "detail": "{\"zoom\":1.9393439369346397,\"held\":[\"event\"],\"ui\":false,\"state\":\"done\"}"
   },
   {
    "name": "11a 跳過演出：立刻結束，資料照樣正確（扣 1 個、品嚐紀錄、回憶各一次）",
    "ok": true,
-   "detail": "{\"ms\":466,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
+   "detail": "{\"ms\":74,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
   },
   {
    "name": "11b 跳過後角色沒有卡在演出狀態",
@@ -228,8 +228,8 @@
   },
   {
    "name": "11c 觀看中的特殊事件可以跳過：立刻結束、結果只套用一次、角色沒有卡住",
-   "ok": false,
-   "detail": "{\"started\":false}"
+   "ok": true,
+   "detail": "{\"started\":true,\"id\":\"firstMeet\",\"ms\":64,\"ended\":true,\"logged\":1,\"why\":\"done\",\"held\":[],\"ui\":false}"
   },
   {
    "name": "12a 切換效能／主題／時間／天氣／降低動態時演出照常結束、渲染器不重建",
@@ -249,22 +249,22 @@
   {
    "name": "13a 反覆開關「日常」、圖鑑、角色檔案、背包 12 次：DOM 不持續增加",
    "ok": true,
-   "detail": "1172 → 834"
+   "detail": "1178 → 811"
   },
   {
    "name": "13b 3D 資源不重新載入（材質、幾何不變，renderer 同一個）",
    "ok": true,
-   "detail": "tex 14→13 geo 232→233"
+   "detail": "tex 14→14 geo 229→229"
   },
   {
    "name": "13c JS heap 穩定（< +30MB）",
    "ok": true,
-   "detail": "32→32MB"
+   "detail": "25→25MB"
   },
   {
    "name": "14 重開後保留：coins",
    "ok": true,
-   "detail": "1990 → 1990"
+   "detail": "2580 → 2580"
   },
   {
    "name": "14 重開後保留：q",

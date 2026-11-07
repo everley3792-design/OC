@@ -233,7 +233,7 @@
         title('世界'), card(h('div.muted', null, '時間'), p.time, p.speedBox, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); }))),
-        title('聲音'), h('div.list', null, lockedRow('music', '音樂與音效', '音訊系統尚未實作')),
+        // 聲音：Phase 6 adds the real sound settings at the end of this page (js/ui/p6pages.js)
         title('資料'), fileIn, h('div.list', null,
           row('download', '匯出存檔', '存成 JSON 檔備份', null, () => app().exportSave()),
           row('upload', '匯入存檔', '從 JSON 檔還原', null, () => fileIn.click()),
