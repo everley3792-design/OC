@@ -273,7 +273,9 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       if ((await page.evaluate(() => OC.World.area.id)) !== 'isle') await travel(page, 'isle');
       await seed(page, 'drag', { items: { cookie: 3 } });
       const k = I['小空'];
-      await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); const b = OC.Brain.get(id); if (b) { b.holds.clear(); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'do') OC.Brain.finish(b, 't'); b.st = 'think'; b.thinkAt = 1e9; } c.needs.food = 40; OC.App.actorOf(id).path = null; }, k);
+      await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); c.needs.food = 40;
+        // everyone stands still so nobody walks under the finger (a drop goes to whoever is under it)
+        for (const b of Object.values(OC.Brain.brains)) { if (!b.a || b.manual) continue; b.holds.clear(); if (b.st === 'social') OC.Brain.Social.end(b.conv || OC.Brain.convs.find((x) => x.a === b || x.b === b), 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'do') OC.Brain.finish(b, 't'); b.st = 'think'; b.thinkAt = 1e9; b.a.path = null; } }, k);
       await wait(page, 800);
       await page.evaluate(() => { window.__toasts = []; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList && n.classList.contains('toast') && window.__toasts.push(n.textContent)))).observe(document.getElementById('app'), { childList: true, subtree: true }); window.__uses = []; const u = OC.Use.use; OC.Use.use = (id, oc) => { window.__uses.push([id, oc && OC.Chars.name(OC.Chars.get(oc))]); return u(id, oc); }; });
       await page.evaluate(() => document.querySelector('.bag-fab').click()); await wait(page, 500);
@@ -386,10 +388,12 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.evaluate(() => { const q = OC.World.nearestWalkable(300, 700, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 800);
       const door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 80 && p.x < innerWidth - 80 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
       console.log('  13b door', JSON.stringify(door));
+      await page.evaluate(() => { window.__toasts13 = []; new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList && (n.classList.contains('toast') || n.classList.contains('sheet')) && window.__toasts13.push((n.classList.contains('sheet') ? '[sheet] ' : '') + n.textContent.slice(0, 40))))).observe(document.getElementById('app'), { childList: true, subtree: true }); });
+      const pickAt = door ? await page.evaluate((d) => { const it = OC.World.pick(d.x, d.y).it; return it ? it.type + ':' + (it.shop || it.id || '') : null; }, door) : null;
       if (door) await page.touchscreen.tap(door.x, door.y);
       const isOpen = () => until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
       let tries = 1, opened = !!door && await isOpen(); if (door && !opened) { tries = 2; await page.touchscreen.tap(door.x, door.y); opened = await isOpen(); }
-      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && `${door.zh}（點 ${tries} 次）`);
+      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && `${door.zh}（點 ${tries} 次）` + (opened ? '' : ` pick=${pickAt} log=${JSON.stringify(await page.evaluate(() => window.__toasts13))} player=${JSON.stringify(await page.evaluate(() => ({ x: Math.round(OC.App.player.x), y: Math.round(OC.App.player.y), path: !!OC.App.player.path })))}`));
       if (opened) {
         const m0 = await page.evaluate(() => OC.Store.s.coins);
         await page.tap('[data-page="shop"] .shop-item'); await wait(page, 500); await shot(page, '13-buy-sheet');

@@ -163,6 +163,10 @@
   function dropTarget(sx, sy, id) {
     const r = Wd.pick(sx, sy - 24); const it = r.it, k = OC.Items.useKind(id);
     if (k === 'place') return (OC.Places.get(Wd.area.id) || {}).decor ? { kind: 'place', p: r.p } : { kind: 'place', why: '這裡不能擺家具' };
+    // only receivers count (a bench or a plot under the finger must not swallow the drop): nearest one within ~40px of its body
+    let best = null, bd = 42;
+    for (const t of dropCands(id)) { if (t.a.hidden) continue; const p = Wd.project(t.a.x, t.a.y, t.a.lvl, (t.a.gy - t.a.lvl * Wd.HY) + 18), d = Math.hypot(p.x - sx, p.y - (sy - 24)); if (d < bd) { bd = d; best = t; } }
+    if (best) return best.npc ? { kind: 'npc', npc: best.npc, a: best.a } : Object.assign({ kind: 'oc' }, best);
     if (it && (it.type === 'self' || it.type === 'mate')) { const oc = it.type === 'self' ? S().activeId : it.id; const c = dropCands(id).find((t) => t.oc === oc); return c ? Object.assign({ kind: 'oc' }, c) : null; }
     if (it && it.type === 'npc') return { kind: 'npc', npc: it.id, a: npcs[it.id] };
     return null;

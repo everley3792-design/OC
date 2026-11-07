@@ -85,11 +85,14 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       const A = I['栗子'], B = I['小空'];
       await setHour(page, 14);
       await freeze(page, [A, B], { food: 85, sleep: 85, energy: 70, social: 30, fun: 70 });
+      // already acquainted (a shy OC meeting a total stranger accepts only ~40% of invitations — the answer is a seeded roll)
+      await page.evaluate(([a, b]) => OC.Mind.relPair(a, b, { fam: 6, aff: 22 }, 'test'), [A, B]);
       const pre = await page.evaluate(([a, b]) => ({ r: JSON.parse(JSON.stringify(OC.Mind.rel(a, b))), sc: OC.Brain.candidates(OC.Brain.get(a)).filter((x) => x.other === b).map((x) => x.s)[0] || 0 }), [A, B]);
       await page.evaluate(([a, b]) => { for (const id of [a, b]) { const br = OC.Brain.get(id); if (br.st === 'social') OC.Brain.Social.end(br.conv || OC.Brain.convs.find((x) => x.a === br || x.b === br), 't'); if (br.st === 'do' || br.st === 'go') OC.Brain.abort(br, 'test'); br.st = 'think'; br.thinkAt = 1e9; } OC.Chars.get(b).personality.social = 90; OC.Brain.Social.start(OC.Brain.get(a), OC.Brain.get(b), 'chat'); }, [A, B]);
+      const startDiag = await page.evaluate(([a, b]) => [a, b].map((id) => { const x = OC.Brain.get(id); return `${OC.Chars.name(OC.Chars.get(id))}:st=${x.st} holds=${[...x.holds]} q=${x.queued} lv=${!!x.leaving} inv=${!!x.invited} bp=${!!x.byPlayer} conv=${OC.Brain.convs.length}`; }).join(' ; '), [A, B]);
       const talked = await until(page, ([a]) => !OC.Brain.convs.some((c) => c.a.id === a), [A], 40000);
       const post = await page.evaluate(([a, b]) => ({ r: OC.Mind.rel(a, b), rb: OC.Mind.rel(b, a), ma: OC.Mind.memories(OC.Chars.get(a), { who: b }).map((m) => m.text), mb: OC.Mind.memories(OC.Chars.get(b), { who: a }).map((m) => m.text) }), [A, B]);
-      check('3a 兩個 OC 相遇並聊天（輪流說話、面對面）', talked && post.r.fam > pre.r.fam, `fam ${pre.r.fam} → ${post.r.fam}`);
+      check('3a 兩個 OC 相遇並聊天（輪流說話、面對面）', talked && post.r.fam > pre.r.fam, `fam ${pre.r.fam} → ${post.r.fam}` + (post.r.fam > pre.r.fam ? '' : ' ｜ ' + startDiag + ' ｜ ' + await page.evaluate(([a, b]) => OC.Brain.log.filter((l) => l.who === a || l.who === b).slice(0, 10).map((l) => OC.Chars.name(OC.Chars.get(l.who)) + ':' + l.text).join(' / '), [A, B])));
       check('3b 雙方都留下共同回憶', post.ma.length > 0 && post.mb.length > 0, { a: post.ma.slice(0, 2), b: post.mb.slice(0, 2) });
       // joint activity: rest together on a bench
       await freeze(page, [A, B], { food: 85, sleep: 85, energy: 40, social: 30, fun: 70 });
