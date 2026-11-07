@@ -96,7 +96,7 @@
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
   const charOf = (b) => OC.Chars.get(b.id);
-  const available = (b) => b && b.a && !b.holds.size && !b.queued && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
+  const available = (b) => b && b.a && !b.holds.size && !b.queued && !b.leaving && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
 
   // ---------------- scoring ----------------
   const NEED_W = { food: 1.4, sleep: 1.3, energy: 1.0, fun: 0.9, social: 0.9, comfort: 0.6, interest: 0.7, active: 0.7 };
@@ -267,7 +267,7 @@
   function arrive(b, resumed) {
     const c = charOf(b), A = D().ACTS[b.act], a = b.a, s = b.slot;
     if (s) {
-      if (s.inside && areaId === 'isle' && OC.Places && OC.Places.open('home')) { b.leaving = { to: 'home', act: b.act }; release(b.id); b.slot = null; depart(b); return; }   // going into the house = going home
+      if (s.inside && areaId === 'isle' && settings().travel !== false && OC.Places && OC.Places.open('home')) { b.leaving = { to: 'home', act: b.act }; release(b.id); b.slot = null; depart(b); return; }   // going into the house = going home
       if (s.inside) { a.hidden = true; hooks.hide(a, true); }
       else if (Math.hypot(a.x - s.x, a.y - s.y) > 0.5) { a.path = [{ x: s.x, y: s.y }]; a.onArrive = null; b.aligning = true; }   // short straight move onto the seat (seats sit on blocked cells)
       a.seatY = s.seatY || 0; a.tFace = s.fx || (s.back ? a.tFace * 0.3 : 0.25); a.tBack = s.back ? 1 : 0;
@@ -396,7 +396,7 @@
   const placeActs = (pl) => { const p = OC.Places.get(pl); return p && !p.locked ? (p.acts || []) : []; };
   /** activities worth a trip: not available here (or a place the OC loves), minus the distance */
   function travelCands(c, b) {
-    if (!placeOK() || (b.manual && !settings().playerAuto)) return [];
+    if (!placeOK() || settings().travel === false || (b.manual && !settings().playerAuto)) return [];
     const st = settings(); if (st.autonomy === 'paused' || st.autonomy === 'restricted') return [];
     if (M().urgent(c) && M().urgent(c) !== 'social') return [];
     const cur = here(), out = [], local = new Set(); for (const o of aff) if (o.slots.some((s2) => free(s2, c.id))) o.verbs.forEach((v) => local.add(v));
@@ -472,8 +472,8 @@
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
       const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
       let list = here2.filter((x) => D().ACTS[x] && !denied(x) && x !== 'explore').map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
-      if (placeOK() && !o.offline && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
-      if (placeOK() && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
+      if (placeOK() && !o.offline && settings().travel !== false && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
+      if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
       const ch = choose(c, list); if (!ch) return;
       if (ch.pl !== loc) { const tm = OC.Places.travelMin(loc, ch.pl); c.life.trip = { from: loc, to: ch.pl, act: ch.act, eta: now + tm }; c.life.loc = ch.pl; }

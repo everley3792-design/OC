@@ -57,6 +57,24 @@ world.js：tickActors（頁面蓋住時仍移動）、focus（鏡頭跟隨）、
 
 ---
 
+### 第五階段：世界、物品與經濟層（0.5.0-alpha）
+```
+OC.Places (places.js) ── 地點登記、移動時間、地點偏好、菜園、採集、小生物、魚表、每個地點的房間 save.rooms[id]
+OC.Areas  (areas*.js) ── 場景：模型、可走範圍、出入口 doors/exits、可互動物件（shop/counter/fishing/stove/plot/forage/critter/bookshelf…）
+OC.WorldUI (worldui.js) ─ travel()：淡出→App.loadArea（同一個 renderer，舊場景 disposeTree）→ arrived()：造訪、回憶、事件、地點視覺
+OC.Items / OC.Taste (items.js) ─ 唯一物品登記 OC.Style.ITEMS（含工坊商品）、搜尋排序、每個 OC 的飲食喜好
+OC.Tx (tx.js) ──────── 唯一交易流程：防重複 key → 驗證 → 原子套用 → 帳本 → 存檔 → 事件
+OC.Shops (shops.js) ── 7 間商店、今日特價、每日市場限量、收購、收入來源（成就、首次造訪、新發現）
+OC.Use (p5pages.js) ── 吃／喝（完成才扣）、玩、送、穿、擺；快速背包拖曳的目標判定
+OC.Mini (minigames.js) ─ 釣魚、料理、小生物（真實輸入、個性與技能影響、Tx 獎勵、回憶）
+Brain（擴充）────────── travelCands / startTravel / depart / arrived / abstractStep（跨地點）、新可供性、noticeNew（新家具）
+```
+- 只載入目前的地點；離開時釋放場景資源（快取的共用幾何／材質保留）。測試 12：來回 32 次後資源數穩定。
+- 不在玩家身邊的 OC 走抽象模擬（同一套評分＋地點列表＋路程），抵達時 `App.syncPresence()` 讓它從門口走進來。
+- 開啟背包／商店／地圖／佈置／圖鑑都只是 DOM 頁面，不會重建 3D 場景、AI 或動畫（測試 1c、10a）。
+- 存檔 v4：`rooms`、`ledger`、`custom`、`favs`、`shops`、`places`、`garden`；`migrateV3` 把 `placed` 搬到 `rooms.isle`。
+- 桌寵：`LifeUI.petState()` 另外提供 `place`、`favFoods`、`hasFood`（唯讀，沒有改動原生端）。
+
 ## 第一階段規劃（歷史紀錄）
 
 

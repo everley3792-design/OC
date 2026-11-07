@@ -24,7 +24,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
 (async () => {
   const { browser, page, errors } = await H.launch();
   try {
-    await H.boot(page, { chars: 3, seed: 11 });
+    await H.boot(page, { chars: 3, seed: 11, travel: true });
     const I = await ids(page);
     await page.evaluate(() => { window.__R = OC.World.renderer; window.__scene = OC.World.root && OC.World.root.parent; });
 
@@ -66,7 +66,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       // via the map UI with touch
       await page.evaluate(() => OC.App.tab('explore')); await wait(page, 500);
       await page.tap('.map-pin[aria-label="星砂海灘"]'); await wait(page, 300); await shot(page, '1-map');
-      const btn = await page.$('[data-page="explore"] .card .btn.primary'); if (btn) await btn.tap();
+      await page.tap('[data-page="explore"] .card .btn.primary', { timeout: 10000 });
       const viaMap = await until(page, () => OC.World.area.id === 'beach', null, 10000);
       check('1d 從世界地圖點選地點→「前往」即可抵達', viaMap);
       const locked = await page.evaluate(() => { OC.WorldUI.travel('fair'); return OC.World.area.id; });
@@ -98,6 +98,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.evaluate(() => { for (const c of OC.Chars.all()) { c.life.loc = 'isle'; c.life.trip = null; c.life.cur = null; } });
       await travel(page, 'isle'); await wait(page, 600);
       const kuri = I['栗子'];
+      await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; c.life.cur = null; OC.App.syncPresence(); }, kuri); await until(page, (id) => !!OC.App.mates[id], kuri, 5000);
       await page.evaluate((id) => { const b = OC.Brain.get(id); OC.Brain.startTravel(b, 'beach', 'fish'); }, kuri);
       const left = await until(page, (id) => !OC.App.mates[id] && OC.Chars.get(id).life.loc === 'beach', kuri, 60000, 300);
       check('2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）', left, await page.evaluate((id) => JSON.stringify(OC.Chars.get(id).life.trip), kuri));
@@ -105,7 +106,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await travel(page, 'beach');
       const met = await until(page, (id) => !!OC.App.mates[id], kuri, 8000);
       const doing = await until(page, (id) => { const b = OC.Brain.get(id); return b && (b.act === 'fish' || b.st === 'go' || b.st === 'do'); }, kuri, 20000);
-      check('2f 玩家跟過去：在海灘看到栗子並繼續牠的活動', met && doing, await page.evaluate((id) => { const b = OC.Brain.get(id); return b ? `${b.st}/${b.act}` : 'none'; }, kuri));
+      check('2f 玩家跟過去：在海灘看到栗子從門口走進來並在那裡活動', met && doing, await page.evaluate((id) => { const b = OC.Brain.get(id); return b ? `${b.st}/${b.act}` : 'none'; }, kuri));
       await wait(page, 1500); await shot(page, '2-follow-beach');
     }
 

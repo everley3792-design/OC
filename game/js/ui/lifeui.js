@@ -308,6 +308,7 @@
         T('自主程度'), card(auto, small({ full: 'OC 會自己生活、社交、遇到事件。', lessSocial: '比較少主動找人聊天。', fewerEvents: '事件間隔拉長很多。', restricted: '只做吃飯、休息、睡覺等基本的事。', paused: '大家停下自主行動（需求仍會變化，你安排的活動仍會執行）。' }[st.autonomy])),
         T('細節'), card(
           h('div.hstack', null, h('span.grow', null, '操控中的角色也自己生活'), toggle(st.playerAuto, (v) => set('playerAuto', v))), small('關閉時，牠只在你一段時間沒操作後做些原地的小動作。'),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示自言自語泡泡'), toggle(st.bubbles, (v) => set('bubbles', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '成長建議（新習慣／特質）'), toggle(st.growth, (v) => set('growth', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '鎖定關係的自動變化'), toggle(st.lockRel, (v) => set('lockRel', v)))),

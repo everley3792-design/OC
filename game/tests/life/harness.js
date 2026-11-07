@@ -26,12 +26,12 @@ async function boot(page, o = {}) {
   await page.click('.creator .card >> nth=0');
   for (let i = 0; i < 9; i++) { const b = await page.$('.creator > .btn.primary'); if (!b) break; await b.click(); await page.waitForTimeout(150); }
   await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
-  await page.evaluate(({ n, speed, seed }) => {
+  await page.evaluate(({ n, speed, seed, travel }) => { const o = { travel };
     const S = OC.Store.s; const keys = ['kuri', 'sora', 'mochi'];
     for (let i = 1; i < n; i++) { const c = OC.Chars.fromPreset(keys[(i - 1) % 3]); if (i >= 3) c.profile.name += i; c.status.onIsland = true; OC.Chars.add(c); }
     S.onboarded = true; OC.Sim.setMode('cycle'); OC.Sim.setSpeed(speed); OC.Sim.seed(seed);
-    S.life.settings.bubbles = true; OC.Store.persist();
-  }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42 });
+    S.life.settings.bubbles = true; S.life.settings.travel = o.travel === true; OC.Store.persist();   // phase 4 scenarios run on the island (phase 5 tests turn travel on)
+  }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42, travel: !!o.travel });
   await page.waitForTimeout(400);
   return page;
 }

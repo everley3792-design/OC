@@ -19,6 +19,8 @@
   const small = (t) => h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, t);
   const img = (id, px = 40) => { const im = OC.Style.itemImg(id); im.style.width = im.style.height = px + 'px'; return im; };
   const name = (c) => OC.Chars.name(c);
+  /** pages refresh on many store events (the life sim emits often): rebuild only when what the page shows changed */
+  const same = (p, k) => { if (p._sig === k) return true; p._sig = k; return false; };
   const av = (c) => { const cv = h('canvas', { width: 80, height: 80 }); cv.style.cssText = 'width:40px;height:40px;flex:none;border-radius:12px;background:var(--surface-2)'; OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile' } }); return cv; };
   const coin = (n) => h('span.price', null, h('span', { style: { color: 'var(--sun)', display: 'inline-grid' } }, icon('coin', 's')), h('b.num', null, n.toLocaleString()));
 
@@ -60,6 +62,7 @@
     },
     refresh(p) {
       const cur = OC.World.area ? OC.World.area.id : 'isle', curTop = PL().top(cur); p.sel = p.sel || curTop;
+      if (same(p, [p.sel, cur, OC.Clock.weather(), OC.Clock.phase(OC.Clock.hour()), Object.keys(S().places.visited).length, Object.keys(S().seen).length, OC.Chars.all().map((c) => { const w = where(c); return c.id + w.pl + w.tr + OC.LifeUI.doingText(c); }).join()].join('|'))) return;
       for (const [id, pin] of Object.entries(p.pins)) { pin.classList.toggle('on', id === p.sel); pin.classList.toggle('here', id === curTop); const ocs = OCS_AT(id).concat(Object.entries(PL().P).filter(([, q]) => q.parent === id).flatMap(([k]) => OCS_AT(k))); pin.querySelector('.pin-ocs').replaceChildren(...ocs.slice(0, 4).map((c) => h('i', { title: name(c) }, name(c).slice(0, 1)))); }
       const subs = [p.sel].concat(Object.entries(PL().P).filter(([, q]) => q.parent === p.sel).map(([k]) => k));
       p.info.replaceChildren(...subs.map((id) => placeCard(id, cur)));
@@ -83,6 +86,7 @@
     build(p, el) { p.list = h('div'); el.append(p.list); },
     refresh(p) {
       const Gm = OC.Game, claimable = Gm.todayQuests().filter((q) => q.prog >= q.n && !q.claimed).length;
+      if (same(p, [claimable, JSON.stringify(Gm.todayQuests().map((q) => q.claimed)), Object.keys(S().ach).length, Object.keys(S().seen).length, S().goal, S().coins, JSON.stringify(S().inv), Object.keys((S().custom || {}).items || {}).length].join('|'))) return;
       const all = Object.keys(OC.Style.ITEMS).filter((id) => !I(id).custom), seen = all.filter((id) => S().seen[id]).length;
       p.list.replaceChildren(
         h('div.list', null,
@@ -230,6 +234,7 @@
       el.append(h('div.hstack', null, p.q, p.sortSel), p.chips, p.sum, p.grid, small('背包和快捷背包是同一份庫存。物品只能從商店、探索、活動、收成與獎勵取得。'));
     },
     refresh(p) {
+      if (same(p, [JSON.stringify(S().inv), JSON.stringify(S().favs || {}), p.q.value, p.group, p.sort].join('|'))) return;
       const owned = Object.keys(S().inv).filter((id) => I(id) && St.count(id) > 0);
       const groups = [['all', '全部'], ['fav', '★ 收藏']].concat(IT().GROUPS.map(([k, zh]) => [k, zh]));
       p.chips.replaceChildren(...groups.map(([k, zh]) => { const n = k === 'all' ? owned.length : k === 'fav' ? owned.filter((id) => (S().favs || {})[id]).length : owned.filter((id) => IT().groupOf(id) === k).length; return h('button.chip-btn' + (p.group === k ? '.on' : ''), { on: { click: () => { p.group = k; p.refresh(p); } } }, `${zh} ${n}`); }));
@@ -249,6 +254,7 @@
     },
     refresh(p) {
       const sid = (p.params && p.params.shop) || p.sid || 'general'; p.sid = sid; const shop = SH().get(sid);
+      if (same(p, [sid, p.mode, p.cat, p.q.value, S().coins, JSON.stringify(S().inv), OC.Sim.day(), OC.Clock.weather(), JSON.stringify(S().shops[sid] || {}), Object.keys((S().custom || {}).items || {}).length].join('|'))) return;
       p.el.querySelector('h1').textContent = shop.zh;
       p.tabsWrap.hidden = !shop.sells; if (!shop.sells) p.mode = 'buy';
       const d = SH().deal(sid);
@@ -295,6 +301,7 @@
     sub: true,
     build(p, el) { p.cat = 'fish'; p.chips = h('div.chips.scroll'); p.body = h('div'); p.places = h('div'); el.append(p.chips, p.body, T('地點探索'), p.places); },
     refresh(p) {
+      if (same(p, [p.cat, Object.keys(S().seen).length, JSON.stringify(S().inv), Object.keys(S().places.visited).length].join('|'))) return;
       const all = Object.keys(OC.Style.ITEMS).filter((id) => !I(id).custom);
       p.chips.replaceChildren(...COLL.map(([k, zh, f]) => { const ids = all.filter(f), got = ids.filter((id) => S().seen[id]).length; return h('button.chip-btn' + (p.cat === k ? '.on' : ''), { on: { click: () => { p.cat = k; p.refresh(p); } } }, `${zh} ${got}/${ids.length}`); }));
       const ids = all.filter(COLL.find((c) => c[0] === p.cat)[2]).sort((a, b) => I(a).rarity - I(b).rarity || I(a).zh.localeCompare(I(b).zh, 'zh-Hant'));
@@ -315,6 +322,7 @@
     sub: true,
     build(p, el) { p.body = h('div'); el.append(card(h('b', null, '把你畫的、匯入的圖片變成遊戲裡的商品'), small('工坊只負責「創作與上架」：商品會出現在你選的商店，要用星幣購買才會進入背包。'), h('button.btn.primary.block', { style: { marginTop: '10px' }, on: { click: () => editProduct(null, () => p.refresh(p)) } }, icon('plus', 's'), '新增商品')), p.body); },
     refresh(p) {
+      if (same(p, JSON.stringify((S().custom || {}).items || {}) + JSON.stringify(S().inv))) return;
       const C = Object.values((S().custom || {}).items || {});
       p.body.replaceChildren(T('我的商品', `${C.length} 件`), C.length ? h('div.list', null, ...C.map((d) => row(img(d.id, 40), d.zh, `${(IT().KINDS[d.kind] || {}).zh}・${SH().get(d.shop).zh}・${d.price} 星幣・持有 ${St.count(d.id)}`, null, () => editProduct(d, () => p.refresh(p))))) : card(h('span.faint', null, '還沒有商品')));
     },
@@ -353,6 +361,7 @@
   Pg().define('ledger', '交易紀錄', {
     sub: true,
     refresh(p, el) {
+      if (same(p, OC.Tx.log.length + ':' + (OC.Tx.log[0] ? OC.Tx.log[0].key : ''))) return;
       const L = OC.Tx.log.slice(0, 120);
       el.replaceChildren(small('所有星幣與物品的變化都會記錄在這裡（最近 300 筆）。'), L.length ? h('div.list', null, ...L.map((e) => { const items = (o) => Object.entries((o && o.items) || {}).map(([id, n]) => `${(I(id) || { zh: id }).zh}×${n}`).join('、'); const plus = [e.get && e.get.coins ? `+${e.get.coins} 星幣` : '', items(e.get)].filter(Boolean).join(' '), minus = [e.pay && e.pay.coins ? `-${e.pay.coins} 星幣` : '', items(e.pay) ? '−' + items(e.pay) : ''].filter(Boolean).join(' '); return row(null, e.reason || '交易', `${new Date(e.at).toLocaleString('zh-TW')}　${[plus, minus].filter(Boolean).join('　')}`); })) : card(h('span.faint', null, '還沒有交易')));
     },
