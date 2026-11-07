@@ -70,6 +70,10 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 地點：登記在 `OC.Places.P`、場景在 `OC.Areas`；每個地點的家具存在 `save.rooms[地點]`（`OC.Places.room(id)`）。切換地點用 `OC.WorldUI.travel()`，不重建 renderer／UI／AI。不在玩家身邊的 OC 只走 `Brain.abstractStep`（低頻），抵達經 `App.syncPresence()` → `Brain.arrived()`。
 - 未開放的地點保持 `locked` 並顯示原因；開放的地點一定要能進入、有可互動設施（測試 1b）。
 - 小遊戲（`OC.Mini`）用真實輸入；`OC.Mini.state` 是給測試機器人讀的唯讀狀態，不要讓它影響遊戲。
+- 生活設定 `life.settings.travel`（OC 可以自己去別的地方）：第四階段測試 harness 預設關閉（情境假設大家都在島上），第五階段測試傳 `travel: true`。
+- 玩家安排的活動（`Brain.command`）不會被邀請或旅行取代；被保留（hold）打斷時會在之後繼續；正在離開的 OC 不能被邀請。
+- 頁面只在顯示的資料改變時重建（`same(p, 簽章)`），否則按鈕會在手指下被替換（生活模擬事件很頻繁）。
+- 輸入：新的主要指標會清掉殘留指標；長按在下一幀確認（慢幀時避免把點擊誤判成長按）。`window.__ocInputLog` 只給測試追蹤用。
 - **生活模擬只有一個時鐘**：所有需求、活動長度、冷卻用 `OC.Sim` 的遊戲分鐘（固定步長，app 迴圈餵現實秒數）；走路效果依距離。不要用 `setInterval`/幀數驅動生活邏輯，否則速度、fps、背景會改變結果。
 - 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、最多 8 小時、不觸發事件、不給獎勵、摘要回憶有 key）。
 - 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。

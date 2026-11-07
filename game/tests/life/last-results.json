@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T20:14:59.147Z",
+ "at": "2026-11-07T21:05:28.972Z",
  "results": [
   {
    "name": "1a 三個 OC 的說話聲線不同",
@@ -19,9 +19,9 @@
      "voice": "bright",
      "speed": 64,
      "greet": [
-      "嗨，你喵～～",
       "哇，是你！好巧喔喵～～",
-      "初次見面，我是麻糬喵～～"
+      "初次見面，我是麻糬喵～～",
+      "嗨，你喵～～"
      ],
      "shy": 0.62,
      "readScore": 0.33,
@@ -43,8 +43,8 @@
       "初次見面，我是栗子！！"
      ],
      "shy": 0.26,
-     "readScore": 0.17,
-     "playScore": 0.29,
+     "readScore": 0.16,
+     "playScore": 0.24,
      "routine": {
       "sleep": 22,
       "wake": 6.5,
@@ -57,9 +57,9 @@
      "voice": "cool",
      "speed": 47,
      "greet": [
-      "（小聲）初次見面，我是小空…。",
       "（小聲）那、那個……你好…。",
-      "（小聲）嗨，你……"
+      "（小聲）……嗯，你…。",
+      "（小聲）初次見面，我是小空…。"
      ],
      "shy": 0.67,
      "readScore": 0.7,
@@ -83,8 +83,8 @@
    "name": "1e 實際生活紀錄不同",
    "ok": true,
    "detail": {
-    "麻糬": "explore1,observe1|social1|asked1",
-    "栗子": "|social1|asked1",
+    "麻糬": "observe1,explore1,eat1|social0|asked0",
+    "栗子": "stretch1,drink1,eat1|social0|asked2",
     "小空": "read1|social0|asked0"
    }
   },
@@ -92,11 +92,11 @@
    "name": "2a 肚子餓 → 選擇吃飯 → 走到用餐地點",
    "ok": true,
    "detail": {
-    "slot": "stall#0",
-    "reason": "吃飯（需求 food1.31、用餐時間+0.30、貪吃+0.15）",
-    "x": 276,
+    "slot": "stall#1",
+    "reason": "吃飯（需求 food1.35、用餐時間+0.30、貪吃+0.15）",
+    "x": 304,
     "y": 598,
-    "sx": 276,
+    "sx": 304,
     "sy": 598
    }
   },
@@ -104,11 +104,11 @@
    "name": "2b 吃完飽足恢復並記錄",
    "ok": true,
    "detail": {
-    "food": 78,
+    "food": 86,
     "rec": {
      "n": 1,
-     "gm": 30,
-     "last": 29902402,
+     "gm": 36,
+     "last": 29902386,
      "ctx": {
       "noon": 1,
       "rain": 1
@@ -130,7 +130,7 @@
     "dy": 0,
     "seatY": 6,
     "act": "sleep",
-    "e0": 11.33799853253655
+    "e0": 11.142331884811494
    }
   },
   {
@@ -151,7 +151,6 @@
      "和小空聊天"
     ],
     "b": [
-     "願望實現了：想和栗子聊聊天",
      "和栗子聊天"
     ]
    }
@@ -170,7 +169,7 @@
    "ok": true,
    "detail": {
     "aff": "49 vs 0",
-    "score": "朋友 0.79 > 其他 0.31",
+    "score": "朋友 1.23 > 其他 0.28",
     "mem": "和小空一起休息"
    }
   },
@@ -188,7 +187,7 @@
    "name": "4a 雨天閱讀紀錄 → 提出「雨天閱讀」習慣建議（附原因）",
    "ok": true,
    "detail": {
-    "id": "gmw6ua4ij64x",
+    "id": "gmw6w2uw74fw",
     "v": "rainread",
     "ask": "麻糬最近總喜歡在雨天找個安靜的地方閱讀……要讓牠保留「雨天閱讀」這個習慣嗎？",
     "why": "最近 8 次「閱讀」中有 8 次是在雨天（共約 4 小時）"
@@ -211,8 +210,8 @@
     "habits": [
      "雨天閱讀"
     ],
-    "before": 0.8664061664775636,
-    "afterS": 1.3164061664775637,
+    "before": 0.865382454972396,
+    "afterS": 1.315382454972396,
     "again": false,
     "came": true,
     "locked": false,
@@ -260,12 +259,12 @@
    "name": "5b 時間事件（起床時沒睡好／早晨）",
    "ok": true,
    "detail": {
-    "at": 1794082311289,
-    "gm": 29956782,
-    "id": "badSleep",
-    "zh": "沒睡好",
-    "a": "cmw6u978ede0p",
-    "b": null,
+    "at": 1794085340732,
+    "gm": 29956874,
+    "id": "firstMeet",
+    "zh": "初次見面",
+    "a": "cmw6w1tdrp3se",
+    "b": "cmw6w1xk4iajw",
     "why": "done"
    }
   },
@@ -276,7 +275,7 @@
     "wish": "done",
     "emo": [
      "happy:願望實現：想吃蛋糕",
-     "happy:吃了草莓蛋糕",
+     "excited:吃了草莓蛋糕",
      "happy:初次見面"
     ],
     "aff": 7
@@ -294,9 +293,9 @@
     "t": "bestfriend",
     "log": [
      "bestFriends",
+     "firstMeet",
      "badSleep",
-     "rainArrives",
-     "firstMeet"
+     "rainArrives"
     ],
     "mem": [
      "和小空成為了最好的朋友",
@@ -320,9 +319,9 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 2,
-    "decisions": 19,
-    "convs": 6
+    "res": 0,
+    "decisions": 29,
+    "convs": 5
    }
   },
   {
@@ -340,9 +339,9 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 2,
-    "decisions": 19,
-    "convs": 6
+    "res": 0,
+    "decisions": 29,
+    "convs": 5
    }
   },
   {
@@ -457,9 +456,9 @@
    "name": "9b 遊戲時間跟幀率無關（30 / 60 fps、×5 / ×10 每現實秒的遊戲分鐘 ≈ 速度）",
    "ok": true,
    "detail": {
-    "saver5": 1.02,
-    "high5": 0.99,
-    "saver10": 1
+    "saver5": 0.99,
+    "high5": 1.08,
+    "saver10": 1.02
    }
   },
   {
@@ -467,8 +466,8 @@
    "ok": true,
    "detail": {
     "same": true,
-    "br": "dodaydream,eventnull,eventnull",
-    "br2": "dodaydream,eventnull,eventnull"
+    "br": "eventstretch,thinkobserve,eventnull",
+    "br2": "eventstretch,thinkobserve,eventnull"
    }
   },
   {
@@ -478,36 +477,36 @@
     "before": [
      2,
      1,
-     1
+     0
     ],
     "after": [
      2,
      1,
-     1
+     0
     ],
     "differs": [],
     "wishes": [
      [
       0,
-      1,
+      0,
       0
      ],
      [
       0,
-      1,
+      0,
       0
      ]
     ],
     "rec": [
      [
       2,
-      85,
-      90
+      92,
+      2
      ],
      [
       2,
-      85,
-      90
+      92,
+      2
      ]
     ]
    }
@@ -517,10 +516,10 @@
    "ok": true,
    "detail": {
     "before": [
-     "cmw6ucy07m9pe:read"
+     "cmw6w5w4t6838:read"
     ],
     "after": [
-     "cmw6ucy07m9pe:read"
+     "cmw6w5w4t6838:read"
     ]
    }
   },
@@ -542,14 +541,14 @@
    "ok": true,
    "detail": {
     "o": {
-     "at": 1794082454954,
+     "at": 1794085483752,
      "min": 1800,
      "simulated": 480,
      "capped": true,
      "reason": "boot"
     },
     "needs": [
-     24,
+     22,
      15,
      42
     ],
@@ -579,7 +578,7 @@
      1
     ],
     "o": {
-     "at": 1794082454954,
+     "at": 1794085483752,
      "min": 1800,
      "simulated": 480,
      "capped": true,
@@ -591,7 +590,7 @@
    "name": "11d 背景 2 小時後回來：補算 120 分鐘",
    "ok": true,
    "detail": {
-    "at": 1794082455542,
+    "at": 1794085484447,
     "min": 120,
     "simulated": 120,
     "capped": false,

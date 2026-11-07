@@ -389,7 +389,9 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       // tap a shop door on the street → walk → shop opens → buy with taps
       let door = null;
       for (const [sx, sy] of [[300, 700], [250, 690], [350, 690], [300, 740]]) {
-        await page.evaluate(([x, y]) => { const q = OC.World.nearestWalkable(x, y, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }, [sx, sy]); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 1200);
+        await page.evaluate(([x, y]) => { const q = OC.World.nearestWalkable(x, y, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }, [sx, sy]); await until(page, () => !OC.App.player.path, null, 20000);
+        // wait until the camera has settled (it eases toward the player; a tap aims at what is on screen now)
+        let last = null; for (let k = 0; k < 40; k++) { const q = await page.evaluate(() => OC.World.project(300, 600, 0)); if (last && Math.hypot(q.x - last.x, q.y - last.y) < 0.5) break; last = q; await wait(page, 250); }
       door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 80 && p.x < innerWidth - 80 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
         if (door) break;
       }
