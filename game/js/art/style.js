@@ -24,8 +24,8 @@
   const EYES = ['#3B2B25', '#2E2A44', '#2F4A6B', '#3F6B3A', '#7A3B4F'];
   const CHEEKS = ['#FF9E9E', '#FF8E7A', '#FF9EC4', '#F7B267', '#C9A7F0'];
   const SHIRTS = ['#5BC0EB', '#FFC93C', '#F48FB1', '#3FC1B0', '#F26B5B', '#9B7BE0', '#FFFFFF', '#6CCB5F', '#556080'];
-  const PATTERNS = [['none', '素面'], ['stripe', '條紋'], ['star', '星星']];
-  const ACCS = [['none', '無'], ['scarf', '圍巾'], ['beanie', '毛帽'], ['hood', '兜帽']];
+  const PATTERNS = [['none', '素面'], ['stripe', '條紋'], ['star', '星星'], ['dots', '圓點'], ['heart', '愛心']];
+  const ACCS = [['none', '無'], ['scarf', '圍巾'], ['beanie', '毛帽'], ['hood', '兜帽'], ['crown', '花冠'], ['bow', '大蝴蝶結'], ['sunhat', '草帽'], ['glasses', '圓眼鏡']];
   const CLIPS = [['none', '無'], ['flower', '小花'], ['leaf', '葉子'], ['star', '星星']];
   const TRAITS = [
     { id: 'cheerful', zh: '開朗', d: '心情下降較慢' }, { id: 'sleepy', zh: '愛睡', d: '休息時恢復更多精力' },
@@ -106,7 +106,7 @@
   function drawItem(ctx, id, x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s / 24, s / 24); ctx.translate(-12, -12);
     V.shadow(ctx, 12, 20.8, 8, 2.2, 0.18);
-    if (!extra(ctx, id)) { ctx.restore(); V.item(ctx, id, x, y, s, { mode: 'flat', noShadow: true }); return; }
+    if (!extra(ctx, id) && !(OC.Items && OC.Items.drawArt(ctx, id))) { ctx.restore(); V.item(ctx, id, x, y, s, { mode: 'flat', noShadow: true }); return; }
     ctx.restore();
   }
   const iconCache = {};
@@ -115,6 +115,8 @@
     const k = id + '@' + px; if (iconCache[k]) return iconCache[k];
     const c = OC.makeCanvas(px, px), x = c.getContext('2d'); x.scale(px / 24, px / 24); drawItem(x, id, 12, 12, 24); return (iconCache[k] = c);
   }
+  /** forget cached icons of an item (workshop products whose image just loaded / changed) */
+  function dropIcon(id) { for (const k of Object.keys(iconCache)) if (k.startsWith(id + '@')) delete iconCache[k]; delete _urls[id]; }
   function itemImg(id, cls = '') { const c = itemCanvas(id); const img = new Image(); img.src = c.toDataURL(); img.className = cls; img.alt = ITEMS[id] ? ITEMS[id].zh : id; img.draggable = false; return img; }
   const _urls = {}; function itemURL(id) { return _urls[id] || (_urls[id] = itemCanvas(id).toDataURL()); }
 
@@ -127,5 +129,5 @@
     drawOC(x, oc, Object.assign({ blink: 0, eyes: 'round', mouth: 'smile', noShadow: !opt.shadow }, opt.state || {}), px / 2, canvas.height * (opt.feet || 0.94), sc, opt.t || 0);
   }
 
-  OC.Style = { P, ST, EARS, TAILS, FURS, EYES, CHEEKS, SHIRTS, PATTERNS, ACCS, CLIPS, TRAITS, PRESETS, ITEMS, SHOP, FREE_WEAR, KIND_ZH, defaultOC, design, designOf, drawOC, drawItem, itemCanvas, itemImg, itemURL, portrait };
+  OC.Style = { P, ST, EARS, TAILS, FURS, EYES, CHEEKS, SHIRTS, PATTERNS, ACCS, CLIPS, TRAITS, PRESETS, ITEMS, SHOP, FREE_WEAR, KIND_ZH, defaultOC, design, designOf, drawOC, drawItem, itemCanvas, itemImg, itemURL, dropIcon, portrait };
 })();

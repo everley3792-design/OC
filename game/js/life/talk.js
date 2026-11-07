@@ -152,7 +152,7 @@
     const e = [], w = [];
     if (!ev || !ev.id || !Array.isArray(ev.steps) && !ev.social) e.push(`事件 ${i + 1} 缺少 id 或 steps`);
     else for (const s of ev.steps || []) if (!Array.isArray(s) || !STEP_TYPES.includes(s[0])) e.push(`事件「${ev.id}」有不支援的步驟 ${JSON.stringify(s).slice(0, 40)}`);
-    if (ev && !['tick', 'relUp', 'dayStart', 'wake', 'wxChange', 'meet', 'actStart', 'actEnd'].includes(ev.trigger)) e.push(`事件「${ev && ev.id}」的觸發條件 trigger 不正確`);
+    if (ev && !['tick', 'relUp', 'dayStart', 'wake', 'wxChange', 'meet', 'actStart', 'actEnd', 'arrive'].includes(ev.trigger)) e.push(`事件「${ev && ev.id}」的觸發條件 trigger 不正確`);
     if (ev && ev.fx && ev.fx.item) w.push(`事件「${ev.id}」會給玩家物品（每天最多一次）`);
     return { e, w };
   }

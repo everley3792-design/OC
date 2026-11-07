@@ -174,7 +174,7 @@
     if (o.skill) skill(c, o.skill, gmDur / 6);
   }
   // ======================= skills =======================
-  const SKILLS = { reading: '閱讀', garden: '園藝', sport: '運動', cook: '料理', social: '社交' };
+  const SKILLS = { reading: '閱讀', garden: '園藝', sport: '運動', cook: '料理', social: '社交', fishing: '釣魚' };
   function skill(c, id, xp) { const s = c.life.skills; const before = skillLv(c, id); s[id] = (s[id] || 0) + xp; const after = skillLv(c, id); if (after > before) { feel(c, 'proud', 0.5, `${SKILLS[id]}升到 Lv.${after}`); remember(c, { type: 'growth', imp: 0.6, text: `${SKILLS[id]}技能升到 Lv.${after}` }); St.emit('life:skillUp', { id: c.id, skill: id, lv: after }); } }
   const skillLv = (c, id) => Math.min(10, Math.floor(Math.sqrt((c.life.skills[id] || 0) / 15)));
 

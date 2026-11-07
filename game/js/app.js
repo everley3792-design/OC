@@ -60,7 +60,7 @@
     hud.coins = h('span.num');
     hud.deco = h('button.icon-btn', { 'aria-label': '佈置模式', on: { click: () => setDecorate(!decorate) } }, icon('sofa'));
     hud.badge = h('span.badge.num'); hud.bell = h('button.icon-btn.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => OC.LifeUI.notices() } }, icon('bell'), hud.badge);
-    el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timeSheet() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '金幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.bell, hud.deco)));
+    el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timeSheet() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '星幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.bell, hud.deco)));
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     hud.mood.classList.add('ellipsis');
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
@@ -188,16 +188,23 @@
   }
   function makeNPCs() {
     npcs = {}; mates = {};
-    if (Wd.area.id !== 'isle') return;
-    for (const [id, cfg] of Object.entries(Wd.area.NPC)) {
+    for (const [id, cfg] of Object.entries(Wd.area.NPC || {})) {
       const d = Gm.NPCS[id], c = OC.CharRender.presetChar(d.preset);
       const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
       a.home = cfg.home; a.r = cfg.r; a.wait = 1 + Math.random() * 3;
       a.update = (b, dt) => wander(b, dt);
       npcs[id] = a;
     }
-    // the player's other OCs live on the island with their own minds (js/life/brain.js)
-    OC.Chars.all().filter((c) => c.id !== S().activeId && c.status.onIsland).slice(0, MAX_MATES).forEach((c, i) => addMate(c, i));
+    // the player's other OCs who are at this place (they live everywhere now; js/life/brain.js moves them)
+    presentHere().forEach((c, i) => addMate(c, i));
+  }
+  /** OCs that are at the current place (and not still on the way) */
+  function presentHere() { const now = OC.Sim.now(); return OC.Chars.all().filter((c) => c.id !== S().activeId && c.status.onIsland && (c.life.loc || 'isle') === Wd.area.id && !(c.life.trip && c.life.trip.eta > now)).slice(0, MAX_MATES); }
+  /** someone arrived / left while we are here → add / remove actors (arrivals walk in from the door) */
+  function syncPresence() {
+    if (!Wd.area || !player) return; const want = presentHere().map((c) => c.id);
+    for (const id of Object.keys(mates)) if (!want.includes(id)) { const b = OC.Brain.get(id); if (b && b.leaving) continue; OC.Brain.detach(id); Wd.removeActor(mates[id]); delete mates[id]; }
+    want.forEach((id, i) => { if (mates[id]) return; const c = OC.Chars.get(id), tr = c.life.trip; addMate(c, i, tr ? OC.Brain.entryPoint(tr.from) : null); if (tr) OC.Brain.arrived(id); });
   }
   function spawnPos(c, i) {
     const p = c.life.pos; if (p && p.area === Wd.area.id && Wd.walkable(p.x, p.y)) return p;
@@ -220,13 +227,10 @@
       OC.Brain.detach(old); standUp();
       const m = mates[act]; if (m) { player.x = m.x; player.y = m.y; player.path = null; OC.Brain.detach(act); Wd.removeActor(m); delete mates[act]; }
       player.cid = act; player.key = ''; OC.Brain.attach(player, me(), { manual: true });
-      const oc = OC.Chars.get(old); if (oc && oc.status.onIsland && Wd.area.id === 'isle' && Object.keys(mates).length < MAX_MATES) addMate(oc, 0, oldPos);
+      const oc = OC.Chars.get(old); if (oc && oc.status.onIsland && Object.keys(mates).length < MAX_MATES) { oc.life.loc = Wd.area.id; oc.life.trip = null; addMate(oc, 0, oldPos); }
+      const nc = me(); if (nc) { nc.life.loc = Wd.area.id; nc.life.trip = null; }
     }
-    if (Wd.area.id === 'isle') {
-      const want = OC.Chars.all().filter((c) => c.id !== act && c.status.onIsland).slice(0, MAX_MATES).map((c) => c.id);
-      for (const id of Object.keys(mates)) if (!want.includes(id)) { OC.Brain.detach(id); Wd.removeActor(mates[id]); delete mates[id]; }
-      want.forEach((id, i) => { if (!mates[id]) addMate(OC.Chars.get(id), i); });
-    }
+    syncPresence();
     player.key = ''; for (const a of Object.values(mates)) a.key = '';
   }
   const actorOf = (id) => (player && player.cid === id ? player : mates[id] || null);
@@ -273,12 +277,13 @@
       case 'tree': goThen(it.at.x, it.at.y, () => shakeTree(it)); break;
       case 'bed': goThen(it.at.x, it.at.y, () => pickFlower(it)); break;
       case 'bench': goThen(it.at.x, it.at.y, () => sit(it.seat)); break;
-      case 'home': goThen(it.at.x, it.at.y, () => restHome()); break;
-      case 'shop': goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop'); }); break;
+      case 'home': goThen(it.at.x, it.at.y, () => travel('home')); break;
+      case 'shop': if (OC.WorldUI.tap(it)) break; goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); break;
       case 'npcHome': goThen(it.at.x, it.at.y, () => { face(player, 0, 1); const n = npcs[it.npc]; toast(`${it.label}${n && Math.hypot(n.x - player.x, n.y - player.y) < 140 ? `・${Gm.NPCS[it.npc].zh}就在附近` : '・現在不在家'}`, 'home'); }); break;
       case 'travel': goThen(it.at.x, it.at.y, () => tab('explore')); break;
       case 'travelHome': goThen(it.at.x, it.at.y, () => travel('isle')); break;
-      case 'furn': furnInteract(it); break;
+      case 'furn': if (!decorate && OC.WorldUI.tap(it)) break; furnInteract(it); break;
+      default: OC.WorldUI.tap(it);
     }
   }
   function onLongPress(r) {
@@ -321,28 +326,34 @@
     S().world.trees[it.id] = Date.now(); St.touch();
     const n = 2 + (Math.random() < 0.5 ? 1 : 0) + (Gm.has('curious') && Math.random() < 0.35 ? 1 : 0);
     it.tree.fruits.forEach((f) => (f.visible = false));
-    for (let i = 0; i < n; i++) { const a = -0.6 + i * 0.6 + Math.random() * 0.3; const tx = it.x + Math.cos(a) * 22, ty = it.y + 10 + Math.abs(Math.sin(a)) * 8 + i * 3; const p = Wd.nearestWalkable(tx, ty, 20) || { x: it.at.x, y: it.at.y }; Wd.spawnDrop(it.fruit, it.x, it.y - 6, p.x, p.y, it.lvl || 0, it.color); }
+    for (let i = 0; i < n; i++) { const a = -0.6 + i * 0.6 + Math.random() * 0.3; const tx = it.x + Math.cos(a) * 22, ty = it.y + 10 + Math.abs(Math.sin(a)) * 8 + i * 3; const p = Wd.nearestWalkable(tx, ty, 20) || { x: it.at.x, y: it.at.y }; Wd.spawnDrop(it.fruit, it.x, it.y - 6, p.x, p.y, it.lvl || 0, it.color).key = `tree:${it.id}:${S().world.trees[it.id]}:${i}`; }
     haptic(); emote(player, '!');
   }
   function pickDrop(d) {
     if (!Wd.drops.includes(d)) return;
-    Wd.removeDrop(d); St.add(d.id, 1, 'pick'); floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`);
-    if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick'); if (Gm.has('curious') && Math.random() < 0.25) { St.add(d.id, 1); toast('好奇心發作，多找到一個！', 'sparkle'); } }
+    const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`);
+    if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick'); if (Gm.has('curious') && Math.random() < 0.25 && OC.Tx.run((d.key || 'drop') + ':bonus', { get: { items: { [d.id]: 1 } } }, '好奇心多找到').ok) { toast('好奇心發作，多找到一個！', 'sparkle'); } }
     if (tray.classList.contains('open')) renderSlots();
   }
   function pickFlower(it) {
     face(player, 0, -1); const k = it.id, last = S().world.trees[k] || 0, left = 8 - (Date.now() - last) / 60000;
     if (left > 0) { toast(`花還沒長好，約 ${Math.ceil(left)} 分鐘後再來`, 'leaf'); return; }
-    S().world.trees[k] = Date.now(); St.add('flower', 1, 'pick'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick');
+    S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { flower: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick');
     floatAt(it.x, it.y, it.lvl || 0, '+1 小雛菊'); haptic();
   }
   function spawnDailies() {
     const day = OC.Clock.dayKey(), area = Wd.area;
-    const key = area.id === 'isle' ? 'shells' : 'mush', item = area.id === 'isle' ? 'shell' : 'mushroom', spots = area.id === 'isle' ? area.shellSpots : area.mushSpots;
-    if (!spots) return; const w = S().world[key]; if (w.day !== day) { w.day = day; w.taken = []; St.touch(); }
-    const seed = OC.hash(new Date().getDate() * 7.7 + (area.id === 'isle' ? 1 : 2));
-    const pickN = area.id === 'isle' ? 4 : 5, order = spots.map((s, i) => [OC.hash(seed * 100 + i), i]).sort((a, b) => a[0] - b[0]).slice(0, pickN).map((x) => x[1]);
-    for (const i of order) { if (w.taken.includes(i)) continue; const [x, y] = spots[i]; if (!Wd.walkable(x, y)) continue; const d = Wd.spawnDrop(item, x, y, x, y, 0, item === 'shell' ? '#FFB3A7' : '#F26B5B'); d.t = 1; d.daily = key; d.spot = i; if (item === 'mushroom') { d.m.scale.set(1.1, 0.7, 1.1); } }
+    const cfg = { isle: ['shells', 'shell', area.shellSpots, 4], forest: ['mush', 'mushroom', area.mushSpots, 5], beach: ['beachShells', null, area.shellSpots, 6] }[area.id]; if (!cfg) return;
+    const [key, item0, spots, pickN] = cfg; if (!spots) return;
+    const w = (S().world[key] = S().world[key] || { day: '', taken: [] }); if (w.day !== day) { w.day = day; w.taken = []; St.touch(); }
+    const seed = OC.hash(new Date().getDate() * 7.7 + ({ isle: 1, forest: 2, beach: 3 }[area.id]));
+    const order = spots.map((s, i) => [OC.hash(seed * 100 + i), i]).sort((a, b) => a[0] - b[0]).slice(0, pickN).map((x) => x[1]);
+    for (const i of order) {
+      if (w.taken.includes(i)) continue; const [x, y] = spots[i]; if (!Wd.walkable(x, y)) continue;
+      const r = OC.hash(seed * 31 + i * 7.3), item = item0 || (r > 0.93 ? 'sea_glass' : r > 0.78 ? 'shell_conch' : r > 0.6 ? 'shell_star' : 'shell');
+      const col = { shell: '#FFB3A7', mushroom: '#F26B5B', shell_star: '#FF9A6B', shell_conch: '#F7D1B5', sea_glass: '#7FD3C4' }[item];
+      const d = Wd.spawnDrop(item, x, y, x, y, 0, col); d.t = 1; d.daily = key; d.spot = i; d.key = `daily:${area.id}:${day}:${i}`; if (item === 'mushroom') d.m.scale.set(1.1, 0.7, 1.1);
+    }
   }
   function furnInteract(it) {
     const def = Sty.ITEMS[it.id];
@@ -466,60 +477,73 @@
     $('#app').append(decoEl);
   }
   let placeBar = null;
+  // ---------- placement (per place; decor places only): move · rotate · scale · undo / redo · store ----------
+  const room = () => OC.Places.room(Wd.area.id);
+  const canDecor = () => { const p = OC.Places.get(Wd.area.id); return !!(p && p.decor); };
+  /** wall items stand against the back wall of a room */
+  function snapWall(f) { const def = Sty.ITEMS[f.id]; if (def && def.wall && Wd.area.wallY != null) { const r = Wd.furnRect(f); f.y = Math.round((Wd.area.wallY + r.h / 2 + 4) / 2) * 2; } }
   function startPlacement(o, at) {
-    if (Wd.area.id !== 'isle') { toast('家具只能放在晴日島', 'info'); return; }
+    if (!canDecor()) { toast(`${OC.Places.get(Wd.area.id).zh}不能佈置；可以在晴日島或我的家佈置`, 'info'); return; }
     if (o.id && !St.count(o.id)) { toast('背包裡沒有這件家具', 'info'); return; }
+    const def = Sty.ITEMS[o.id || (room().find((p) => p.uid === o.uid) || {}).id]; if (def && def.outdoor && Wd.area.interior) { toast(`${def.zh}要放在戶外`, 'info'); return; }
     cancelPlacement(true); closeTray();
     let f;
-    if (o.uid) { const rec = S().placed.find((p) => p.uid === o.uid); if (!rec) return; f = Object.assign({}, rec); Wd.removeFurniture(o.uid); placing = { mode: 'move', f, orig: Object.assign({}, rec) }; }
-    else { const p = at || player; f = { id: o.id, x: p.x, y: p.y, rot: 0 }; if (!at || !Wd.canPlace(f)) Object.assign(f, findSpot(f, p.x, p.y + (at ? 0 : 24))); placing = { mode: 'new', f }; }
+    if (o.uid) { const rec = room().find((p) => p.uid === o.uid); if (!rec || rec.fixed) { if (rec) toast('這件是場景的一部分，不能移動', 'info'); return; } f = Object.assign({ sc: 1 }, rec); Wd.removeFurniture(o.uid); placing = { mode: 'move', f, orig: Object.assign({}, rec) }; }
+    else { const p = at || player; f = { id: o.id, x: p.x, y: p.y, rot: 0, sc: 1 }; snapWall(f); if (!at || !Wd.canPlace(f)) Object.assign(f, findSpot(f, p.x, p.y + (at ? 0 : 24))); placing = { mode: 'new', f }; }
+    placing.hist = [Object.assign({}, f)]; placing.hi = 0; placing.snap = true;
     Wd.setGhost(f);
     placing.layer = { scrim: false, close: () => cancelPlacement() }; OC.UI.pushLayer(placing.layer);
-    placeBar = h('div.place-bar', null,
-      h('button.btn.s', { on: { click: () => { f.rot = ((f.rot || 0) + 1) % 4; Wd.moveGhost(f.x, f.y, f.rot); syncPlace(); } } }, icon('rotate', 's'), '旋轉'),
-      placing.mode === 'move' ? h('button.btn.s', { on: { click: () => storeFurniture() } }, icon('bag', 's'), '收回') : null,
-      h('button.btn.s', { on: { click: () => cancelPlacement() } }, '取消'),
+    const commitH = () => { placing.hist = placing.hist.slice(0, placing.hi + 1); placing.hist.push(Object.assign({}, Wd.ghost.f)); placing.hi = placing.hist.length - 1; syncPlace(); };
+    const apply = (g) => { Object.assign(f, g); Wd.ghost.f.sc = f.sc; Wd.moveGhost(f.x, f.y, f.rot); syncPlace(); };
+    placing.commit = commitH;
+    placeBar = h('div.place-bar.v5', null,
+      h('button.icon-btn', { 'aria-label': '復原', on: { click: () => { if (placing.hi > 0) { placing.hi--; apply(placing.hist[placing.hi]); } } } }, icon('undo', 's')),
+      h('button.icon-btn', { 'aria-label': '重做', on: { click: () => { if (placing.hi < placing.hist.length - 1) { placing.hi++; apply(placing.hist[placing.hi]); } } } }, icon('redo', 's')),
+      h('button.icon-btn', { 'aria-label': '旋轉', on: { click: () => { f.rot = ((f.rot || 0) + 1) % 4; Object.assign(f, Wd.ghost.f, { rot: f.rot }); snapWall(f); Wd.moveGhost(f.x, f.y, f.rot); commitH(); } } }, icon('rotate', 's')),
+      h('button.icon-btn', { 'aria-label': '縮小', on: { click: () => { Object.assign(f, Wd.ghost.f); f.sc = Math.max(0.8, +(f.sc - 0.1).toFixed(2)); apply(f); commitH(); } } }, icon('minus', 's')),
+      h('button.icon-btn', { 'aria-label': '放大', on: { click: () => { Object.assign(f, Wd.ghost.f); f.sc = Math.min(1.3, +(f.sc + 0.1).toFixed(2)); apply(f); commitH(); } } }, icon('plus', 's')),
+      h('button.icon-btn', { 'aria-label': '吸附格線', 'aria-pressed': 'true', on: { click: (e) => { placing.snap = !placing.snap; Wd.ghostSnap(placing.snap ? 6 : 2); e.currentTarget.setAttribute('aria-pressed', placing.snap); e.currentTarget.classList.toggle('off', !placing.snap); toast(placing.snap ? '吸附格線：開' : '自由擺放', 'move'); } } }, icon('target', 's')),
+      placing.mode === 'move' ? h('button.icon-btn', { 'aria-label': '收回背包', on: { click: () => storeFurniture() } }, icon('bag', 's')) : null,
+      h('button.icon-btn', { 'aria-label': '取消', on: { click: () => cancelPlacement() } }, icon('close', 's')),
       h('button.btn.s.primary', { 'data-ok': '', on: { click: () => confirmPlacement() } }, icon('check', 's'), '放這裡'));
-    $('#app').append(placeBar); bagFab.classList.add('hide'); syncPlace();
-    toast('拖曳家具移動位置，或點地面', 'move');
+    $('#app').append(placeBar); bagFab.classList.add('hide'); Wd.ghostSnap(6); syncPlace();
+    toast('拖曳家具移動；可以旋轉、縮放、復原', 'move');
   }
   /** nearest valid spot (spiral search on the 6-unit placement grid) */
   function findSpot(f, x0, y0) {
-    for (let r = 0; r <= 120; r += 6) for (let a = 0; a < Math.PI * 2; a += r ? 6 / r : 7) { const g = Object.assign({}, f, { x: Math.round((x0 + Math.cos(a) * r) / 6) * 6, y: Math.round((y0 + Math.sin(a) * r) / 6) * 6 }); if (Wd.canPlace(g)) return { x: g.x, y: g.y }; }
+    for (let r = 0; r <= 120; r += 6) for (let a = 0; a < Math.PI * 2; a += r ? 6 / r : 7) { const g = Object.assign({}, f, { x: Math.round((x0 + Math.cos(a) * r) / 6) * 6, y: Math.round((y0 + Math.sin(a) * r) / 6) * 6 }); snapWall(g); if (Wd.canPlace(g)) return { x: g.x, y: g.y }; }
     return { x: x0, y: y0 };
   }
   function syncPlace() { if (!placeBar) return; const ok = Wd.ghost && Wd.ghost.ok; const b = placeBar.querySelector('[data-ok]'); b.disabled = !ok; b.classList.toggle('locked', !ok); }
   function endPlacementUI() { if (placeBar) { placeBar.remove(); placeBar = null; } Wd.setGhost(null); if (placing && placing.layer) OC.UI.popLayer(placing.layer); placing = null; if (curTab === 'island') bagFab.classList.remove('hide'); }
-  function cancelPlacement(silent) { if (!placing) return; if (placing.mode === 'move') Wd.addFurniture(placing.orig); endPlacementUI(); if (!silent) toast('已取消', 'close'); }
+  function cancelPlacement(silent) { if (!placing) return; if (placing.mode === 'move') Wd.addFurniture(placing.orig); endPlacementUI(); OC.Brain.rebuild(); if (!silent) toast('已取消', 'close'); }
   function confirmPlacement() {
     const g = Wd.ghost; if (!g || !g.ok) { toast('這裡放不下', 'info'); return; }
-    const f = Object.assign({}, g.f);
-    if (placing.mode === 'new') { if (!St.take(f.id)) { toast('背包裡沒有這件家具', 'info'); endPlacementUI(); return; } f.uid = 'f' + Date.now().toString(36); S().placed.push(f); }
-    else { const i = S().placed.findIndex((p) => p.uid === placing.orig.uid); f.uid = placing.orig.uid; S().placed[i] = f; }
-    Wd.addFurniture(f); OC.Brain.rebuild(); St.stat('placed'); Gm.progress('place'); St.needs({ mood: Gm.has('tidy') ? 8 : 3 }); St.touch('placed');
+    const f = Object.assign({}, g.f), R = room();
+    if (placing.mode === 'new') { const r = OC.Tx.run(OC.Tx.uid('place'), { pay: { items: { [f.id]: 1 } } }, `佈置 ${Sty.ITEMS[f.id].zh}`, { place: Wd.area.id }); if (!r.ok) { toast(r.why[0], 'info'); endPlacementUI(); return; } f.uid = 'f' + Date.now().toString(36) + Math.floor(Math.random() * 1e3); R.push(f); }
+    else { const i = R.findIndex((p) => p.uid === placing.orig.uid); f.uid = placing.orig.uid; R[i] = f; }
+    Wd.addFurniture(f); OC.Brain.rebuild(); OC.Brain.noticeNew('furn:' + f.uid); St.stat('placed'); Gm.progress('place'); St.needs({ mood: Gm.has('tidy') ? 8 : 3 }); St.touch('placed');
     endPlacementUI(); haptic(); toast('佈置完成！', 'check');
   }
-  function storeFurniture() { const uid = placing.orig.uid; setTimeout(() => OC.Brain.rebuild(), 0); S().placed = S().placed.filter((p) => p.uid !== uid); St.add(placing.orig.id, 1, 'store'); placing.mode = 'new'; endPlacementUI(); toast('收回背包了', 'bag'); }
+  function storeFurniture() {
+    const uid = placing.orig.uid, R = room(), i = R.findIndex((p) => p.uid === uid); if (i < 0) return;
+    const r = OC.Tx.run(`store:${uid}`, { get: { items: { [placing.orig.id]: 1 } } }, `收回 ${Sty.ITEMS[placing.orig.id].zh}`);
+    if (!r.ok && !r.dup) { toast(r.why[0], 'info'); return; }
+    R.splice(i, 1); St.touch('placed'); placing.mode = 'new'; endPlacementUI(); setTimeout(() => OC.Brain.rebuild(), 0); toast('收回背包了', 'bag');
+  }
 
-  // =============================== travel / areas ===============================
-  function loadArea(id, pos) {
+  // =============================== places / travel ===============================
+  /** build a place (its own furniture), put the played OC there, bring the OCs who are there */
+  function loadArea(id, pos, o = {}) {
     const def = OC.Areas[id];
     stopObserve(); OC.Brain.detachAll();
-    const ctx = Wd.loadArea(def, { pos, furniture: id === 'isle' ? S().placed : [] });
+    Wd.loadArea(def, { pos, furniture: OC.Places.room(id) });
     OC.Brain.rebuild();
     makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeNPCs(); spawnDailies();
     S().pos = { area: id, x: player.x, y: player.y };
+    OC.WorldUI.arrived(id, o.from); syncTreeFruit(); applyPerf(); Gm.checkAch();
   }
-  function travel(id) {
-    if (Wd.area && Wd.area.id === id) { tab('island'); return; }
-    const f = $('#fade'); f.style.opacity = 1; f.style.pointerEvents = 'auto';
-    setTimeout(() => {
-      tab('island'); loadArea(id, null);
-      if (id !== 'isle') { S().stats.visits[id] = (S().stats.visits[id] || 0) + 1; Gm.progress('visit'); St.needs({ mood: 6 }); }
-      Gm.checkAch(); syncTreeFruit(); applyPerf();
-      setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; toast(`來到了${OC.Areas[id].zh}`, 'compass'); }, 250);
-    }, 450);
-  }
+  function travel(id) { OC.WorldUI.travel(id); }
 
   // =============================== desktop pet export ===============================
   /** render the chosen OC's real actions (frames or rig) into the overlay pet's sprite sets */
@@ -568,7 +592,7 @@
   function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; }
 
   // =============================== main loop ===============================
-  let autoSaveT = 0, last = performance.now(), lastSim = performance.now(), acc = 0, fpsN = 0, fpsT = 0, saveStepT = 0, lastWx = null, holdT = 0, editing = new Set();
+  let presT = 0, autoSaveT = 0, last = performance.now(), lastSim = performance.now(), acc = 0, fpsN = 0, fpsT = 0, saveStepT = 0, lastWx = null, holdT = 0, editing = new Set();
   function loop(now) {
     requestAnimationFrame(loop);
     if (paused) { last = now; lastSim = now; return; }
@@ -581,7 +605,8 @@
     if (!covered || !world_rendered_once) { Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
     // life simulation: fixed steps fed with REAL elapsed time (independent of the fps cap)
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
-    OC.Events.update(dt); updateObserve();
+    OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
+    if (now - presT > 1000) { presT = now; syncPresence(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
     if (now - holdT > 400) { holdT = now; syncEditorHolds(); }   // real time (dt is capped per frame)
     drawLives(now);
@@ -641,10 +666,13 @@
     if (/[?&]safe=1/.test(location.search) || (!S().onboarded && weak)) { S().settings.perf = 'saver'; St.touch(); }
     await OC.Assets.init();
     // Phase 4 life simulation: engines + absence catch-up (capped, no events, no rewards)
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); OC.Sim.catchUp('boot');
+    OC.Items.registerCustom();                       // workshop products → item catalogue
+    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks);
+    OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
+    OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
-    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, ghostMoved: () => syncPlace(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
+    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, ghostMoved: () => syncPlace(), ghostDone: () => placing && placing.commit && placing.commit(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
     Wd.hourFn = () => OC.Clock.hour(); Wd.weatherFn = () => OC.Clock.weather();
     requestAnimationFrame(loop);
     window.__ocBooted = true;
@@ -680,6 +708,7 @@
   const onScreen = (a) => { if (!a || curTab !== 'island') return false; const p = Wd.project(a.x, a.y, a.lvl); return p.x > -40 && p.x < innerWidth + 40 && p.y > -40 && p.y < innerHeight + 40; };
   const lifeHooks = {
     say: (a, text, name, dur, o) => bubble(a, text, name, dur, o),
+    depart: (id) => { const a = mates[id]; OC.Brain.detach(id); if (a) { Wd.removeActor(a); delete mates[id]; } },
     emote: (a, e) => { if (onScreen(a)) emote(a, e); },
     hide: () => {},
     notice: (n) => OC.LifeUI.pushNotice(n),
@@ -692,6 +721,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

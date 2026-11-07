@@ -22,6 +22,7 @@
   const brains = {};          // charId → brain
   const res = new Map();      // slot key → charId
   let aff = [], explorePts = [], convs = [], areaId = null, greetT = 0;
+  const novel = {};    // affordance id → until (game min): newly placed furniture attracts curious OCs
   const log = [];             // decision log for diagnostics
   function dlog(b, text) { log.unshift({ at: Date.now(), gm: Sim().now(), who: b.id, text }); if (log.length > 80) log.length = 80; }
 
@@ -35,13 +36,23 @@
       const L = it.lvl || 0;
       if (it.type === 'bench') add({ id: 'bench@' + it.x, kind: 'bench', zh: '長椅', x: it.x, y: it.y, lvl: L, verbs: ['sit', 'read', 'nap'], slots: [-9, 9].map((dx, i) => ({ i, x: it.seat.x + dx, y: it.seat.y, ax: it.seat.x + dx, ay: it.at.y, seatY: it.seat.up, fx: 0, back: 0 })) });
       if (it.type === 'home') add({ id: 'home', kind: 'home', zh: '家裡', x: it.x, y: it.y, lvl: L, verbs: ['sleep', 'eat'], slots: [0, 1, 2, 3, 4, 5].map((i) => ({ i, x: it.at.x + (i - 2.5) * 5, y: it.at.y, ax: it.at.x + (i - 2.5) * 5, ay: it.at.y, inside: true, fx: 0, back: 1 })) });
-      if (it.type === 'shop') add({ id: 'stall', kind: 'stall', zh: '雜貨攤', x: it.x, y: it.y, lvl: L, verbs: ['eat', 'drink'], slots: [-14, 14].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
+      if (it.type === 'shop' && it.shop && it.shop !== 'general') add({ id: 'shop:' + it.shop + '@' + it.x, kind: 'shop', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['browse'], slots: [-14, 14].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
+      else if (it.type === 'shop') add({ id: 'stall', kind: 'stall', zh: '雜貨攤', x: it.x, y: it.y, lvl: L, verbs: ['eat', 'drink'], slots: [-14, 14].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
       if (it.type === 'tree') add({ id: it.id, kind: 'tree', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['tend', 'read', 'view'], slots: [{ i: 0, x: it.at.x, y: it.at.y, ax: it.at.x, ay: it.at.y, fx: 0, back: 1 }] });
+      if (it.type === 'fishing') add({ id: 'fish@' + it.x + ',' + it.y, kind: 'fishing', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['fish'], slots: [-10, 10].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: it.water === 'pond' ? 1 : 0 })) });
+      if (it.type === 'stove') add({ id: 'stove@' + it.x, kind: 'stove', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['cook'], slots: [{ i: 0, x: it.at.x, y: it.at.y, ax: it.at.x, ay: it.at.y, fx: 0, back: 1 }] });
+      if (it.type === 'plot') add({ id: 'plot:' + it.id, kind: 'plot', plot: it.id, zh: '菜園', x: it.x, y: it.y, lvl: L, verbs: OC.Places.plot(it.id).seed && OC.Places.plot(it.id).growth < 1 && !OC.Places.wet(OC.Places.plot(it.id)) ? ['tend'] : [], slots: [{ i: 0, x: it.at.x, y: it.at.y, ax: it.at.x, ay: it.at.y, fx: 0, back: 1 }] });
+      if (it.type === 'forage') add({ id: 'forage:' + it.i, kind: 'forage', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['forage'], slots: [{ i: 0, x: it.at.x, y: it.at.y, ax: it.at.x, ay: it.at.y, fx: 0, back: 1 }] });
+      if (it.type === 'bookshelf') add({ id: 'shelf@' + it.x, kind: 'bookshelf', zh: '書櫃', x: it.x, y: it.y, lvl: L, verbs: ['read'], slots: [-12, 12].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
+      if (it.type === 'towel') add({ id: 'towel@' + it.x, kind: 'towel', zh: '沙灘毛巾', x: it.x, y: it.y, lvl: L, verbs: ['nap', 'rest'], slots: [{ i: 0, x: it.x, y: it.y, ax: it.at.x, ay: it.at.y, seatY: 0.5, fx: 0, back: 0, lie: true }] });
       if (it.type === 'bed') add({ id: it.id, kind: 'flowers', zh: '花圃', x: it.x, y: it.y, lvl: L, verbs: ['tend', 'view'], slots: [-10, 10].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: -dx / 12, back: 1 })) });
     }
     for (const f of W.furn) {
-      const def = OC.Style.ITEMS[f.id]; const id = 'furn:' + f.uid, zh = def.zh;
-      if (def.sit) add({ id, kind: f.id, zh, x: f.x, y: f.y, verbs: ['sit', 'read', 'nap', 'tidy'], slots: [{ i: 0, x: f.x, y: f.y + 1, ax: f.x, ay: f.y + 12, seatY: f.id === 'chair' ? 9 : 4, fx: 0, back: 0 }] });
+      const def = OC.Style.ITEMS[f.id]; if (!def) continue; const id = 'furn:' + f.uid, zh = def.zh, sc = f.sc || 1;
+      if (def.sit && (def.seats || 1) > 1) add({ id, kind: f.id, zh, x: f.x, y: f.y, verbs: ['sit', 'read', 'nap'].concat(def.verbs || []), slots: [-1, 1].map((s2, i) => ({ i, x: f.x + s2 * 10 * sc, y: f.y + 1, ax: f.x + s2 * 10 * sc, ay: f.y + 13 * sc, seatY: f.id === 'swing' ? 8 : 7, fx: 0, back: 0 })) });
+      else if (def.sit) add({ id, kind: f.id, zh, x: f.x, y: f.y, verbs: ['sit', 'read', 'nap', 'tidy'], slots: [{ i: 0, x: f.x, y: f.y + 1, ax: f.x, ay: f.y + 12, seatY: f.id === 'chair' ? 9 : 4, fx: 0, back: 0 }] });
+      else if (f.id === 'desk') add({ id, kind: 'desk', zh, x: f.x, y: f.y, verbs: ['study', 'read'], slots: [{ i: 0, x: f.x - 2 * sc, y: f.y + 9 * sc, ax: f.x - 2 * sc, ay: f.y + 18 * sc, seatY: 8, fx: 0, back: 1 }] });
+      else if (def.verbs && f.id !== 'bed' && f.id !== 'table' && f.id !== 'rug') { const r = Wd().furnRect(f); add({ id, kind: f.id, zh, x: f.x, y: f.y, verbs: def.verbs, slots: (def.verbs.includes('view') && f.id === 'campfire' ? [-1, 1, 0] : [0]).map((s2, i) => ({ i, x: f.x + s2 * 22, y: f.y + r.h / 2 + 8 - (s2 === 0 && f.id === 'campfire' ? 0 : 0), ax: f.x + s2 * 22, ay: f.y + r.h / 2 + 8, fx: f.id === 'campfire' ? -s2 : 0, back: 1 })) }); }
       else if (f.id === 'bed') add({ id, kind: 'bed', zh, x: f.x, y: f.y, verbs: ['sleep', 'nap'], slots: [{ i: 0, x: f.x, y: f.y + 2, ax: f.x + 16, ay: f.y + 6, seatY: 6, fx: 0, back: 0, lie: true }] });
       else if (f.id === 'table') add({ id, kind: 'table', zh, x: f.x, y: f.y, verbs: ['eat', 'drink', 'tidy'], slots: [-1, 1].map((s, i) => ({ i, x: f.x + s * 24, y: f.y + 4, ax: f.x + s * 24, ay: f.y + 4, fx: -s, back: 0 })) });
       else if (f.id === 'plant') add({ id, kind: 'plant', zh, x: f.x, y: f.y, verbs: ['tend'], slots: [{ i: 0, x: f.x, y: f.y + 12, ax: f.x, ay: f.y + 12, fx: 0, back: 1 }] });
@@ -137,7 +148,7 @@
         if (!free(s, c.id)) continue;
         if (!s.inside && (!clearPoint(s.x, s.y, c.id, 10) || !clearPoint(s.ax, s.ay, c.id, 8))) continue;   // someone is standing there
         const d = Math.hypot(s.ax - a.x, s.ay - a.y); if (d > 900) continue;
-        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
+        let v = -d * 0.0016 + 0.25 * M().placeFeel(c, o.id) + M().habitBonus(c, null, o.id) + (novel[o.id] && novel[o.id] > Sim().now() ? 0.45 : 0) + (o.kind === 'home' && OC.Clock.weather() === 'rain' ? 0.1 : 0) + (verb === 'sleep' && o.kind === 'bed' ? 0.12 : 0);
         v += (Sim().rnd() - 0.5) * 0.04;
         if (!best || v > best.s) best = { slot: s, s: v };
       }
@@ -210,6 +221,7 @@
       out.push({ kind: 'act', act, target, s: sc.s + ts, why: sc.why.concat(ts ? [`地點${ts > 0 ? '+' : ''}${ts.toFixed(2)}`] : []) });
     }
     out.push(...socialCands(c, b));
+    out.push(...travelCands(c, b));
     if (b.queued) { const q = out.find((x) => x.kind === 'act' && x.act === b.queued); if (q) { q.s += 5; q.why.unshift('玩家安排'); } }
     return out.sort((x, y) => y.s - x.s);
   }
@@ -226,13 +238,14 @@
     if (settings().autonomy === 'paused' && !b.queued) { b.thinkAt = nowR() + 2; return; }
     if (b.invited && convs.includes(b.invited)) { b.thinkAt = nowR() + 1; return; }
     if (b.manual && !settings().playerAuto && !(b.manualOverride > nowR()) && (nowR() - b.cmdAt < 40 || b.a.path || b.a.joy || b.a.mode === 'sit' || b.a.mode === 'talk')) { b.thinkAt = nowR() + 2; return; }
-    const list = candidates(b); b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
+    const list = candidates(b); b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
     if (b.queued) b.queued = null;
-    b.dbg.reason = `${ch.kind === 'act' ? D().ACTS[ch.act].zh : D().SOCIAL[ch.social].zh}（${ch.why.slice(0, 3).join('、')}）`;
+    b.dbg.reason = `${ch.kind === 'act' ? D().ACTS[ch.act].zh : ch.kind === 'travel' ? '去' + OC.Places.get(ch.place).zh + D().ACTS[ch.act].zh : D().SOCIAL[ch.social].zh}（${ch.why.slice(0, 3).join('、')}）`;
     dlog(b, b.dbg.reason);
     if (ch.kind === 'social') { if (!Social.start(b, brains[ch.other], ch.social)) b.thinkAt = nowR() + 1; return; }
+    if (ch.kind === 'travel') { startTravel(b, ch.place, ch.act); return; }
     start(b, ch.act, ch.target);
   }
   function durOf(c, act) { const A = D().ACTS[act], p = c.personality; let d = A.dur[0] + Sim().rnd() * (A.dur[1] - A.dur[0]); d *= 1.2 - 0.4 * p.pace / 100; if (has(c, 'lazy') && ['rest', 'nap', 'daydream'].includes(act)) d *= 1.3; return d; }
@@ -254,6 +267,7 @@
   function arrive(b, resumed) {
     const c = charOf(b), A = D().ACTS[b.act], a = b.a, s = b.slot;
     if (s) {
+      if (s.inside && areaId === 'isle' && OC.Places && OC.Places.open('home')) { b.leaving = { to: 'home', act: b.act }; release(b.id); b.slot = null; depart(b); return; }   // going into the house = going home
       if (s.inside) { a.hidden = true; hooks.hide(a, true); }
       else if (Math.hypot(a.x - s.x, a.y - s.y) > 0.5) { a.path = [{ x: s.x, y: s.y }]; a.onArrive = null; b.aligning = true; }   // short straight move onto the seat (seats sit on blocked cells)
       a.seatY = s.seatY || 0; a.tFace = s.fx || (s.back ? a.tFace * 0.3 : 0.25); a.tBack = s.back ? 1 : 0;
@@ -279,6 +293,7 @@
       const first = s && !(c.life.rec.act[act].place[s.obj.id] > 1);
       if (first || gm > 60 || Sim().rnd() < 0.08) M().remember(c, { type: 'activity', imp: first ? 0.45 : 0.3, place: s ? s.obj.id : '', text: `${s ? '在' + s.obj.zh : ''}${A.zh}${first ? '（第一次）' : ''}`, data: { act, gm: Math.round(gm) }, key: first ? `first:${act}:${s.obj.id}` : undefined });
       M().wishEvent(c, { type: 'act', act });
+      if (s && s.obj.kind === 'plot' && act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
       if (act === 'sleep') OC.Events && OC.Events.trigger('wake', { a: c.id });
     }
     OC.Events && OC.Events.trigger('actEnd', { a: c.id, act, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '' });
@@ -353,7 +368,7 @@
     const t = nowR();
     if (b.st === 'think') { if (t >= b.thinkAt) decide(b); return; }
     if (b.st === 'go') {
-      if (!a.path && !b.aligning) { if (b.dest && Math.hypot(a.x - b.dest.x, a.y - b.dest.y) < 6) arrive(b); else abort(b, '路被擋住'); return; }
+      if (!a.path && !b.aligning) { if (b.leaving) { depart(b); return; } if (b.dest && Math.hypot(a.x - b.dest.x, a.y - b.dest.y) < 6) arrive(b); else abort(b, '路被擋住'); return; }
       if (t - b.stuck.t > 3) { const m = Math.hypot(a.x - b.stuck.x, a.y - b.stuck.y); if (m < 3) { b.stuck.n++; if (b.stuck.n > 1 || !Wd().walkTo(a, b.dest.x, b.dest.y, () => { if (b.st === 'go') arrive(b); })) { abort(b, '卡住了'); return; } } b.stuck = { x: a.x, y: a.y, t, n: b.stuck.n }; }
       if (t - b.goT > 60) abort(b, '太遠了');
       return;
@@ -375,20 +390,97 @@
     }
   }
   /** abstract simulation for OCs without an actor (other area / offline) */
+  // ======================= places: leaving · arriving · life elsewhere =======================
+  const here = () => (Wd().area ? Wd().area.id : 'isle');
+  const placeOK = () => OC.Places && OC.Places.P;
+  const placeActs = (pl) => { const p = OC.Places.get(pl); return p && !p.locked ? (p.acts || []) : []; };
+  /** activities worth a trip: not available here (or a place the OC loves), minus the distance */
+  function travelCands(c, b) {
+    if (!placeOK() || (b.manual && !settings().playerAuto)) return [];
+    const st = settings(); if (st.autonomy === 'paused' || st.autonomy === 'restricted') return [];
+    if (M().urgent(c) && M().urgent(c) !== 'social') return [];
+    const cur = here(), out = [], local = new Set(); for (const o of aff) if (o.slots.some((s2) => free(s2, c.id))) o.verbs.forEach((v) => local.add(v));
+    for (const pl of OC.Places.list()) {
+      if (pl === cur || !OC.Places.open(pl)) continue;
+      const tm = OC.Places.travelMin(cur, pl), af = OC.Places.affinity(c, pl);
+      for (const act of placeActs(pl)) {
+        const A = D().ACTS[act]; if (!A || denied(act) || !A.verb || A.verb === 'wander' || A.verb === 'explore') continue;
+        if (local.has(A.verb) && af < 0.3) continue;
+        if (act === 'sleep' && pl !== 'home') continue;
+        const sc = actScore(c, b, act), seen = c.life.places && c.life.places[pl];
+        const v = sc.s + af - 0.32 - tm / 140 + (seen ? 0 : OC.Chars.has(c, 'curious') ? 0.15 : 0.05);
+        out.push({ kind: 'travel', place: pl, act, s: v, why: [`去${OC.Places.get(pl).zh}${A.zh}`].concat(sc.why.slice(0, 2), [`地點偏好${af >= 0 ? '+' : ''}${af.toFixed(2)}`, `路程-${(0.32 + tm / 140).toFixed(2)}`]) });
+      }
+    }
+    return out.sort((x, y) => y.s - x.s).slice(0, 3);
+  }
+  /** where to walk to leave towards a place */
+  function exitPoint(to) {
+    const W = Wd(), P0 = OC.Places.get(to), exits = W.interacts.filter((i) => i.type === 'exit' || (i.type === 'home' && to === 'home'));
+    const pick = exits.find((i) => i.to === to || (i.type === 'home' && to === 'home')) || exits.find((i) => P0 && i.to === P0.parent) || exits.find((i) => i.to === (OC.Places.get(here()) || {}).parent) || exits.find((i) => i.to === 'map');
+    const p = pick ? pick.at : W.area.spawn; return W.nearestWalkable(p.x, p.y, 20) || p;
+  }
+  /** where an arriving OC appears */
+  function entryPoint(from) {
+    const W = Wd(), A2 = W.area; if (from && A2.doors && A2.doors[from]) return W.nearestWalkable(A2.doors[from].x, A2.doors[from].y + 10, 20);
+    const ex = W.interacts.find((i) => i.type === 'exit' && (i.to === 'map' || A2.interior)); const p = ex ? ex.at : A2.spawn;
+    return W.nearestWalkable(p.x + (Math.random() - 0.5) * 16, p.y, 20) || A2.spawn;
+  }
+  function startTravel(b, place, act) {
+    const a = b.a, ex = exitPoint(place); cleanup(b);
+    b.leaving = { to: place, act }; b.act = null; b.dest = ex; b.st = 'go'; b.goT = nowR(); b.stuck = { x: a.x, y: a.y, t: nowR(), n: 0 };
+    dlog(b, `要去${OC.Places.get(place).zh}${D().ACTS[act].zh}`);
+    if (Math.hypot(a.x - ex.x, a.y - ex.y) < 6 || !Wd().walkTo(a, ex.x, ex.y, () => { if (b.leaving) depart(b); })) depart(b);
+  }
+  /** the OC walked out: it now lives at the destination (abstractly until the player goes there) */
+  function depart(b) {
+    const c = charOf(b), L = b.leaving; if (!c || !L) return;
+    const from = here(), tm = OC.Places.travelMin(from, L.to), now = Sim().now();
+    c.life.loc = L.to; c.life.trip = { from, to: L.to, act: L.act, eta: now + tm };
+    c.life.cur = { act: L.act, abstract: true, t0: now + tm, until: now + tm + (L.act === 'sleep' ? Math.max(60, wakeAtGm(c, now + tm) - now - tm) : durOf(c, L.act)), place: 'place:' + L.to, placeZh: OC.Places.get(L.to).zh, slot: null };
+    c.life.log.unshift({ gm: now, text: `前往${OC.Places.get(L.to).zh}（${D().ACTS[L.act].zh}）` }); if (c.life.log.length > 40) c.life.log.length = 40;
+    b.leaving = null; b.st = 'think'; dlog(b, `出發去${OC.Places.get(L.to).zh}`);
+    hooks.depart && hooks.depart(b.id);
+  }
+  /** first time somewhere → memory + emotion (both for visible and abstract arrivals) */
+  function noteArrival(c, pl) {
+    c.life.places = c.life.places || {}; const r = c.life.places[pl] = c.life.places[pl] || { visits: 0, last: 0 }; r.visits++; r.last = Sim().now();
+    if (r.visits === 1) { M().remember(c, { type: 'discover', imp: 0.6, place: 'place:' + pl, text: `第一次來到${OC.Places.get(pl).zh}`, key: 'place:first:' + pl + ':' + c.id }); M().feel(c, 'curious', 0.4, '第一次來到' + OC.Places.get(pl).zh); }
+  }
+  /** an OC arrives where the player is (app spawned its actor at the door) */
+  function arrived(id) {
+    const c = OC.Chars.get(id), b = brains[id]; if (!c) return; const tr = c.life.trip; c.life.trip = null;
+    noteArrival(c, here()); if (b) { b.queued = tr && tr.act ? tr.act : null; b.st = 'think'; b.thinkAt = nowR() + 0.6; }
+    const ln = T().say('arrive', c, null, { place: here(), placeZh: OC.Places.get(here()).zh }); if (ln && b && b.a && S().life.settings.bubbles) hooks.say(b.a, ln.text, OC.Chars.name(c), 2.2, {});
+    if (OC.Events) OC.Events.trigger('arrive', { a: id, place: here(), placeZh: OC.Places.get(here()).zh });
+  }
+  /** newly placed furniture attracts curious OCs for a while */
+  function noticeNew(affId) {
+    novel[affId] = Sim().now() + 180; const o = aff.find((x) => x.id === affId); const item = o ? o.kind : null;
+    for (const b of Object.values(brains)) { const c = charOf(b); if (!c || !b.a || b.manual) continue; const k = 0.2 + (OC.Chars.has(c, 'curious') ? 0.25 : 0) + (OC.Chars.has(c, 'tidy') ? 0.15 : 0); M().feel(c, 'curious', k, '新家具'); if (Math.random() < 0.6 && S().life.settings.bubbles) { const ln = T().say('new_furn', c, null, { item }); if (ln) hooks.say(b.a, ln.text, OC.Chars.name(c), 2.4, {}); } if (b.st === 'think') b.thinkAt = nowR() + 0.5; }
+  }
+  /** abstract simulation for OCs without an actor (other places / offline): same scoring, per place, with travel */
   function abstractStep(c, g, o = {}) {
     const ctx = ctxOf(c); if (o.offline) ctx.offline = true;
+    const now = o.at != null ? o.at + g : Sim().now(), loc = c.life.loc || 'isle';
+    if (c.life.trip && c.life.trip.eta > now) { M().tick(c, g, { act: null, fx: null, sed: false }); return; }   // on the way
+    if (c.life.trip && placeOK()) { if (!o.offline && c.life.trip.to === here()) { M().tick(c, g, { act: null, fx: null, sed: false }); return; } noteArrival(c, c.life.trip.to); c.life.trip = null; }   // arriving where the player is → the app walks it in
     M().tick(c, g, ctx);
-    const now = o.at != null ? o.at + g : Sim().now();
     let cur = c.life.cur;
     if (!cur || cur.until <= now) {
-      if (cur && D().ACTS[cur.act]) { M().record(c, cur.act, Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)), { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + (Math.min(now, cur.until) - (cur.t0 || now)); }
+      if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
-      const list = Object.keys(D().ACTS).filter((x) => !denied(x) && x !== 'explore').map((act) => ({ act, s: actScore(c, fake, act).s })).sort((x, y) => y.s - x.s);
+      const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
+      let list = here2.filter((x) => D().ACTS[x] && !denied(x) && x !== 'explore').map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
+      if (placeOK() && !o.offline && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
+      if (placeOK() && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
+      list.sort((x, y) => y.s - x.s);
       const ch = choose(c, list); if (!ch) return;
-      const pl = aff.find((x) => x.verbs.includes(D().ACTS[ch.act].verb));
-      c.life.cur = cur = { act: ch.act, t0: now, until: now + (ch.act === 'sleep' ? Math.max(60, (wakeAtGm(c, now) - now)) : durOf(c, ch.act)), place: pl ? pl.id : null, placeZh: pl ? pl.zh : '', slot: null, abstract: true };
+      if (ch.pl !== loc) { const tm = OC.Places.travelMin(loc, ch.pl); c.life.trip = { from: loc, to: ch.pl, act: ch.act, eta: now + tm }; c.life.loc = ch.pl; }
+      const t0 = ch.pl !== loc ? now + OC.Places.travelMin(loc, ch.pl) : now, P0 = placeOK() ? OC.Places.get(ch.pl) : null;
+      c.life.cur = cur = { act: ch.act, t0, until: t0 + (ch.act === 'sleep' ? Math.max(60, (wakeAtGm(c, t0) - t0)) : durOf(c, ch.act)), place: 'place:' + ch.pl, placeZh: P0 ? P0.zh : '', slot: null, abstract: true };
       c.life.absLast = [ch.act].concat(fake.last).slice(0, 4);
-      if (!o.offline) { c.life.log.unshift({ gm: now, text: `${pl ? '在' + pl.zh : ''}${D().ACTS[ch.act].zh}` }); if (c.life.log.length > 40) c.life.log.length = 40; }
+      if (!o.offline) { c.life.log.unshift({ gm: now, text: `${P0 ? '在' + P0.zh : ''}${D().ACTS[ch.act].zh}` }); if (c.life.log.length > 40) c.life.log.length = 40; }
     }
   }
   function wakeAtGm(c, now) { const r = M().routine(c), h = Sim().hourOf(now); let dh = r.wake - h; if (dh <= 0) dh += 24; if (!M().sleepTime(c, h)) dh = Math.min(dh, 3); return now + dh * 60; }
@@ -624,7 +716,7 @@
 
   OC.Brain = {
     init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); }); OC.Store.on('life:offline', afterOffline); },
-    rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
+    entryPoint, arrived, noticeNew, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,
   };

@@ -14,13 +14,19 @@
 
   function fresh() {
     return {
-      v: 3, created: Date.now(), onboarded: false,
+      v: 4, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
       coins: 300,
       inv: { apple: 2, flower: 1 },  // starter items
-      placed: [],                    // furniture placed on the island {uid, id, x, y, rot}
+      rooms: { isle: [] },           // Phase 5: furniture per place  placeId → [{uid, id, x, y, rot, sc}]
+      ledger: { seq: 0, keys: {}, log: [] },   // every coin / item change (OC.Tx) + idempotency keys
+      custom: { items: {} },         // workshop products (images in IndexedDB) — registered into the item catalogue
+      favs: {},                      // favourite items in the bag
+      shops: {},                     // per shop: { day, sold: { id: n } } daily stock
+      places: { visited: {}, found: {} },   // place id → first visit; place id → { discoverable id: at }
+      garden: {},                    // plot id → { seed, at, water, stage… } (see js/world/places.js)
       npcs: {},                      // id → { fr, met, liked:[], mem:[], lastTalk, lastGift }
       stats: { steps: 0, shakes: 0, talks: 0, gifts: 0, placed: 0, anims: 0, eaten: 0, sold: 0, bought: 0, picked: 0, visits: {} },
       quests: { day: '', done: {}, claimed: {} },
@@ -62,7 +68,8 @@
     if (raw) { try { data = JSON.parse(raw); } catch (e) { console.warn('[store] corrupt save, starting fresh'); } }
     if (data && data.v === 1) data = OC.Chars.migrateV1(data);   // single OC → roster; dataURL anims migrate to assets later
     if (data && data.v === 2) data = migrateV2(data);             // Phase 3 → Phase 4: add life state (additive, nothing removed)
-    S = data && data.v === 3 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 3) data = migrateV3(data);             // Phase 4 → Phase 5: furniture per place, ledger, workshop products
+    S = data && data.v === 4 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
   }
@@ -71,6 +78,11 @@
     d.v = 3; d.life = d.life || {}; d.life.lastReal = Date.now();   // no offline catch-up across the upgrade
     for (const c of Object.values(d.chars || {})) { if (c.needs) delete c.needs.t; if (c.growth) { c.growth.rejected = c.growth.rejected || {}; c.growth.muted = c.growth.muted || []; } }
     d.migratedV2 = Date.now(); return d;
+  }
+  /** v3 → v4: island furniture moves into rooms.isle; everything else is additive */
+  function migrateV3(d) {
+    d.v = 4; d.rooms = d.rooms || {}; d.rooms.isle = (d.rooms.isle || []).concat(d.placed || []); delete d.placed;
+    d.migratedV3 = Date.now(); return d;
   }
   function persist() {
     dirty = false; clearTimeout(saveTimer);
@@ -108,9 +120,10 @@
 
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || ![1, 2, 3].includes(d.v)) throw new Error(d && d.v > 3 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4].includes(d.v)) throw new Error(d && d.v > 4 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
     if (d.v === 2) d = migrateV2(d);
+    if (d.v === 3) d = migrateV3(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }

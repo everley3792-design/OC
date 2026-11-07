@@ -41,6 +41,11 @@
       case 'dance': s.lift = Math.abs(Math.sin(at * 5)) * 4; s.lean = Math.sin(at * 2.5) * 0.12; s.armL = -1.8 + Math.sin(at * 5) * 0.5; s.armR = -1.8 - Math.sin(at * 5) * 0.5; s.eyes = 'happy'; s.mouth = 'open'; break;
       case 'cry': s.brows = 'worry'; s.mouth = 'wave'; s.eyes = 'line'; s.tear = true; s.lookY = 0.8; break;
       case 'laugh': s.eyes = 'happy'; s.mouth = 'open'; s.lift = Math.abs(Math.sin(at * 9)) * 2; s.lean = Math.sin(at * 9) * 0.03; break;
+      case 'fish': s.rod = true; s.armR = -1.2; s.armL = -1; s.lookY = 0.6; s.mouth = 'cat'; s.rodBob = Math.sin(at * 2.2) * 0.6; break;
+      case 'cook': s.pan = true; s.armR = -0.9 + Math.sin(at * 6) * 0.25; s.armL = -0.7; s.lookY = 0.8; s.mouth = 'smile'; break;
+      case 'study': s.squash = 0.9; s.lift = -3; s.lookY = 1; s.book = true; s.armR = -0.6 + Math.sin(at * 5) * 0.15; s.mouth = 'flat'; break;
+      case 'forage': s.headDy = 2; s.lookY = 1; s.armR = -0.4 + Math.abs(Math.sin(at * 4)) * 0.4; s.armL = -0.4; s.mouth = 'smile'; break;
+      case 'browse': s.lookX = Math.sin(at * 0.8) > 0 ? 1 : -1; s.mouth = 'o'; s.eyes = s.eyes || 'round'; break;
       case 'pet': s.eyes = 'happy'; s.blush = 0.8; s.tail = Math.sin(at * 8) * 0.4; break;
       case 'drag': s.eyes = 'wide'; s.mouth = 'o'; s.armL = s.armR = -1.3; break;
       case 'climb': s.walk = 1; s.armL = -1.6 + Math.sin(at * 8) * 0.4; s.armR = -1.6 - Math.sin(at * 8) * 0.4; break;

@@ -177,7 +177,7 @@
     sheet('匯出備份', (b, api) => {
       const chosen = new Set(Ch().all().map((c) => c.id)); let progress = true;
       b.append(h('div.list', null, ...Ch().all().map((c) => row(null, Ch().name(c), Ch().typeTitle(c), toggle(true, (v) => (v ? chosen.add(c.id) : chosen.delete(c.id)))))),
-        h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '包含遊戲進度（金幣、物品、任務…）'), toggle(true, (v) => (progress = v))),
+        h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '包含遊戲進度（星幣、物品、任務…）'), toggle(true, (v) => (progress = v))),
         h('button.btn.primary.block', { style: { marginTop: '14px' }, on: { click: async () => { if (!chosen.size) { toast('至少選一位角色', 'info'); return; } api.close(); await exportChars([...chosen], progress); } } }, icon('upload', 's'), '匯出 .ocpack'));
     });
   }

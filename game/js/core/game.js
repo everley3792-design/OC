@@ -75,7 +75,7 @@
   }
   /** give an item → reaction */
   function gift(id, item) {
-    if (!St.take(item)) return null;
+    if (!OC.Tx.run(null, { pay: { items: { [item]: 1 } } }, `送給${NPCS[id].zh}`).ok) return null;
     const n = npc(id), d = NPCS[id], today = OC.Clock.dayKey();
     if (!n.met) { n.met = true; memory(id, '第一次見面（收到了禮物）'); }
     const repeat = n.lastGift === today + item; n.lastGift = today + item;
@@ -90,17 +90,18 @@
   // ---------------- items ----------------
   function eat(id) {
     const it = ITEMS()[id]; if (!it || !it.use) return false;
-    if (!St.take(id)) return false;
+    if (!OC.Tx.run(null, { pay: { items: { [id]: 1 } } }, '吃掉').ok) return false;
     const fx = Object.assign({}, it.use); if (has('foodie') && it.kind === 'food') fx.mood = (fx.mood || 0) + 6;
     St.needs(fx); St.stat('eaten'); progress('eat');
     return fx;
   }
-  function sell(id, n = 1) { const it = ITEMS()[id]; if (!it || !it.sell || St.count(id) < n) return false; St.take(id, n); St.coins(it.sell * n, 'sell'); St.stat('sold', n); progress('sell', n); return it.sell * n; }
+  function sell(id, n = 1) { const it = ITEMS()[id]; if (!it || !it.sell || St.count(id) < n) return false; if (!OC.Tx.run(OC.Tx.uid('sell'), { pay: { items: { [id]: n } }, get: { coins: it.sell * n } }, `賣出 ${it.zh} ×${n}`).ok) return false; St.stat('sold', n); progress('sell', n); return it.sell * n; }
   function buy(id) {
     const it = ITEMS()[id]; if (!it || !it.price) return { ok: false, why: '無法購買' };
     if (it.kind === 'clothing' && St.count(id)) return { ok: false, why: '已經擁有' };
-    if (S().coins < it.price) return { ok: false, why: '金幣不夠' };
-    St.coins(-it.price, 'buy'); St.add(id, 1, 'buy'); St.stat('bought'); progress('buy');
+    const r = OC.Tx.run(OC.Tx.uid('buy'), { pay: { coins: it.price }, get: { items: { [id]: 1 } } }, `購買 ${it.zh}`);
+    if (!r.ok) return { ok: false, why: r.why[0] };
+    St.stat('bought'); progress('buy');
     return { ok: true };
   }
   function wearOptions(slot) { const base = OC.Style.FREE_WEAR[slot].slice(); for (const [id, it] of Object.entries(ITEMS())) if (it.kind === 'clothing' && it.slot === slot && St.count(id)) base.push(it.val); return base; }
@@ -133,7 +134,8 @@
   function claim(id) {
     const q = S().quests, def = todayQuests().find((x) => x.id === id);
     if (!def || def.prog < def.n || q.claimed[id]) return false;
-    q.claimed[id] = 1; St.coins(def.reward, 'quest'); return def.reward;
+    const r = OC.Tx.run(`quest:${q.day}:${id}`, { get: { coins: def.reward } }, `任務：${def.zh}`); if (!r.ok) { q.claimed[id] = 1; return false; }
+    q.claimed[id] = 1; St.touch('quest'); return def.reward;
   }
 
   // ---------------- achievements ----------------
@@ -162,7 +164,7 @@
 
   // ---------------- life goals ----------------
   const GOALS = [
-    { id: 'designer', zh: '夢想小島', d: '在島上擺放 8 件家具', ic: 'sofa', v: () => S().placed.length, n: 8 },
+    { id: 'designer', zh: '夢想小島', d: '擺放 8 件家具', ic: 'sofa', v: () => Object.values(S().rooms || {}).reduce((a, r) => a + r.length, 0), n: 8 },
     { id: 'popular', zh: '島上人氣王', d: '和所有居民的友情合計達到 200', ic: 'heart', v: () => totalFr(), n: 200 },
     { id: 'collector', zh: '圖鑑大師', d: '收集圖鑑中的所有物品', ic: 'book', v: () => Object.keys(S().seen).filter((k) => COLLECTIBLE().includes(k)).length, n: COLLECTIBLE().length },
     { id: 'artist', zh: '動畫創作者', d: '在工坊完成 5 段逐格動畫', ic: 'film', v: () => st().anims, n: 5 },

@@ -63,6 +63,12 @@
     observe: { zh: '看風景', ic: '🌅', verb: 'view', fx: { fun: 40, interest: 45, comfort: 10 }, dur: [10, 20], anim: 'idle', sed: true, look: true, cat: 'fun' },
     tend: { zh: '照顧植物', ic: '🌱', verb: 'tend', fx: { interest: 40, fun: 40, active: 40 }, dur: [10, 20], anim: 'tend', sk: 'garden', cat: 'chore' },
     tidy: { zh: '整理家具', ic: '🧹', verb: 'tidy', fx: { comfort: 60, fun: 15, active: 30 }, dur: [8, 14], anim: 'tend', cat: 'chore' },
+    // Phase 5: activities that live at specific places (the AI travels for them)
+    fish: { zh: '釣魚', ic: '🎣', verb: 'fish', fx: { fun: 55, interest: 35, comfort: -6 }, dur: [20, 40], anim: 'fish', sed: true, look: true, sk: 'fishing', cat: 'fun' },
+    forage: { zh: '採集', ic: '🫐', verb: 'forage', fx: { interest: 60, fun: 30, active: 40 }, dur: [8, 14], anim: 'forage', sk: 'garden', cat: 'fun' },
+    study: { zh: '讀書', ic: '✏️', verb: 'study', fx: { interest: 70, fun: 12, energy: -10 }, dur: [30, 50], anim: 'study', seat: true, sed: true, sk: 'reading', cat: 'fun' },
+    cook: { zh: '做料理', ic: '🍳', verb: 'cook', fx: { fun: 40, interest: 20, food: 60 }, dur: [15, 25], anim: 'cook', sk: 'cook', cat: 'chore' },
+    browse: { zh: '逛街', ic: '🛍️', verb: 'browse', fx: { fun: 60, interest: 40, social: 10 }, dur: [8, 15], anim: 'browse', look: true, cat: 'fun' },
   };
   // walking costs/benefits are per DISTANCE (design units) so time speed never changes them
   const WALK_FX = { active: 0.11, energy: -0.025, comfort: -0.015 };
@@ -180,6 +186,15 @@
     ['ev_gift_player', '這個送給你！是我剛剛找到的。', P], ['ev_nostalgia', '突然想起{mem}……', P], ['ev_confess', '{other}……我好像，喜歡上你了。', P], ['ev_confess_r', '……我也是。', P],
     ['ev_lonely', '大家都不在……', P], ['ev_cheerup', '好！打起精神來！', B],
     // ---- pet / app context (for the floating pet; conditions on app) ----
+    // ---- places (Phase 5) ----
+    ['arrive', '這裡就是{place}呀！', P], ['arrive', '哇——{place}！', B], ['arrive', '……{place}，好安靜。', { voice: 'calm', place: ['library'] }, 3], ['arrive', '人好多……', { trait: 'shy', place: ['street'] }, 4],
+    ['arrive', '海風好舒服！', { place: ['beach'] }, 3], ['arrive', '咖啡的香味！', { place: ['cafe'] }, 3], ['arrive', '森林的味道……', { place: ['forest'] }, 3], ['arrive', '我回來了～', { place: ['home', 'isle'] }, 2],
+    ['solo_fish', '咬鉤吧……', P], ['solo_fish', '今天會釣到什麼呢？', B], ['solo_fish', '（靜靜地等著）', C], ['solo_forage', '這顆莓果好紅！', P], ['solo_forage', '香草的味道……', C],
+    ['solo_study', '原來如此……', K], ['solo_study', '再讀一頁就好。', P], ['solo_cook', '加一點點鹽……', P], ['solo_cook', '好香喔！', B], ['solo_browse', '這個好可愛！', B], ['solo_browse', '下次來買這個。', P],
+    ['new_furn', '咦？這是新的{item}！', P], ['new_furn', '哇，新家具！我可以坐坐看嗎？', B], ['new_furn', '……多了一件{item}。不錯。', K],
+    ['place_date', '一起來咖啡館真好。', P], ['place_date', '這家的拿鐵超好喝！', B], ['place_sunset', '夕陽把海染成橘色了。', P], ['place_sunset', '……好美。', C],
+    ['tasted_first', '這是什麼味道……？', P], ['tasted_fav', '好好吃！我最喜歡這個了！', P], ['tasted_fav', '天啊——太好吃了！！', B], ['tasted_like', '嗯，好吃！', P], ['tasted_ok', '還可以。', P], ['tasted_dislike', '呃……不太合我的口味。', P], ['tasted_hate', '嗚……我真的不行……', P], ['tasted_hate', '……（皺眉）', K],
+    ['wear', '這件好看嗎？', P], ['wear', '新衣服！轉一圈給你看！', B], ['wear', '……還挺合適的。', K], ['toy', '要玩這個嗎？好呀！', P], ['toy', '這個好好玩！', B],
     ['app', '工作辛苦了，休息一下吧。', { app: ['work'] }], ['app', '在看影片嗎？我也要看！', { app: ['video'] }], ['app', '在跟誰聊天呀？', { app: ['chat'] }], ['app', '很晚了，早點睡喔。', { phase: 'night' }],
   ];
   const LINES = L.map((x, i) => ({ id: 'b' + i, cat: x[0], text: x[1], c: x[2] || null, w: x[3] || 1 }));
@@ -227,6 +242,15 @@
     { id: 'lonelyMoment', zh: '一個人的時候', trigger: 'tick', prio: 2, cd: 720, chance: 0.4, c: { need: { social: '<25' } },
       steps: [['anim', 'a', 'sad', 1.6], ['say', 'a', 'ev_lonely']],
       fx: { emo: { a: ['lonely', 0.5] }, wish: { a: 'social' } } },
+    { id: 'firstVisit', zh: '第一次來到這裡', trigger: 'arrive', prio: 3, once: 'self+place', c: {},
+      steps: [['anim', 'a', 'surprised', 0.8], ['say', 'a', 'arrive'], ['emote', 'a', '✦']],
+      fx: { emo: { a: ['curious', 0.5] }, mem: { a: { type: 'discover', imp: 0.6, text: '第一次來到{place}' } } } },
+    { id: 'cafeDate', zh: '咖啡館時光', trigger: 'tick', when: { place: ['cafe'] }, prio: 3, cd: 1440, chance: 0.5, b: true, bc: { aff: '>=35' },
+      steps: [['go', 'a', 'b'], ['face', 'a', 'b'], ['face', 'b', 'a'], ['say', 'a', 'place_date'], ['say', 'b', 'talk_r'], ['anim', 'a', 'happy', 1.2]],
+      fx: { rel: { ab: { aff: 4, intim: 2 }, ba: { aff: 4, intim: 2 } }, emo: { a: ['content', 0.5], b: ['content', 0.5] }, mem: { both: { type: 'social', imp: 0.65, text: '和{other}在咖啡館度過悠閒時光' } } } },
+    { id: 'beachSunset', zh: '海邊的夕陽', trigger: 'tick', when: { place: ['beach'], phase: 'dusk' }, prio: 2, cd: 1440, chance: 0.5,
+      steps: [['anim', 'a', 'think', 1.5], ['say', 'a', 'place_sunset']],
+      fx: { emo: { a: ['calm', 0.6] }, mem: { a: { type: 'event', imp: 0.55, text: '在星砂海灘看了夕陽' } } } },
     { id: 'confess', zh: '告白', trigger: 'tick', prio: 6, once: 'pair', chance: 0.4, b: true, bc: { romance: true, aff: '>=75', intim: '>=55' }, important: true, watch: true, ask: '{name}好像有重要的話想對{other}說',
       steps: [['cam', 'a'], ['go', 'a', 'b'], ['face', 'a', 'b'], ['face', 'b', 'a'], ['anim', 'a', 'shy', 1.5], ['say', 'a', 'ev_confess'], ['say', 'b', 'ev_confess_r']],
       confirm: { title: '要讓{name}和{other}成為戀人嗎？', body: '這是重大的關係變化，需要你同意。拒絕的話，牠們仍然是好朋友。', ok: { relType: 'lover' } },

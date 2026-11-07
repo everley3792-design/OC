@@ -149,7 +149,7 @@
     sub: true,
     refresh(p, el) {
       const list = Gm.todayQuests();
-      el.replaceChildren(h('p.muted', null, '每天換一組任務（依照真實日期）。完成後領取金幣。'), ...list.map((q) => { const done = q.prog >= q.n; return card(h('div.hstack', null, icon(q.ic), h('div.grow', null, h('b', null, q.zh), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, q.d)), q.claimed ? h('span.tag.teal', null, icon('check', 's'), '已領取') : done ? h('button.btn.s.sun', { on: { click: () => { const r = Gm.claim(q.id); if (r) { toast(`獲得 ${r} 金幣`, 'coin'); haptic(); } p.refresh(p, el); } } }, icon('coin', 's'), `領取 ${q.reward}`) : h('span.tag', null, icon('coin', 's'), q.reward)), h('div.hstack', { style: { marginTop: '10px' } }, h('div.grow', null, bar(100 * q.prog / q.n, 'var(--sun)')), h('span.num', null, `${q.prog}/${q.n}`))); }));
+      el.replaceChildren(h('p.muted', null, '每天換一組任務（依照真實日期）。完成後領取星幣。'), ...list.map((q) => { const done = q.prog >= q.n; return card(h('div.hstack', null, icon(q.ic), h('div.grow', null, h('b', null, q.zh), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, q.d)), q.claimed ? h('span.tag.teal', null, icon('check', 's'), '已領取') : done ? h('button.btn.s.sun', { on: { click: () => { const r = Gm.claim(q.id); if (r) { toast(`獲得 ${r} 星幣`, 'coin'); haptic(); } p.refresh(p, el); } } }, icon('coin', 's'), `領取 ${q.reward}`) : h('span.tag', null, icon('coin', 's'), q.reward)), h('div.hstack', { style: { marginTop: '10px' } }, h('div.grow', null, bar(100 * q.prog / q.n, 'var(--sun)')), h('span.num', null, `${q.prog}/${q.n}`))); }));
     },
   });
   define('ach', '成就', {
@@ -169,14 +169,14 @@
   // =====================================================================
   define('shop', '晴日雜貨攤', {
     sub: true,
-    build(p, el) { p.coins = h('span.num'); p.mode = 'buy'; p.tabs = seg([['buy', '購買'], ['sell', '賣出']], 'buy', (v) => { p.mode = v; p.refresh(p, el); }); p.body = h('div', { style: { marginTop: '12px' } }); el.append(card(h('div.hstack', null, icon('coin'), h('span.grow', null, '持有金幣'), p.coins)), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body); },
+    build(p, el) { p.coins = h('span.num'); p.mode = 'buy'; p.tabs = seg([['buy', '購買'], ['sell', '賣出']], 'buy', (v) => { p.mode = v; p.refresh(p, el); }); p.body = h('div', { style: { marginTop: '12px' } }); el.append(card(h('div.hstack', null, icon('coin'), h('span.grow', null, '持有星幣'), p.coins)), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body); },
     refresh(p) {
       p.coins.textContent = S().coins.toLocaleString();
       if (p.mode === 'buy') {
         p.body.replaceChildren(h('div.list', null, ...Sty.SHOP.map((id) => { const it = Sty.ITEMS[id], owned = St.count(id), im = Sty.itemImg(id); im.style.width = im.style.height = '40px'; const sold = it.kind === 'clothing' && owned; return row(im, it.zh, `${Sty.KIND_ZH[it.kind]}・${it.d}`, sold ? h('span.tag.teal', null, '已擁有') : h('button.btn.s' + (S().coins >= it.price ? '.sun' : ''), { 'aria-label': `購買 ${it.zh}`, on: { click: () => { const r = Gm.buy(id); toast(r.ok ? `買了 ${it.zh}` : r.why, r.ok ? 'cart' : 'info'); if (r.ok) haptic(); p.refresh(p); } } }, icon('coin', 's'), it.price)); })));
       } else {
         const inv = Object.keys(S().inv).filter((id) => Sty.ITEMS[id] && Sty.ITEMS[id].sell);
-        p.body.replaceChildren(inv.length ? h('div.list', null, ...inv.map((id) => { const it = Sty.ITEMS[id], im = Sty.itemImg(id); im.style.width = im.style.height = '40px'; return row(im, `${it.zh} ×${St.count(id)}`, `每個 ${it.sell} 金幣`, h('button.btn.s', { on: { click: () => { const g = Gm.sell(id); if (g) { toast(`賣出 ${it.zh}，獲得 ${g} 金幣`, 'coin'); haptic(); } p.refresh(p); } } }, '賣 1 個')); })) : card(h('div.empty', null, '背包裡沒有可以賣的東西。')));
+        p.body.replaceChildren(inv.length ? h('div.list', null, ...inv.map((id) => { const it = Sty.ITEMS[id], im = Sty.itemImg(id); im.style.width = im.style.height = '40px'; return row(im, `${it.zh} ×${St.count(id)}`, `每個 ${it.sell} 星幣`, h('button.btn.s', { on: { click: () => { const g = Gm.sell(id); if (g) { toast(`賣出 ${it.zh}，獲得 ${g} 星幣`, 'coin'); haptic(); } p.refresh(p); } } }, '賣 1 個')); })) : card(h('div.empty', null, '背包裡沒有可以賣的東西。')));
       }
     },
   });
@@ -200,7 +200,7 @@
       if (it.use) acts.push(h('button.btn.primary.block', { on: { click: () => { const fx = Gm.eat(id); if (fx) { toast(`${OC.Chars.name(OC.Chars.active())} 吃了${it.zh}`, 'apple'); app().reactEat(); } api.close(); after && after(); } } }, icon('apple', 's'), it.kind === 'food' ? '吃' : '使用'));
       if (it.kind === 'furniture') acts.push(h('button.btn.primary.block', { on: { click: () => { api.close(); OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); app().tab('island'); app().startPlacement({ id }); } } }, icon('sofa', 's'), '放到島上'));
       if (it.kind === 'clothing') acts.push(h('button.btn.primary.block', { on: { click: () => { api.close(); open('wardrobe'); } } }, icon('shirt', 's'), '到衣櫥穿上'));
-      b.append(h('div.center', null, Sty.itemImg(id)), h('p', null, it.d), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '12px' } }, `持有 ${St.count(id)} 個${it.sell ? `・可賣 ${it.sell} 金幣` : ''}${it.use ? '・' + Object.entries(it.use).map(([k, v]) => `${Gm.NEEDS.find((n) => n.id === k).zh}+${v}`).join(' ') : ''}`), h('div.vstack', null, ...acts), it.kind === 'gift' || it.kind === 'food' ? h('div.lock-note', { style: { marginTop: '10px' } }, icon('info', 's'), '想送給居民：在島上打開快速背包，把物品拖到居民身上。') : null);
+      b.append(h('div.center', null, Sty.itemImg(id)), h('p', null, it.d), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '12px' } }, `持有 ${St.count(id)} 個${it.sell ? `・可賣 ${it.sell} 星幣` : ''}${it.use ? '・' + Object.entries(it.use).map(([k, v]) => `${Gm.NEEDS.find((n) => n.id === k).zh}+${v}`).join(' ') : ''}`), h('div.vstack', null, ...acts), it.kind === 'gift' || it.kind === 'food' ? h('div.lock-note', { style: { marginTop: '10px' } }, icon('info', 's'), '想送給居民：在島上打開快速背包，把物品拖到居民身上。') : null);
     });
   }
 

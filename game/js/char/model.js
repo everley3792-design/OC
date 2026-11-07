@@ -67,6 +67,9 @@
     ['read', '閱讀', 'loop', ['sit', 'idle']], ['think', '思考', 'loop', ['idle']], ['stretch', '伸展', 'loop', ['happy', 'idle']],
     ['tend', '照顧植物', 'loop', ['idle']], ['talk', '說話', 'loop', ['idle']], ['dance', '跳舞', 'loop', ['play', 'happy', 'idle']],
     ['cry', '哭泣', 'loop', ['sad', 'idle']], ['laugh', '大笑', 'loop', ['happy', 'idle']],
+    // Phase 5 world activities
+    ['fish', '釣魚', 'loop', ['sit', 'idle']], ['cook', '做料理', 'loop', ['tend', 'idle']], ['study', '讀書', 'loop', ['read', 'sit', 'idle']],
+    ['forage', '採集', 'loop', ['tend', 'idle']], ['browse', '逛街', 'loop', ['idle']],
   ];
   const ACTION_ZH = Object.fromEntries(ACTIONS.map((a) => [a[0], a[1]]));
   const SPECIES = [['cat', '貓'], ['bunny', '兔'], ['bear', '熊'], ['dog', '狗'], ['fox', '狐'], ['sprite', '小精靈'], ['other', '其他']];
@@ -88,6 +91,7 @@
       mem: { recent: [], long: [], seq: 0 },
       rec: { act: {}, seq: {}, place: {}, placeZh: {}, lastAct: null, social: 0, nightAwake: 0 },
       habits: [], wishes: [], skills: {}, routine: { sleep: null, wake: null }, player: { aff: 0, fam: 0, last: 0 }, cur: null, log: [],
+      loc: 'isle', trip: null, places: {},   // Phase 5: current place, travelling { to, act, eta }, place id → { visits, last }
     };
   }
   function newId() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -98,7 +102,7 @@
       personality: { pace: 50, energy: 55, social: 50, expression: 55, thinking: 45, speech: 50, traits: [], customTraits: [] },
       quirks: { walk: 'normal', sit: 'neat', sleep: 'neat', eat: 'normal', greet: 'wave', habit: 'none', face: 'cat' },
       speech: { style: 'casual', catchphrase: '', ending: '' },
-      tastes: { likeItems: [], dislikeItems: [] },
+      tastes: { likeItems: [], dislikeItems: [], food: {}, flavor: {}, tasted: {} },   // food: id → { lv −2…2, src, locked } (OC.Taste)
       look: clone(LOOK_DEFAULT), parts: [],
       appearance: { mode: 'rig', scale: 1 },
       actions: {},               // action → { any|front|back|left|right: animId }

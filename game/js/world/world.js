@@ -18,7 +18,7 @@
   const BB_W = 120 * RIG_UNIT, BB_H = BB_W / COS, FEET = 0.9;
 
   let R, canvas, scene, cam, env, area = null, root = null;
-  let W = 360, H = 640, zoom = 1.9, camX = 300, camY = 470, panX = 0, panY = 0, follow = true;
+  let area0Room = false, outdoorZoom = 1.9, W = 360, H = 640, zoom = 1.9, camX = 300, camY = 470, panX = 0, panY = 0, follow = true;
   let quality = { ratio: 1.5, shadows: 1024, fx: true, grass: 1, fps: 60, bb: 256 };
   let grid = null, actors = [], interacts = [], ticks = [], sways = [], drops = [], furn = [];
   let hooks = {};
@@ -35,7 +35,7 @@
       grid.walk[k] = area.walk(x, y) ? 1 : 0; grid.lvl[k] = area.level(x, y);
     }
     for (const o of area.obstacles) markRect(o, 0);
-    for (const f of furn) if (!OC.Style.ITEMS[f.id].walk) markRect(furnRect(f), 0);
+    for (const f of furn) if (!(OC.Style.ITEMS[f.id] || {}).walk) markRect(furnRect(f), 0);
   }
   function markRect(r, v) {
     const i0 = Math.floor((r.x - r.w / 2 - grid.x0) / CELL), i1 = Math.floor((r.x + r.w / 2 - grid.x0) / CELL);
@@ -98,7 +98,7 @@
   function makeBlob() {
     if (blobTex) return blobTex;
     blobTex = OC.Env.texture(64, 64, (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(30,40,40,0.42)'); g.addColorStop(0.6, 'rgba(30,40,40,0.22)'); g.addColorStop(1, 'rgba(30,40,40,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); });
-    blobTex.wrapS = blobTex.wrapT = THREE.ClampToEdgeWrapping; return blobTex;
+    blobTex.wrapS = blobTex.wrapT = THREE.ClampToEdgeWrapping; blobTex.userData.cached = true; return blobTex;
   }
   const bbGeo = () => { const g = new THREE.PlaneGeometry(BB_W, BB_H); g.translate(0, BB_H / 2 - (1 - FEET) * BB_H, 0); return g; };
   function silMaterial(tex) {
@@ -259,10 +259,11 @@
   function removeDrop(d) { root.remove(d.m); drops = drops.filter((x) => x !== d); }
 
   // ====================== furniture ======================
-  function furnRect(f) { const fp = OC.Style.ITEMS[f.id].fp || [1, 1]; const rot = (f.rot || 0) % 2; const w = (rot ? fp[1] : fp[0]) * 18, d = (rot ? fp[0] : fp[1]) * 18 * SIN; return { x: f.x, y: f.y, w, h: d }; }
+  function furnRect(f) { const it = OC.Style.ITEMS[f.id] || {}; const fp = it.fp || [1, 1], sc = f.sc || 1; const rot = (f.rot || 0) % 2; const w = (rot ? fp[1] : fp[0]) * 18 * sc, d = (rot ? fp[0] : fp[1]) * 18 * SIN * sc; return { x: f.x, y: f.y, w, h: d }; }
   function addFurniture(f) {
-    const g = OC.Models.furniture(f.id); g.position.copy(V3(f.x, f.y, levelAt(f.x, f.y), area.ground(f.x, f.y, levelAt(f.x, f.y)))); g.rotation.y = -(f.rot || 0) * Math.PI / 2;
-    root.add(g); const def = OC.Style.ITEMS[f.id];
+    const g = OC.Models.furniture(f.id); g.position.copy(V3(f.x, f.y, levelAt(f.x, f.y), area.ground(f.x, f.y, levelAt(f.x, f.y)))); g.rotation.y = -(f.rot || 0) * Math.PI / 2; if (f.sc && f.sc !== 1) g.scale.setScalar(f.sc);
+    root.add(g); const def = OC.Style.ITEMS[f.id] || { zh: '?', fp: [1, 1] };
+    if (g.userData.tick) ticks.push((t) => g.userData.tick(t));
     const it = { type: 'furn', uid: f.uid, id: f.id, x: f.x, y: f.y, hit: { w: 26, h: def.walk ? 10 : 24, d: 8 } };
     const rec = Object.assign({}, f, { g, it }); furn.push(rec);
     if (def.walk !== true && grid) markRect(furnRect(f), 0);
@@ -279,19 +280,21 @@
     return true;
   }
   // placement ghost
-  let ghost = null;
+  let ghost = null, ghostSn = 6;
   function setGhost(f) {
     if (ghost) { root.remove(ghost.g); root.remove(ghost.ring); ghost = null; }
     if (!f) return;
     const g = OC.Models.furniture(f.id); g.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.78; o.castShadow = false; } });
     const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#3FC1B0', transparent: true, opacity: 0.35, depthWrite: false })); ring.rotation.x = -Math.PI / 2; root.add(ring);
-    root.add(g); ghost = { g, ring, f };
+    root.add(g); ghost = { g, ring, f }; if (f.sc) g.scale.setScalar(f.sc);
     moveGhost(f.x, f.y, f.rot || 0);
   }
   function moveGhost(x, y, rot) {
     if (!ghost) return false;
-    const sn = 6; x = Math.round(x / sn) * sn; y = Math.round(y / sn) * sn;
+    const sn = ghostSn; x = Math.round(x / sn) * sn; y = Math.round(y / sn) * sn;
     Object.assign(ghost.f, { x, y, rot });
+    const def = OC.Style.ITEMS[ghost.f.id]; if (def && def.wall && area.wallY != null) { const r0 = furnRect(ghost.f); ghost.f.y = y = Math.round((area.wallY + r0.h / 2 + 2) / 2) * 2; }
+    ghost.g.scale.setScalar(ghost.f.sc || 1);
     const l = levelAt(x, y), ok = canPlace(ghost.f); ghost.ok = ok;
     ghost.g.position.copy(V3(x, y, l, area.ground(x, y, l) + 0.3)); ghost.g.rotation.y = -rot * Math.PI / 2;
     const r = furnRect(ghost.f); ghost.ring.scale.set(r.w + 6, (r.h + 6) / SIN, 1); ghost.ring.position.copy(V3(x, y, l, area.ground(x, y, l) + 0.5));
@@ -300,8 +303,23 @@
   }
 
   // ====================== area lifecycle ======================
+  /** free everything the old scene created that is not in the shared caches (geometry / material / texture) */
+  function disposeTree(obj) {
+    const seen = new Set();
+    obj.traverse((o) => {
+      if (o.geometry && !(o.geometry.userData && o.geometry.userData.cached) && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      for (const m of ms) {
+        if (!m || seen.has(m) || (m.userData && m.userData.cached)) continue; seen.add(m);
+        for (const k of ['map', 'alphaMap', 'emissiveMap', 'normalMap']) { const t = m[k]; if (t && !(t.userData && t.userData.cached) && !seen.has(t)) { seen.add(t); t.dispose(); } }
+        if (m.uniforms && m.uniforms.map && m.uniforms.map.value && !seen.has(m.uniforms.map.value)) { seen.add(m.uniforms.map.value); m.uniforms.map.value.dispose(); }
+        m.dispose();
+      }
+    });
+  }
   function clearArea() {
-    if (root) scene.remove(root);   // geometries/materials are cached & shared across areas
+    if (root) { scene.remove(root); disposeTree(root); }   // shared geometries/materials stay cached; scene-owned ones are freed
+    for (const a of actors) if (a.tex) a.tex.dispose();
     actors = []; interacts = []; ticks = []; sways = []; drops = []; furn = []; grassMesh = null; ghost = null;
     OC.Models.night.windows.length = 0; OC.Models.night.lamps.length = 0;
   }
@@ -321,6 +339,8 @@
     (opts.furniture || []).forEach(addFurniture);
     const sp = opts.pos && walkable(opts.pos.x, opts.pos.y) ? opts.pos : area.spawn;
     camX = sp.x; camY = sp.y; panX = panY = 0; follow = true;
+    // rooms fit the screen width; outdoor places keep the player's own zoom
+    if (def.room) { if (!area0Room) outdoorZoom = zoom; zoom = clamp(W / (def.room.x1 - def.room.x0 + 40), 1.1, 2.4); area0Room = true; } else { if (area0Room) zoom = outdoorZoom; area0Room = false; }
     return ctx;
   }
 
@@ -359,6 +379,7 @@
     if (!gesture) return;
     if (gesture.kind === 'pinch') { if (ptrs.size === 0) gesture = null; return; }
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
+    if (gesture.kind === 'ghost' && gesture.moved) hooks.ghostDone && hooks.ghostDone();
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
       const r = pick(p.x, p.y);
       if (ghost) { moveGhost(r.p.x, r.p.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); }
@@ -444,6 +465,11 @@
     get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
     set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
     recenter() { panX = 0; panY = 0; follow = true; },
+    get root() { return root; },
+    ghostSnap(n) { ghostSn = n; },
+    /** obstacles / interactables added after the scene was built (forage bushes, critters…) */
+    block(x, y, w, h) { area.obstacles.push({ x, y, w, h }); },
+    addInteract(it) { interacts.push(it); return it; },
     stopGesture() { ptrs.clear(); gesture = null; clearTimeout(pressTimer); },
   };
 })();

@@ -12,12 +12,14 @@
   const night = { windows: [], lamps: [] };   // materials the light rig drives at night
 
   function mat(color, o = {}) {
+    // materials with their own texture are per-scene (disposed with the scene), never cached by a serialized key
+    if (o.p && (o.p.map || o.p.alphaMap)) return o.std ? new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6, metalness: 0 }, o.p)) : new THREE.MeshLambertMaterial(Object.assign({ color }, o.p));
     const k = color + JSON.stringify(o);
     if (MT[k]) return MT[k];
     const m = o.std ? new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6, metalness: 0 }, o.p || {})) : new THREE.MeshLambertMaterial(Object.assign({ color }, o.p || {}));
-    return (MT[k] = m);
+    m.userData.cached = true; return (MT[k] = m);
   }
-  function geo(key, make) { return G[key] || (G[key] = make()); }
+  function geo(key, make) { if (G[key]) return G[key]; const g = make(); g.userData.cached = true; return (G[key] = g); }
   function mesh(g, m, cast = true, recv = true) { const x = new THREE.Mesh(g, m); x.castShadow = cast; x.receiveShadow = recv; return x; }
   function add(par, g, m, x = 0, y = 0, z = 0, o = {}) {
     const me = mesh(g, m, o.cast !== false, o.recv !== false); me.position.set(x, y, z);
@@ -251,7 +253,7 @@
     bed() { const g = new THREE.Group(); const w = mat('#D9A26A'), d = mat('#B07E4B'); add(g, rbox(18, 4, 34, 1.4), w, 0, 5, 0); add(g, rbox(18, 12, 3, 1.4), d, 0, 9, -16); add(g, rbox(18, 7, 3, 1.4), d, 0, 6.5, 16); for (const [x, z] of [[-7.5, -14.5], [7.5, -14.5], [-7.5, 14.5], [7.5, 14.5]]) add(g, rbox(2.4, 4, 2.4, 0.8), d, x, 2, z); add(g, rbox(16, 3.2, 30, 1.4), mat('#FFF7EC'), 0, 8.4, 0, { cast: false }); add(g, rbox(16.4, 2.4, 18, 1.2), mat('#9FD3FF'), 0, 9.6, 5, { cast: false }); const pl = add(g, sphere(5, 12, 8), mat('#FFFFFF'), 0, 10.6, -10, { cast: false }); pl.scale.set(1.3, 0.45, 0.8); const st = add(g, sphere(1.6, 8, 6), mat('#FFD23F'), 3, 11, 6, { cast: false }); st.scale.y = 0.4; return g; },
     table() { const g = new THREE.Group(); const t = add(g, cyl(15, 15, 2.6, 24), mat('#D9A26A'), 0, 16, 0); add(g, cyl(2, 2.4, 15, 10), mat('#B07E4B'), 0, 7.5, 0); add(g, cyl(7, 7.6, 1.6, 16), mat('#B07E4B'), 0, 0.8, 0); add(g, cyl(5, 5, 0.6, 16), mat('#FFFFFF'), -4, 17.6, 2, { cast: false }); add(g, sphere(2.4, 10, 8), mat('#EE4B4B'), 5, 19.6, -2); return g; },
   };
-  function furniture(id) { const g = (FURN[id] || FURN.plant)(); g.userData.furn = id; return g; }
+  function furniture(id) { const it = OC.Style.ITEMS[id]; const g = it && it.custom && OC.Models.standee ? OC.Models.standee(it) : (FURN[id] || FURN.plant)(); g.userData.furn = id; return g; }
 
-  OC.Models = { mat, geo, mesh, add, rbox, sphere, ico, cyl, cone, lathe, house, stall, fruitTree, palm, cedar, bush, rock, flowerBed, fence, lampPost, bench, signpost, mushroom, stump, bridge, furniture, night };
+  OC.Models = { FURN, trunk, mat, geo, mesh, add, rbox, sphere, ico, cyl, cone, lathe, house, stall, fruitTree, palm, cedar, bush, rock, flowerBed, fence, lampPost, bench, signpost, mushroom, stump, bridge, furniture, night };
 })();

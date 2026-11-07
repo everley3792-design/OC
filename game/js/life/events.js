@@ -20,7 +20,7 @@
   function defs() { return D().EVENTS.concat((S().life.dlg.events || []).filter((e) => !e.disabled)); }
   const chars = () => OC.Chars;
   function visible(id) { const b = B().get(id); return b && b.a ? b : null; }
-  function onceKey(ev, a, b, extra) { if (!ev.once) return null; if (ev.once === 'global') return ev.id; const pair = [a, b].filter(Boolean).sort().join('|'); return `${ev.id}|${ev.once === 'pair' ? pair : ev.once === 'pairDays' ? pair + '|' + extra : a}`; }
+  function onceKey(ev, a, b, extra) { if (!ev.once) return null; if (ev.once === 'global') return ev.id; if (ev.once === 'self+place') return `${ev.id}|${a}|${extra}`; const pair = [a, b].filter(Boolean).sort().join('|'); return `${ev.id}|${ev.once === 'pair' ? pair : ev.once === 'pairDays' ? pair + '|' + extra : a}`; }
   function daysKnown(a, b) { const r = M().relPeek(a, b); return r && r.since != null ? Sim().day() - r.since : -1; }
 
   /** do the conditions of `ev` hold for cast (a, b) with trigger payload p? why[] gets failure reasons */
@@ -30,6 +30,7 @@
     if (w.wx && ![].concat(w.wx).includes(OC.Clock.weather())) { why.push('天氣'); return false; }
     if (w.to && p.to !== w.to) { why.push('關係'); return false; }
     if (w.act && p.act !== w.act) { why.push('活動'); return false; }
+    if (w.place && ![].concat(w.place).includes(p.place || (OC.World.area && OC.World.area.id))) { why.push('地點'); return false; }
     if (ev.c && !T().test(ev.c, T().ctx(A, Bc), why)) return false;
     if (ev.b) {
       if (!Bc) { why.push('沒有對象'); return false; }
@@ -39,7 +40,7 @@
     }
     const gm = Sim().now(), lk = ev.id + '|' + A.id;
     if (ev.cd && E().last[lk] && gm - E().last[lk] < ev.cd) { why.push('冷卻中'); return false; }
-    const ok = onceKey(ev, A.id, Bc && Bc.id, Bc ? daysKnown(A.id, Bc.id) : ''); if (ok && E().once[ok]) { why.push('已發生過'); return false; }
+    const ok = onceKey(ev, A.id, Bc && Bc.id, ev.once === 'self+place' ? p.place : Bc ? daysKnown(A.id, Bc.id) : ''); if (ok && E().once[ok]) { why.push('已發生過'); return false; }
     return true;
   }
   function gapOK(ev) { const g = GAP[S().life.settings.autonomy] || 120; if ((ev.prio || 1) >= 4) return S().life.settings.autonomy !== 'paused'; return Date.now() - (E().lastAny || 0) > g * 1000; }
@@ -55,22 +56,22 @@
       else cands = [null];
       for (const Bc of cands) {
         const why = []; if (!check(ev, A, Bc, p, why)) continue;
-        if (ev.chance != null && Sim().rnd() > ev.chance) { mark(ev, A, Bc); continue; }
+        if (ev.chance != null && Sim().rnd() > ev.chance) { mark(ev, A, Bc, p); continue; }
         return begin(ev, A, Bc, p);
       }
     }
     return false;
   }
-  function mark(ev, A, Bc) { const gm = Sim().now(); E().last[ev.id + '|' + A.id] = gm; const ok = onceKey(ev, A.id, Bc && Bc.id, Bc ? daysKnown(A.id, Bc.id) : ''); if (ok) E().once[ok] = gm; }
+  function mark(ev, A, Bc, p) { const gm = Sim().now(); E().last[ev.id + '|' + A.id] = gm; const ok = onceKey(ev, A.id, Bc && Bc.id, ev.once === 'self+place' ? (p && p.place) : Bc ? daysKnown(A.id, Bc.id) : ''); if (ok) E().once[ok] = gm; }
   /** start an event: staged if the cast is on screen and nothing else runs; otherwise apply its results quietly (milestones must not be lost) */
   function begin(ev, A, Bc, p) {
     const ba = visible(A.id), bb = Bc ? visible(Bc.id) : null;
     const canStage = !cur && ba && (!Bc || bb) && !hooks.busy() && gapOK(ev) && B().available(ba) !== false && (!bb || !bb.holds.size) && !ba.holds.size;
     if (!canStage) {
-      if ((ev.prio || 1) >= 4 || ev.trigger === 'relUp' || ev.trigger === 'meet') { mark(ev, A, Bc); results(ev, A, Bc, p, false); return true; }
+      if ((ev.prio || 1) >= 4 || ev.trigger === 'relUp' || ev.trigger === 'meet') { mark(ev, A, Bc, p); results(ev, A, Bc, p, false); return true; }
       return false;
     }
-    mark(ev, A, Bc); E().lastAny = Date.now();
+    mark(ev, A, Bc, p); E().lastAny = Date.now();
     if (ev.social) { const ok = B().Social.start(ba, bb, ev.social); if (ok) { applyFx(ev, A, Bc, p, { skipMem: true }); logEv(ev, A, Bc, '社交'); } return ok; }
     cur = { ev, A, Bc, p, i: 0, waitUntil: 0, watched: false, cast: { a: ba, b: bb }, t0: nowR() };
     B().hold(A.id, 'event'); if (Bc) B().hold(Bc.id, 'event');
@@ -96,7 +97,7 @@
     switch (kind) {
       case 'go': { const m = who(x); if (!m) break; const tgt = y === 'player' ? OC.App && OC.App.player : who(y) && who(y).a; if (!tgt || tgt === m.a) break; const side = m.a.x < tgt.x ? -1 : 1; let pnt = null; for (const [dx, dy] of [[side * 26, 2], [-side * 26, 2], [0, 20], [side * 20, -14]]) { const q = Wd().nearestWalkable(tgt.x + dx, tgt.y + dy, 12); if (q && B().clearPoint(q.x, q.y, m.id, 12)) { pnt = q; break; } } if (pnt && Math.hypot(m.a.x - pnt.x, m.a.y - pnt.y) > 6 && Wd().walkTo(m.a, pnt.x, pnt.y)) { c.pending = true; const w = () => { if (!cur || cur !== c) return; if (!m.a.path || nowR() - c.t0 > 40) { c.pending = false; } else setTimeout(w, 200); }; setTimeout(w, 200); } break; }
       case 'face': { const m = who(x); const tgt = y === 'player' ? OC.App && OC.App.player : who(y) && who(y).a; if (m && tgt) B().face(m.a, tgt); c.waitUntil = t + 0.2; break; }
-      case 'say': { const m = who(x); if (!m) break; const out = T().say(y, chr(x), y.startsWith('ev_') && x === 'a' ? (c.Bc || null) : chr(x === 'a' ? 'b' : 'a'), { days: c.Bc ? daysKnown(c.A.id, c.Bc.id) : null, placeZh: c.p.placeZh, act: c.p.act }); Wd().setAction(m.a, 'talk', { dur: 1.2, priority: 6 }); const d = out ? hooks.say(m.a, out.text, chars().name(chr(x)), null, { event: true }) : 0.3; c.waitUntil = t + d + 0.3; break; }
+      case 'say': { const m = who(x); if (!m) break; const out = T().say(y, chr(x), y.startsWith('ev_') && x === 'a' ? (c.Bc || null) : chr(x === 'a' ? 'b' : 'a'), { days: c.Bc ? daysKnown(c.A.id, c.Bc.id) : null, placeZh: c.p.placeZh || (OC.Places.get(OC.World.area.id) || {}).zh, place: c.p.place || OC.World.area.id, act: c.p.act }); Wd().setAction(m.a, 'talk', { dur: 1.2, priority: 6 }); const d = out ? hooks.say(m.a, out.text, chars().name(chr(x)), null, { event: true }) : 0.3; c.waitUntil = t + d + 0.3; break; }
       case 'anim': { const m = who(x); if (m) Wd().setAction(m.a, y, { dur: z || 1.2, priority: 6 }); c.waitUntil = t + (z || 1.2); break; }
       case 'emote': { const m = who(x); if (m) hooks.emote(m.a, y); c.waitUntil = t + 0.7; break; }
       case 'wait': c.waitUntil = t + (x || 1); break;

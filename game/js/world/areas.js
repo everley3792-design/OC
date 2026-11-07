@@ -106,7 +106,7 @@
       return true;
     },
     noBuild(x, y) { return this.ramp(x, y) || inRect(BRIDGE, x, y) || inRect(PIER, x, y) || Math.hypot(x - PLAZA.x, (y - PLAZA.y) / OC.World.SIN) < 20; },
-    build(ctx) { buildIsle(ctx); },
+    build(ctx) { buildIsle(ctx); if (OC.Areas.isleExtra) OC.Areas.isleExtra(ctx); },
   };
   function buildIsle(ctx) {
     const { root, V3, Zof, SIN, HY } = ctx; ctx.bounds = isle.bounds;
@@ -250,8 +250,9 @@
       ctx.interact({ type: 'travelHome', x: 236, y: 664, hit: { w: 40, h: 36, d: 6 }, at: { x: 220, y: 672 }, label: '告示牌：回晴日島' });
       forest.mushSpots = [[120, 250], [282, 270], [98, 450], [320, 500], [180, 380], [262, 600], [60, 300], [150, 560], [340, 240]];
       grassField(ctx, (x, y) => (forest.walk(x, y) ? 0 : null), 1800, 11, ['#4FA845', '#5DB64C', '#3F9A40', '#6CC257']);
+      if (OC.Areas.forestExtra) OC.Areas.forestExtra(ctx);
     },
   };
 
-  OC.Areas = { isle, forest, inBlob };
+  OC.Areas = { isle, forest, inBlob, _h: { inBlob, blobPts, slab, tex, lawnTex, sandTex, waterTex, paveTex, stoneTiles, grassField, ribbon, place, inRect, distPoly, frontEdge } };
 })();
