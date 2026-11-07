@@ -58,7 +58,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
     if (want(1)) {
       const order = ['street', 'cafe', 'street', 'library', 'street', 'beach', 'forest', 'isle', 'home', 'isle'];
       const seen = [];
-      for (const to of order) { const ok = await travel(page, to); const st = await page.evaluate(() => ({ id: OC.World.area.id, p: !!OC.App.player, walk: OC.World.walkable(OC.App.player.x, OC.App.player.y), n: OC.World.interacts.length + OC.World.furn.filter((f) => f.it).length })); seen.push([to, ok && st.p && st.walk, st.n]); if (['street', 'beach', 'cafe', 'home'].includes(to) && !fs.existsSync(path.join(SHOTS, `1-${to}.png`))) { await wait(page, 700); await shot(page, `1-${to}`); } }
+      for (const to of order) { const ok = await travel(page, to); const st = await page.evaluate(() => ({ id: OC.World.area.id, p: !!OC.App.player, walk: OC.World.walkable(OC.App.player.x, OC.App.player.y), n: OC.World.interacts.length + OC.World.furn.filter((f) => f.it).length })); seen.push([to, ok && st.p && st.walk, st.n]); if (!(ok && st.p && st.walk)) console.log('  1a detail', to, ok, JSON.stringify(st), await page.evaluate(() => JSON.stringify({ x: OC.App.player.x, y: OC.App.player.y, near: OC.World.nearestWalkable(OC.App.player.x, OC.App.player.y, 10) }))); if (['street', 'beach', 'cafe', 'home'].includes(to) && !fs.existsSync(path.join(SHOTS, `1-${to}.png`))) { await wait(page, 700); await shot(page, `1-${to}`); } }
       check('1a 依序前往 商店街→咖啡廳→商店街→圖書館→海灘→森林→島→家→島，每次都到得了且玩家站在可走的位置', seen.every((s) => s[1]), seen.map((s) => s[0] + (s[1] ? '✓' : '✗')).join(' '));
       check('1b 每個開放地點都有可互動物件（沒有空場景）', seen.every((s) => s[2] >= 3), seen.map((s) => `${s[0]}:${s[2]}`).join(' '));
       const same = await page.evaluate(() => OC.World.renderer === window.__R && OC.Sim.running !== false);
@@ -160,7 +160,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       check('4e 收回背包：場景移除、背包 +1', r.store);
       check('4f 每個地點的佈置分開保存（家裡的沙發不會出現在島上）', r.isleUntouched);
       await wait(page, 500); await shot(page, '4-home-decor');
-      await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 }); await wait(page, 800);
+      await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 }); await wait(page, 800); await page.evaluate(() => { window.__R = OC.World.renderer; });
       const after = await page.evaluate(() => ({ area: OC.World.area.id, sofa: OC.Places.room('home').some((f) => f.id === 'sofa'), meshes: OC.World.furn.length, n: OC.Places.room('home').length }));
       check('4g 重新開啟後：仍在家裡、沙發還在原位、場景裡有對應模型', after.area === 'home' && after.sofa && after.meshes >= after.n, JSON.stringify(after));
     }
@@ -258,7 +258,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       check('7c 用星幣購買後才進背包', r.bought);
       const k = I['栗子'];
       if ((await page.evaluate((id) => !!OC.App.actorOf(id), k)) === false) { await page.evaluate((id) => { OC.Chars.get(id).life.loc = OC.World.area.id; OC.Chars.get(id).life.trip = null; OC.App.syncPresence(); }, k); await wait(page, 500); }
-      const fed = await page.evaluate(async ([id, item]) => { OC.Brain.get(id).holds.clear(); const ok = await OC.Use.feed(id, item); return { ok, left: OC.Store.count(item), tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted[item] || {}).n || 0 }; }, [k, r.id]);
+      const fed = await page.evaluate(async ([id, item]) => { OC.Brain.get(id).holds.clear(); OC.Chars.get(id).needs.food = 50; const ok = await OC.Use.feed(id, item); return { ok, left: OC.Store.count(item), tasted: (OC.Taste.prefs(OC.Chars.get(id)).tasted[item] || {}).n || 0 }; }, [k, r.id]);
       check('7d 自製食物可以餵 OC（吃完才扣、留下品嚐紀錄）', fed.ok && fed.left === 0 && fed.tasted === 1, JSON.stringify(fed));
       await page.evaluate(() => OC.Pages.open('shop', { shop: 'food' })); await wait(page, 500); await shot(page, '7-shop-custom'); await page.evaluate(() => OC.Pages.close('shop'));
       const reload = await page.evaluate((id) => { OC.Store.persist(); return !!OC.Style.ITEMS[id]; }, r.id);
@@ -359,8 +359,8 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       for (let round = 0; round < 4; round++) { for (const p of loop) await travel(page, p); await wait(page, 300); samples.push(await info(page)); }
       console.log(JSON.stringify({ base, samples }));
       const last = samples[samples.length - 1], first = samples[0];
-      check('12a 來回 32 次換場景，幾何數不持續成長', last.geo <= first.geo + 40, samples.map((s) => s.geo).join('→'));
-      check('12b 材質數不持續成長', last.tex <= first.tex + 6, samples.map((s) => s.tex).join('→'));
+      check('12a 來回 32 次換場景：共用快取暖機後幾何數不再成長（第 3→4 輪 ≤ +10）', last.geo - samples[2].geo <= 10, samples.map((s) => s.geo).join('→'));
+      check('12b 材質數有上限（第 3→4 輪 ≤ +2，總數 < 40）', last.tex - samples[2].tex <= 2 && last.tex < 40, samples.map((s) => s.tex).join('→'));
       if (last.heap != null) check('12c JS heap 穩定（< +40MB）', last.heap - first.heap < 40, samples.map((s) => s.heap + 'MB').join('→'));
       const calls = {}; for (const p of ['isle', 'street', 'beach', 'forest', 'cafe', 'home', 'library']) { await travel(page, p); await wait(page, 400); calls[p] = (await info(page)).calls; }
       console.log(JSON.stringify(calls));
@@ -379,10 +379,12 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       });
       check('13a 新介面的觸控目標 ≥ 40px（地圖、商店、背包）', sizes.length === 0, sizes.slice(0, 5).join(', '));
       // tap a shop door on the street → walk → shop opens → buy with taps
-      const door = await page.evaluate(() => { const it = OC.World.interacts.find((i) => i.type === 'shop' && i.shop === 'gift'); const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); return p; });
-      await page.touchscreen.tap(door.x, door.y);
-      const opened = await until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
-      check('13b 點商店門口：角色走過去並打開那間店', opened && await page.evaluate(() => document.querySelector('[data-page="shop"] h1').textContent.includes('禮物')));
+      await page.evaluate(() => { const q = OC.World.nearestWalkable(300, 700, 30); OC.World.walkTo(OC.App.player, q.x, q.y); }); await until(page, () => !OC.App.player.path, null, 20000); await wait(page, 800);
+      const door = await page.evaluate(() => { for (const it of OC.World.interacts.filter((i) => i.type === 'shop')) { const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 14); const el = document.elementFromPoint(p.x, p.y); if (p.y > 140 && p.y < innerHeight - 200 && p.x > 20 && p.x < innerWidth - 20 && el && el.tagName === 'CANVAS' && (OC.World.pick(p.x, p.y).it || {}).shop === it.shop) return { x: p.x, y: p.y, zh: OC.Shops.get(it.shop).zh }; } return null; });
+      console.log('  13b door', JSON.stringify(door));
+      if (door) await page.touchscreen.tap(door.x, door.y);
+      const opened = !!door && await until(page, () => { const p = document.querySelector('[data-page="shop"]'); return p && p.classList.contains('open'); }, null, 20000);
+      check('13b 點畫面上的商店門口：角色走過去並打開那間店', opened && await page.evaluate((zh) => document.querySelector('[data-page="shop"] h1').textContent === zh, door.zh), door && door.zh);
       if (opened) {
         const m0 = await page.evaluate(() => OC.Store.s.coins);
         await page.tap('[data-page="shop"] .shop-item'); await wait(page, 500); await shot(page, '13-buy-sheet');

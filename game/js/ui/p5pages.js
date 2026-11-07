@@ -63,7 +63,7 @@
       for (const [id, pin] of Object.entries(p.pins)) { pin.classList.toggle('on', id === p.sel); pin.classList.toggle('here', id === curTop); const ocs = OCS_AT(id).concat(Object.entries(PL().P).filter(([, q]) => q.parent === id).flatMap(([k]) => OCS_AT(k))); pin.querySelector('.pin-ocs').replaceChildren(...ocs.slice(0, 4).map((c) => h('i', { title: name(c) }, name(c).slice(0, 1)))); }
       const subs = [p.sel].concat(Object.entries(PL().P).filter(([, q]) => q.parent === p.sel).map(([k]) => k));
       p.info.replaceChildren(...subs.map((id) => placeCard(id, cur)));
-      p.who.replaceChildren(T('大家在哪裡', `${OC.Chars.all().filter((c) => c.status.onIsland).length} 位`), h('div.list', null, ...OC.Chars.all().filter((c) => c.status.onIsland).map((c) => { const w = where(c), P0 = PL().get(w.pl); const d = OC.LifeUI.doingText(c); return row(av(c), `${name(c)}${c.id === S().activeId ? '（操控中）' : ''}`, `${w.tr ? '正在前往' : '在'}${P0 ? P0.zh : '?'}${d && !w.tr ? '・' + d : ''}`, w.pl !== cur && c.id !== S().activeId && P0 && !P0.locked ? h('button.btn.s', { on: { click: () => OC.WorldUI.travel(w.pl) } }, '前往') : null); })));
+      p.who.replaceChildren(T('大家在哪裡', `${OC.Chars.all().filter((c) => c.status.onIsland).length} 位`), h('div.list', null, ...OC.Chars.all().filter((c) => c.status.onIsland).map((c) => { const w = where(c), P0 = PL().get(w.pl); const d = OC.LifeUI.doingText(c); return row(av(c), `${name(c)}${c.id === S().activeId ? '（操控中）' : ''}`, `${w.tr ? '正在前往' : '在'}${P0 ? P0.zh : '?'}${d && !w.tr ? '・' + d : ''}`, w.pl !== cur && c.id !== S().activeId && P0 && !P0.locked ? h('button.btn', { on: { click: () => OC.WorldUI.travel(w.pl) } }, '前往') : null); })));
     },
   });
   function placeCard(id, cur) {

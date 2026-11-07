@@ -96,7 +96,7 @@
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
   const charOf = (b) => OC.Chars.get(b.id);
-  const available = (b) => b && b.a && !b.holds.size && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
+  const available = (b) => b && b.a && !b.holds.size && !b.queued && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
 
   // ---------------- scoring ----------------
   const NEED_W = { food: 1.4, sleep: 1.3, energy: 1.0, fun: 0.9, social: 0.9, comfort: 0.6, interest: 0.7, active: 0.7 };

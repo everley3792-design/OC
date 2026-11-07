@@ -9,7 +9,8 @@
 - **第二階段完成**：可操作的遊戲（`game/`）+ Android 外殼與實際建置的 Debug APK。完成紀錄：`docs/phase2-report.md`。
 - **第三階段完成（0.3.0-alpha）**：多角色、完整創角／捏角、自訂部件、個性與小怪癖、素材匯入匯出、繪畫工坊、逐格動畫工作室、`.ocpack`。完成紀錄與未驗證項目：`docs/phase3-report.md`。規格：`docs/character-format.md`、`docs/animation-system.md`、`docs/asset-io.md`。
 - **第四階段完成（0.4.0-alpha）**：深度生活模擬——9 種需求、情緒、Utility AI 活動流程、作息、後天習慣（需同意）、願望／技能、多 OC 自主社交與共同活動、有方向的關係、資料驅動對話（可匯入匯出）、回憶、事件引擎、玩家互動、自主程度、分層／離線模擬、開發者診斷。完成紀錄、測試與未完成項目：`docs/phase4-report.md`。規格：`docs/behavior-engine.md`、`docs/life-format.md`、`docs/event-rules.md`、`docs/memory-model.md`。
-- 下一步見 `docs/roadmap.md`。使用者明確要求**延後**：擴充地圖、商店／經濟、釣魚、種田、旅行（第五階段）——不要自行開始；新地點只要在區域加 `spots`／可互動物件，生活引擎就會使用。
+- **第五階段完成（0.5.0-alpha）**：世界地圖與 7 個可進入的地點（晴日島、我的家、商店街、咖啡館、圖書館、苔光森林、星砂海灘；風車丘、遊樂園標示未開放）、跨地點 OC 自主生活與跟隨、統一互動設施、每個地點各自的佈置（復原／重做／旋轉／縮放／掛牆／收回）、釣魚／料理／採集／種田／小生物小遊戲、統一物品系統、雙模式背包與拖曳使用、每個 OC 的飲食喜好、工坊商品上架、7 間商店、星幣經濟與交易帳本、地點事件與回憶、圖鑑與探索進度。完成紀錄、測試與未完成項目：`docs/phase5-report.md`。規格：`docs/world-map.md`、`docs/items.md`、`docs/economy.md`。
+- 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
@@ -24,10 +25,14 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/art/             vec.js vchar.js（第二階段 rig，NPC 圖示仍用）rig.js（擴充 rig：比例、五官、部件錨點）style.js（物品目錄、預設外觀）
   js/char/            assets.js（IndexedDB 素材）model.js（角色資料 v2、性格→行為、成長）anim.js（動畫文件、播放、fallback）render.js（統一繪製）io.js（解碼、Sprite Sheet、ZIP、.ocpack）
   js/world/           models.js（3D 模型庫）env.js（光照/天氣/特效）world.js（引擎：鏡頭、導航 A*、看板角色、輸入、拾取、佈置）areas.js（晴日島、苔光森林）
+  js/items/           art.js（原創程序物品圖示）items.js（OC.Items 物品目錄／搜尋／工坊商品、OC.Taste 飲食喜好）tx.js（OC.Tx 唯一交易流程＋帳本）shops.js（OC.Shops 商店、價格、收入）
+  js/world/           models2.js（室內、商店、海灘、菜園等模型）areas2.js（家、咖啡館、圖書館、商店街、海灘＋島/森林的菜園、釣魚、採集、小生物）places.js（OC.Places 地點登記、移動時間、菜園、採集、魚表、每個地點的房間）
   js/ui/              ui.js（DOM/圖示/表單/提示）kit.js（色環、滑桿、標籤、復原）pages.js（一般頁面）charedit.js（編輯區塊＋預覽舞台）creator.js（創角流程）
                       charpages.js（角色列表/檔案/編輯器/工坊/桌寵）library.js（匯入與素材庫）paint.js（繪畫工坊）animstudio.js（動畫工作室）
                       lifeui.js（OC 互動選單、通知、檔案「生活/關係/回憶」、生活設定、對話編輯、開發者診斷）
+                      p5pages.js（世界地圖、背包、商店、圖鑑、工坊商品、交易紀錄、OC.Use 使用物品、飲食喜好）worldui.js（OC.WorldUI 移動、抵達、設施點擊）minigames.js（OC.Mini 釣魚、料理、小生物）
   tests/life/         run.js + harness.js：第四階段情境測試 1–13（Playwright；不打包進 APK）
+  tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/fixtures/     匯入測試素材（PNG 序列、GIF、APNG、WebP、Sprite Sheet、ZIP、損壞檔；不打包進 APK）
   js/app.js           外殼：開機、主題、效能模式、HUD、導覽、快速背包、互動、對話、佈置、桌寵輸出、OCApp 原生掛鉤
 android/              Gradle 專案。app（WebView 外殼 + bridge + overlay 桌寵）；core:*（純 Kotlin，含 PetBrain）
@@ -40,9 +45,10 @@ deliverables/         apk/（Debug APK + sha256）phase2/（截圖）videos/ ove
 ```bash
 cd game && python3 -m http.server 8765        # 開 http://localhost:8765/index.html（手機尺寸 393×852 檢視）
 node game/tests/life/run.js [1 2 …]           # 第四階段情境測試（先開上面的 http.server；約 15 分鐘；截圖存 deliverables/phase4/）
+node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約 15–20 分鐘；截圖存 deliverables/phase5/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（18 個）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.4.0-alpha-debug.apk（複製一份到 deliverables/apk/）
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.5.0-alpha-debug.apk（複製一份到 deliverables/apk/）
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -56,7 +62,14 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 天氣/時間變化用指數趨近（τ≈1.6s），不可閃光、不可晃鏡頭；霧永遠開著（晴天推遠），切天氣不重新編譯著色器。
 - 效能模式（高/平衡/省電/自訂）必須真的改變：像素比、陰影、特效、草、fps 上限、看板解析度、點光源。
 - 3D 模型：倒角/車床柔邊、登記碰撞（`ctx.block`）、共用幾何與材質快取；整島 ≲ 250 draw calls。
-- 存檔 schema `v:3`（`store.js` 的 `fresh()`；角色欄位由 `OC.Chars.normalize()` 補預設值）。v1、v2 存檔會自動遷移，**不可移除 `migrateV1` / `migrateV2` / `migrateLegacyAnims`**。
+- 存檔 schema `v:4`（`store.js` 的 `fresh()`；角色欄位由 `OC.Chars.normalize()` 補預設值）。v1–v3 存檔會自動遷移，**不可移除 `migrateV1` / `migrateV2` / `migrateV3` / `migrateLegacyAnims`**。
+- **物品只有一個登記表 `OC.Style.ITEMS`**（`OC.Items` 擴充）；庫存只有 `save.inv`。**星幣與物品數量只能經 `OC.Tx.run(key, {pay, get}, reason)` 改變**（驗證、原子、防重複 key、帳本）；不要直接呼叫 `Store.add/take/coins`。會重複發生的獎勵一定要用固定 key（例如 `forage:<地點>:<點>:<日>`）。
+- 生活模擬模式的背包**不能新增或修改物品**；工坊商品只登記並上架，**不產生庫存**。
+- 使用物品走 `OC.Use`：吃／喝要等動畫完成、沒被打斷才扣；失敗或取消不扣。家具按「放這裡」才扣。
+- 飲食喜好走 `OC.Taste`；玩家設定（`src:'player'`、`locked`）**絕不能**被品嚐改寫。
+- 地點：登記在 `OC.Places.P`、場景在 `OC.Areas`；每個地點的家具存在 `save.rooms[地點]`（`OC.Places.room(id)`）。切換地點用 `OC.WorldUI.travel()`，不重建 renderer／UI／AI。不在玩家身邊的 OC 只走 `Brain.abstractStep`（低頻），抵達經 `App.syncPresence()` → `Brain.arrived()`。
+- 未開放的地點保持 `locked` 並顯示原因；開放的地點一定要能進入、有可互動設施（測試 1b）。
+- 小遊戲（`OC.Mini`）用真實輸入；`OC.Mini.state` 是給測試機器人讀的唯讀狀態，不要讓它影響遊戲。
 - **生活模擬只有一個時鐘**：所有需求、活動長度、冷卻用 `OC.Sim` 的遊戲分鐘（固定步長，app 迴圈餵現實秒數）；走路效果依距離。不要用 `setInterval`/幀數驅動生活邏輯，否則速度、fps、背景會改變結果。
 - 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、最多 8 小時、不觸發事件、不給獎勵、摘要回憶有 key）。
 - 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。
