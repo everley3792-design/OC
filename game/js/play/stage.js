@@ -82,7 +82,7 @@
       const [k, who] = st, a = who && cast[who] ? cast[who].a : null, c = who && cast[who] ? cast[who].c : null;
       if (who && cast[who] && !cast[who].a) continue;
       switch (k) {
-        case 'cam': if (!cur.skip && !reduce() && a && W().camTo) W().camTo(a, st[2]); break;
+        case 'cam': if (!cur.skip && !reduce() && a && W().camTo) { W().camTo(a, Math.max(+st[2] || 2.3, (cur.zoom0 || W().zoom) * 1.15)); cur.cammed = true; } break;
         case 'face': if (a) { const t = st[2] === 'player' ? A().player : cast[st[2]] && cast[st[2]].a; if (t && t !== a) B().face(a, t); } break;
         case 'walk': if (a && !cur.skip) await walkNear(a); break;
         case 'anim': if (a) W().setAction(a, st[2], { dur: (st[3] || 1.4) / (cur.skip ? 4 : 1), priority: 9 }); if (!cur.skip) await sleep(Math.min(st[3] || 1.4, 0.9) * 0.7); break;
@@ -104,33 +104,39 @@
     return new Promise((res) => { let done = false; const fin = () => { if (!done) { done = true; a.run = false; res(); } }; a.run = true; if (!W().walkTo(a, p.x, p.y, fin)) fin(); setTimeout(fin, 4500); if (cur) cur.wake = fin; });
   }
   /** play a performance; resolves when done (or skipped). Never changes data. */
+  let pumping = false, baseZoom = null, lastEnd = 0;
   function perform(kind, o = {}) {
-    return new Promise((resolve) => { queue.push({ kind, o, resolve }); if (!cur) next(); });
+    return new Promise((resolve) => { queue.push({ kind, o, resolve }); if (!pumping) next(); });
   }
   async function next() {
-    const job = queue.shift(); if (!job) return;
+    if (pumping) return; const job = queue.shift(); if (!job) return; pumping = true;
+    try { await run(job); } finally { pumping = false; if (queue.length) setTimeout(next, 120); }
+  }
+  async function run(job) {
     const { kind, o } = job, def = STAGES[kind], c = o.oc && OC.Chars.get(o.oc), a = o.oc && A().actorOf(o.oc);
     // no actor on screen → only the card (if any)
     const cardData = makeCard(kind, o);
-    if (!def || !a || a.hidden || A().curTab !== 'island') { if (cardData) OC.Stage.card(cardData); job.resolve(false); next(); return; }
+    if (!def || !a || a.hidden || A().curTab !== 'island') { if (cardData) OC.Stage.card(cardData); job.resolve(false); return; }
+    // a special event owns this OC right now → wait a little (the performance is only visual; data is already applied)
+    for (let i = 0; i < 40 && B().get(o.oc) && B().get(o.oc).holds.has('event'); i++) await new Promise((r) => setTimeout(r, 250));
     const variant = def.steps[style(c)] || def.steps.plain;
-    cur = { kind, skip: false, speed: 1, card: cardData };
+    const mine = (cur = { kind, skip: false, speed: 1, card: cardData });
     const cast = { a: { a, c } }; if (o.other && A().actorOf(o.other)) cast.b = { a: A().actorOf(o.other), c: OC.Chars.get(o.other) };
     const vars = Object.assign({ item: o.item || '', react: o.react || 'happy', fx: o.fx || 'sparkle' }, o.vars || {});
     const ids = Object.values(cast).map((x) => x.c && x.c.id).filter(Boolean);
     for (const id of ids) B().hold(id, 'stage');
     const important = !!def.important && !o.small;
-    const zoom0 = W().zoom;
+    if (baseZoom == null || Date.now() - lastEnd > 2500) baseZoom = W().zoom;   // chained performances return to the same view
+    const zoom0 = baseZoom; mine.zoom0 = zoom0;
     if (important) controls(true);
     try { await runSteps(variant, cast, vars); }
     catch (e) { console.error('[stage]', kind, e); }
     finally {
       if (important) controls(false);
-      if (W().camTo && W().camTarget) W().camTo(null, zoom0);
+      if (W().camTo && mine.cammed) W().camTo(null, zoom0);
       for (const id of ids) B().unhold(id, 'stage');
       for (const x of Object.values(cast)) if (x.a && x.a.overrides) { delete x.a.overrides.held; x.a.key = ''; }
-      const was = cur; cur = null; job.resolve(!was.skip);
-      setTimeout(next, 120);
+      if (cur === mine) cur = null; lastEnd = Date.now(); job.resolve(!mine.skip);
     }
   }
 
@@ -178,5 +184,5 @@
     setTimeout(close, o.ms || 3000);
   }
 
-  OC.Stage = { perform, card, fx, tick, skip, style, STAGES, controls, get busy() { return !!cur; }, get queue() { return queue.length; } };
+  OC.Stage = { perform, card, fx, tick, skip, style, STAGES, controls, get busy() { return pumping || !!cur; }, get queue() { return queue.length; } };
 })();

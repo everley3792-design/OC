@@ -1,76 +1,35 @@
 {
- "at": "2026-11-07T22:36:05.241Z",
+ "at": "2026-11-07T22:43:04.740Z",
  "results": [
   {
-   "name": "3a 藝術 Lv.1 前不會畫素描，升級後解鎖新活動",
+   "name": "8a 吃到最愛：期待（吃）→ 品嚐停頓 → 驚喜反應（多段動作，不是單一彈跳）",
    "ok": true,
-   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+   "detail": "think → eat → taste → surprised → yum → dance"
   },
   {
-   "name": "3b 料理升級解鎖新食譜（Lv.1 鬆餅布丁、Lv.2 咖哩水果塔）",
+   "name": "8b 音效跟著演出（咀嚼 → 好吃）",
    "ok": true,
-   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+   "detail": "sparkle,chime,chew,jump,yum"
   },
   {
-   "name": "3c 料理清單：學會的可以做，還沒學會的明確顯示「還不會」與需要的等級",
+   "name": "8c 新動作有連續的姿勢變化（預備→動作→收尾）",
    "ok": true,
-   "detail": "晴日咖哩白米×1、馬鈴薯×1、胡蘿蔔×1材料不足 | 鹽烤魚料理 Lv.3 學會（麻糬現在 Lv.2）還不會"
+   "detail": "77 種姿勢"
   },
   {
-   "name": "3d 升級後生活 AI 會把新活動列入考慮",
-   "ok": true
-  },
-  {
-   "name": "3e 技能升級有演出卡片（含解鎖內容）",
+   "name": "8d 同一個「開心」，不同個性的姿勢不同（幅度、手勢、臉紅），不是只改速度",
    "ok": true,
-   "detail": "麻糬的藝術 Lv.1 | 麻糬的料理 Lv.2"
+   "detail": "{\"麻糬\":[5.5,-1.92,0],\"栗子\":[6.1,-1.84,0],\"小空\":[1.6,-0.35,0.8]}"
   },
   {
-   "name": "5a 新取得的物品寫入圖鑑；用掉後仍保留發現紀錄（曾經持有）",
+   "name": "10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅",
    "ok": true,
-   "detail": "{\"d\":2,\"star\":true,\"past\":true}"
+   "detail": "{\"d0\":96,\"d\":51,\"z0\":1.9,\"z\":2.3}"
   },
   {
-   "name": "5b 圖鑑分清楚：未發現（剪影）／看過（商店）／持有中／曾經持有",
+   "name": "10b 演出中角色被保留（不會被自主行為打斷），結束後鏡頭與保留都恢復",
    "ok": true,
-   "detail": "{\"spotted\":8,\"past\":1}"
-  },
-  {
-   "name": "5c 地點、活動、特殊事件也在圖鑑",
-   "ok": true
-  },
-  {
-   "name": "6a 達成條件後自動解鎖（第一盤料理、三顆星）",
-   "ok": true,
-   "detail": "{\"cook1\":true,\"star3\":true}"
-  },
-  {
-   "name": "6b 領取成就獎勵入帳；同一個成就不能領兩次",
-   "ok": true,
-   "detail": "400 → 500"
-  },
-  {
-   "name": "6c 已領的再領全部被拒絕",
-   "ok": true,
-   "detail": "再領成功 0 次"
-  },
-  {
-   "name": "6d 隱藏成就顯示提示但不洩漏內容",
-   "ok": true
-  },
-  {
-   "name": "7a 「成長」顯示的技能等級＝角色資料（同一份）",
-   "ok": true,
-   "detail": "0,0,0,0,0,0,0,0,0"
-  },
-  {
-   "name": "7b 「日誌」直接讀角色回憶（新回憶立即出現，重要的有故事時間軸）",
-   "ok": true,
-   "detail": "2 → 3"
-  },
-  {
-   "name": "7c 回憶可以珍藏",
-   "ok": true
+   "detail": "{\"zoom\":1.9090664840882703,\"held\":[],\"ui\":false,\"state\":\"done\"}"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",
