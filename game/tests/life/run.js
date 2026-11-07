@@ -181,7 +181,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     // ================= 6. multi-OC movement / furniture / social without problems =================
     if (want(6)) {
       await H.boot(page, { chars: 6, seed: 5 });
-      await setHour(page, 15);
+      await setHour(page, 15); await wait(page, 1500);   // let the jump settle (activities ended by the clock jump finish on the next step)
       const r = await page.evaluate(async () => {
         const out = { overlap: 0, teleport: 0, stuck: 0, endless: 0, samples: 0, worst: [] };
         const last = {}, goSince = {};
@@ -192,7 +192,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
             const p = last[b.id]; if (p && !b.a.hidden && !p.hidden && b.a.mode !== 'sit') { const d = Math.hypot(b.a.x - p.x, b.a.y - p.y); if (d > 25 && !b.holds.has('drag')) { out.teleport++; out.worst.push(`${b.id} jump ${d.toFixed(0)}`); } }
             last[b.id] = { x: b.a.x, y: b.a.y, hidden: b.a.hidden };
             if (b.st === 'go') { goSince[b.id] = goSince[b.id] || performance.now(); if (performance.now() - goSince[b.id] > 62000) out.stuck++; } else goSince[b.id] = 0;
-            if (b.st === 'do' && b.until && OC.Sim.now() > b.until + 30 && b.act !== 'sleep') out.endless++;
+            if (b.st === 'do' && b.until && OC.Sim.now() > b.until + 30 && b.act !== 'sleep') { out.endless++; if (out.worst.length < 8) out.worst.push(`endless ${b.act} over ${(OC.Sim.now() - b.until).toFixed(0)} holds ${[...b.holds]} aligning ${!!b.aligning} path ${!!b.a.path} t0 ${(OC.Sim.now() - b.t0).toFixed(0)} manual ${!!b.manual}`); }
           }
           const still = bs.filter((b) => !b.a.hidden && !b.a.path && b.st !== 'go');
           for (let x = 0; x < still.length; x++) for (let y = x + 1; y < still.length; y++) { const d = Math.hypot(still[x].a.x - still[y].a.x, still[x].a.y - still[y].a.y); if (d < 6) { out.overlap++; if (out.worst.length < 8) { const info = (b) => { const cv = OC.Brain.convs.find((c) => c.a === b || c.b === b || (c.more || []).includes(b)); return `${b.st}/${b.act || ''}/${b.slot ? b.slot.k : ''}/${cv ? cv.kind + ':' + cv.st + (cv.a === b ? 'A' : 'B') : ''}@${Math.round(b.a.x)},${Math.round(b.a.y)}`; }; out.worst.push(`overlap ${d.toFixed(1)} ${info(still[x])} | ${info(still[y])}`); } } }
@@ -230,7 +230,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       check('7b 拖曳：暫停 → 放下有反應 → 恢復自主', drag.h1 && dragAfter === 0, drag);
       await page.evaluate((id) => OC.Pages.open('charedit', { id }), id); await wait(page, 1200);
       const ed = await page.evaluate((id) => [...OC.Brain.get(id).holds], id);
-      await page.evaluate(() => OC.UI.back()); await wait(page, 1200);
+      await page.evaluate(() => { for (let n = 0; n < 6 && OC.Pages.pages.charedit.el.classList.contains('open'); n++) OC.UI.back(); }); await wait(page, 1200);
       const ed2 = await page.evaluate((id) => OC.Brain.get(id).holds.size, id);
       check('7c 打開編輯器（換裝）時暫停、關閉後恢復', ed.includes('editor') && ed2 === 0, { ed, ed2 });
       await page.evaluate((id) => OC.LifeUI.chat(id), id); await wait(page, 500);
@@ -288,7 +288,13 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await H.boot(page, { chars: 3, seed: 3 });
       await setHour(page, 13);
       await wait(page, 6000);
-      await until(page, () => Object.values(OC.Brain.brains).some((b) => b.st === 'do' && b.until > OC.Sim.now() + 40 && !b.manual), null, 60000);
+      // make sure one OC is in the middle of a long activity when the game is closed (reading on the nearest seat)
+      const rid = await page.evaluate(() => OC.Store.s.roster[2]);
+      await until(page, () => !OC.Events.current, null, 30000);
+      await freeze(page, [rid], { food: 85, sleep: 85, energy: 75, fun: 40, social: 70, comfort: 60 });
+      await page.evaluate((id) => { const b = OC.Brain.get(id); const slot = OC.Brain.aff.flatMap((o) => o.slots).filter((s) => s.obj.verbs.includes('read') && OC.Brain.free(s, id)).sort((p, q) => Math.hypot(p.ax - b.a.x, p.ay - b.a.y) - Math.hypot(q.ax - b.a.x, q.ay - b.a.y))[0]; OC.Brain.start(b, 'read', { slot }); }, rid);
+      await until(page, (id) => { const b = OC.Brain.get(id); return b.st === 'do' && b.act === 'read'; }, rid, 40000);
+      await page.evaluate((id) => { const b = OC.Brain.get(id); b.until = OC.Sim.now() + 120; OC.Chars.get(id).life.cur.until = b.until; }, rid);
       const before = await page.evaluate(() => { OC.Mind.relPair(OC.Store.s.roster[1], OC.Store.s.roster[2], { aff: 12 }); OC.Store.persist(); return { rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), cur: Object.values(OC.Brain.brains).filter((b) => b.st === 'do' && !b.manual).map((b) => b.id + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }; });
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 }); await wait(page, 800);
       const after = await page.evaluate(() => ({ rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), resumed: Object.values(OC.Brain.brains).map((b) => b.st + ':' + b.act), resumedIds: Object.values(OC.Brain.brains).filter((b) => b.st === 'do').map((b) => b.id + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }));

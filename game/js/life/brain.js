@@ -566,7 +566,7 @@
       for (const x of [conv.a, conv.b].concat(conv.more || [])) {
         if (!x) continue; if (x.conv === conv) x.conv = null; if (x.invited === conv) x.invited = null;
         if (x.st === 'social') {
-          if (x === conv.b && x.prevSt === 'do' && x.act && conv.st !== 'joint') { x.st = 'do'; anim(x); }
+          if (x === conv.b && x.prevSt === 'do' && x.act && conv.st !== 'joint') { x.st = 'do'; if (x.until != null && Sim().now() >= x.until) finish(x, '聊完時間到了'); else anim(x); }
           else { if (conv.st === 'joint') { const c = charOf(x); if (c && conv.started) { c.life.rec.social = (c.life.rec.social || 0) + 1; M().record(c, conv.joint, Sim().now() - (conv.until - conv.dur), { place: x.slot && x.slot.obj.id, placeZh: x.slot && x.slot.obj.zh }); M().wishEvent(c, { type: 'act', act: conv.joint }); } cleanup(x); }
             x.st = 'think'; x.thinkAt = nowR() + 1 + Math.random() * 1.5; if (x.a && x.a.act && x.a.act.priority <= 4) Wd().setAction(x.a, 'idle'); }
         }

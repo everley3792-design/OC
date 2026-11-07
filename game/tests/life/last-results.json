@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T13:16:24.379Z",
+ "at": "2026-11-07T13:50:15.797Z",
  "results": [
   {
    "name": "6a 6 個 OC 同時生活 30 秒：沒有瞬移",
@@ -11,9 +11,9 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 0,
-    "decisions": 36,
-    "convs": 6
+    "res": 1,
+    "decisions": 23,
+    "convs": 5
    }
   },
   {
@@ -31,9 +31,9 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 0,
-    "decisions": 36,
-    "convs": 6
+    "res": 1,
+    "decisions": 23,
+    "convs": 5
    }
   },
   {
