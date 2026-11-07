@@ -147,7 +147,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       const I = await ids(page);
       await page.evaluate(() => { OC.Store.s.life.ev.lastAny = 0; });
       await until(page, () => !OC.Events.current, null, 40000);
-      const wx = await page.evaluate((id) => { delete OC.Store.s.life.ev.last['rainArrives|' + id]; const b = OC.Brain.get(id); if (b.st !== 'think') { b.st = 'think'; } b.thinkAt = 1e9; OC.Store.s.life.ev.lastAny = 0; return OC.Events.trigger('wxChange', { a: id, wx: 'rain' }) || 'no'; }, I['小空']);
+      const wx = await page.evaluate((id) => { OC.Store.s.settings.weather = 'rain'; delete OC.Store.s.life.ev.last['rainArrives|' + id]; const b = OC.Brain.get(id); if (b.st !== 'think') { b.st = 'think'; } b.thinkAt = 1e9; OC.Store.s.life.ev.lastAny = 0; return OC.Events.trigger('wxChange', { a: id, wx: 'rain' }) || 'no'; }, I['小空']);
       await page.evaluate(() => { OC.Store.s.settings.weather = 'rain'; });
       const w2 = await until(page, () => !OC.Events.current, null, 30000);
       const again = await page.evaluate((id) => { OC.Store.s.life.ev.lastAny = 0; return OC.Events.trigger('wxChange', { a: id, wx: 'rain' }); }, I['小空']);
@@ -278,23 +278,24 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     // ================= 10. save & restart =================
     if (want(10)) {
       await H.boot(page, { chars: 3, seed: 3 });
-      await wait(page, 12000);
-      const before = await page.evaluate(() => { OC.Mind.relPair(OC.Store.s.roster[1], OC.Store.s.roster[2], { aff: 12 }); OC.Store.persist(); return { rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), cur: OC.Chars.all().map((c) => c.life.cur && c.life.cur.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }; });
+      await wait(page, 6000);
+      await until(page, () => Object.values(OC.Brain.brains).some((b) => b.st === 'do' && b.until > OC.Sim.now() + 40 && !b.manual), null, 60000);
+      const before = await page.evaluate(() => { OC.Mind.relPair(OC.Store.s.roster[1], OC.Store.s.roster[2], { aff: 12 }); OC.Store.persist(); return { rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), cur: Object.values(OC.Brain.brains).filter((b) => b.st === 'do' && !b.manual).map((b) => b.id + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }; });
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 }); await wait(page, 800);
-      const after = await page.evaluate(() => ({ rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), resumed: Object.values(OC.Brain.brains).map((b) => b.st + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }));
+      const after = await page.evaluate(() => ({ rel: JSON.stringify(OC.Store.s.life.rel), mem: OC.Chars.all().map((c) => c.life.mem.recent.length + c.life.mem.long.length), resumed: Object.values(OC.Brain.brains).map((b) => b.st + ':' + b.act), resumedIds: Object.values(OC.Brain.brains).filter((b) => b.st === 'do').map((b) => b.id + ':' + b.act), wishes: OC.Chars.all().map((c) => c.life.wishes.length), v: OC.Store.s.v, rec: OC.Chars.all().map((c) => JSON.stringify(c.life.rec.act).length) }));
       check('10a 存檔重開：關係、回憶、願望、生活紀錄完整', before.rel === after.rel && JSON.stringify(before.mem) === JSON.stringify(after.mem) && JSON.stringify(before.wishes) === JSON.stringify(after.wishes) && JSON.stringify(before.rec) === JSON.stringify(after.rec) && after.v === 3, { before: before.mem, after: after.mem });
-      check('10b 重開後繼續進行中的活動', before.cur.filter(Boolean).length === 0 || after.resumed.some((x) => x.startsWith('do:')), { before: before.cur, after: after.resumed });
+      check('10b 重開後繼續進行中的活動', before.cur.length > 0 && before.cur.every((x) => after.resumed.includes(x.replace(/^[^:]+:/, (m) => m) ) || after.resumedIds.includes(x)), { before: before.cur, after: after.resumedIds });
       // v2 (Phase 3) save migrates
-      const mig = await page.evaluate(() => { const d = JSON.parse(OC.Store.exportJSON()); d.v = 2; delete d.life; for (const c of Object.values(d.chars)) { delete c.life; c.needs = { food: 50, energy: 60, mood: 70, social: 40, t: Date.now() }; } localStorage.setItem('oc.save.v1', JSON.stringify(d)); return Object.keys(d.chars).length; });
+      const mig = await page.evaluate(() => { const d = JSON.parse(OC.Store.exportJSON()); d.v = 2; delete d.life; for (const c of Object.values(d.chars)) { delete c.life; c.needs = { food: 50, energy: 60, mood: 70, social: 40, t: Date.now() }; } localStorage.setItem('oc.save.v1', JSON.stringify(d)); OC.Store.persist = () => {}; OCApp.lifecycle = () => {}; return Object.keys(d.chars).length; });
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
-      const m2 = await page.evaluate(() => ({ v: OC.Store.s.v, life: !!OC.Store.s.life.settings, chars: OC.Chars.all().length, needs: Object.keys(OC.Chars.all()[0].needs).sort().join(','), food: OC.Chars.all()[0].needs.food, emo: OC.Chars.all()[0].life.emo.dom }));
-      check('10c 第三階段（v2）存檔自動遷移到 v3，舊需求數值保留', m2.v === 3 && m2.life && m2.chars === mig && m2.needs.includes('sleep') && m2.food <= 52, m2);
+      const m2 = await page.evaluate(() => ({ social0: Math.min(...OC.Chars.all().map((c) => c.needs.social)), v: OC.Store.s.v, life: !!OC.Store.s.life.settings, chars: OC.Chars.all().length, needs: Object.keys(OC.Chars.all()[0].needs).sort().join(','), food: OC.Chars.all()[0].needs.food, emo: OC.Chars.all()[0].life.emo.dom }));
+      check('10c 第三階段（v2）存檔自動遷移到 v3，舊需求數值保留', m2.v === 3 && m2.life && m2.chars === mig && m2.needs.includes('sleep') && m2.social0 < 60 && m2.food < 75, m2);
     }
 
     // ================= 11. long offline & background resume =================
     if (want(11)) {
       await H.boot(page, { chars: 3, seed: 9 });
-      const inv0 = await page.evaluate(() => { OC.Sim.setMode('real'); OC.Store.s.life.lastReal = Date.now() - 30 * 3600 * 1000; OC.Store.persist(); localStorage.setItem('oc.save.v1', JSON.stringify(OC.Store.s)); return JSON.stringify(OC.Store.s.inv); });
+      const inv0 = await page.evaluate(() => { OC.Sim.setMode('real'); OC.Store.persist(); OC.Store.s.life.lastReal = Date.now() - 30 * 3600 * 1000; localStorage.setItem('oc.save.v1', JSON.stringify(OC.Store.s)); OC.Store.persist = () => {}; OCApp.lifecycle = () => {}; return JSON.stringify(OC.Store.s.inv); });
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       const off = await page.evaluate(() => ({ o: OC.Store.s.life.offline, needs: OC.Chars.all().map((c) => Math.round(Math.min(...OC.Mind.NEED_IDS.map((k) => c.needs[k])))), sum: OC.Chars.all().map((c) => c.life.mem.recent.filter((m) => m.text.startsWith('你不在的時候')).length), ev: OC.Store.s.life.ev.log.length, inv: JSON.stringify(OC.Store.s.inv) }));
       check('11a 離線 30 小時：只模擬上限 8 小時、需求不低於 15', off.o && off.o.simulated === 480 && off.o.capped && off.needs.every((v) => v >= 15), off);

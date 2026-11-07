@@ -119,7 +119,7 @@
     const c = Ch().get(id), a = A().actorOf(id), pl = A().player; if (!c || !a || !pl) return;
     const wasAsleep = B().get(id) && B().get(id).act === 'sleep' && B().get(id).st === 'do';
     B().hold(id, 'call'); if (wasAsleep) M().feel(c, 'annoyed', 0.3, '被叫醒');
-    const side = a.x < pl.x ? -1 : 1, p = OC.World.nearestWalkable(pl.x + side * 22, pl.y + 2, 20);
+    const side = a.x < pl.x ? -1 : 1, p = OC.World.nearestWalkable(pl.x + side * 26, pl.y + 2, 20);
     const arrive = () => { B().face(a, pl); B().face(pl, a); react(c, a, 'call'); M().player(c, { fam: 1 }); setTimeout(() => B().unhold(id, 'call'), 7000); };
     if (p && Math.hypot(a.x - p.x, a.y - p.y) > 8) { a.run = true; if (!OC.World.walkTo(a, p.x, p.y, () => { a.run = false; arrive(); })) { a.run = false; toast('牠過不來', 'info'); B().unhold(id, 'call'); } } else arrive();
   }

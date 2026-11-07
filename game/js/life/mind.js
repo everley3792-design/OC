@@ -66,7 +66,6 @@
     const target = clamp(22 + 0.55 * avg + 25 * val + base);
     n.mood = clamp(n.mood + (target - n.mood) * (1 - Math.exp(-g / 90)));
     if (ctx.offline && n.mood < 15) n.mood = Math.max(n.mood, 15);
-    n.t = Date.now();
   }
   /** instant change (eating an item, being petted…) */
   function needs(c, delta, why) { for (const k of Object.keys(delta)) if (c.needs[k] != null) c.needs[k] = clamp(c.needs[k] + delta[k]); if (why) note(c, 'need', `${why}：${Object.entries(delta).map(([k, v]) => `${k}${v > 0 ? '+' : ''}${Math.round(v)}`).join(' ')}`); St.touch('needs', { id: c.id }); }

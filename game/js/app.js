@@ -656,6 +656,7 @@
     const pos = S().pos || {}; loadArea(OC.Areas[pos.area] ? pos.area : 'isle', pos.area ? pos : null);
     applyPerf(); applyControl(); syncTreeFruit(); tab('island'); updateHUD(); Gm.todayQuests(); Gm.checkAch();
     if (!S().stats.tutorial) { S().stats.tutorial = 1; St.touch(); setTimeout(() => toast('點地面移動・拖曳畫面看看四周・兩指縮放', 'hand'), 900); setTimeout(() => toast('點果樹搖一搖、點居民聊天、右下角是快速背包', 'info'), 4200); }
+    last = lastSim = performance.now();   // boot time is not simulated time
     window.__ocReady = true;
   }
 

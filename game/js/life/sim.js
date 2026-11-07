@@ -55,10 +55,12 @@
   /** feed real seconds (any frame rate); large gaps become an abstract catch-up */
   function update(realDt) {
     if (!S() || !L()) return;
-    if (realDt > 3) { catchUp('gap'); return; }
-    acc += Math.max(0, realDt); let n = 0;
-    while (acc >= STEP && n++ < 25) { acc -= STEP; step(rate() * STEP); }
-    if (acc > STEP * 25) acc = 0;     // never spiral after a long stall
+    // a long gap while the app was "running" is a stall (slow frame), not an absence — app pause/resume handles absences.
+    // real/preset clocks re-sync from the device clock; the cycle clock simulates the stall (max 30 s) step by step
+    if (realDt > 3 && mode() !== 'cycle') { catchUp('gap'); return; }
+    acc += Math.min(30, Math.max(0, realDt)); let n = 0;
+    while (acc >= STEP && n++ < 160) { acc -= STEP; step(rate() * STEP); }
+    if (acc > STEP * 160) acc = 0;     // never spiral
   }
   /** run N full steps headlessly (tests / diagnostics). gm = game minutes to simulate */
   function advance(gm) { const per = rate() * STEP; let left = gm; while (left > 1e-9) { const g = Math.min(per, left); step(g); left -= g; } }

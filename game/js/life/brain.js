@@ -73,6 +73,7 @@
     a.brain = b; b.lastXY = { x: a.x, y: a.y };
     // resume an activity that was running (reload / coming back from another area)
     const cur = c.life.cur;
+    if (cur && (cur.until <= Sim().now() || !D().ACTS[cur.act])) c.life.cur = null;     // stale (finished while away)
     if (cur && cur.until > Sim().now() && D().ACTS[cur.act] && !b.manual) {
       const s = cur.slot && findSlot(cur.slot);
       if (s && free(s, c.id)) { reserve(s, c.id); a.x = s.ax; a.y = s.ay; b.act = cur.act; b.slot = s; b.until = cur.until; b.t0 = cur.t0 || Sim().now(); arrive(b, true); }
@@ -84,7 +85,7 @@
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
   const charOf = (b) => OC.Chars.get(b.id);
-  const available = (b) => b && b.a && !b.holds.size && b.st !== 'social' && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
+  const available = (b) => b && b.a && !b.holds.size && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
 
   // ---------------- scoring ----------------
   const NEED_W = { food: 1.4, sleep: 1.3, energy: 1.0, fun: 0.9, social: 0.9, comfort: 0.6, interest: 0.7, active: 0.7 };
@@ -401,7 +402,7 @@
       return true;
     },
     besideSpot(ba, bb) {
-      const o = bb.a, side = ba.a.x < o.x ? -1 : 1, cands = [[side * 22, 2], [-side * 22, 2], [0, 18], [side * 18, -12]];
+      const o = bb.a, side = ba.a.x < o.x ? -1 : 1, cands = [[side * 26, 2], [-side * 26, 2], [0, 20], [side * 20, -14]];
       for (const [dx, dy] of cands) { const p = Wd().nearestWalkable(o.x + dx, o.y + dy, 8); if (p && clearPoint(p.x, p.y, ba.id, 12) && Math.hypot(p.x - o.x, p.y - o.y) > 14) return p; }
       return null;
     },
