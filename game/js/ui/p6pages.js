@@ -85,7 +85,7 @@
       const sig = [p.tab, p.achCat, JSON.stringify(S().play.q.list.map((x) => [x.key, x.prog.n, x.done, x.claimed])), JSON.stringify(S().play.q.chal), Object.keys(S().ach).length, JSON.stringify(S().play.ach), OC.Requests.list().map((r) => r.id + r.state).join(), S().coins, Object.keys(S().seen).length].join('|');
       if (same(p, sig)) return;
       p.tabs.querySelectorAll('button').forEach((b) => { const n = { quests: qc, req: ro, ach: ac }[b.dataset.v]; b.querySelector('.badge') && b.querySelector('.badge').remove(); if (n) b.append(h('span.badge', null, n)); });
-      p.head.replaceChildren(h('div.hub-head', null, h('div.grow', null, h('b', null, new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })), small('今天想做什麼都可以 — 任務只是靈感。')), h('div.hub-coins', null, icon('coin', 's'), h('b.num', null, S().coins.toLocaleString()))));
+      p.head.replaceChildren(h('div.hub-head', null, h('span.stk-pad', null, OC.UI.sticker(OC.Clock.phase() === 'night' ? 'moon' : 'sun')), h('div.grow', null, h('b', null, new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })), small('今天想做什麼都可以 — 任務只是靈感。')), h('div.hub-coins', null, OC.UI.sticker('coin', 's'), h('b.num', null, S().coins.toLocaleString()))));
       p.body.replaceChildren(p.tab === 'quests' ? questsTab(p) : p.tab === 'req' ? reqTab(p) : p.tab === 'ach' ? achTab(p) : collTab());
       const Gm = OC.Game;
       p.other.replaceChildren(h('div.list', null,

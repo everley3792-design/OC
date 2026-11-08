@@ -694,3 +694,8 @@ html.cinema #world-dof { display: none; }
   background: radial-gradient(circle at 26px 34px, var(--bg) 25px, transparent 26px) 0 0 / 58px 34px repeat-x, radial-gradient(circle at 26px 34px, var(--bg) 17px, transparent 18px) 29px 6px / 58px 34px repeat-x; }
 .onb.creator > * { position: relative; z-index: 1; }
 .intro-card { border-radius: var(--r-xl) !important; box-shadow: var(--hl), 0 4px 0 var(--lip), var(--shadow-3) !important; }
+/* profile hero: the OC stands on a soft round stage under a little sky */
+.hero .portrait { background: radial-gradient(circle at 50% 78%, var(--sun-soft) 0 30%, transparent 31%), linear-gradient(180deg, var(--sky-mid), var(--surface) 85%); border-radius: var(--r-l); box-shadow: inset 0 -3px 0 var(--line); }
+.portrait { background: radial-gradient(circle at 50% 80%, var(--sun-soft) 0 28%, transparent 29%), linear-gradient(180deg, var(--sky-mid), var(--surface) 85%); }
+.hero h2 { font-size: 26px; letter-spacing: .02em; }
+.hub-head .stk-pad { background: var(--sun-soft); }

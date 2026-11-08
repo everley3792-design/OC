@@ -14,6 +14,7 @@
 - **第七階段（0.7.0-alpha，程式完成、未經實機驗證）**：真正的 Android 系統懸浮桌寵——多隻（≤3）、每隻獨立小視窗、Shimeji 行為（走／跑／跳／坐／睡／爬牆／倒吊／掉落／偷看）、觸控（點、雙擊、長按選單、撫摸、拖曳丟出、觸控穿透）、玩家逐格動畫完整輸出到桌面、依個性／情緒／回憶的台詞、桌寵之間依關係互動、與遊戲的事件同步（不重複衰減、不重複獎勵）、App 情境對話（使用情況存取，只知道套件名稱）、番茄鐘／休息提醒／鬧鐘／待辦／筆記、主畫面小工具、桌寵管理中心與診斷；targetSdk 35、前景服務類型 specialUse。完成紀錄（已驗證／需實機／部分／未完成）：`docs/phase7-report.md`。規格：`docs/android-native.md`、`docs/permissions.md`、`docs/backup.md`、`docs/performance.md`、`docs/compat-test-plan.md`。
 - **8.0（0.8.0-alpha）全面重構**：居民改為選用（新遊戲只有玩家自己的 OC）、Logo＋真 3D 開場＋歡迎＋登場＋OC 帶的教學、說話系統（自稱、稱呼、句尾頻率、多口頭禪、禁用詞、專屬稱呼）、11 種新特質、匯入原圖保留與依顯示大小的角色貼圖、四種鏡頭模式與旋轉、環狀情境選單、直接撫摸／抱起／甩動角色、狀態卡、時間面板、分級觸覺、原創即時生成音樂、台詞改寫、響應式主畫面小工具。紀錄（問題→原因→修正→驗證）：`docs/v8-report.md`。
 - **0.9.0-alpha（打磨）**：15 個新的角色事件（含三段跨天小故事「秘密基地」，以旗標串接）、創角的 5 題性格問答與隨機性格、3D 環境生物（蝴蝶、鳥群、跳魚）、事件選項改寫共用定義的錯誤、重複圖鑑通知、設定的時間區塊改用時間面板。紀錄：`docs/v9-report.md`。
+- **10.0（0.10.0-alpha）美術與體驗重構**：「晴空玩具」Design System（白瓷玩具表面、長春花紫強調、珊瑚紅點、星空深色主題、計算出的彈簧動態）、原創貼紙圖示（`OC.UI.sticker`）、依參考圖重排的 HUD（頭像名牌、天氣膠囊、系統鍵、右側工具列、任務卡、互動鈕、白色大導覽列）、頁首雲邊天空、分類貼紙鈕、世界調色（暖主光／冷天光、金色午後、光暈、景深）、角色玩具光影、跳躍預備／回彈。規格：`docs/design-system.md`；紀錄：`docs/v10-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -31,7 +32,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/world/           models.js（3D 模型庫）env.js（光照/天氣/特效）world.js（引擎：鏡頭、導航 A*、看板角色、輸入、拾取、佈置）areas.js（晴日島、苔光森林）
   js/items/           art.js（原創程序物品圖示）items.js（OC.Items 物品目錄／搜尋／工坊商品、OC.Taste 飲食喜好）tx.js（OC.Tx 唯一交易流程＋帳本）shops.js（OC.Shops 商店、價格、收入）
   js/world/           models2.js（室內、商店、海灘、菜園等模型）areas2.js（家、咖啡館、圖書館、商店街、海灘＋島/森林的菜園、釣魚、採集、小生物）places.js（OC.Places 地點登記、移動時間、菜園、採集、魚表、每個地點的房間）
-  js/ui/              ui.js（DOM/圖示/表單/提示）kit.js（色環、滑桿、標籤、復原）pages.js（一般頁面）charedit.js（編輯區塊＋預覽舞台）creator.js（創角流程）
+  js/ui/              ui.js（DOM/圖示/表單/提示）stickers.js（OC.UI.sticker 彩色貼紙圖示、stickerOr）kit.js（色環、滑桿、標籤、復原）pages.js（一般頁面）charedit.js（編輯區塊＋預覽舞台）creator.js（創角流程）
                       charpages.js（角色列表/檔案/編輯器/工坊/桌寵）library.js（匯入與素材庫）paint.js（繪畫工坊）animstudio.js（動畫工作室）
                       lifeui.js（OC 互動選單、通知、檔案「生活/關係/回憶」、生活設定、對話編輯、開發者診斷）
                       p5pages.js（世界地圖、背包、商店、工坊商品、交易紀錄、OC.Use 使用物品、飲食喜好）worldui.js（OC.WorldUI 移動、抵達、設施點擊）minigames.js（OC.Mini 釣魚、料理、小生物）
@@ -67,7 +68,7 @@ node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（38 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.9.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.10.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -76,7 +77,9 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **座標**：遊戲邏輯一律用設計座標 (x, y, 層)；3D 由 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°` 對應。點擊螢幕＝設計座標（不用射線），一律經 `World.screenToDesign` / `screenDelta`（含鏡頭旋轉的反算）；碰撞框是「螢幕上直立」的。看板角色 `rotation.y = yaw` 面向鏡頭。可行走/層級/地面高度寫成解析函式（`OC.Areas.*`）。
 - **角色**是 2D 看板：只在量化姿勢改變時重畫紋理；呼吸/彈跳用網格變換。轉身用連續的 `face`/`back` 平滑趨近，不可瞬間翻轉。
 - **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
-- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個元件。
+- **10.0 Design System**（`docs/design-system.md`）：表面一律「白瓷＋模具邊」（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（長春花紫）＝可按／已選取，`--alert`＝紅點／新東西，`--sun`＝星幣／獎勵；按下用 `--t-press` 下沉、放開用 `--spring` 彈回，大面積（頁面、表單）用 `--spring-soft`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`（原創、48 格、左上光源），小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。
+- 世界調色（`html.grade`、`html.dof`、`--glow-*`）由效能模式決定：高＝調色＋景深、平衡＝調色、省電＝都關；景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
+- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個群組（名牌、天氣時間、系統鍵、右側工具列、任務卡＋互動、導覽列），不要在 HUD 重複導覽列已有的入口。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
 - **新遊戲不得自動加入玩家沒選的角色**：居民（`world.residents`）預設關閉；角色只由玩家建立、匯入或明確加入。
 - 開場／教學：自動化測試設 `localStorage['oc.skipIntro']='1'`（harness 預設）；`OC.Intro`、`OC.Tutorial` 的進度存在 `S.intro`。教學步驟必須由真實事件完成（`St.emit('menu:open' | 'touch:pet' | 'touch:land' | 'status:open' | 'time:panel' | 'cam:*')`）。
 - 角色觸碰走 `OC.Touch`（World 的 claim 掛鉤）：手指落在角色上就屬於角色，不移動鏡頭；放開後一定落在可走地面；資料變化只經既有 API（`LifeUI.pet`、`Brain.hold`、`Mind.feel`）。
