@@ -1,5 +1,5 @@
 {
- "at": "2026-11-08T04:31:00.405Z",
+ "at": "2026-11-08T05:13:37.009Z",
  "results": [
   {
    "name": "1a 不同個性的 OC 最想提出的請求不同",
@@ -9,7 +9,7 @@
   {
    "name": "1b 同一個請求，不同 OC 說法不同（聲線）",
    "ok": true,
-   "detail": "麻糬「我發現一件有趣的事！我想吃起司！」 栗子「肚子在說……它想吃起司！」 小空「（小聲）小、小聲說喔……我想吃起司。」"
+   "detail": "麻糬「我發現一件有趣的事！我想吃起司喵～」 栗子「欸欸！我想吃起司！可以嗎可以嗎！？」 小空「（小聲）小、小聲說喔……我想吃起司。」"
   },
   {
    "name": "1c 演出版本依個性不同（活潑／害羞／冷靜…）",
@@ -160,12 +160,12 @@
   {
    "name": "7a 「成長」顯示的技能等級＝角色資料（同一份）",
    "ok": true,
-   "detail": "0,0,0,0,0,0,0,0,1"
+   "detail": "0,0,0,0,0,0,0,0,0"
   },
   {
    "name": "7b 「日誌」直接讀角色回憶（新回憶立即出現，重要的有故事時間軸）",
    "ok": true,
-   "detail": "7 → 8"
+   "detail": "8 → 9"
   },
   {
    "name": "7c 回憶可以珍藏",
@@ -174,12 +174,12 @@
   {
    "name": "8a 吃到最愛：期待（吃）→ 品嚐停頓 → 驚喜反應（多段動作，不是單一彈跳）",
    "ok": true,
-   "detail": "think → eat → taste → surprised → yum → dance → idle → talk → idle → talk"
+   "detail": "think → eat → taste → surprised → yum → dance → idle → play → idle"
   },
   {
    "name": "8b 音效跟著演出（咀嚼 → 好吃）",
    "ok": true,
-   "detail": "chime,sparkle,chew,jump,fanfare,yum,fanfare,fanfare,levelup,card,card,card,levelup,sparkle,sparkle"
+   "detail": "chime,levelup,chew,jump,levelup,chime,yum,sparkle,fanfare,fanfare,fanfare,levelup,card,card,card"
   },
   {
    "name": "8c 新動作有連續的姿勢變化（預備→動作→收尾）",
@@ -204,22 +204,22 @@
   {
    "name": "9c 自製角色也能播放升級演出（完整結束）",
    "ok": true,
-   "detail": "{\"ms\":637,\"st\":\"think\",\"holds\":[],\"inv\":false,\"conv\":0,\"tab\":\"island\",\"a\":true}"
+   "detail": "{\"ms\":631,\"st\":\"think\",\"holds\":[],\"inv\":false,\"conv\":0,\"tab\":\"island\",\"a\":true}"
   },
   {
    "name": "10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅",
    "ok": true,
-   "detail": "{\"d0\":122,\"d\":7,\"z0\":1.9,\"z\":2.3}"
+   "detail": "{\"d0\":126,\"d\":44,\"z0\":1.9,\"z\":2.3}"
   },
   {
    "name": "10b 演出中角色被保留（不會被自主行為打斷），結束後鏡頭與保留都恢復",
    "ok": true,
-   "detail": "{\"zoom\":1.9201907493613797,\"held\":[],\"ui\":false,\"state\":\"done\"}"
+   "detail": "{\"zoom\":1.9201907493613808,\"held\":[],\"ui\":false,\"state\":\"done\"}"
   },
   {
    "name": "11a 跳過演出：立刻結束，資料照樣正確（扣 1 個、品嚐紀錄、回憶各一次）",
    "ok": true,
-   "detail": "{\"ms\":51,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
+   "detail": "{\"ms\":54,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
   },
   {
    "name": "11b 跳過後角色沒有卡在演出狀態",
@@ -249,17 +249,17 @@
   {
    "name": "13a 反覆開關「日常」、圖鑑、角色檔案、背包 12 次：DOM 不持續增加",
    "ok": true,
-   "detail": "1209 → 863"
+   "detail": "1241 → 854"
   },
   {
    "name": "13b 3D 資源不重新載入（材質、幾何不變，renderer 同一個）",
    "ok": true,
-   "detail": "tex 13→12 geo 222→229"
+   "detail": "tex 13→13 geo 230→231"
   },
   {
    "name": "13c JS heap 穩定（< +30MB）",
    "ok": true,
-   "detail": "30→30MB"
+   "detail": "28→28MB"
   },
   {
    "name": "14 重開後保留：coins",
