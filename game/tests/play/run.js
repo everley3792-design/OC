@@ -19,13 +19,17 @@ async function until(page, fn, arg, ms = 30000, step = 200) { const t0 = Date.no
 const ids = (page) => page.evaluate(() => { const o = {}; for (const c of OC.Chars.all()) o[c.profile.name] = c.id; return o; });
 const travel = async (page, to) => { await page.evaluate((t) => OC.WorldUI.travel(t), to); const ok = await until(page, (t) => OC.World.area && OC.World.area.id === t && !!OC.App.player, to, 15000); await page.waitForTimeout(500); return ok; };
 /** bring OCs to where the player is and keep them still (scenes start clean) */
-const gather = (page, list) => page.evaluate((L) => { for (const id of L) { const c = OC.Chars.get(id); c.life.loc = OC.World.area.id; c.life.trip = null; c.life.cur = null; } OC.App.syncPresence(); for (const id of L) { const b = OC.Brain.get(id); if (!b) continue; b.holds.clear(); if (b.st === 'social') OC.Brain.Social.end(b.conv || OC.Brain.convs.find((x) => x.a === b || x.b === b), 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'do') OC.Brain.finish(b, 't'); b.st = 'think'; b.thinkAt = 1e9; if (b.a) b.a.path = null; Object.assign(OC.Chars.get(id).needs, { food: 50, sleep: 80, energy: 80, fun: 50, social: 60 }); } }, list);
+const gather = (page, list) => page.evaluate((L) => { if (OC.Events.current) OC.Events.end('test'); OC.Store.s.life.ev.lastAny = Date.now();   /* scenes start without a (wall-clock dependent) special event; the gap keeps new ones away for a while */ for (const id of L) { const c = OC.Chars.get(id); c.life.loc = OC.World.area.id; c.life.trip = null; c.life.cur = null; } OC.App.syncPresence(); for (const id of L) { const b = OC.Brain.get(id); if (!b) continue; b.holds.clear(); if (b.st === 'social') OC.Brain.Social.end(b.conv || OC.Brain.convs.find((x) => x.a === b || x.b === b), 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'do') OC.Brain.finish(b, 't'); b.st = 'think'; b.thinkAt = 1e9; if (b.a) b.a.path = null; Object.assign(OC.Chars.get(id).needs, { food: 50, sleep: 80, energy: 80, fun: 50, social: 60 }); } }, list);
 const release = (page, list) => page.evaluate((L) => { for (const id of L) { const b = OC.Brain.get(id); if (b) b.thinkAt = 0; } }, list);
 
 (async () => {
   const { browser, page, errors } = await H.launch();
   try {
     await H.boot(page, { chars: 3, seed: 21, travel: true });
+    // the auto day cycle starts from the REAL time: pin the scenes to daytime so a late-night run does not find everyone
+    // asleep or inside a night-only special event (these scenarios are about requests / performances, not sleep)
+    await page.evaluate(() => { const c = OC.Store.s.life.clock, h = OC.Sim.hourOf(); if (h < 8.5 || h >= 15) { c.gm = (Math.floor(c.gm / 1440) + (h >= 15 ? 1 : 0)) * 1440 + 9 * 60; } for (const c2 of OC.Chars.all()) { c2.needs.sleep = Math.max(c2.needs.sleep, 80); c2.needs.energy = Math.max(c2.needs.energy, 70); const b = OC.Brain.get(c2.id); if (b && b.act === 'sleep') { b.until = 0; b.thinkAt = 0; } } if (OC.Events.current) OC.Events.end('test'); });
+    await wait(page, 3000);
     const I = await ids(page), all = Object.values(I);
     await page.evaluate(() => { window.__R = OC.World.renderer; window.__snd = []; const p = OC.Sound.play; OC.Sound.play = (n, o) => { window.__snd.push(n); return p(n, o); }; window.__cards = []; const cd = OC.Stage.card; OC.Stage.card = (o) => { window.__cards.push(o.title); return cd(o); }; OC.Sound.unlock(); });
     await page.evaluate(() => { OC.Store.s.settings.weather = 'clear'; OC.Store.s.play.req.nextAt = 1e12; for (const r of OC.Requests.open()) r.state = 'expired'; });   // the tests create requests themselves
@@ -58,7 +62,8 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('1f 完成後：獎勵入帳一次、好感上升、寫入回憶', after.paid && after.coins > coins0 && after.aff > aff0 && after.mem, JSON.stringify(after));
       const dup = await page.evaluate((rid) => { const r = OC.Requests.list().find((x) => x.id === rid); const c0 = OC.Store.s.coins; r.state = 'active'; OC.Progress.emit('play', { oc: r.oc, item: r.data.item }); return { coins: OC.Store.s.coins - c0, state: r.state }; }, rq.id);
       check('1g 同一個請求就算再次觸發也不會重複給獎勵', dup.coins === 0, JSON.stringify(dup));
-      const dec = await page.evaluate((id) => { const x = OC.Requests.debugOffer(id, 'flower'); if (!x) return null; const aff = OC.Chars.get(id).life.player.aff; OC.Requests.answer(x.id, 'decline'); return { state: x.state, cd: OC.Store.s.play.req.cd[id].flower > OC.Sim.now(), affSame: OC.Chars.get(id).life.player.aff === aff }; }, I['小空']);
+      await gather(page, [I['小空']]);   // the OC may have wandered off to another place during the scene
+      const dec = await page.evaluate((id) => { for (const r of OC.Requests.open()) if (r.oc === id) r.state = 'expired'; const x = OC.Requests.debugOffer(id, 'flower'); if (!x) return null; const aff = OC.Chars.get(id).life.player.aff; OC.Requests.answer(x.id, 'decline'); return { state: x.state, cd: OC.Store.s.play.req.cd[id].flower > OC.Sim.now(), affSame: OC.Chars.get(id).life.player.aff === aff }; }, I['小空']);
       check('1h 婉拒：有冷卻、不扣好感（只有符合個性的小反應）', dec && dec.state === 'declined' && dec.cd && dec.affSame, JSON.stringify(dec));
       await until(page, () => !OC.Stage.busy && !OC.Stage.queue, null, 8000);
     }
@@ -174,7 +179,8 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('6a 達成條件後自動解鎖（第一盤料理、三顆星）', r.cook1 && r.star3, JSON.stringify(r));
       await page.evaluate(() => { OC.App.tab('more'); const P = OC.Pages.pages.more; P.tab = 'ach'; P._sig = ''; P.refresh(P); }); await wait(page, 600); await shot(page, '6-achievements');
       const c0 = await page.evaluate(() => OC.Store.s.coins);
-      const b = await page.$('[data-page="more"] .q-row.ready .btn.primary'); if (b) await b.tap(); await wait(page, 600);
+      for (let i = 0; i < 4; i++) { const b = await page.$('[data-page="more"] .q-row.ready .btn.primary'); if (!b) break; try { await b.tap({ timeout: 3000 }); break; } catch (e) { await wait(page, 300); } }   // the hub rebuilds when coins change (life goes on)
+      await wait(page, 600);
       const c1 = await page.evaluate(() => OC.Store.s.coins);
       const again = await page.evaluate(() => ['cook1', 'star3'].map((id) => OC.Achieve.claim(id)).filter((x) => x.ok).length);
       check('6b 領取成就獎勵入帳；同一個成就不能領兩次', c1 > c0, `${c0} → ${c1}`);
@@ -235,8 +241,8 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('9a 自製逐格動畫沒有的新動作，會依備用鏈用相近的動作（例如「好吃」→自製的「開心」）', r.out.yum === 'happy' && r.out.cheer === 'happy' && r.out.proud === 'happy', JSON.stringify(r.out));
       check('9b 沒有任何對應影格的動作用內建骨架演出，不會出錯', r.ok && (r.out.yuck === 'rig' || r.out.yuck === 'idle'), JSON.stringify(r.out));
       const k = await page.evaluate(() => OC.Store.s.activeId);
-      const perf = await page.evaluate(async (id) => { if (OC.Events.current) OC.Events.end('test'); OC.Brain.get(id).holds.clear(); const t0 = Date.now();   /* a wall-clock-dependent special event (e.g. firstVisit at night) must not own the OC */ await OC.Stage.perform('levelup', { oc: id, zh: '測試', lv: 2, unlocks: [] }); return Date.now() - t0; }, k);
-      check('9c 自製角色也能播放升級演出（完整結束）', perf > 500, `${perf}ms`);
+      const perf = await page.evaluate(async (id) => { if (OC.Events.current) OC.Events.end('test'); OC.Brain.hold(id, 'test'); OC.Brain.unhold(id, 'test'); const b0 = OC.Brain.get(id); b0.holds.clear(); b0.invited = null; b0.thinkAt = OC.Sim.now() + 30; const t0 = Date.now();   /* not chatting: soft performances never interrupt a conversation (by design) */   /* a wall-clock-dependent special event (e.g. firstVisit at night) must not own the OC */ await OC.Stage.perform('levelup', { oc: id, zh: '測試', lv: 2, unlocks: [] }); const ms = Date.now() - t0; const b = OC.Brain.get(id), a = OC.App.actorOf(id); return { ms, st: b && b.st, holds: b && [...b.holds], inv: b && !!b.invited, conv: OC.Brain.convs.length, tab: OC.App.curTab, a: !!a, hid: a && a.hidden }; }, k);
+      check('9c 自製角色也能播放升級演出（完整結束）', perf.ms > 500, JSON.stringify(perf));
     }
 
     // ================= 10. multi-OC cinematic: walk, camera, letterbox, release =================

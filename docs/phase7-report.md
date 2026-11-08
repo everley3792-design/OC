@@ -44,10 +44,10 @@
 ## 自動化測試（本環境實際執行）
 - Kotlin 核心：`cd android && gradle -PcoreOnly=true test` → **38/38**（新增 26：`PetBrainTest` 13、`GesturesTest` 5、`AnimClipTest` 3、`PetTalkTest` 4、`PetSocialTest` 1；原有 core 測試全過）。
 - 第七階段遊戲端：`node game/tests/pet/run.js` → **53/53**（使用 `tests/pet/mock-native.js`，與 `NativeBridge.kt` 同一份約定；它不模擬 overlay 本身）。
-- 回歸：第六階段 `tests/play` REG_PLAY、第五階段 `tests/world` REG_WORLD、第四階段 `tests/life` REG_LIFE（說明見下）。
+- 回歸：第六階段 `tests/play` **67/67**、第五階段 `tests/world` **74/74**、第四階段 `tests/life` **52/52**（存檔版本斷言改為 v6）。
 - APK（SHA-256 `d8c8104535b6403a907f48006b704344ce22e4ad6290d20b53ed5852a83dab1f`）：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest 檢查、無無障礙服務／`QUERY_ALL_PACKAGES`）通過；APK 內 `assets/game` 與 `game/`（排除 tests、*.md）逐位元比對相同（63 個檔案）；dex 內含全部新類別（overlay／tools／widget／core:pet）；`aapt dump badging`：versionCode 10、targetSdk 35、7 個權限。
 
-REG_NOTES
+**回歸測試的修正（測試設計，不是遊戲行為改變）**：第六階段測試第一次跑在凌晨 0–1 點，遊戲的日夜循環從真實時間開始，於是 OC 在睡覺、夜間特殊事件（firstVisit）佔住角色、角色在聊天時柔和演出照設計只顯示卡片——9c、11c、1h、6b 因此失敗。用第六階段的原始程式（c4b6764）在同一時間重跑，9c 也一樣失敗，確認與第七階段無關。修正：測試開始時把遊戲時鐘固定在白天、場景開始前結束進行中的特殊事件、9c 先讓 OC 離開聊天、11c 重複觸發直到 25% 的機率抽中、1h 先把 OC 帶回同一地點、6b 的按鈕在頁面因星幣變動重建時重新取得。
 
 ## 這階段修正／決定的事
 - **離線建置也能宣告 Android 14 的前景服務類型**：API 23 的屬性表沒有 `foregroundServiceType`、API 35 jar 的 `resources.arsc` 太新讀不了 → 新增 `android/tools/framework-extras/`（`aapt -x` 編出只有這個屬性的框架包，公開 id 以 javap 確認），值用 `@integer/fgs_special_use`。比對過加入前後的資源表（主題 parent 等框架參照不變）。
