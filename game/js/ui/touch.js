@@ -28,9 +28,11 @@
   const ZONE_ZH = { head: '頭頂', cheek: '臉頰', ears: '耳朵', belly: '肚子', tail: '尾巴', feet: '腳' };
   /** deterministic taste from the OC's id (+ shy / sensitive traits): { likes, dislikes, ticklish } */
   function taste(c) {
+    const K0 = c.life && c.life.touch; if (K0 && K0.taste) return K0.taste;   // fixed once (and settable): the profile and the OC always agree
     const h = hash(c.id || 'x'), likes = ZONES[h % 4], dis = ['tail', ZONES[(h >> 3) % 4]].filter((z) => z !== likes)[(h >> 7) % 2] || 'tail';
     const has = (k) => OC.Chars.has(c, k);
-    return { likes, dislikes: dis, ticklish: ((h >> 5) % 3 === 0) || has('sensitive') || has('energetic'), shy: has('shy') };
+    const T = { likes, dislikes: dis, ticklish: ((h >> 5) % 3 === 0) || has('sensitive') || has('energetic'), shy: has('shy') };
+    if (c.life) known(c).taste = T; return T;
   }
   /** what the player has found out so far (shown in the profile): zone → 1 (loves) / -1 (dislikes) */
   function known(c) { const L = c.life; return (L.touch || (L.touch = { known: {}, n: 0, total: 0 })); }
@@ -118,7 +120,7 @@
 
   function lift(still, dp) {
     if (!t || t.lifted) return;
-    if (t.engaged) endStroke(true);
+    if (t.engaged) { endStroke(true); t.engaged = false; }   // a stroke that turns into a pick-up ends first (and must not swallow the release)
     const r = A().startCarry(t.id); if (!r) { t = null; return; }
     t.lifted = true; clearTimeout(t.timer);
     if (still) { OC.UI.haptic('long'); A().floatText(t.a, '!', 'var(--sun)'); }
@@ -134,12 +136,12 @@
     const vx = (p.x - (t.px == null ? p.x : t.px)) / dt; t.px = p.x;
     // the finger's change of velocity kicks the pendulum (an impulse — the same at 30, 60 or 120 Hz input)
     const dv = vx - t.vxPrev; t.vxPrev = vx;
-    t.swingV += Math.max(-8, Math.min(8, -dv * 0.022));
+    t.swingV += Math.max(-12, Math.min(12, -dv * 0.045));
   }
 
   function up(dp, p) {
     if (!t) return; const cur = t; t = null; clearTimeout(cur.timer);
-    if (cur.engaged) { t = cur; endStroke(false); t = null; return; }
+    if (cur.engaged && !cur.lifted) { t = cur; endStroke(false); t = null; return; }
     if (!cur.lifted) {
       if (cur.moved) return;                              // a slip: nothing else
       A().menuFor({ type: cur.id === OC.Store.s.activeId ? 'self' : 'mate', id: cur.id }, A().screenOf(cur.a));

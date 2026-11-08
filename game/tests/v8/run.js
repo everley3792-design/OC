@@ -140,7 +140,7 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       const lg = await page.evaluate(() => ({ log: window.__ocInputLog, stack: OC.UI.stack.length, tab: OC.App.curTab, top: (document.elementFromPoint(200, 400) || {}).tagName }));
       const ground = await page.evaluate(() => [...document.querySelectorAll('.radial-btn')].map((b) => b.textContent)); await shot(page, '6-ring-ground');
       await page.evaluate(() => OC.Radial.close(true));
-      check('6a 點 OC：環狀選單（摸摸、聊天、餵食、送禮、玩耍、檔案、更多…）', ['摸摸', '餵食', '送禮', '檔案', '更多'].every((x) => oc.includes(x)), oc);
+      check('6a 點 OC：環狀選單（親近、聊天、餵食、送禮、玩耍、檔案、更多…）', ['親近', '餵食', '送禮', '檔案', '更多'].every((x) => oc.includes(x)), oc);
       check('6b 選單項目真的執行（檔案頁打開）', prof);
       check('6c 家具與地面也有各自的情境選單', ['使用', '移動', '收回'].every((x) => furn.includes(x)) && ground.includes('走過去'), { furn, ground, lg, G });
     }
@@ -149,7 +149,8 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
     if (want(7)) {
       await wait(page, 1500);
       const aff0 = await page.evaluate(() => OC.Chars.active().life.player.aff || 0);
-      let P = await body(page); await page.mouse.move(P.x, P.y); await page.mouse.down(); for (let i = 0; i < 8; i++) await page.mouse.move(P.x + (i % 2 ? -14 : 14), P.y + 1, { steps: 3 }); await page.mouse.up(); await wait(page, 500);
+      await page.evaluate(() => { const c = OC.Chars.active(); OC.Touch.known(c).taste = { likes: 'belly', dislikes: 'tail', ticklish: false, shy: false }; });
+      let P = await body(page); await page.mouse.move(P.x, P.y); await page.mouse.down(); { const t0 = Date.now(); let k = 0; while (Date.now() - t0 < 3500) { await page.mouse.move(P.x + (k % 2 ? -14 : 14), P.y + 1); await wait(page, 32); k++; } } await page.mouse.up(); await wait(page, 500);   // 11.0: stroking takes a moment (a 0.1 s scrub is not petting)
       const pet = await page.evaluate(() => ({ aff: OC.Chars.active().life.player.aff || 0, menu: !!document.querySelector('.radial.on') }));
       await wait(page, 2700); P = await body(page);
       await page.evaluate(() => OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close())); P = await body(page);
