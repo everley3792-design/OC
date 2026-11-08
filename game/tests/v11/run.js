@@ -257,12 +257,16 @@ const { check, wait } = H;
       check('7a 點地面：出現波紋（兩圈＋一個點）在點的位置，OC 走過去；抵達後消失', r1 && r1.on && r1.op === '1' && r1.rings === 2 && Math.hypot(r1.x - gp.x, r1.y - gp.y) < 40 && gone, { gp, r1, gone });
 
       // 7b: tap a tree → it shakes, leaves fall, rustle + tick, the OC is not sent walking
-      const tg = await page.evaluate(() => { const pl = OC.App.player; const L = OC.World.swayTargets().filter((t) => t.x > 30 && t.x < 363 && t.y > 150 && t.y < 680); return { list: L.slice(0, 40), n: L.length, plx: pl.x, ply: pl.y }; });
+      // bring the OC next to a tree first (the camera follows), so there is always one on screen
+      await page.evaluate(() => { const pl = OC.App.player, W = OC.World, all = W.swayTargets().filter((t) => W.walkable(t.dx, t.dy + 36) || W.nearestWalkable(t.dx, t.dy + 36, 40)); all.sort((a, b) => Math.hypot(a.dx - pl.x, a.dy - pl.y) - Math.hypot(b.dx - pl.x, b.dy - pl.y)); const t = all[0]; const q = W.nearestWalkable(t.dx, t.dy + 36, 60) || { x: t.dx, y: t.dy + 36 }; pl.path = null; pl.x = q.x; pl.y = q.y; });
+      await wait(page, 2500);
+      const tg = await page.evaluate(() => { const pl = OC.App.player; const L = OC.World.swayTargets().filter((t) => t.x > 30 && t.x < 330 && t.y > 150 && t.y < 680); return { list: L.slice(0, 40), n: L.length, plx: pl.x, ply: pl.y }; });
       let hit = null; for (const t of tg.list) { const ok = await page.evaluate((t) => { const r = OC.World.pick(t.x, t.y); return !r.it && !!OC.World.shakeAt(t.x, t.y); }, t); if (ok) { hit = t; break; } }
       const sp = await page.evaluate(() => { window.__snd = []; const P = OC.Sound.play; OC.Sound.play = (n, o) => { window.__snd.push(n); return P.call(OC.Sound, n, o); }; window.__vib = []; navigator.vibrate = (p) => { window.__vib.push(p); return true; }; OC.Store.s.settings.haptics = true; const a = OC.App.player; return { x: a.x, y: a.y, path: !!a.path }; });
+      if (!hit) { check('7b 點樹／灌木：搖晃、落葉、沙沙聲與觸覺；不會讓 OC 跑過去', false, { why: 'no tree on screen', tg: tg.n }); } else {
       await page.mouse.click(hit.x, hit.y); await wait(page, 500);
       const sh = await page.evaluate(() => ({ fx: OC.World.fx, snd: window.__snd, vib: window.__vib, path: !!OC.App.player.path, ripple: (() => { const m = document.querySelector('.tap-ripple'); return !!m && m.style.opacity === '1' && m.classList.contains('on'); })() }));
-      check('7b 點樹／灌木：搖晃、落葉、沙沙聲與觸覺；不會讓 OC 跑過去', hit && sh.fx.shaking >= 1 && sh.fx.leaves >= 6 && sh.snd.includes('rustle') && sh.vib.length >= 1 && !sh.path && !sh.ripple, { hit, sh, targets: tg.n });
+      check('7b 點樹／灌木：搖晃、落葉、沙沙聲與觸覺；不會讓 OC 跑過去', sh.fx.shaking >= 1 && sh.fx.leaves >= 6 && sh.snd.includes('rustle') && sh.vib.length >= 1 && !sh.path && !sh.ripple, { hit, sh, targets: tg.n }); }
       // 7c: the shake dies down, the leaves land and vanish, nothing stays behind
       let settled = null; for (let i = 0; i < 40; i++) { await wait(page, 500); settled = await page.evaluate(() => OC.World.fx); if (!settled.shaking && !settled.leaves) break; }
       const rot = await page.evaluate(() => Math.max(...OC.World.swayTargets().map(() => 0), 0));

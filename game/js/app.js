@@ -461,6 +461,7 @@
     if (!mk) { mk = h('div.tap-ripple', null, h('i'), h('i'), h('b')); overlays().append(mk); }
     mk.classList.remove('on'); void mk.offsetWidth; mk.classList.add('on'); mk.style.opacity = 1;
     mk.dataset.x = p.x; mk.dataset.y = p.y; mk._t0 = performance.now(); mk._hold = true; OC.Sound && OC.Sound.play('ping');
+    positionMarker();   // right now, not on the next frame (a slow frame must never show it in the corner)
   }
   function goThen(x, y, fn) { const near = Math.hypot(player.x - x, player.y - y) < 8; if (near) { fn(); return; } if (!Wd.walkTo(player, x, y, () => fn())) toast('到不了那裡', 'info'); }
   function face(a, dx, dy) { a.tFace = Math.max(-1, Math.min(1, dx)); a.tBack = dy < 0 ? 1 : 0; }
