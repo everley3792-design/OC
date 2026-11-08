@@ -26,6 +26,8 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
   const { browser, page, errors } = await H.launch();
   try {
     await H.boot(page, { chars: 3, seed: 11, travel: true });
+    // the scenarios assume daytime (at night the OCs go home to sleep and crowd the rooms): pin the clock
+    await page.evaluate(() => { const S = OC.Store.s.settings; S.time = 'fixed'; S.fixedHour = 11; });
     const I = await ids(page);
     await page.evaluate(() => { window.__R = OC.World.renderer; window.__scene = OC.World.root && OC.World.root.parent; });
 
@@ -338,7 +340,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       const res = [];
       for (const [k, v] of steps) {
         if (k === 'place') await travel(page, v);
-        else await page.evaluate(([k, v]) => { if (k === 'theme') OC.App.setTheme(v); if (k === 'weather') OC.Store.s.settings.weather = v; if (k === 'perf') { OC.Store.s.settings.perf = v; OC.App.applyPerf(); } if (k === 'hour') { const c = OC.Store.s.life.clock; c.gm = Math.floor(c.gm / 1440) * 1440 + v * 60 + 1440; } }, [k, v]);
+        else await page.evaluate(([k, v]) => { if (k === 'theme') OC.App.setTheme(v); if (k === 'weather') OC.Store.s.settings.weather = v; if (k === 'perf') { OC.Store.s.settings.perf = v; OC.App.applyPerf(); } if (k === 'hour') { OC.Store.s.settings.fixedHour = v; const c = OC.Store.s.life.clock; c.gm = Math.floor(c.gm / 1440) * 1440 + v * 60 + 1440; } }, [k, v]);
         await wait(page, 600);
         res.push(await page.evaluate(() => ({ same: OC.World.renderer === window.__R, theme: document.documentElement.dataset.theme, pr: OC.World.renderer.getPixelRatio(), q: JSON.stringify(OC.World.quality), area: OC.World.area.id })));
         if (k === 'place' && v === 'beach') await shot(page, '10-beach-night-rain-dark');

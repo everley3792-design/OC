@@ -261,6 +261,10 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
 
     // ================= 17. 9.0 polish: new events, choices, quiz, ambient life, notices, settings =================
     if (want(17)) {
+      // start from a known state: daytime on the island, nothing playing (earlier scenarios travel / change the time)
+      await page.evaluate(async () => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); const S = OC.Store.s.settings; S.timePaused = false; S.time = 'fixed'; S.fixedHour = 10; S.weather = 'clear';
+        if (OC.World.area.id !== 'isle') OC.WorldUI.travel('isle'); const t0 = Date.now(); while ((OC.World.area.id !== 'isle' || !OC.App.player) && Date.now() - t0 < 10000) await new Promise((r) => setTimeout(r, 200)); });
+      await wait(page, 1500);
       const r = await page.evaluate(async (ids) => {
         const [a, b] = ids.map((i) => OC.Chars.get(i)), out = {};
         // a humorous OC and a friend → the prank event is eligible and runs to the end with its results
