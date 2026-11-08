@@ -16,10 +16,13 @@ const { check, wait } = H;
     await H.boot(page, { chars: 3, seed: 3 });
     await page.evaluate(() => { const S = OC.Store.s.settings; S.time = 'fixed'; S.fixedHour = 11; if (OC.Events.current) OC.Events.end('t'); });
     const ids = await page.evaluate(() => ({ self: OC.Store.s.activeId, mate: Object.keys(OC.App.mates)[0] }));
+    /** no random life event (its dialogue blocks touching, its hold pauses the OC) may start in the middle of a check */
+    const quiet = () => page.evaluate(() => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const c of OC.Chars.all()) { const b = OC.Brain.get(c.id); if (b) b.holds.delete('event'); } });
     const holds = (id) => page.evaluate((id) => [...OC.Brain.get(id).holds], id);
     const scr = (id) => page.evaluate((id) => { const a = OC.App.actorOf(id); return OC.World.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * OC.World.HY + 30); }, id);
 
     if (want(1)) {
+      await quiet();
       const open = () => page.evaluate((id) => { if (OC.Events.current) OC.Events.end('t'); OC.App.menuFor({ type: 'mate', id }, OC.App.screenOf(OC.App.actorOf(id))); }, ids.mate);
       await open(); await wait(page, 300); const h1 = await holds(ids.mate);
       await page.evaluate(() => document.querySelector('.radial').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); await wait(page, 400); const h2 = await holds(ids.mate);
@@ -32,6 +35,7 @@ const { check, wait } = H;
       check('1c 選單有依序展開（每個按鈕不同延遲）與光暈', anim.halo && new Set(anim.d).size === anim.d.length, anim);
     }
     if (want(2)) {
+      await quiet();
       const p = await scr(ids.mate); await page.mouse.move(p.x, p.y); await page.mouse.down(); await wait(page, 1000);
       const lifted = await holds(ids.mate);
       // the finger-up never arrives; the next touch starts somewhere else
@@ -41,6 +45,7 @@ const { check, wait } = H;
       await page.mouse.up();
     }
     if (want(3)) {
+      await quiet();
       const r = await page.evaluate(async ([a, b]) => { OC.LifeUI.chat(a); await new Promise((r) => setTimeout(r, 200)); const h1 = [...OC.Brain.get(a).holds]; OC.LifeUI.chat(b); await new Promise((r) => setTimeout(r, 200)); const h2 = [...OC.Brain.get(a).holds]; OC.UI.back(); await new Promise((r) => setTimeout(r, 200)); return { h1, h2, b: [...OC.Brain.get(b).holds] }; }, [ids.mate, ids.self]);
       check('3 對話被另一段對話取代時，第一個 OC 會被放開', r.h1.includes('dialogue') && !r.h2.includes('dialogue') && !r.b.includes('dialogue'), r);
     }
