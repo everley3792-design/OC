@@ -745,7 +745,7 @@
     // render the world only while it is visible (a tab page covers it fully otherwise)
     const covered = curTab !== 'island' || OC.UI.stack.some((l) => l.close && Object.values(OC.Pages.pages).some((p) => p.layer === l));
     const ov = overlays(); if (ov && ov.style.visibility !== (covered ? 'hidden' : '')) ov.style.visibility = covered ? 'hidden' : '';   // world bubbles never show over pages
-    if (!covered || !world_rendered_once) { Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
+    if (!covered || !world_rendered_once) { OC.Ambient.update(dt); Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
     // life simulation: fixed steps fed with REAL elapsed time (independent of the fps cap)
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
     OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
@@ -818,7 +818,7 @@
   St.on('play:found', (e) => { const it = OC.Style.ITEMS[e.item]; const c = OC.Chars.get(e.oc); if (it && c) OC.Stage.card({ kind: 'discover', item: e.item, title: e.gift ? `${OC.Chars.name(c)}送你${it.zh}` : `${OC.Chars.name(c)}找到了${it.zh}`, sub: '技能帶來的驚喜' }); });
   St.on('reward', (r) => { if (r.why !== '成就' && r.why !== '新發現') setTimeout(() => toast(`${r.why} +${r.coins} 星幣`, 'coin'), 900); });
   St.on('friendUp', (e) => toast(`和${Gm.NPCS[e.id].zh}的友情升到「${Gm.LEVEL_ZH[e.level]}」！`, 'heart'));
-  St.on('inv', (e) => { if (e.first && e.n > 0) toast(`圖鑑新增：${Sty.ITEMS[e.id].zh}`, 'book'); });
+  // (9.0) the discovery card above is the only feedback — the extra toast made two notices per item
   St.on('saveError', () => toast('存檔空間不足：請刪除一些作品', 'info'));
   ['inv', 'coins', 'needs', 'npc', 'chars', 'animations', 'assets', 'quest', 'ach', 'goal', 'placed', 'growth', 'life'].forEach((ev) => St.on(ev, () => { clearTimeout(refreshT); refreshT = setTimeout(() => OC.Pages.refreshOpen(), 120); }));
   let refreshT = 0;
@@ -917,6 +917,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { menuFor, screenOf, setCamMode, camSheet, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { menuFor, screenOf, setCamMode, camSheet, timePanel, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

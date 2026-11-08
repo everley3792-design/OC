@@ -45,7 +45,7 @@
     // 8.0 — every trait changes behaviour (OC.Chars.behavior / OC.Mind / OC.Brain), not just a label
     { id: 'energetic', zh: '活潑', g: '情緒', d: '走得更快、跳得更高，動作幅度大；玩樂需求消耗較快', x: ['lazy'] },
     { id: 'introvert', zh: '內向', g: '社交', d: '獨處就能充電：社交需求下降慢，聊太久會累', x: ['extrovert'] },
-    { id: 'extrovert', zh: '外向', g: '社交', d: '一個人太久會寂寞，社交需求下降快、常主動找人', x: ['introvert'] },
+    { id: 'extrovert', zh: '愛熱鬧', g: '社交', d: '一個人太久會寂寞，社交需求下降快、常主動找人', x: ['introvert'] },
     { id: 'humorous', zh: '幽默', g: '社交', d: '常常說笑話、大笑；聊天讓對方更開心' },
     { id: 'romantic', zh: '浪漫', g: '情緒', d: '喜歡看夕陽與星空，收到禮物特別感動' },
     { id: 'perfectionist', zh: '完美主義', g: '生活', d: '做事慢一點但更認真；作品完成時特別滿足' },

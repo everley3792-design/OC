@@ -513,7 +513,7 @@
     init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
-    get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
+    get root() { return root; }, get camCenter() { return { x: camX + panX, y: camY + panY }; }, get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
     set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, get hourFn() { return hourFn; }, get weatherFn() { return weatherFn; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
     recenter() { panX = 0; panY = 0; follow = true; },
     /** camera modes: classic | follow | focus | free (cine is entered by shot()) */

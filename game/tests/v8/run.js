@@ -258,6 +258,57 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       check('16b 沒見過居民的舊存檔：居民改為不出現（資料保留，可在設定開啟）', r.b.residents === false, r.b);
     }
 
+    // ================= 17. 9.0 polish: new events, choices, quiz, ambient life, notices, settings =================
+    if (want(17)) {
+      const r = await page.evaluate(async (ids) => {
+        const [a, b] = ids.map((i) => OC.Chars.get(i)), out = {};
+        // a humorous OC and a friend → the prank event is eligible and runs to the end with its results
+        a.personality.traits = ['humorous']; b.personality.traits = []; OC.Mind.relChange(a.id, b.id, { aff: 40, fam: 30 }); OC.Mind.relChange(b.id, a.id, { aff: 40, fam: 30 });
+        const ev = OC.Events.defs().find((e) => e.id === 'prank'), why = [];
+        out.eligible = OC.Events.check(ev, a, b, {}, why); out.why = why;
+        out.count = OC.Events.defs().filter((e) => ['prank', 'prankBad', 'makeUp', 'tasteFight', 'shareSnack', 'clumsyTrip', 'helpUp', 'cloudShapes', 'midnightTalk', 'jokeForYou', 'tidyUp', 'birdFriend', 'baseFind', 'baseInvite', 'baseBuild'].includes(e.id)).length;
+        // the choice step must not grow the shared definition (bug: replies were spliced into ev.steps)
+        const jk = OC.Events.defs().find((e) => e.id === 'jokeForYou'), n0 = jk.steps.length;
+        const memBefore = a.life.mem.recent.length;
+        if (OC.Events.current) OC.Events.end('t');
+        a.personality.traits = ['humorous']; a.life.player.aff = 20;
+        OC.Store.s.life.ev.lastAny = 0; for (const k of Object.keys(OC.Store.s.life.ev.last)) delete OC.Store.s.life.ev.last[k];
+        jk.chance = 1; OC.Events.trigger && 0;
+        // run it directly through the engine's periodic picker
+        for (let i = 0; i < 60 && (!OC.Events.current || OC.Events.current.ev.id !== 'jokeForYou'); i++) { if (OC.Events.current) OC.Events.end('t'); OC.Brain.get(a.id).holds.clear(); OC.Events.update(5); }
+        out.started = OC.Events.current && OC.Events.current.ev.id;
+        const t0 = Date.now(); while (OC.Events.current && Date.now() - t0 < 25000) { const d = document.querySelector('.sheet.open .btn'); if (d && /哈哈|好冷|再講/.test(d.textContent)) d.click(); OC.Events.update(0.5); await new Promise((r) => setTimeout(r, 120)); }
+        out.after = jk.steps.length === n0; out.mem = a.life.mem.recent.length > memBefore;
+        return out;
+      }, ids.slice(0, 2));
+      check('17a 新增 15 個角色事件與短篇故事（惡作劇、和好、口味之爭、分點心、跌倒、看雲、深夜談心、講笑話、秘密基地三部曲…）', r.count === 15 && r.eligible, r);
+      check('17b 有選項的事件跑完後，事件定義不會被改動（修正：回應被插進共用資料）', !!r.started && r.after && r.mem, r);
+      await page.evaluate(() => OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()));
+      const q = await page.evaluate(async () => {
+        const c = OC.Chars.blank('custom'); c.profile.name = '問答'; const p0 = JSON.stringify(c.personality);
+        const box = document.createElement('div'); document.body.append(box);
+        const ctx = { level: 'simple', stage: { react() {}, walk: false }, changed() {}, rebuild() {} };
+        box.append(OC.CharEdit.sections.personality(c, ctx)); [...box.querySelectorAll('button')].find((b) => b.textContent.includes('5 個小問題')).click();
+        const sh = () => [...document.querySelectorAll('.sheet')].pop();
+        for (let i = 0; i < 5; i++) { await new Promise((r) => setTimeout(r, 350)); const btns = [...sh().querySelectorAll('.btn.block')]; btns[0].click(); }
+        await new Promise((r) => setTimeout(r, 350)); const add = sh().querySelector('.btn.primary'); const txt = add && add.parentNode.textContent; add && add.click();
+        box.remove();
+        return { changed: JSON.stringify(c.personality) !== p0, traits: c.personality.traits, energy: c.personality.energy, txt: (txt || '').slice(0, 60) };
+      });
+      check('17c 創角的性格問答：5 題改變滑桿並建議特質', q.changed && q.traits.length >= 1, q);
+      const amb = await page.evaluate(async () => { const S = OC.Store.s.settings; S.time = 'fixed'; S.fixedHour = 10; S.weather = 'clear'; S.perf = 'high'; OC.App.applyPerf(); await new Promise((r) => setTimeout(r, 9000)); let n = 0; OC.World.root.traverse((o) => { if (o.isGroup && o.visible && o.children.length === 2 && o.children[0].geometry && o.children[0].geometry.attributes.position.count === 3) n++; }); return n; });
+      await shot(page, '17-ambient');
+      check('17d 白天晴天時場景裡有蝴蝶等環境生物（效果開啟時）', amb >= 1, amb);
+      const notes = await page.evaluate(async () => { const n0 = document.querySelectorAll('.toast').length; OC.Tx.run('t:newitem9', { get: { items: { shell: 1 } } }, 't'); await new Promise((r) => setTimeout(r, 400)); return { toasts: [...document.querySelectorAll('.toast')].filter((t) => t.textContent.includes('圖鑑新增')).length }; });
+      check('17e 新發現只出現一張卡片（不再同時跳出提示＋卡片）', notes.toasts === 0, notes);
+      await page.evaluate(() => { OC.Store.s.settings.time = 'cycle'; OC.Pages.open('settings'); }); await wait(page, 600);
+      const set = await page.evaluate(() => document.querySelector('[data-time-desc]') && document.querySelector('[data-time-desc]').textContent);
+      await page.tap('[data-page="settings"] button:has-text("時間與天氣")'); await wait(page, 600);
+      const tp = await page.evaluate(() => !!document.querySelector('.time-big'));
+      check('17f 設定頁的時間與時間面板一致（顯示目前模式，按鈕開啟同一個面板）', /遊戲循環/.test(set || '') && tp, { set, tp });
+      await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = 10; });
+    }
+
     check('全程沒有 JavaScript 錯誤', errors.length === 0, errors.slice(0, 5));
   } catch (e) {
     console.error(e); check('執行中斷', false, String(e && e.stack || e));

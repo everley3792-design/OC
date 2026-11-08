@@ -222,16 +222,12 @@
         h('div.hstack', null, h('span.grow', null, '天氣與環境特效（雨、螢火蟲、雲影）'), toggle(c().fx, (v) => setC('fx', v))),
         h('div.hstack', null, h('span.grow', null, '隨風擺動的草'), toggle(c().grass, (v) => setC('grass', v))),
         h('div', null, h('div.muted', null, '畫面解析度'), h('input', { type: 'range', min: 0.75, max: 2, step: 0.25, value: c().scale, 'aria-label': '畫面解析度', on: { change: (e) => setC('scale', +e.target.value) } })));
-      p.time = seg([['real', '現實'], ['cycle', '循環'], ['morning', '早'], ['noon', '午'], ['dusk', '昏'], ['night', '夜']], s().time, (v) => { OC.Sim.setMode(v); p.refresh(p); });
-      p.speed = seg(OC.Sim.SPEEDS.map((v) => [String(v), '×' + v]), String(s().timeSpeed || 1), (v) => { OC.Sim.setSpeed(+v); p.refresh(p); });
-      p.speedBox = h('div', { style: { marginTop: '10px' } }, h('div.muted', null, '循環速度'), p.speed, h('div.faint', { 'data-speed-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }));
-      p.wx = seg([['auto', '自動'], ['clear', '晴'], ['cloudy', '多雲'], ['rain', '雨'], ['fog', '霧']], s().weather, (v) => set('weather', v));
       p.ctrl = seg([['tap', '點擊移動'], ['joy', '虛擬搖桿']], s().control, (v) => { set('control', v); app().applyControl(); });
       const fileIn = h('input', { type: 'file', accept: 'application/json,.json', style: { display: 'none' }, on: { change: async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const txt = await f.text(); if (await confirm('匯入存檔', '目前的進度會被覆蓋，確定嗎？', '匯入', true)) { St.importJSON(txt); location.reload(); } } catch (err) { toast('匯入失敗：' + err.message, 'info'); } } } });
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
         title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
-        title('世界'), card(h('div.muted', null, '時間'), p.time, p.speedBox, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx,
+        title('世界'), card(h('button.btn.block', { on: { click: () => app().timePanel() } }, icon('clock', 's'), '時間與天氣…'), h('div.faint', { 'data-time-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }),
           h('div.hstack', { style: { marginTop: '12px' } }, h('span.grow', null, '小島居民（栗子、小空）'), toggle(S().world.residents, (v) => { S().world.residents = v; St.touch('world'); app().loadArea(OC.World.area.id, { x: app().player.x, y: app().player.y }); })),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, '預設不出現：小島上只有你自己的 OC。打開後兩位居民會住進空屋，可以聊天、送禮；關掉時好感度與回憶都會保留。')),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
@@ -245,8 +241,9 @@
         h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '10px 4px' }, 'data-saved': '' }, ''));
     },
     refresh(p) {
-      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf); p.time.set(s.time); p.speed.set(String(s.timeSpeed || 1)); p.speedBox.hidden = s.time !== 'cycle';
-      p.el.querySelector('[data-speed-desc]').textContent = `一天約 ${Math.round(24 / (s.timeSpeed || 1))} 分鐘。需求、作息與活動都依遊戲時間計算，所以不同速度下結果一致；關掉 App 時循環時間會暫停。`; p.wx.set(s.weather); p.ctrl.set(s.control);
+      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf);
+      { const d = p.el.querySelector('[data-time-desc]'); if (d) d.textContent = `目前：${{ real: '跟隨手機時間', cycle: `遊戲循環 ×${s.timeSpeed || 1}${s.timePaused ? '（暫停）' : ''}`, fixed: `固定在 ${String(Math.floor(s.fixedHour || 12)).padStart(2, '0')}:${String(Math.round(((s.fixedHour || 12) % 1) * 60)).padStart(2, '0')}` }[s.time] || '固定時段'}・天氣 ${{ auto: '自動', clear: '晴', cloudy: '多雲', rain: '雨', fog: '霧' }[s.weather] || s.weather}`; }
+      p.ctrl.set(s.control);
       p.custom.hidden = s.perf !== 'custom';
       const q = app().perfOf(s.perf);
       p.el.querySelector('[data-perf-desc]').textContent = `${q.fps} fps・陰影${q.shadows ? (q.shadows >= 2048 ? '高' : '低') : '關'}・特效${q.fx ? '開' : '關'}・草${q.grass ? '開' : '關'}・解析度 ×${q.ratio}`;

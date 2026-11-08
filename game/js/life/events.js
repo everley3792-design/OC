@@ -73,7 +73,7 @@
     }
     mark(ev, A, Bc, p); E().lastAny = Date.now();
     if (ev.social) { const ok = B().Social.start(ba, bb, ev.social); if (ok) { applyFx(ev, A, Bc, p, { skipMem: true }); logEv(ev, A, Bc, '社交'); } return ok; }
-    cur = { ev, A, Bc, p, i: 0, waitUntil: 0, watched: false, cast: { a: ba, b: bb }, t0: nowR() };
+    cur = { ev, steps: (ev.steps || []).slice(), A, Bc, p, i: 0, waitUntil: 0, watched: false, cast: { a: ba, b: bb }, t0: nowR() };   // 9.0: each run owns its step list (choices insert replies)
     B().hold(A.id, 'event'); if (Bc) B().hold(Bc.id, 'event');
     if (ev.watch || ev.important) hooks.notice({ text: fmt(ev.ask || `${chars().name(A)}：${ev.zh}`, A, Bc, p), watch: () => { if (cur && cur.ev === ev) { cur.watched = true; hooks.cam(ba.a, true); OC.Stage && OC.Stage.controls(true); } } });
     St().emit('life:event', { id: ev.id, a: A.id, b: Bc && Bc.id, state: 'start' });
@@ -93,7 +93,7 @@
     if ([c.cast.a, c.cast.b].some((m) => m && !m.a)) { end('left'); return; }
     if (c.fast) c.waitUntil = 0;   // skipped by the player: run the remaining steps at once (results still applied by finish())
     if (t < c.waitUntil || c.pending) return;
-    const st = c.ev.steps[c.i++]; if (!st) { finish(); return; }
+    const st = c.steps[c.i++]; if (!st) { finish(); return; }
     const who = (r) => (r === 'a' ? c.cast.a : r === 'b' ? c.cast.b : null);
     const chr = (r) => (r === 'a' ? c.A : r === 'b' ? c.Bc : null);
     const [kind, x, y, z] = st;
@@ -106,7 +106,7 @@
       case 'wait': c.waitUntil = t + (x || 1); break;
       case 'cam': if (c.watched || c.ev.important) { const m = who(x); if (m && c.watched) hooks.cam(m.a, true); } break;
       case 'sound': hooks.sound(x); break;
-      case 'choice': { const opts = y || []; if (!opts.length) break; if (c.watched && !c.fast) { c.pending = true; hooks.choice(fmt(x, c.A, c.Bc, c.p), opts.map((o) => fmt(o.label, c.A, c.Bc, c.p)), (i) => { c.pending = false; const o = opts[i] || opts[0]; c.choice = i; if (o.fx) applyFx({ fx: o.fx }, c.A, c.Bc, c.p); if (o.say) c.ev.steps.splice(c.i, 0, ['say', o.say[0], o.say[1]]); }); } else { const o = opts[0]; c.choice = 0; if (o.fx) applyFx({ fx: o.fx }, c.A, c.Bc, c.p); } break; }
+      case 'choice': { const opts = y || []; if (!opts.length) break; if (c.watched && !c.fast) { c.pending = true; hooks.choice(fmt(x, c.A, c.Bc, c.p), opts.map((o) => fmt(o.label, c.A, c.Bc, c.p)), (i) => { c.pending = false; const o = opts[i] || opts[0]; c.choice = i; if (o.fx) applyFx({ fx: o.fx }, c.A, c.Bc, c.p); if (o.say) c.steps.splice(c.i, 0, ['say', o.say[0], o.say[1]]); }); } else { const o = opts[0]; c.choice = 0; if (o.fx) applyFx({ fx: o.fx }, c.A, c.Bc, c.p); } break; }
       case 'fx': applyFx({ fx: x }, c.A, c.Bc, c.p); break;
     }
   }

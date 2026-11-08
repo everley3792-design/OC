@@ -92,6 +92,36 @@
     L.furPattern = Math.random() < 0.45 ? pickOne(R.FUR_PATTERNS)[0] : 'none'; L.patternCol = OC.mix(L.fur, '#5a3a20', 0.35);
     if (level === 'detailed') { L.headSize = +(0.9 + Math.random() * 0.25).toFixed(2); L.bodyW = +(0.85 + Math.random() * 0.35).toFixed(2); L.legLen = +(0.8 + Math.random() * 0.5).toFixed(2); L.eyeSize = +(0.85 + Math.random() * 0.4).toFixed(2); L.eyeGap = +(Math.random() * 2 - 1).toFixed(1); }
   }
+  /** 9.0 personality quiz: each answer nudges sliders and may suggest a trait; the preview OC reacts to every answer */
+  const QUIZ = [
+    { q: '放假的早上，你的 OC 會……', a: [['一早就出門找朋友玩', { energy: 18, social: 18, pace: 10 }, 'extrovert', 'cheer'], ['賴在床上看書', { energy: -15, thinking: 12, social: -10 }, 'bookworm', 'sit'], ['去森林裡探險', { energy: 10, thinking: 6 }, 'curious', 'jump'], ['睡到中午', { energy: -22, pace: -15 }, 'sleepy', 'yawn']] },
+    { q: '朋友送了一份禮物，牠會……', a: [['大叫「好開心！」抱住對方', { expression: 22, social: 10 }, 'energetic', 'happy'], ['臉紅說謝謝', { expression: -10 }, 'shy', 'shy'], ['冷靜地點頭，偷偷收好', { expression: -18, speech: -10 }, null, 'nod'], ['馬上拆開研究', { thinking: 15 }, 'curious', 'surprised']] },
+    { q: '遇到第一次見面的人……', a: [['主動打招呼', { social: 20, speech: 10 }, 'outgoing', 'greet'], ['躲在朋友後面', { social: -20 }, 'shy', 'shy'], ['先觀察一下', { thinking: 12, social: -6 }, 'introvert', 'think'], ['講個笑話破冰', { social: 12, expression: 12 }, 'humorous', 'laugh']] },
+    { q: '房間平常是……', a: [['整整齊齊，東西都有位置', { thinking: 8, pace: 5 }, 'tidy', 'proud'], ['有點亂但找得到', { pace: -5 }, null, 'idle'], ['堆滿畫和收藏', { expression: 10 }, 'artsy', 'happy'], ['到處是吃的', { energy: 5 }, 'foodie', 'eat']] },
+    { q: '晚上十二點，牠通常在……', a: [['早就睡了，明天要早起', { energy: 5, pace: 8 }, 'earlybird', 'sleep'], ['精神正好！', { energy: 10 }, 'nightowl', 'cheer'], ['看星星發呆', { thinking: 10, expression: -5 }, 'dreamy', 'think'], ['跟朋友聊天', { social: 15 }, 'extrovert', 'talk']] },
+  ];
+  function quiz(c, x) {
+    const P = c.personality; let i = 0; const picks = [];
+    sheet('認識你的 OC', (b, api) => {
+      const draw = () => {
+        if (i >= QUIZ.length) {
+          const traits = [...new Set(picks.filter(Boolean))].filter((t, k, arr) => !(t === 'extrovert' && arr.includes('outgoing'))).filter((t) => !Ch().TRAITS.find((d) => d.id === t && (d.x || []).some((y) => P.traits.includes(y))));
+          b.replaceChildren(h('h3', null, '完成！'), h('p.muted', null, `${Ch().typeTitle(c)}。建議的特質：${traits.map((t) => (Ch().TRAITS.find((d) => d.id === t) || {}).zh).filter(Boolean).join('、') || '（沒有）'}`),
+            h('button.btn.primary.block', { on: { click: () => { for (const t of traits) if (!P.traits.includes(t) && P.traits.length < 5) P.traits.push(t); api.close(); x.changed('personality', 'cheer'); x.rebuild(); } } }, '加上這些特質'),
+            h('button.btn.ghost.block', { style: { marginTop: '6px' }, on: { click: () => { api.close(); x.rebuild(); } } }, '只保留滑桿'));
+          return;
+        }
+        const Q = QUIZ[i];
+        b.replaceChildren(h('small.muted', null, `${i + 1} / ${QUIZ.length}`), h('h3', { style: { margin: '6px 0 12px' } }, Q.q),
+          ...Q.a.map(([label, d, trait, act]) => h('button.btn.block', { style: { marginTop: '8px', justifyContent: 'flex-start' }, on: { click: () => {
+            for (const [k, v] of Object.entries(d)) P[k] = Math.max(0, Math.min(100, (P[k] == null ? 50 : P[k]) + v));
+            picks.push(trait); x.changed('personality', act); haptic('tick'); i++; draw();
+          } } }, label)));
+      };
+      draw();
+    });
+  }
+
   const S_ = {
     template(c, x) {
       const box = h('div');
@@ -200,9 +230,14 @@
     personality(c, x) {
       const P = c.personality, title = h('div.tag.teal', { style: { fontSize: 'var(--fs-m)', padding: '6px 14px' } }, Ch().typeTitle(c));
       const reactFor = { pace: 'walk', energy: 'happy', social: 'greet', expression: 'surprised', thinking: 'idle', speech: 'greet' };
-      return h('div', null, T('性格', '拖動滑桿，角色會即時反應'), h('div.center', { style: { margin: '6px 0 10px' } }, title),
+      // 9.0: a playful way in — five little questions (or a dice roll) set the sliders and suggest traits; the OC reacts
+      const fun = h('div.hstack', { style: { gap: '8px', margin: '4px 0 6px' } },
+        h('button.btn.grow', { on: { click: () => quiz(c, x) } }, icon('chat', 's'), '回答 5 個小問題'),
+        h('button.btn.grow', { on: { click: () => { for (const d of Ch().SLIDERS) P[d.id] = Math.round(15 + Math.random() * 70); x.changed('personality', ['happy', 'surprised', 'shy', 'greet'][Math.floor(Math.random() * 4)]); x.rebuild(); } } }, icon('dice', 's'), '隨機性格'));
+      return h('div', null, T('性格', '拖動滑桿，角色會即時反應'), fun, h('div.center', { style: { margin: '6px 0 10px' } }, title),
         ...Ch().SLIDERS.map((d) => OC.UI.slider(d, P[d.id], (v, live) => { P[d.id] = v; title.textContent = Ch().typeTitle(c); if (!live) { x.changed('personality', reactFor[d.id] === 'walk' ? null : reactFor[d.id]); if (d.id === 'pace') { x.stage.walk = true; setTimeout(() => (x.stage.walk = false), 2200); } } })));
     },
+    /* (personality quiz is defined below as quiz()) */
     traits(c, x) {
       const P = c.personality, box = h('div'), MAX = 5;
       const grid = h('div.grid.c2');
