@@ -111,7 +111,7 @@ const { check, wait } = H;
       check('4b 「想法」資料：目前的原因、計畫步驟、今天的小目標、備選項都有', ex.reason && ex.plan && ex.plan.steps.length >= 2 && ex.goals.length >= 1 && ex.cands.length >= 2, { reason: ex.reason, plan: ex.plan && ex.plan.zh, goals: ex.goals.length, cands: ex.cands.length });
       // the plan advances while the OC lives (simulation minutes)
       await quiet();
-      const prog = await page.evaluate(async (id) => { const b = OC.Brain.get(id); let i0 = b.plan ? b.plan.i : -1, maxI = i0; for (let k = 0; k < 40 && b.plan; k++) { OC.Sim.advance(10); await new Promise((r) => setTimeout(r, 120)); if (b.plan) maxI = Math.max(maxI, b.plan.i); } return { i0, maxI, ended: !b.plan, done: OC.Mind11.st(OC.Chars.get(id)).done }; }, mate);
+      const prog = await page.evaluate(async (id) => { const b = OC.Brain.get(id); let i0 = b.plan ? b.plan.i : -1, maxI = i0; for (let k = 0; k < 40 && b.plan; k++) { OC.Sim.advance(10); await new Promise((r) => setTimeout(r, 120)); if (b.plan) maxI = Math.max(maxI, b.plan.i); } return { i0, maxI, ended: !b.plan, done: OC.Mind11.st(OC.Chars.get(id)).done, dbg: { holds: [...b.holds], st: b.st, act: b.act, now: Math.round(OC.Sim.now()), until: b.plan && Math.round(b.plan.until), loc: OC.Chars.get(id).life.loc, trip: !!OC.Chars.get(id).life.trip } }; }, mate);
       check('4c 計畫會一步一步做下去（做完一個活動就換下一步，最後完成或合理放棄）', prog.maxI > prog.i0 || prog.ended, prog);
       // urgent need drops a plan
       const drop = await page.evaluate(async (id) => { const c = OC.Chars.get(id), b = OC.Brain.get(id); b.holds.clear(); if (!b.plan) { b.plan = { id: 'x', zh: '測試計畫', why: 't', steps: [{ act: 'read' }, { act: 'rest' }], i: 0, until: OC.Sim.now() + 300, miss: 0 }; } c.needs.food = 4; b.st = 'think'; b.thinkAt = 0; for (let i = 0; i < 12 && b.plan; i++) { OC.Sim.advance(2); await new Promise((r) => setTimeout(r, 150)); } return { plan: !!b.plan, log: OC.Brain.log.filter((l) => l.who === id).slice(0, 4).map((l) => l.text) }; }, mate);
@@ -175,7 +175,8 @@ const { check, wait } = H;
         const bad = [], quiet = [], names = Object.keys(OC.Sound.LIB); let maxPeak = 0;
         for (const n of names) {
           await new Promise((r) => setTimeout(r, 40));
-          const m = await window.__measure(() => OC.Sound.play(n, { lv: 0.7 }), 650);
+          let m = await window.__measure(() => OC.Sound.play(n, { lv: 0.7 }), 650);
+          if (!m.ret) { await new Promise((r) => setTimeout(r, OC.Sound.LIB[n][1] + 80)); m = await window.__measure(() => OC.Sound.play(n, { lv: 0.7 }), 650); }   // the same sound may still be cooling down from a real UI tap
           if (!m.ret) { bad.push(n + ':not-played'); continue; }
           maxPeak = Math.max(maxPeak, m.pl, m.pr);
           if (m.pl > 0.9) bad.push(n + ':clips ' + m.pl.toFixed(2)); if (m.pl < 0.0008 && m.pr < 0.0008) quiet.push(n);
