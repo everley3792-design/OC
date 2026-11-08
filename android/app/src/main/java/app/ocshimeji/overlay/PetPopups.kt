@@ -17,8 +17,8 @@ import android.widget.TextView
 /** colours for native overlay UI, following the app's theme setting (light / dark / system) */
 data class PetTheme(val bg: Int, val fg: Int, val sub: Int, val accent: Int, val line: Int) {
     companion object {
-        fun of(dark: Boolean) = if (dark) PetTheme(0xF02A3042.toInt(), 0xFFF3EEE6.toInt(), 0xFFB9B2A8.toInt(), 0xFFFF8A7A.toInt(), 0x33FFFFFF)
-        else PetTheme(0xF5FFFDF7.toInt(), 0xFF3B2B25.toInt(), 0xFF7A6A60.toInt(), 0xFFF26B5B.toInt(), 0x22302A40)
+        fun of(dark: Boolean) = if (dark) PetTheme(0xF023253F.toInt(), 0xFFEEEBFF.toInt(), 0xFFB3AFD6.toInt(), 0xFF9A9EFF.toInt(), 0x33FFFFFF)
+        else PetTheme(0xF5FFFFFF.toInt(), 0xFF3F3B5E.toInt(), 0xFF7A769C.toInt(), 0xFF7378F0.toInt(), 0x2250488C)
     }
 }
 

@@ -312,5 +312,5 @@ class MainActivity : Activity() {
 
 /** Colours used before the web layer paints (must match game/css tokens --bg). */
 object Theme {
-    fun background(dark: Boolean): Int = if (dark) 0xFF1D2130.toInt() else 0xFFFFF8E7.toInt()
+    fun background(dark: Boolean): Int = if (dark) 0xFF17182B.toInt() else 0xFFF6F4FC.toInt()
 }

@@ -12,6 +12,8 @@ const want = (n) => !only.length || only.includes(n);
 const SHOTS = process.env.OC_SHOTS || path.join(__dirname, '..', '..', '..', 'deliverables', 'v8');
 fs.mkdirSync(SHOTS, { recursive: true });
 const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') });
+/** wait until no CSS animation / transition is running inside the element (spring entrances) */
+const settle = (page, sel) => page.waitForFunction((sel) => !document.getAnimations().some((a) => a.playState === 'running' && a.effect && a.effect.target && a.effect.target.closest && a.effect.target.closest(sel)), sel, { timeout: 5000 }).catch(() => {});
 const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i) : OC.App.player; return OC.World.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * OC.World.HY + 30); }, id || null);
 
 (async () => {
@@ -33,6 +35,7 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       await page.tap('.intro-welcome .btn.ghost'); await page.waitForSelector('.intro-film', { timeout: 8000 });
       check('2c 歡迎畫面可以重新觀看開場', true);
       await page.tap('.intro-skip'); await page.waitForSelector('.intro-welcome.on', { timeout: 8000 });
+      await settle(page, '.intro-welcome');   // 10.0: the card springs in; tap once it has landed (like a person would)
       await page.tap('.intro-welcome .btn.primary'); await page.waitForSelector('.creator .card', { timeout: 10000 });
       check('1b 「開始新遊戲」直接進入創角（玩家先建立自己的 OC）', await page.evaluate(() => OC.Chars.all().length === 0));
       await page.click('.creator .card >> nth=1'); await wait(page, 300);   // 從零創建

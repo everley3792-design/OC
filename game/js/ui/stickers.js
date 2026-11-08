@@ -131,6 +131,7 @@
     seed: `<path d="M24 41V24" stroke="#62B347" stroke-width="3.4" stroke-linecap="round"/><path d="M24 26C14 26 9 19 9.5 11 18 11 24 16 24 26z" fill="#86D163"/><path d="M24 23c0-9 5.6-14 14.5-14 0 9-5.6 14-14.5 14z" fill="#62B347"/>
       <ellipse cx="24" cy="41" rx="11" ry="3.4" fill="#C98A50"/>${glint(14.5, 15, 1.8)}`,
   };
+  for (const k of Object.keys(S)) S[k] = S[k].replace(/>\s+</g, '><').trim();   // no stray whitespace text nodes (screen readers / textContent)
   S.map = S.compass; S.daily = S.flag; S.workshop = S.brush; S.home = S.island; S.achievements = S.trophy; S.collection = S.book; S.decor = S.sofa;
 
   /** a sticker icon: <span class="stk [cls]"><svg …></span>; size via CSS (.stk default 28px; .s 20px; .l 40px; .xl 56px) */
