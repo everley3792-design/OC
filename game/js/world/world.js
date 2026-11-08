@@ -169,7 +169,19 @@
     x.imageSmoothingEnabled = !a.pixel; x.imageSmoothingQuality = 'high';   // big player images are downsampled with a proper filter
     const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / 120, a.t);
     if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
+    if (!pl.sprite && quality.fx !== false) toyShade(x, r);
     a.tex.needsUpdate = true;
+  }
+  /** 10.0 "vinyl toy" volume on rig-drawn characters: a soft top light, a cool shade toward the feet and the side away
+   *  from the sun (drawn only on the character's own pixels). Imported / painted sprites are left exactly as drawn. */
+  function toyShade(x, r) {
+    x.save(); x.globalCompositeOperation = 'source-atop';
+    const top = r * FEET - r * 0.62, g = x.createLinearGradient(0, top, 0, r * FEET);
+    g.addColorStop(0, 'rgba(255, 248, 236, 0.16)'); g.addColorStop(0.38, 'rgba(255, 255, 255, 0)'); g.addColorStop(0.72, 'rgba(70, 50, 130, 0)'); g.addColorStop(1, 'rgba(70, 50, 130, 0.17)');
+    x.fillStyle = g; x.fillRect(0, 0, r, r);
+    const s = x.createLinearGradient(r * 0.3, 0, r * 0.75, 0); s.addColorStop(0, 'rgba(70, 50, 130, 0)'); s.addColorStop(1, 'rgba(70, 50, 130, 0.07)');
+    x.fillStyle = s; x.fillRect(0, 0, r, r);
+    x.restore();
   }
   function updateActor(a, dt) {
     a.t += dt;
@@ -203,8 +215,13 @@
     a.face = lerp(a.face, a.tFace, 1 - Math.exp(-dt * 7)); a.back = lerp(a.back, a.tBack, 1 - Math.exp(-dt * 6));
     const want = a.tBack > 0.5 ? 'back' : a.tFace < -0.55 ? 'left' : a.tFace > 0.55 ? 'right' : a.dir === 'back' || (Math.abs(a.tFace) < 0.35) ? 'front' : a.dir;
     if (want !== a.dir) { a.dirHold = (a.dirHold || 0) + dt; if (a.dirHold > 0.08) { a.dir = want; a.dirHold = 0; } } else a.dirHold = 0;
-    if (a.jumpT != null) { a.jumpT += dt; const q = a.jumpT / 0.5; if (q >= 1) { a.jumpT = null; a.lift = 0; a.squashT = 0; } else a.lift = Math.sin(q * Math.PI) * (beh ? beh.jumpHeight : 14); }
-    if (a.squashT != null) { a.squashT += dt; const q = a.squashT / 0.3; a.squash = q >= 1 ? 1 : 1 - Math.sin(q * Math.PI) * 0.12; if (q >= 1) a.squashT = null; }
+    // 10.0 jump: anticipation (crouch) → stretch at take-off → slight stretch while falling → squash on landing with a small rebound
+    if (a.jumpT != null) {
+      a.jumpT += dt;
+      if (a.jumpT < 0) { a.lift = 0; a.squash = 1 - 0.14 * Math.sin(Math.min(1, 1 + a.jumpT / 0.1) * Math.PI / 2); }
+      else { const q = a.jumpT / 0.5; if (q >= 1) { a.jumpT = null; a.lift = 0; a.squashT = 0; } else { a.lift = Math.sin(q * Math.PI) * (beh ? beh.jumpHeight : 14); a.squash = 1 + 0.11 * Math.max(0, 1 - q * 2.5) + 0.05 * Math.max(0, (q - 0.7) / 0.3); } }
+    }
+    if (a.squashT != null) { a.squashT += dt; const q = a.squashT / 0.42; a.squash = q >= 1 ? 1 : 1 - 0.16 * Math.exp(-q * 3) * Math.cos(q * Math.PI * 2.2); if (q >= 1) a.squashT = null; }
     if (a.turnT > 0) a.turnT = Math.max(0, a.turnT - dt);
     if (a.update) a.update(a, dt);
     a.lvl = levelAt(a.x, a.y);
@@ -232,7 +249,7 @@
     const p = findPath(a.x, a.y, t.x, t.y); if (!p) return false;
     a.path = p; a.onArrive = onArrive || null; a.joy = null; return true;
   }
-  function jump(a) { if (a.jumpT == null) { a.jumpT = 0; } }
+  function jump(a) { if (a.jumpT == null) { a.jumpT = reduce ? 0 : -0.1; } }
 
   // ====================== camera ======================
   function applyCam() {

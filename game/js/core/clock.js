@@ -33,7 +33,7 @@
   function cycleWeather() { const gm = OC.Sim.now(), d = Math.floor(gm / 1440), block = Math.floor((gm % 1440) / 360); const r = OC.hash(d * 3.17 + block * 0.173 + 11); if (block <= 1 && r > 0.88) return 'fog'; return r < 0.52 ? 'clear' : r < 0.78 ? 'cloudy' : r < 0.95 ? 'rain' : 'cloudy'; }
   function weather() { const s = OC.Store.s.settings; return WEATHERS.includes(s.weather) ? s.weather : s.time === 'cycle' && OC.Sim ? cycleWeather() : autoWeather(); }
   function label() {
-    const d = new Date(), h = hour(), mode = OC.Store.s.settings.time, real = mode === 'real' || mode === 'cycle';
+    const d = new Date(), h = hour(), mode = OC.Store.s.settings.time, real = mode === 'real' || mode === 'cycle' || mode === 'fixed';   // 10.0: a fixed hour shows its clock time too
     const hh = Math.floor(h), mm = Math.floor((h - hh) * 60), cyc = mode === 'cycle' && OC.Sim;
     const gd = cyc ? OC.Sim.day() - (OC.Store.s.life.clock.day0 != null ? OC.Store.s.life.clock.day0 : OC.Sim.day()) + 1 : 0;
     return {

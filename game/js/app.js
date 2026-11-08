@@ -24,14 +24,28 @@
   function perfOf(mode) {
     const c = S().settings.custom;
     switch (mode) {
-      case 'high': return { ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, bbMax: 768, lights: true };
-      case 'saver': return { ratio: 1, shadows: 0, fx: false, grass: 0, fps: 30, bb: 192, bbMax: 256, lights: false };
+      case 'high': return { ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, bbMax: 768, lights: true, grade: true, dof: true };
+      case 'saver': return { ratio: 1, shadows: 0, fx: false, grass: 0, fps: 30, bb: 192, bbMax: 256, lights: false, grade: false, dof: false };
       case 'custom': return { ratio: Math.min(DPR, c.scale), shadows: c.shadows === 'off' ? 0 : c.shadows === 'high' ? 2048 : 1024, fx: c.fx, grass: c.grass ? 0.8 : 0, fps: c.fps, bb: c.scale >= 1.75 ? 320 : c.scale >= 1.25 ? 256 : 192, bbMax: c.scale >= 1.75 ? 768 : c.scale >= 1.25 ? 512 : 256, lights: c.shadows !== 'off' };
-      default: return { ratio: Math.min(DPR, 1.5), shadows: 1024, fx: true, grass: 0.6, fps: 60, bb: 256, bbMax: 512, lights: true };
+      default: return { ratio: Math.min(DPR, 1.5), shadows: 1024, fx: true, grass: 0.6, fps: 60, bb: 256, bbMax: 512, lights: true, grade: true, dof: false };
     }
   }
   let Q = null;
-  function applyPerf() { Q = perfOf(S().settings.perf); Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps; }
+  function applyPerf() {
+    Q = perfOf(S().settings.perf); if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
+    Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
+    const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof);
+  }
+  /** 10.0 sun glow over the world (soft-light): warm by day, golden in the afternoon, cool moonlight at night, faint in bad weather */
+  let glowT = 0, glowKey = '';
+  function updateGlow(dt) {
+    glowT -= dt; if (glowT > 0) return; glowT = 0.5;
+    const h = OC.Clock.hour(), wx = OC.Clock.weather(), n = OC.Env.nightness(h), bad = wx === 'rain' ? 0.35 : wx === 'cloudy' || wx === 'fog' ? 0.6 : 1;
+    const gold = h >= 15 && h < 19 ? 1 - Math.abs(h - 17.2) / 2.2 : 0;
+    const c = n > 0.5 ? '#7C86E8' : gold > 0.15 ? '#FFB46A' : '#FFE6B8', a = (n > 0.5 ? 0.35 : 0.42 + Math.max(0, gold) * 0.25) * bad;
+    const k = c + a.toFixed(2); if (k === glowKey) return; glowKey = k;
+    const r = document.documentElement.style; r.setProperty('--glow-c', c); r.setProperty('--glow-a', a.toFixed(2));
+  }
   function applyMotion() { const r = S().settings.reduceMotion; document.documentElement.classList.toggle('reduce-motion', r); Wd.reduce = r; }
 
   // =============================== live portraits ===============================
@@ -792,6 +806,7 @@
     }
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
     if (hud.name) updateHUD();
+    updateGlow(dt);
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }

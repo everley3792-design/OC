@@ -11,13 +11,14 @@
 
   // ---- time-of-day keyframes ----
   const KEYS = [
+    // 10.0: warm key light against a cool sky fill (shadows read soft blue-violet, sunlit faces warm), golden afternoon
     { h: 0, sun: '#8C9BE0', si: 0.42, el: 40, sky: '#5E6BB8', gnd: '#2B355E', hi: 0.55, sea: '#2D4B8F', fog: '#26325C', glow: '#2A3770' },
     { h: 5, sun: '#9AA6E6', si: 0.45, el: 8, sky: '#6E79C8', gnd: '#34406A', hi: 0.6, sea: '#3A5AA0', fog: '#3A4775', glow: '#5B5EA6' },
-    { h: 6.2, sun: '#FFB38A', si: 1.0, el: 12, sky: '#FFD0B8', gnd: '#6E7F78', hi: 0.85, sea: '#6FB6DA', fog: '#E9C7C0', glow: '#FFB59A' },
-    { h: 8.5, sun: '#FFEBD2', si: 1.95, el: 36, sky: '#FFFFFF', gnd: '#7AA86A', hi: 1.15, sea: '#4FC3E8', fog: '#CFEAF2', glow: '#BDEBFF' },
-    { h: 12.5, sun: '#FFF7EA', si: 2.25, el: 60, sky: '#FFFFFF', gnd: '#7FAE6C', hi: 1.25, sea: '#4FC3E8', fog: '#D8F0F6', glow: '#C8F0FF' },
-    { h: 16.2, sun: '#FFDDB0', si: 2.05, el: 34, sky: '#FFF2E2', gnd: '#7AA86A', hi: 1.12, sea: '#55BFE2', fog: '#F2E2CC', glow: '#FFE3B8' },
-    { h: 18.2, sun: '#FF9D6E', si: 1.35, el: 11, sky: '#FFB9A0', gnd: '#5E5672', hi: 0.88, sea: '#7E9FD6', fog: '#E8A898', glow: '#FF9C7A' },
+    { h: 6.2, sun: '#FFB38A', si: 1.05, el: 12, sky: '#FFD0B8', gnd: '#6E7F78', hi: 0.85, sea: '#6FB6DA', fog: '#E9C7C0', glow: '#FFB59A' },
+    { h: 8.5, sun: '#FFE4C2', si: 2.05, el: 36, sky: '#DCE6FF', gnd: '#86B46C', hi: 0.98, sea: '#4FC3E8', fog: '#CFEAF2', glow: '#BDEBFF' },
+    { h: 12.5, sun: '#FFF0D6', si: 2.4, el: 60, sky: '#DAE5FF', gnd: '#8ABB6E', hi: 1.0, sea: '#4CC2EA', fog: '#D6EEF7', glow: '#C8F0FF' },
+    { h: 16.2, sun: '#FFD199', si: 2.3, el: 30, sky: '#FFE2CC', gnd: '#8AB46A', hi: 0.94, sea: '#5ABDE0', fog: '#F4E0C6', glow: '#FFE3B8' },
+    { h: 18.2, sun: '#FF9D6E', si: 1.4, el: 11, sky: '#FFB9A0', gnd: '#5E5672', hi: 0.88, sea: '#7E9FD6', fog: '#E8A898', glow: '#FF9C7A' },
     { h: 19.6, sun: '#8C9BE0', si: 0.62, el: 18, sky: '#6E79C8', gnd: '#2E3A6A', hi: 0.62, sea: '#3A4E9A', fog: '#323E70', glow: '#4A4F9A' },
     { h: 24, sun: '#8C9BE0', si: 0.42, el: 40, sky: '#5E6BB8', gnd: '#2B355E', hi: 0.55, sea: '#2D4B8F', fog: '#26325C', glow: '#2A3770' },
   ];
