@@ -126,6 +126,10 @@
     move: `<circle cx="24" cy="24" r="17" fill="#E7E8FF"/><path d="M24 9v30M9 24h30" stroke="#7378F0" stroke-width="3.6" stroke-linecap="round"/>
       <path d="M24 7.5l-5 5.5h10zM24 40.5l-5-5.5h10zM7.5 24l5.5-5v10zM40.5 24 35 19v10z" fill="#7378F0" stroke="#7378F0" stroke-width="1.5" stroke-linejoin="round"/>`,
     info: `<circle cx="24" cy="24" r="17" fill="#5CBDF0"/><path d="M41 24a17 17 0 0 1-30.4 10.4A17 17 0 0 0 41 24z" fill="#3DA4DC"/><circle cx="24" cy="15.5" r="2.8" fill="#fff"/><rect x="21.4" y="21" width="5.2" height="14" rx="2.6" fill="#fff"/>${glint(15, 14, 2)}`,
+    shirt: `<path d="M17 7.5 7 13l4.4 8.2 3-1.6V40h19.2V19.6l3 1.6L41 13 31 7.5c-1.4 3-3.8 4.6-7 4.6s-5.6-1.6-7-4.6z" fill="#7CCDF4" stroke="#7CCDF4" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M33.6 19.6V40H26c5-2 6-12 4.6-20.6l3 .2z" fill="#5BB6E3"/><path d="M14.4 27h19.2" stroke="#fff" stroke-width="3"/>${glint(13, 14, 1.8)}`,
+    seed: `<path d="M24 41V24" stroke="#62B347" stroke-width="3.4" stroke-linecap="round"/><path d="M24 26C14 26 9 19 9.5 11 18 11 24 16 24 26z" fill="#86D163"/><path d="M24 23c0-9 5.6-14 14.5-14 0 9-5.6 14-14.5 14z" fill="#62B347"/>
+      <ellipse cx="24" cy="41" rx="11" ry="3.4" fill="#C98A50"/>${glint(14.5, 15, 1.8)}`,
   };
   S.map = S.compass; S.daily = S.flag; S.workshop = S.brush; S.home = S.island; S.achievements = S.trophy; S.collection = S.book; S.decor = S.sofa;
 
@@ -135,5 +139,8 @@
     sp.innerHTML = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">${S[name] || S.sparkle}</svg>`;
     return sp;
   }
-  OC.UI.sticker = sticker; OC.UI.STICKERS = S;
+  /** a sticker when the line-icon name has one (with a few aliases), otherwise the line icon — for list rows and cards */
+  const ALIAS = { cart: 'shop', smile: 'heart', zap: 'sparkle', sleep: 'moon', image: 'camera', film: 'camera', target: 'star', map: 'compass' };
+  function stickerOr(name, cls = '') { const n = S[name] ? name : ALIAS[name]; return n ? sticker(n, cls) : OC.UI.icon(name, cls); }
+  OC.UI.sticker = sticker; OC.UI.stickerOr = stickerOr; OC.UI.STICKERS = S;
 })();

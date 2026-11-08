@@ -178,7 +178,7 @@
   function pump() {
     if (showing >= 2 || !cards.length) return; const o = cards.shift(); showing++;
     let wrap = document.querySelector('.p6-cards'); if (!wrap) { wrap = h('div.p6-cards', { 'aria-live': 'polite' }); document.getElementById('app').append(wrap); }
-    const art = o.item ? (() => { const im = OC.Style.itemImg(o.item); im.style.width = im.style.height = '40px'; return im; })() : h('div.card-ic.' + (o.kind || ''), null, icon(o.ic || 'sparkle'));
+    const art = o.item ? (() => { const im = OC.Style.itemImg(o.item); im.style.width = im.style.height = '40px'; return im; })() : h('div.card-ic.' + (o.kind || ''), null, OC.UI.stickerOr ? OC.UI.stickerOr(o.ic || 'sparkle', 'm') : icon(o.ic || 'sparkle'));
     const rw = o.reward ? [o.reward.coins ? `+${o.reward.coins} 星幣` : null, ...Object.entries(o.reward.items || {}).map(([id, n]) => `${(OC.Style.ITEMS[id] || { zh: id }).zh}×${n}`), o.reward.title ? `稱號「${OC.PlayData.TITLES[o.reward.title]}」` : null, o.thanks ? `謝禮：${(OC.Style.ITEMS[o.thanks] || { zh: o.thanks }).zh}` : null].filter(Boolean).join('　') : '';
     const el = h('div.p6-card.' + (o.kind || ''), { role: 'status', on: { click: () => close() } }, art, h('div.grow', null, h('b', null, o.title), o.sub ? h('div.sub', null, o.sub) : null, rw ? h('div.rw', null, rw) : null));
     wrap.append(el); requestAnimationFrame(() => el.classList.add('on'));

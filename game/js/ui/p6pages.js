@@ -32,7 +32,7 @@
   function questRow(x, p) {
     const done = x.done && !x.claimed;
     return h('div.q-row' + (x.claimed ? '.claimed' : done ? '.ready' : ''), null,
-      h('div.q-ic', null, icon(x.ic || 'flag', 's')),
+      h('div.q-ic', null, OC.UI.stickerOr(x.ic || 'flag', 'm')),
       h('div.grow', null, h('div.hstack', { style: { gap: '6px' } }, h('b.ellipsis', null, x.zh), x.type === 'place' && x.place ? h('span.tag', null, OC.Places.get(x.place).zh) : null, x.type === 'event' ? h('span.tag.sun', null, '限時') : null, x.type === 'hidden' ? h('span.tag.accent', null, '隱藏') : null),
         h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, x.d || ''), h('div.hstack', { style: { gap: '8px', marginTop: '4px' } }, h('div.grow', null, bar(x.prog, x.n, x.claimed ? 'var(--locked)' : 'var(--teal)')), h('span.num.faint', { style: { fontSize: 'var(--fs-xs)' } }, `${x.prog}/${x.n}`)),
         small('獎勵：' + rewardText(x.reward))),
@@ -43,7 +43,7 @@
     return h('div', null,
       T('今天', `${today.filter((x) => x.done).length}/${today.length} 完成・沒做完也沒關係`), h('div.vstack', { style: { gap: '8px' } }, ...today.map((x) => questRow(x, p))),
       T('本週', OC.Quests.weekKey()), h('div.vstack', { style: { gap: '8px' } }, ...week.map((x) => questRow(x, p))),
-      T('長期挑戰'), h('div.vstack', { style: { gap: '8px' } }, ...ch.map((c) => c.finished ? h('div.q-row.claimed', null, h('div.q-ic', null, icon(c.ic, 's')), h('div.grow', null, h('b', null, c.zh.replace(/ [IV]+$/, '')), small('全部完成！')), h('span.tag', null, icon('check', 's'))) : questRow({ key: c.key, zh: c.zh, d: `累計 ${c.n}（第 ${c.tier + 1}/${c.tiers} 階）`, ic: c.ic, n: c.n, prog: c.prog, done: c.done, claimed: false, reward: c.reward, type: 'challenge' }, p))),
+      T('長期挑戰'), h('div.vstack', { style: { gap: '8px' } }, ...ch.map((c) => c.finished ? h('div.q-row.claimed', null, h('div.q-ic', null, OC.UI.stickerOr(c.ic, 'm')), h('div.grow', null, h('b', null, c.zh.replace(/ [IV]+$/, '')), small('全部完成！')), h('span.tag', null, icon('check', 's'))) : questRow({ key: c.key, zh: c.zh, d: `累計 ${c.n}（第 ${c.tier + 1}/${c.tiers} 階）`, ic: c.ic, n: c.n, prog: c.prog, done: c.done, claimed: false, reward: c.reward, type: 'challenge' }, p))),
       T('隱藏任務', `${hid.found}/${hid.total} 已發現`), card(hid.hints.length ? h('div.vstack', { style: { gap: '4px' } }, ...hid.hints.slice(0, 3).map((t) => h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '？ ' + t))) : small('全部都找到了！')),
       small('任務只會出現你已經能去的地方、能取得的東西。每日任務隔天會換；完成但還沒領的會一直保留。'));
   }
@@ -55,7 +55,7 @@
   }
   function achRow(x, p) {
     return h('div.q-row' + (x.claimed ? '.claimed' : x.got ? '.ready' : x.hidden ? '.hidden' : ''), null,
-      h('div.q-ic' + (x.got ? '.gold' : ''), null, icon(x.got ? 'trophy' : x.hidden ? 'lock' : 'trophy', 's')),
+      h('div.q-ic' + (x.got ? '.gold' : ''), null, OC.UI.sticker(x.got ? 'trophy' : x.hidden ? 'lock' : 'trophy', 'm' + (x.got ? '' : ' dim'))),
       h('div.grow', null, h('b', null, x.hidden ? '？？？' : x.zh), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, x.hidden ? x.hint || '隱藏成就' : x.d),
         !x.hidden && !x.got ? h('div.hstack', { style: { gap: '8px', marginTop: '4px' } }, h('div.grow', null, bar(x.v, x.n, 'var(--sun)')), h('span.num.faint', { style: { fontSize: 'var(--fs-xs)' } }, `${x.v}/${x.n}`)) : null,
         x.got ? small(`${new Date(x.got).toLocaleDateString('zh-TW')} 達成・獎勵：${rewardText(x.reward)}`) : !x.hidden ? small('獎勵：' + rewardText(x.reward)) : null),
@@ -179,7 +179,7 @@
     const titles = OC.Growth.titles();
     const titleSel = h('select.input', { 'aria-label': '稱號', on: { change: (e) => { OC.Growth.wearTitle(c, e.target.value || null); p.refresh(p); } } }, h('option', { value: '' }, titles.length ? '（不戴稱號）' : '還沒有稱號'), ...titles.map((t) => h('option', { value: t.id, selected: c.title === t.id }, t.zh)));
     const aspCard = x ? card(
-      h('div.hstack', null, h('div.q-ic.gold', null, icon(x.ic, 's')), h('div.grow', null, h('b', null, `人生目標：${x.zh}`), small(x.d)), a.locked ? h('span.tag', null, icon('lock', 's'), '鎖定') : null),
+      h('div.hstack', null, h('div.q-ic.gold', null, OC.UI.stickerOr(x.ic, 'm')), h('div.grow', null, h('b', null, `人生目標：${x.zh}`), small(x.d)), a.locked ? h('span.tag', null, icon('lock', 's'), '鎖定') : null),
       h('div.vstack', { style: { gap: '6px', marginTop: '10px' } }, ...x.steps.map((st, i) => { const done = i < a.step, now = i === a.step, n = now ? Math.min(st.goal.n, (a.prog && a.prog.n) || 0) : done ? st.goal.n : 0; return h('div.asp-step' + (done ? '.done' : now ? '.now' : ''), null, h('i', null, done ? '✓' : i + 1), h('div.grow', null, h('div', null, st.zh), now ? bar(n, st.goal.n, 'var(--sun)') : null), now ? h('span.num.faint', null, `${n}/${st.goal.n}`) : null); })),
       small('完成後的獎勵：' + rewardText(x.reward)),
       h('div.hstack', { style: { marginTop: '10px', gap: '6px' } }, h('button.btn.s.block', { on: { click: () => pickAsp(c, p) } }, '換一個目標'), h('button.btn.s.block', { on: { click: () => { OC.Growth.lockAsp(c, !a.locked); p.refresh(p); } } }, a.locked ? '解除鎖定' : '鎖定（不自動換）'), h('button.btn.ghost.s.block', { on: { click: () => { OC.Growth.pauseAsp(c); p.refresh(p); } } }, '先不要'))) :
@@ -190,7 +190,7 @@
       T('稱號'), card(titleSel, small('稱號從成就、挑戰與人生目標取得，全島共用，每位 OC 可以戴一個。')),
       T('人生目標', '長期的夢想'), aspCard, doneList.length ? h('div.chips', { style: { marginTop: '6px' } }, ...doneList.map((d) => h('span.tag.sun', null, icon('star', 's'), d.zh))) : null,
       T('技能', '經常做相關的事就會進步'), h('div.vstack', { style: { gap: '8px' } }, ...skills.map((s2) => h('div.skill-card', null,
-        h('div.hstack', null, h('div.q-ic', null, icon(s2.ic, 's')), h('b.grow', null, s2.zh), h('span.lv', null, `Lv.${s2.lv}`)), bar(s2.pct, 100, 'var(--teal)'),
+        h('div.hstack', null, h('div.q-ic', null, OC.UI.stickerOr(s2.ic, 'm')), h('b.grow', null, s2.zh), h('span.lv', null, `Lv.${s2.lv}`)), bar(s2.pct, 100, 'var(--teal)'),
         h('div.unlocks', null, ...s2.unlocks.map((u) => h('div.unl' + (u.on ? '.on' : ''), null, h('span.num', null, `Lv.${u.lv}`), h('span', null, u.zh))))))));
     p._g = el; return el;
   }

@@ -549,9 +549,9 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 .radial-btn .stk { width: 32px; height: 32px; }
 .radial.on .radial-btn { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; }
 .radial-btn svg { width: 24px; height: 24px; }
-.radial-btn span { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-xs); font-weight: 800; color: var(--ink); background: var(--surface); padding: 2px 9px; border-radius: var(--r-pill); box-shadow: 0 2px 0 var(--line), var(--shadow-1); }
+.radial-btn > span:last-child { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-xs); font-weight: 800; color: var(--ink); background: var(--surface); padding: 2px 9px; border-radius: var(--r-pill); box-shadow: 0 2px 0 var(--line), var(--shadow-1); }
 .radial-btn.main { box-shadow: inset 0 0 0 3px var(--accent), 0 3.5px 0 var(--accent-lip), var(--shadow-2); }
-.radial-btn.main span { background: var(--accent); color: var(--on-accent); }
+.radial-btn.main > span:last-child { background: var(--accent); color: var(--on-accent); }
 .radial-btn.off { color: var(--ink-3); background: var(--surface-2); box-shadow: none; }
 .radial-btn.off .stk { filter: grayscale(1) opacity(.5); }
 .radial-btn:active { transform: translate(var(--x), var(--y)) scale(0.92); }
@@ -662,3 +662,35 @@ html.grade #world-glow { opacity: var(--glow-a, 0); }
 #world-dof i:last-child { bottom: 0; height: 13%; -webkit-mask-image: linear-gradient(transparent, #000 75%); mask-image: linear-gradient(transparent, #000 75%); }
 html.dof #world-dof { display: block; }
 html.cinema #world-dof { display: none; }
+
+/* dark theme: gold text on the soft gold chips (dark ink would vanish) */
+:root[data-theme="dark"] .shop-item .price, :root[data-theme="dark"] .hub-coins, :root[data-theme="dark"] .hud-coins, :root[data-theme="dark"] .title-chip, :root[data-theme="dark"] .tag.sun { color: var(--sun); }
+
+/* ===================== 10.0 pages: category stickers, empty states ===================== */
+.chips.cats { gap: 4px; padding: 10px 2px 8px; }
+.chip-btn.cat { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; min-height: 82px; padding: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink-2); font-size: var(--fs-xs); }
+.chip-btn.cat .cat-ic { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); box-shadow: var(--hl), 0 3px 0 var(--line), var(--shadow-1); transition: transform var(--t-spring) var(--spring), box-shadow var(--t-base), background-color var(--t-base); }
+.chip-btn.cat .cat-ic .stk { width: 32px; height: 32px; }
+.chip-btn.cat .cat-l { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-btn.cat .cat-n { position: absolute; top: -2px; right: 2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--surface-3); color: var(--ink-2); font-size: 10.5px; line-height: 20px; box-shadow: 0 0 0 2px var(--bg); }
+.chip-btn.cat.on { background: none; box-shadow: none; color: var(--accent); animation: none; }
+.chip-btn.cat.on .cat-ic { background: var(--accent-soft); box-shadow: inset 0 0 0 3px var(--accent), 0 3px 0 var(--accent-lip); transform: translateY(-2px); }
+.chip-btn.cat.on .cat-n { background: var(--accent); color: var(--on-accent); }
+.chip-btn.cat:active .cat-ic { transform: scale(.9); transition-duration: var(--t-press); }
+.empty::before { content: ""; display: block; width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 50%; background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M13 18c0-7 22-7 22 0v4H13z' fill='%23C9C4EC'/%3E%3Crect x='9' y='20' width='30' height='20' rx='8' fill='%23DCD8F6'/%3E%3Ccircle cx='19' cy='29' r='2' fill='%237A769C'/%3E%3Ccircle cx='29' cy='29' r='2' fill='%237A769C'/%3E%3Cpath d='M21 34c2 1.4 4 1.4 6 0' stroke='%237A769C' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") center / 40px no-repeat; }
+.q-ic .stk, .card-ic .stk { width: 32px; height: 32px; }
+.q-ic .stk.dim { filter: grayscale(1) opacity(.45); }
+.q-ic.gold { background: var(--sun-soft); }
+.row > .ic:first-child { width: 42px; height: 42px; padding: 10px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 -2px 0 rgba(80, 72, 160, .1); }
+.row > .stk:first-child { width: 42px; height: 42px; padding: 5px; border-radius: 14px; background: var(--surface-2); }
+/* 10.0 first run: the logo and the creator sit under the same sky as the pages */
+.intro-logo { background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 55%, var(--sky-low)); }
+.intro-logo::after { content: ""; position: absolute; left: -10px; right: -10px; bottom: 0; height: 120px; pointer-events: none;
+  background: radial-gradient(circle at 40px 120px, var(--cloud) 58px, transparent 59px) 0 0 / 130px 120px repeat-x, radial-gradient(circle at 40px 120px, var(--cloud) 40px, transparent 41px) 65px 22px / 130px 120px repeat-x; opacity: .9; }
+.intro-word { text-shadow: 0 3px 0 rgba(255,255,255,.7); }
+.onb.creator { background: var(--bg); }
+.onb.creator::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: calc(var(--sat) + 150px); background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 62%, var(--sky-low)); pointer-events: none; z-index: 0; }
+.onb.creator::after { content: ""; position: absolute; left: -10px; right: -10px; top: calc(var(--sat) + 118px); height: 34px; pointer-events: none; z-index: 0;
+  background: radial-gradient(circle at 26px 34px, var(--bg) 25px, transparent 26px) 0 0 / 58px 34px repeat-x, radial-gradient(circle at 26px 34px, var(--bg) 17px, transparent 18px) 29px 6px / 58px 34px repeat-x; }
+.onb.creator > * { position: relative; z-index: 1; }
+.intro-card { border-radius: var(--r-xl) !important; box-shadow: var(--hl), 0 4px 0 var(--lip), var(--shadow-3) !important; }

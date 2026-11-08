@@ -235,7 +235,7 @@
     build(p, el) {
       p.q = h('input.input', { type: 'search', placeholder: '搜尋名稱、類別、標籤…', 'aria-label': '搜尋', on: { input: () => p.refresh(p) } });
       p.group = 'all'; p.sort = 'kind';
-      p.chips = h('div.chips.scroll'); p.sortSel = h('select.input.s', { 'aria-label': '排序', on: { change: (e) => { p.sort = e.target.value; p.refresh(p); } } }, ...[['kind', '依類別'], ['name', '依名稱'], ['count', '依數量'], ['rarity', '依稀有度'], ['price', '依價格']].map(([v, t]) => h('option', { value: v }, t)));
+      p.chips = h('div.chips.scroll.cats'); p.sortSel = h('select.input.s', { 'aria-label': '排序', on: { change: (e) => { p.sort = e.target.value; p.refresh(p); } } }, ...[['kind', '依類別'], ['name', '依名稱'], ['count', '依數量'], ['rarity', '依稀有度'], ['price', '依價格']].map(([v, t]) => h('option', { value: v }, t)));
       p.grid = h('div.grid.c4'); p.sum = h('div.muted', { style: { fontSize: 'var(--fs-s)' } });
       el.append(h('div.hstack', null, p.q, p.sortSel), p.chips, p.sum, p.grid, small('背包和快捷背包是同一份庫存。物品只能從商店、探索、活動、收成與獎勵取得。'));
     },
@@ -243,19 +243,25 @@
       if (same(p, [JSON.stringify(S().inv), JSON.stringify(S().favs || {}), p.q.value, p.group, p.sort].join('|'))) return;
       const owned = Object.keys(S().inv).filter((id) => I(id) && St.count(id) > 0);
       const groups = [['all', '全部'], ['fav', '★ 收藏']].concat(IT().GROUPS.map(([k, zh]) => [k, zh]));
-      p.chips.replaceChildren(...groups.map(([k, zh]) => { const n = k === 'all' ? owned.length : k === 'fav' ? owned.filter((id) => (S().favs || {})[id]).length : owned.filter((id) => IT().groupOf(id) === k).length; return h('button.chip-btn' + (p.group === k ? '.on' : ''), { on: { click: () => { p.group = k; p.refresh(p); } } }, `${zh} ${n}`); }));
+      p.chips.replaceChildren(...groups.map(([k, zh]) => { const n = k === 'all' ? owned.length : k === 'fav' ? owned.filter((id) => (S().favs || {})[id]).length : owned.filter((id) => IT().groupOf(id) === k).length; return catBtn(k, zh.replace('★ ', ''), n, p.group === k, () => { haptic('tick'); p.group = k; p.refresh(p); }); }));
       const list = IT().query(owned, { q: p.q.value, group: p.group === 'fav' ? 'all' : p.group, fav: p.group === 'fav', sort: p.sort });
       p.sum.textContent = `${list.length} 種・共 ${list.reduce((a, id) => a + St.count(id), 0)} 個`;
       p.grid.replaceChildren(...(list.length ? list.map((id) => h('button.tile', { on: { click: () => itemSheet(id, () => p.refresh(p)) } }, img(id, 44), h('span.ellipsis', null, I(id).zh), h('span.count', null, '×' + St.count(id)), (S().favs || {})[id] ? h('span.fav', null, '★') : null)) : [h('div.empty', { style: { gridColumn: '1 / -1' } }, owned.length ? '沒有符合的物品' : '背包是空的。搖果樹、採集、釣魚或到商店逛逛吧！')]));
     },
   });
 
+  // 10.0 category buttons: a round sticker + label + count (bag / shop)
+  const CAT_STK = { all: 'more', fav: 'star', eat: 'apple', grow: 'seed', nature: 'fish', make: 'sparkle', give: 'gift', home: 'sofa', wear: 'shirt' };
+  function catBtn(k, zh, n, on, click) {
+    return h('button.chip-btn.cat' + (on ? '.on' : ''), { 'aria-label': `${zh}${n != null ? ' ' + n : ''}`, 'aria-pressed': on ? 'true' : 'false', on: { click } },
+      h('span.cat-ic', null, OC.UI.sticker(CAT_STK[k] || 'sparkle')), h('span.cat-l', null, zh), n != null ? h('span.cat-n.num', null, n) : null);
+  }
   // ======================= shop =======================
   Pg().define('shop', '商店', {
     sub: true,
     build(p, el) {
       p.head = h('div'); p.tabs = seg([['buy', '購買'], ['sell', '賣出']], 'buy', (v) => { p.mode = v; p.refresh(p); }); p.mode = 'buy';
-      p.q = h('input.input', { type: 'search', placeholder: '搜尋商品', 'aria-label': '搜尋商品', on: { input: () => p.refresh(p) } }); p.cat = 'all'; p.chips = h('div.chips.scroll'); p.body = h('div');
+      p.q = h('input.input', { type: 'search', placeholder: '搜尋商品', 'aria-label': '搜尋商品', on: { input: () => p.refresh(p) } }); p.cat = 'all'; p.chips = h('div.chips.scroll.cats'); p.body = h('div');
       el.append(p.head, p.tabsWrap = h('div', { style: { marginTop: '10px' } }, p.tabs), h('div', { style: { marginTop: '10px' } }, p.q), p.chips, p.body);
     },
     refresh(p) {
@@ -267,7 +273,7 @@
       p.head.replaceChildren(card(h('div.hstack', null, h('div.place-thumb', { style: { '--c': 'var(--accent)' } }, icon(shop.ic)), h('div.grow', null, h('b', null, shop.zh), small(shop.eatHere ? '點餐後可以直接請 OC 吃，或帶走放進背包' : shop.rotate ? '每天換一批商品，數量有限' : '每天有一件今日特價')), coin(S().coins))), d ? h('div.deal', null, icon('sparkle', 's'), `今日特價：${I(d).zh}（8 折）`) : null);
       if (p.mode === 'sell') { renderSell(p); return; }
       const list = SH().stock(sid), cats = Array.from(new Set(list.map((id) => IT().groupOf(id))));
-      p.chips.replaceChildren(...[['all', '全部']].concat(IT().GROUPS.filter(([k]) => cats.includes(k)).map(([k, zh]) => [k, zh])).map(([k, zh]) => h('button.chip-btn' + (p.cat === k ? '.on' : ''), { on: { click: () => { p.cat = k; p.refresh(p); } } }, zh)));
+      p.chips.replaceChildren(...[['all', '全部']].concat(IT().GROUPS.filter(([k]) => cats.includes(k)).map(([k, zh]) => [k, zh])).map(([k, zh]) => catBtn(k, zh, null, p.cat === k, () => { haptic('tick'); p.cat = k; p.refresh(p); })));
       const shown = IT().query(list, { q: p.q.value, group: p.cat, sort: 'price' });
       p.body.replaceChildren(h('div.shop-grid', null, ...shown.map((id) => {
         const pr = SH().price(sid, id), left = SH().left(sid, id), own = SH().owned(id), it = I(id);
