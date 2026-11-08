@@ -23,15 +23,17 @@
     const id = idOf(r.it), a = A().actorOf(id); if (!a) return false;
     if (flights.has(a)) return false;
     if (t) cancel();   // a stale gesture (its finger-up never arrived) is finished first: put down, never left hanging
-    t = { id, a, x0: p.x, y0: p.y, lx: p.x, ly: p.y, t0: performance.now(), lastT: performance.now(), dir: 0, rev: 0, strokes: 0, petAt: 0, lifted: false, moved: false, hist: [], swing: 0, swingV: 0, vxPrev: 0 };
-    t.timer = setTimeout(() => { if (t && !t.moved && !t.lifted && t.rev < 2) lift(true); }, 420);
+    t = { id, a, x0: p.x, y0: p.y, lx: p.x, ly: p.y, t0: performance.now(), lastT: performance.now(), lastMove: performance.now(), dir: 0, rev: 0, strokes: 0, petAt: 0, lifted: false, moved: false, hist: [], swing: 0, swingV: 0, vxPrev: 0 };
+    // hold still → pick up. Confirmed on the next frame: after a slow frame the finger's queued moves are dispatched first,
+    // so a quick stroke is never mistaken for "press and hold" (10.1 fix: slow devices lifted the OC instead of petting it)
+    const me = t; t.timer = setTimeout(() => requestAnimationFrame(() => { if (t === me && !t.moved && !t.lifted && t.rev < 2 && performance.now() - t.lastMove > 300) lift(true); }), 420);
     loop();
     return true;
   }
 
   function move(dp, p) {
     if (!t) return;
-    const now = performance.now(), dx = p.x - t.lx;
+    const now = performance.now(), dx = p.x - t.lx; if (Math.hypot(dx, p.y - t.ly) > 3) t.lastMove = now;   // finger jitter does not count as moving
     t.hist.push({ x: p.x, y: p.y, t: now }); while (t.hist.length > 2 && now - t.hist[0].t > 120) t.hist.shift();
     if (Math.abs(dx) > 4) { const s = Math.sign(dx); if (t.dir && s !== t.dir) t.rev++; t.dir = s; }
     const far = Math.hypot(p.x - t.x0, p.y - t.y0);
@@ -67,8 +69,9 @@
     place(dp);
     const dt = Math.max(0.008, (now - t.lastT) / 1000); t.lastT = now;
     const vx = (p.x - (t.px == null ? p.x : t.px)) / dt; t.px = p.x;
-    const ax = (vx - t.vxPrev) / dt; t.vxPrev = vx;
-    t.swingV += Math.max(-60, Math.min(60, -ax * 0.00035));
+    // the finger's change of velocity kicks the pendulum (an impulse — the same at 30, 60 or 120 Hz input; tuned to the old 60 Hz feel)
+    const dv = vx - t.vxPrev; t.vxPrev = vx;
+    t.swingV += Math.max(-8, Math.min(8, -dv * 0.022));
   }
 
   function up(dp, p) {

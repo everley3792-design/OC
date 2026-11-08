@@ -1,53 +1,63 @@
 {
- "at": "2026-11-08T15:00:05.289Z",
+ "at": "2026-11-08T15:33:01.238Z",
  "results": [
   {
-   "name": "6a 點 OC：環狀選單（摸摸、聊天、餵食、送禮、玩耍、檔案、更多…）",
-   "ok": true,
-   "detail": [
-    "摸摸",
-    "打招呼",
-    "餵食",
-    "送禮",
-    "玩耍",
-    "跟拍",
-    "檔案",
-    "更多"
-   ]
-  },
-  {
-   "name": "6b 選單項目真的執行（檔案頁打開）",
-   "ok": true
-  },
-  {
-   "name": "6c 家具與地面也有各自的情境選單",
+   "name": "17a 新增 15 個角色事件與短篇故事（惡作劇、和好、口味之爭、分點心、跌倒、看雲、深夜談心、講笑話、秘密基地三部曲…）",
    "ok": true,
    "detail": {
-    "furn": [
-     "使用",
-     "移動",
-     "收回",
-     "資訊"
+    "eligible": true,
+    "why": [],
+    "count": 15,
+    "started": "jokeForYou",
+    "after": true,
+    "mem": true
+   }
+  },
+  {
+   "name": "17b 有選項的事件跑完後，事件定義不會被改動（修正：回應被插進共用資料）",
+   "ok": true,
+   "detail": {
+    "eligible": true,
+    "why": [],
+    "count": 15,
+    "started": "jokeForYou",
+    "after": true,
+    "mem": true
+   }
+  },
+  {
+   "name": "17c 創角的性格問答：5 題改變滑桿並建議特質",
+   "ok": true,
+   "detail": {
+    "changed": true,
+    "traits": [
+     "energetic",
+     "outgoing",
+     "tidy",
+     "earlybird"
     ],
-    "ground": [
-     "走過去",
-     "大家過來",
-     "放家具",
-     "看這裡"
-    ],
-    "lg": {
-     "log": [
-      "down mouse id=1 primary=true n=0 g=null",
-      "up pointerup id=1 known=true n=1 g=long moved=false"
-     ],
-     "stack": 1,
-     "tab": "island",
-     "top": "DIV"
-    },
-    "G": {
-     "x": 196.5,
-     "y": 566.5997902488608
-    }
+    "energy": 78,
+    "txt": "完成！元氣滿滿的行動派。建議的特質：活潑、外向、愛乾淨、早起加上這些特質只保留滑桿"
+   }
+  },
+  {
+   "name": "17d 白天晴天時場景裡有蝴蝶等環境生物（效果開啟時）",
+   "ok": true,
+   "detail": 5
+  },
+  {
+   "name": "17e 新發現只出現一張卡片（不再同時跳出提示＋卡片）",
+   "ok": true,
+   "detail": {
+    "toasts": 0
+   }
+  },
+  {
+   "name": "17f 設定頁的時間與時間面板一致（顯示目前模式，按鈕開啟同一個面板）",
+   "ok": true,
+   "detail": {
+    "set": "目前：遊戲循環 ×10・天氣 晴",
+    "tp": true
    }
   },
   {
