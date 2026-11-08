@@ -28,7 +28,9 @@
   }
   function update(dt) {
     const Wd = W(); if (!Wd.area || !Wd.root) return;
-    if (!built || built.root !== Wd.root) built = build();   // a reloaded area has a new root group (the area definition object is reused) if (!built) return;
+    // a reloaded area has a new root group (the area definition object is reused), so compare roots
+    if (!built || built.root !== Wd.root) built = build();
+    if (!built) return;
     t += dt;
     const env = Wd.env || { night: 0, rain: 0 }, q = Wd.quality || {}, room = !!Wd.area.room, reduce = document.documentElement.classList.contains('reduce-motion');
     const day = !room && q.fx !== false && env.night < 0.4 && env.rain < 0.2, V3 = Wd.V3, yaw = Wd.yaw || 0;

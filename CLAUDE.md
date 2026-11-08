@@ -13,6 +13,7 @@
 - **第六階段完成（0.6.0-alpha）**：統一進度事件、任務（每日／每週／地點／限時／隱藏／長期挑戰）、角色請求（依個性、可接受／稍後／婉拒、後續發展）、人生目標、技能解鎖（每級都有實際效果）、稱號、37 個成就（玩家領取）、統一圖鑑（物品＋地點＋活動＋事件，四種狀態）、生活日誌與回憶卡片、動畫全面提升（分段姿勢、次級動態、個性差異、新動作）、可重用的特殊演出（跳過／×2）、即時合成的原創音效與環境音、「日常」中心。完成紀錄、測試與未完成項目：`docs/phase6-report.md`。規格：`docs/quests.md`、`docs/growth.md`、`docs/animation-performance.md`。
 - **第七階段（0.7.0-alpha，程式完成、未經實機驗證）**：真正的 Android 系統懸浮桌寵——多隻（≤3）、每隻獨立小視窗、Shimeji 行為（走／跑／跳／坐／睡／爬牆／倒吊／掉落／偷看）、觸控（點、雙擊、長按選單、撫摸、拖曳丟出、觸控穿透）、玩家逐格動畫完整輸出到桌面、依個性／情緒／回憶的台詞、桌寵之間依關係互動、與遊戲的事件同步（不重複衰減、不重複獎勵）、App 情境對話（使用情況存取，只知道套件名稱）、番茄鐘／休息提醒／鬧鐘／待辦／筆記、主畫面小工具、桌寵管理中心與診斷；targetSdk 35、前景服務類型 specialUse。完成紀錄（已驗證／需實機／部分／未完成）：`docs/phase7-report.md`。規格：`docs/android-native.md`、`docs/permissions.md`、`docs/backup.md`、`docs/performance.md`、`docs/compat-test-plan.md`。
 - **8.0（0.8.0-alpha）全面重構**：居民改為選用（新遊戲只有玩家自己的 OC）、Logo＋真 3D 開場＋歡迎＋登場＋OC 帶的教學、說話系統（自稱、稱呼、句尾頻率、多口頭禪、禁用詞、專屬稱呼）、11 種新特質、匯入原圖保留與依顯示大小的角色貼圖、四種鏡頭模式與旋轉、環狀情境選單、直接撫摸／抱起／甩動角色、狀態卡、時間面板、分級觸覺、原創即時生成音樂、台詞改寫、響應式主畫面小工具。紀錄（問題→原因→修正→驗證）：`docs/v8-report.md`。
+- **0.9.0-alpha（打磨）**：15 個新的角色事件（含三段跨天小故事「秘密基地」，以旗標串接）、創角的 5 題性格問答與隨機性格、3D 環境生物（蝴蝶、鳥群、跳魚）、事件選項改寫共用定義的錯誤、重複圖鑑通知、設定的時間區塊改用時間面板。紀錄：`docs/v9-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -37,7 +38,8 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
                       p6pages.js（「日常」中心、成就、統一圖鑑、角色檔案「成長」「日誌」、聲音設定、請求橫幅、遊玩系統診斷）
   js/pet/             petsync.js（OC.PetSync：桌寵設定／快照／台詞池／影格輸出／桌面互動套用／工具）petpages.js（桌寵管理、單隻設定、App 情境、番茄鐘與提醒、診斷）
   js/ui/intro.js      OC.Intro（Logo、開場拍攝、歡迎、登場）tutorial.js（OC.Tutorial）radial.js（OC.Radial 環狀選單）touch.js（OC.Touch 撫摸／抱起／甩動）
-  js/life/lines8.js   8.0 台詞（資料）
+  js/life/lines8.js   8.0 台詞（資料）  events9.js（0.9 事件與台詞，資料）
+  js/world/ambient.js OC.Ambient（蝴蝶、鳥群、跳魚；純視覺）
   js/play/            content.js（OC.PlayData：任務、挑戰、請求、技能解鎖、人生目標、稱號、成就、紀念品、新台詞）progress.js（OC.Progress 唯一進度事件）
                       quests.js（OC.Quests）achieve.js（OC.Achieve）growth.js（OC.Growth 技能解鎖／人生目標／稱號）requests.js（OC.Requests 角色請求）
                       stage.js（OC.Stage 特殊演出＋回饋卡片）sound.js（OC.Sound 即時合成音效與環境音）
@@ -65,7 +67,7 @@ node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（38 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.8.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.9.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -105,6 +107,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **生活模擬只有一個時鐘**：所有需求、活動長度、冷卻用 `OC.Sim` 的遊戲分鐘（固定步長，app 迴圈餵現實秒數）；走路效果依距離。不要用 `setInterval`/幀數驅動生活邏輯，否則速度、fps、背景會改變結果。
 - 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、最多 8 小時、不觸發事件、不給獎勵、摘要回憶有 key）。
 - 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。
+- 事件每次播放都複製自己的步驟（`cur.steps`），選項只能改這份複本，不可改 `ev.steps`。
 - 暫停 OC 用 `Brain.hold(id, reason)` / `unhold`，不要直接改 `brain.st`。事件只能經 `OC.Events`（一次一個、間隔、冷卻、once 鍵）；重大關係變化只能產生通知、玩家同意才套用。
 - 永久改變（特質、習慣、興趣、戀人）一律 `OC.Mind.suggest` → 玩家 `resolve`（accept/reject/later/lock/mute）；拒絕有 5 天冷卻。玩家設定的關係（`fixed`）與背景故事不可被自動改寫。
 - 戀愛預設關閉，只有玩家標示為成年的角色才可能參與。
