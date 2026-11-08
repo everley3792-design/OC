@@ -15,7 +15,7 @@
   const bar = (v, c) => h('div.bar', null, h('i', { style: { width: Math.max(0, Math.min(100, Math.round(v))) + '%', '--c': c } }));
   const small = (t) => h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, t);
   const name = (c) => Ch().name(c);
-  const HOLD_ZH = { editor: '換裝中', drag: '被抱著', call: '過來找你', pet: '被摸摸頭', dialogue: '和你聊天', event: '事件中', feed: '吃東西', play: '和你玩' };
+  const HOLD_ZH = { editor: '換裝中', drag: '被抱著', call: '過來找你', pet: '被摸摸頭', dialogue: '和你聊天', event: '事件中', feed: '吃東西', play: '和你玩', gesture: '和你互動中', menu: '等你選擇' };
 
   function ago(gm) { const d = Sim().now() - gm; if (d < 2) return '剛剛'; if (d < 60) return `${Math.round(d)} 分鐘前`; if (d < 1440) return `${Math.round(d / 60)} 小時前`; return `${Math.round(d / 1440)} 天前`; }
   function gmLabel(gm) { const d = Sim().day(gm), h = Sim().hourOf(gm); const day0 = S().life.clock.day0; const dd = S().settings.time === 'cycle' && day0 != null ? `第${d - day0 + 1}天` : (() => { const t = new Date((gm * 60000) + new Date().getTimezoneOffset() * 60000); return `${t.getMonth() + 1}/${t.getDate()}`; })(); return `${dd} ${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`; }
@@ -108,12 +108,100 @@
     const c = Ch().get(id), a = A().actorOf(id); if (!c || !a) return;
     const asleep = B().get(id) && B().get(id).act === 'sleep' && B().get(id).st === 'do';
     if (asleep) { A().bubble(a, '（呼嚕……）', name(c), 1.6); M().player(c, { aff: 0.5 }); return; }
-    B().hold(id, 'pet'); OC.World.setAction(a, 'pet', { dur: 2.2, priority: 7 }); haptic();
+    B().hold(id, 'pet'); OC.World.setAction(a, 'patted', { dur: 2.2, priority: 7 }); haptic('light'); OC.Sound && OC.Sound.play('purr', { lv: 0.6 });
     const annoyed = M().dominant(c) === 'annoyed';
     if (!annoyed) { M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'happy', 0.35, '被你摸摸頭'); M().needs(c, { social: 6 }); }
     const P = M().player(c); if (!P.petAt || Sim().now() - P.petAt > 10) { M().player(c, { aff: annoyed ? 0 : 1, fam: 1 }); P.petAt = Sim().now(); }
     react(c, a, 'pet'); if (OC.Progress) OC.Progress.emit('pet', { oc: id }); OC.Sound && OC.Sound.play('pickup');
     setTimeout(() => B().unhold(id, 'pet'), 2400);
+  }
+
+  // ================= 11.0 closeness gestures (ring menu 親近): hug · high-five · poke · hand-hold =================
+  /** the OC faces you; walks to your side first when it is another OC (then `go()`) */
+  function toPlayer(id, go) {
+    const a = A().actorOf(id), pl = A().player; if (!a || !pl) return false;
+    if (a === pl) { go(); return true; }
+    const side = a.x < pl.x ? -1 : 1, p = OC.World.nearestWalkable(pl.x + side * 24, pl.y + 2, 24);
+    const ok = () => { B().face(a, pl); B().face(pl, a); go(); };
+    if (p && Math.hypot(a.x - p.x, a.y - p.y) > 8) { a.run = true; if (!OC.World.walkTo(a, p.x, p.y, () => { a.run = false; ok(); })) { a.run = false; return false; } } else ok();
+    return true;
+  }
+  function gestureGuard(id) {
+    const c = Ch().get(id), a = A().actorOf(id); if (!c || !a) return null;
+    const b = B().get(id);
+    if (b && b.act === 'sleep' && b.st === 'do') { A().bubble(a, '（呼嚕……）', name(c), 1.6); return null; }
+    if (b && b.holds.has('event')) { toast(`${name(c)}正在特別的事情中`, 'info'); return null; }
+    return { c, a };
+  }
+  function hug(id) {
+    const g = gestureGuard(id); if (!g) return; const { c, a } = g, P = M().player(c);
+    B().hold(id, 'gesture'); const pl = A().player;
+    const done = () => { B().unhold(id, 'gesture'); if (pl && pl !== a) OC.World.setAction(pl, 'idle'); };
+    const ok = toPlayer(id, () => {
+      OC.World.setAction(a, 'hugme', { dur: 1.0, priority: 8 }); const l1 = OC.Talk.say('hug_start', c, null); if (l1) A().bubble(a, l1.text, name(c), 1.6);
+      setTimeout(() => {
+        OC.World.setAction(a, 'hug', { dur: 2.6, priority: 8 }); if (pl && pl !== a) OC.World.setAction(pl, 'hug', { dur: 2.6, priority: 8 });
+        haptic('confirm'); OC.Sound && OC.Sound.play('hug'); setTimeout(() => haptic('light'), 700); setTimeout(() => haptic('light'), 1300);
+        const now = Sim().now(); M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'content', 0.5, '被你抱抱'); M().needs(c, { social: 10, comfort: 8 });
+        if (!P.hugAt || now - P.hugAt > 30) { M().player(c, { aff: 1.5, fam: 1 }); P.hugAt = now; M().remember(c, { type: 'player', imp: 0.5, text: '被你抱了一下', key: 'hug:' + Math.floor(now / 120) }); }
+        if (OC.Progress) OC.Progress.emit('hug', { oc: id });
+        setTimeout(() => { const l2 = OC.Talk.say('hug_end', c, null); if (l2) A().bubble(a, l2.text, name(c)); done(); }, 2700);
+      }, 1050);
+    });
+    if (!ok) { done(); toast('牠過不來', 'info'); }
+  }
+  function highfive(id) {
+    const g = gestureGuard(id); if (!g) return; const { c, a } = g;
+    B().hold(id, 'gesture'); const pl = A().player;
+    const ok = toPlayer(id, () => {
+      OC.World.setAction(a, 'highfive', { dur: 1.1, priority: 8 });
+      // the target appears where the raised hand is for a short moment: tap it
+      const p = A().screenOf(a), tg = h('button.hf-target', { 'aria-label': '擊掌', style: { left: p.x + 20 + 'px', top: p.y - 6 + 'px' } }, '✋'); let done = false;
+      const finish = (hit) => {
+        if (done) return; done = true; tg.remove();
+        if (hit) { haptic('confirm'); OC.Sound && OC.Sound.play('highfive'); OC.Sound && OC.Sound.play('sparkle'); const l = OC.Talk.say('highfive_ok', c, null); if (l) A().bubble(a, l.text, name(c)); M().feel(c, 'excited', 0.5, '和你擊掌'); M().needs(c, { fun: 6, social: 5 });
+          const now = Sim().now(), P = M().player(c); if (!P.hfAt || now - P.hfAt > 20) { M().player(c, { aff: 1, fam: 0.5 }); P.hfAt = now; } if (pl && pl !== a) OC.World.setAction(pl, 'highfive', { dur: 0.9, priority: 8 }); if (OC.Progress) OC.Progress.emit('highfive', { oc: id });
+        } else { haptic('error'); const l = OC.Talk.say('highfive_miss', c, null); if (l) A().bubble(a, l.text, name(c)); OC.World.setAction(a, Ch().has(c, 'shy') ? 'shy' : 'shrug', { dur: 1.4, priority: 8 }); M().feel(c, 'shy', 0.2, '擊掌落空'); }
+        setTimeout(() => B().unhold(id, 'gesture'), hit ? 1200 : 1500);
+      };
+      tg.addEventListener('pointerdown', (e) => { e.stopPropagation(); finish(true); });
+      document.getElementById('app').append(tg); setTimeout(() => finish(false), 1700);
+    });
+    if (!ok) { B().unhold(id, 'gesture'); toast('牠過不來', 'info'); }
+  }
+  const pokes = {};
+  function poke(id) {
+    const g = gestureGuard(id); if (!g) return; const { c, a } = g;
+    const now = performance.now(); (pokes[id] = (pokes[id] || []).filter((x) => now - x < 7000)).push(now);
+    const n = pokes[id].length; B().hold(id, 'gesture'); haptic('tick'); OC.Sound && OC.Sound.play('poke');
+    if (n >= 4) { OC.World.setAction(a, 'pout', { dur: 2.2, priority: 8 }); M().feel(c, 'annoyed', 0.35, '一直被戳'); const l = OC.Talk.say('pet_dislike', c, null); if (l) A().bubble(a, l.text, name(c)); pokes[id] = []; }
+    else { OC.World.setAction(a, 'poked', { dur: 0.9, priority: 8 }); const l = OC.Talk.say('poke', c, null); if (l) A().bubble(a, l.text, name(c), 1.5); M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'happy', 0.2, '被你戳'); if (n === 1) { M().player(c, { fam: 0.5 }); } if (OC.Sound && n >= 2) OC.Sound.play('giggle'); }
+    setTimeout(() => B().unhold(id, 'gesture'), n >= 4 ? 2300 : 1000);
+  }
+  // hand-holding: the OC keeps to your side while you walk (real-time, UI-level follow; ends after a while or when you leave the island view)
+  let hand = null;
+  function handhold(id) {
+    const g = gestureGuard(id); if (!g) return; const { c, a } = g, pl = A().player; if (!pl || a === pl) return;
+    if (hand) endHand();
+    B().hold(id, 'gesture'); const l = OC.Talk.say('handhold_start', c, null); if (l) A().bubble(a, l.text, name(c), 2);
+    const side = a.x < pl.x ? -1 : 1; hand = { id, a, c, pl, side, t: 0, last: { x: -1e9, y: -1e9 }, until: 28 };
+    OC.World.setAction(a, 'handhold', { dur: 40, priority: 5, keepMoving: true }); OC.World.setAction(pl, 'handhold', { dur: 40, priority: 5, keepMoving: true });
+    M().feel(c, 'content', 0.4, '和你牽手'); haptic('confirm');
+  }
+  function endHand(quiet) {
+    if (!hand) return; const h0 = hand; hand = null; B().unhold(h0.id, 'gesture');
+    for (const x of [h0.a, h0.pl]) if (x.act && x.act.action === 'handhold') OC.World.setAction(x, 'idle');
+    if (!quiet) { const l = OC.Talk.say('handhold_end', h0.c, null); if (l) A().bubble(h0.a, l.text, name(h0.c), 2); }
+    M().player(h0.c, { aff: 1 }); M().needs(h0.c, { social: 8 });
+  }
+  function tick(dt) {
+    if (!hand) return;
+    const h0 = hand; h0.t += dt;
+    if (A().curTab !== 'island' || h0.a.hidden || h0.t > h0.until || !B().get(h0.id) || !B().get(h0.id).holds.has('gesture')) { endHand(); return; }
+    const pl = h0.pl, a = h0.a, tx = pl.x + h0.side * 22, ty = pl.y + 2;
+    if (Math.hypot(tx - h0.last.x, ty - h0.last.y) > 14 || (!a.path && Math.hypot(a.x - tx, a.y - ty) > 30)) {
+      const q = OC.World.nearestWalkable(tx, ty, 26); if (q) { h0.last = { x: tx, y: ty }; a.run = Math.hypot(a.x - q.x, a.y - q.y) > 70; OC.World.walkTo(a, q.x, q.y, () => { a.run = false; B().face(a, pl); }); }
+    }
   }
   function call(id) {
     const c = Ch().get(id), a = A().actorOf(id), pl = A().player; if (!c || !a || !pl) return;
@@ -219,12 +307,21 @@
   function editHabit(c, x, refresh) {
     sheet('編輯習慣', (b, api) => { const inp = h('input.input', { value: x.zh, maxlength: 20 }); b.append(inp, h('button.btn.primary.block', { style: { marginTop: '12px' }, on: { click: () => { const v = inp.value.trim(); if (!v) { toast('名稱不能是空的', 'info'); return; } M().editHabit(c, x.id, v); api.close(); refresh(); } } }, '儲存')); });
   }
+  /** what stroking has revealed about this OC (discovered by playing: the favourite and the spot it dislikes) */
+  function touchCard(c) {
+    const K = OC.Touch.known(c), Z = OC.Touch.ZONE_ZH, ks = Object.entries(K.known);
+    const loves = ks.filter(([, v]) => v > 0).map(([z]) => Z[z]), nos = ks.filter(([, v]) => v < 0).map(([z]) => Z[z]);
+    return card(h('div.hstack', { style: { flexWrap: 'wrap' } },
+      ...loves.map((z) => h('span.tag.accent', null, '♥ ' + z)), ...nos.map((z) => h('span.tag', null, '✕ ' + z)),
+      !ks.length ? h('span.muted', null, '還不知道。慢慢地在身上來回摸，觀察牠的反應吧。') : null),
+      small(`摸過 ${K.n} 次・共 ${Math.round(K.total)} 秒${OC.Touch.taste(c).ticklish ? '・好像很怕癢' : ''}`));
+  }
   function lifeSection(c, refresh) {
     const g = c.growth;
     return h('div', null,
       T('現在'), emoCard(c),
       T('需求', '依遊戲時間變化'), card(...D().NEEDS.map((n) => h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('span', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))))),
-      T('作息'), routineCard(c),
+      T('作息'), routineCard(c), T('喜歡被摸的地方', '摸摸看就會知道'), touchCard(c),
       T('願望與目標'), wishCard(c),
       T('技能'), skillCard(c),
       T('後天的習慣'), habitCard(c, refresh),
@@ -389,5 +486,5 @@
       T('預約中的位置'), card(small([...B().res.entries()].map(([k, v]) => `${k}→${name(Ch().get(v) || { profile: { name: '?' } })}`).join('、') || '—')));
   }
 
-  OC.LifeUI = { doingText, noticeCount, pushNotice, notices, interact, pet, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
+  OC.LifeUI = { doingText, noticeCount, pushNotice, notices, interact, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
 })();

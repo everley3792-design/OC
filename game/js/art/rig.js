@@ -106,7 +106,7 @@
     const bodyY0 = -0.8 - (leg - 1) * 4.2 - bh0;
     ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
     if (!s.noShadow) V.shadow(ctx, 0, 0.5, 15 * (1 - clamp(lift / 50) * 0.5), 4.2, 0.22 * (1 - clamp(lift / 60) * 0.6), '#2c5a3a');
-    ctx.translate(0, -lift); ctx.rotate((s.lean || 0) + walk * Math.sin(ph * Math.PI) * (s.sway || 0)); ctx.scale(1 / Math.sqrt(sq), sq);
+    ctx.translate(s.shiftX || 0, -lift); ctx.rotate((s.lean || 0) + walk * Math.sin(ph * Math.PI) * (s.sway || 0)); ctx.scale(1 / Math.sqrt(sq), sq);
     const bodyY = bodyY0 - bob * 0.6 + br * 0.15;
     const Hrx = 17.5 * hs * (1 + br * 0.006), Hry = 15.6 * hs;
     const headY = bodyY0 - bh0 - (Hry - 4) - bob + br * 0.55 + (s.headDy || 0);
@@ -122,7 +122,7 @@
     // legs / feet
     for (const side of [-1, 1]) {
       const lx = side * 4.6 * (L.bodyW || 1) * (1 - 0.45 * Math.abs(fx)) + fx * walk * stepS * side * 3.2;
-      const ly = -2.2 - Math.max(0, walk * stepS * -side) * 2.4 * bounce;
+      const ly = -2.2 - Math.max(0, walk * stepS * -side) * 2.4 * bounce - Math.max(0, (side < 0 ? s.legL : s.legR) || 0);
       const legCol = L.furPattern === 'socks' ? L.patternCol : (L.legs || L.fur);
       P(ctx, (ox, oy) => rr(ctx, lx - 3.1 + ox, ly - legH + 2.6 + oy, 6.2, legH, 3), flat(legCol, mix(legCol, '#7a4a30', 0.17)));
     }
@@ -161,7 +161,7 @@
     const earsRep = replaced(o, 'ears');
     const earPos = (side) => [side * Hrx * 0.56 + fx * 4.2, -Hry * 0.62];
     for (const side of [-1, 1]) {
-      const [ex, ey] = earPos(side), ang = side * (0.32 + (s.ear || 0));
+      const [ex, ey] = earPos(side), ang = side * (0.32 + ((side < 0 ? s.earL : s.earR) ?? s.ear ?? 0));
       ctx.save(); ctx.translate(ex, ey); ctx.rotate(ang); ctx.scale((1 - Math.max(0, side * fx) * 0.18) * (L.earSize || 1), L.earSize || 1);
       if (earsRep) partImg(ctx, Object.assign({}, earsRep, { x: earsRep.x || 0, y: (earsRep.y || 0) - 6 }), img(earsRep.assetId), side < 0 && earsRep.mirror !== false);
       else builtinEar(ctx, L, side, fur);
@@ -207,6 +207,14 @@
     if (s.thought) { const q = (t * 0.5) % 1; ctx.fillStyle = rgba('#9AA3B5', 0.8); for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(10 + i * 3.2, headY - Hry - 1 - i * 3 - q * 1.5, 0.8 + i * 0.45, 0, Math.PI * 2); ctx.fill(); } }
     if (s.sketch && back < 0.5) { ctx.save(); ctx.translate(fx * 3 - 1, bodyY + 2); ctx.fillStyle = '#FFF7EC'; ctx.strokeStyle = '#B07E4B'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.rect(-6, -4, 11, 8); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#9AA3B5'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(-4, 1); ctx.quadraticCurveTo(-1, -3, 3, 0); ctx.stroke(); ctx.fillStyle = '#F26B5B'; ctx.save(); ctx.translate(7, -2 + Math.sin(t * 7) * 0.8); ctx.rotate(0.7); ctx.fillRect(-0.6, -4, 1.2, 6); ctx.restore(); ctx.restore(); }
     if (s.held) { const ic = OC.Style && OC.Style.itemCanvas ? OC.Style.itemCanvas(s.held, 48) : null; if (ic) { const hx2 = (s.armR != null && s.armR < -0.6 ? 6 : 11) + fx * 2, hy2 = bodyY - (s.armR != null && s.armR < -0.6 ? 6 : 0); ctx.drawImage(ic, hx2 - 6, hy2 - 8, 12, 12); } }
+    // 11.0 comic marks: hearts, anger vein, dizzy spiral, idea bulb, steam puff, bubbles, a cup
+    if (s.fxHeart) { for (let i = 0; i < 3; i++) { const q = (t * 0.8 + i * 0.34) % 1; ctx.save(); ctx.globalAlpha = Math.sin(q * Math.PI); V.icon(ctx, 'heart', hx + (i - 1) * 7 + Math.sin(t * 3 + i) * 2, headY - Hry - 2 - q * 14, 4.2 + i * 0.5, '#FF7A9A'); ctx.restore(); } }
+    if (s.fxAnger) { ctx.save(); ctx.translate(hx + Hrx * 0.62, headY - Hry * 0.7); ctx.strokeStyle = '#E5534B'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; const k = 1 + Math.sin(t * 14) * 0.12; ctx.scale(k, k); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.moveTo(a * 0.8, b * 0.8); ctx.quadraticCurveTo(a * 3.4, b * 0.4, a * 3.6, b * 3.4); ctx.stroke(); } ctx.restore(); }
+    if (s.fxSpiral) { ctx.save(); ctx.translate(hx, headY - Hry - 5); ctx.strokeStyle = '#9B7BE0'; ctx.lineWidth = 1.1; ctx.beginPath(); for (let i = 0; i < 28; i++) { const a = i * 0.45 + t * 6, r = 0.4 + i * 0.22; const px = Math.cos(a) * r, py = Math.sin(a) * r * 0.5; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); ctx.restore(); }
+    if (s.fxBulb) { const q = Math.min(1, (t * 2.2) % 3); ctx.save(); ctx.translate(hx + 1, headY - Hry - 7 - Math.min(2, q * 3)); ctx.fillStyle = '#FFD23F'; ctx.beginPath(); ctx.arc(0, 0, 3.4, 0, TAU); ctx.fill(); ctx.fillStyle = '#B07E4B'; ctx.fillRect(-1.4, 3, 2.8, 1.8); ctx.strokeStyle = '#FFD23F'; ctx.lineWidth = 0.9; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * 0.7; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 5); ctx.lineTo(Math.cos(a) * 7.2, Math.sin(a) * 7.2); ctx.stroke(); } ctx.restore(); }
+    if (s.fxPuff) { for (let i = 0; i < 3; i++) { const q = (t * 1.1 + i * 0.3) % 1; ctx.fillStyle = rgba('#FFFFFF', 0.8 * (1 - q)); ctx.beginPath(); ctx.arc(hx + fx * 6 + 10 + q * 8, headY + 2 - q * 4 + i * 1.2, 1.6 + q * 2.4, 0, TAU); ctx.fill(); } }
+    if (s.fxBubbles) { for (let i = 0; i < 4; i++) { const q = (t * 0.6 + i * 0.25) % 1; ctx.strokeStyle = rgba('#9AD7F5', 1 - q); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(hx + 9 + q * 9 + i * 1.5, headY + 3 - q * 16 - i * 2, 1.6 + i * 0.7, 0, TAU); ctx.stroke(); } }
+    if (s.fxCup) { ctx.save(); ctx.translate(hx + 8 + fx * 2, bodyY - 5); ctx.fillStyle = '#FFF7EC'; ctx.strokeStyle = '#B07E4B'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.rect(-2.6, -2.6, 5.2, 5); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(2.9, 0, 1.6, -Math.PI / 2, Math.PI / 2); ctx.stroke(); ctx.strokeStyle = rgba('#FFFFFF', 0.8); for (let i = 0; i < 2; i++) { const q = (t * 0.9 + i * 0.5) % 1; ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.moveTo(-1 + i * 2, -3 - q * 4); ctx.quadraticCurveTo(0 + i * 2, -5 - q * 4, -1 + i * 2, -7 - q * 4); ctx.stroke(); } ctx.restore(); }
     if (s.gloom) { ctx.save(); ctx.strokeStyle = rgba('#7A82A8', 0.75); ctx.lineWidth = 0.9; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(hx + i * 5, headY - Hry - 1); ctx.lineTo(hx + i * 5, headY - Hry - 6 - Math.abs(i) * -1.5); ctx.stroke(); } ctx.restore(); }
     if (s.notes) { const q = (t * 0.7) % 1; ctx.save(); ctx.fillStyle = rgba('#9B7BE0', 1 - q); ctx.font = 'bold 8px sans-serif'; ctx.fillText('♪', hx + 12 + q * 5, headY - Hry + 2 - q * 12); ctx.fillStyle = rgba('#F48FB1', Math.max(0, 0.9 - ((q + 0.5) % 1))); ctx.fillText('♫', hx + 17 + ((q + 0.5) % 1) * 4, headY - Hry - 4 - ((q + 0.5) % 1) * 10); ctx.restore(); }
     if (s.sparkle) { ctx.save(); for (let i = 0; i < 3; i++) { const q = (t * 0.9 + i * 0.33) % 1, a = i * 2.1 + t * 0.5; ctx.fillStyle = rgba('#FFC93C', 1 - q); const px = hx + Math.cos(a) * (Hrx + 4), py = headY - Math.abs(Math.sin(a)) * Hry - 3 - q * 4, r = 1.6 * (1 - q * 0.5); ctx.beginPath(); ctx.moveTo(px, py - r * 2); ctx.lineTo(px + r * 0.6, py - r * 0.6); ctx.lineTo(px + r * 2, py); ctx.lineTo(px + r * 0.6, py + r * 0.6); ctx.lineTo(px, py + r * 2); ctx.lineTo(px - r * 0.6, py + r * 0.6); ctx.lineTo(px - r * 2, py); ctx.lineTo(px - r * 0.6, py - r * 0.6); ctx.closePath(); ctx.fill(); } ctx.restore(); }

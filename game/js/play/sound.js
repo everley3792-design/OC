@@ -49,6 +49,13 @@
     tab: ['ui', 60, () => tone('ui', 620, { d: 0.07, v: 0.06, type: 'triangle' })],
     error: ['ui', 200, () => { tone('ui', 300, { d: 0.12, v: 0.08, type: 'triangle' }); tone('ui', 240, { t: 0.1, d: 0.14, v: 0.07, type: 'triangle' }); }],
     coin: ['event', 60, () => { tone('event', 1318, { d: 0.08, v: 0.08, type: 'triangle' }); tone('event', 1760, { t: 0.06, d: 0.22, v: 0.08, type: 'triangle' }); }],
+    // 11.0 touch: fur rustle while stroking, a low purr when the OC melts, small gesture sounds
+    stroke: ['sfx', 120, (o) => { const lv = (o && o.lv) || 0; noise('sfx', { d: 0.16, v: 0.028 + lv * 0.02, f: 2400 - lv * 700, to: 1500, q: 0.8 }); }],
+    purr: ['sfx', 380, (o) => { const lv = (o && o.lv) || 0.6; tone('sfx', 62 + lv * 14, { d: 0.5, v: 0.05, type: 'triangle' }); tone('sfx', 124 + lv * 28, { t: 0.04, d: 0.4, v: 0.02, type: 'sine' }); noise('sfx', { d: 0.5, v: 0.03, type: 'lowpass', f: 220, q: 0.6 }); }],
+    hug: ['sfx', 400, () => { tone('sfx', 392, { d: 0.5, v: 0.06, to: 330, slide: 0.4, type: 'sine' }); bell('sfx', 523.25, 0.12, 0.05, 0.8); }],
+    highfive: ['sfx', 200, () => { noise('sfx', { d: 0.07, v: 0.16, f: 3200, q: 0.9 }); tone('sfx', 880, { t: 0.02, d: 0.14, v: 0.08, to: 1320, slide: 0.08, type: 'triangle' }); }],
+    poke: ['sfx', 120, () => { tone('sfx', 720, { d: 0.07, v: 0.08, to: 1000, slide: 0.05, type: 'triangle' }); }],
+    giggle: ['sfx', 300, () => { [880, 1040, 920, 1100].forEach((f, i) => tone('sfx', f, { t: i * 0.07, d: 0.07, v: 0.045, type: 'triangle' })); }],
     pickup: ['sfx', 80, () => { [660, 880, 1100].forEach((f, i) => tone('sfx', f, { t: i * 0.05, d: 0.1, v: 0.08, type: 'triangle' })); }],
     chime: ['event', 150, () => { bell('event', N.E6 / 2, 0, 0.12, 0.7); bell('event', N.G5, 0.12, 0.1, 0.9); }],
     card: ['event', 200, () => { noise('event', { d: 0.22, v: 0.05, f: 2400, to: 900, q: 0.7 }); bell('event', N.A5, 0.06, 0.07, 0.5); }],

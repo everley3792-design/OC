@@ -108,8 +108,10 @@
       case 'peek': s.lean = 0.16 * Math.sign(s.face || 1); s.lookX = 0.8 * Math.sign(s.face || 1); s.blush = 0.5; s.armL = s.armR = -0.5; s.eyes = (T % 3) < 0.2 ? 'line' : 'round'; s.mouth = 'cat'; s.headDy = 0.4; break;
       case 'climb': s.walk = 1; s.armL = -1.6 + Math.sin(at * 8) * 0.4; s.armR = -1.6 - Math.sin(at * 8) * 0.4; break;
       case 'jump': { const crouch = arc(T, 0, 0.12), air = seg(T, 0.12, 0.5), land = arc(T, 0.5, 0.62); s.lift = Math.sin(Math.PI * air) * b.jumpHeight * A; s.squash = 1 - crouch * 0.12 + (air > 0 && air < 1 ? 0.06 * (1 - air) : 0) - land * 0.08; s.armL = s.armR = air > 0 && air < 1 ? -1.6 : 0.3 * crouch; s.ear = air > 0 && air < 1 ? 0.3 * Math.sin(Math.PI * air) : -0.1 * land; break; }
-      default: break;
+      default: if (OC.Anim11 && OC.Anim11.has(p.action)) OC.Anim11.apply(p.action, at * (0.85 + 0.15 * m.tempo), s, m, b); break;
     }
+    // 11.0: a finger stroking the OC reshapes whatever it is doing (additive, continuous)
+    if (p.touch && p.touch.lv > 0.02 && OC.Anim11) OC.Anim11.touchLayer(s, p.touch, T, m);
     // walking / idle secondary motion (only when the action did not set it)
     if (!p.action || p.action === 'idle' || p.action === 'walk') {
       if (s.walk > 0.05) {
@@ -186,10 +188,11 @@
   const FAST = new Set(['eat', 'drink', 'greet', 'happy', 'play', 'jump', 'surprised', 'climb', 'angry', 'pet', 'sit', 'sleep', 'taste', 'yum', 'yuck', 'cheer', 'proud', 'nod', 'shake', 'receive', 'sing', 'sketch', 'dance', 'talk', 'laugh', 'cry', 'run', 'yawn', 'stretch']);
   /** cache key: repaint a billboard/portrait only when this changes */
   function key(c, p, res) {
+    const tk = p.touch ? `:t${p.touch.zone}${Math.round(p.touch.lv * 8)}${Math.round((p.touch.dir || 0) * 2)}${p.touch.annoyed ? 'a' : ''}` : '';
     if (res && res.sprite) return `S${res.doc.id}:${res.doc.updated}:${res.i}:${res.mirror ? 1 : 0}:${(p.blink || 0) > 0.5 ? 1 : 0}:${res.loading ? 'L' + Math.random() : ''}:${c.updated}:${(p.lift || 0).toFixed(1)}`;
     const q = (v, n) => Math.round((v || 0) * n);
     const loaded = (c.parts || []).reduce((n, pt) => n + (OC.Assets.peek(pt.assetId) ? 1 : 0), 0);
-    return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) ? 10 : p.action === 'idle' || !p.action ? 4 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}`;
+    return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) || (OC.Anim11 && OC.Anim11.has(p.action)) || p.touch ? 10 : p.action === 'idle' || !p.action ? 4 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}${tk}${p.fx || ''}`;
   }
 
   /** draw a character to fill a portrait canvas */

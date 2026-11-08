@@ -738,3 +738,7 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 /* feedback cards over a page: smaller, single-line, never stacked more than two */
 .page.open ~ .p6-cards .p6-card, html.page-open .p6-card { padding: 8px 12px; }
 .p6-cards .p6-card:nth-last-child(n+3) { display: none; }
+
+/* ===================== 11.0 touch: high-five target ===================== */
+.hf-target { position: fixed; z-index: 62; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; background: var(--surface); box-shadow: 0 0 0 4px var(--accent), 0 4px 0 var(--accent-lip), var(--shadow-2); animation: hf-pop 1.7s var(--spring) both; }
+@keyframes hf-pop { 0% { transform: scale(.3) rotate(-20deg); opacity: 0; } 14% { transform: scale(1.15) rotate(8deg); opacity: 1; } 24% { transform: scale(1) rotate(0); } 85% { transform: scale(1.06); box-shadow: 0 0 0 10px transparent, 0 4px 0 var(--accent-lip), var(--shadow-2); } 100% { transform: scale(.6); opacity: 0; } }

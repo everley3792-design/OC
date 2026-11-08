@@ -38,7 +38,7 @@
   }
   /** 10.0 safety net: an interaction hold whose owner is gone (nothing carried, no dialogue, no ring menu) is released after 2 s,
    *  so an OC can never stay frozen because some UI path forgot to let go */
-  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000 };
+  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000, gesture: 45000 };
   function holdWatchdog() {
     const now = performance.now(); if (now - wdT < 1000) return; wdT = now;   // real time: slow frames must not stretch the guarantee
     for (const k of Object.keys(heldSince)) { const [id, r] = k.split(':'); const b = OC.Brain.brains[id]; if (!b || !b.holds.has(r)) delete heldSince[k]; }   // released normally
@@ -48,6 +48,7 @@
       for (const r of [...b.holds]) {
         const k = b.id + ':' + r;
         // short interaction holds released by a timer / walk callback: never longer than this (a lost callback must not freeze an OC)
+        if (r === 'pet' && OC.Touch.petting === b.id) { delete heldSince[k]; continue; }   // a stroking session lasts as long as the finger rubs
         if (MAX_AGE[r]) { if (!heldSince[k]) heldSince[k] = now; else if (now - heldSince[k] > MAX_AGE[r]) { delete heldSince[k]; OC.Brain.unhold(b.id, r); } continue; }
         if (!own[r]) continue;
         if (own[r]()) { delete orphanSince[k]; continue; }
@@ -312,7 +313,7 @@
   const me = () => OC.Chars.active();
   const MAX_MATES = 5, SPOTS = [[260, 700], [330, 720], [210, 600], [380, 650], [300, 760]];
   function makePlayer(pos) {
-    player = Wd.actor({ player: true, xray: true, x: pos.x, y: pos.y, char: () => testChar || me(), interact: { type: 'self', hit: { w: 26, h: 40, d: 6 }, prio: 3 } });
+    player = Wd.actor({ player: true, xray: true, x: pos.x, y: pos.y, char: () => testChar || me(), interact: { type: 'self', hit: { w: 44, h: 42, d: 6 }, prio: 3 } });
     player.cid = S().activeId;
     player.update = (a, dt) => { applyFace(a, me()); personalityIdle(a, dt, me()); };
     OC.Brain.attach(player, me(), { manual: true });
@@ -343,7 +344,7 @@
     // 8.0: residents are opt-in (Settings › 世界 › 小島居民); a new game only has the player's own OCs
     for (const [id, cfg] of Object.entries(S().world.residents ? Wd.area.NPC || {} : {})) {
       const d = Gm.NPCS[id], c = OC.CharRender.presetChar(d.preset);
-      const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
+      const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 44, h: 42, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
       a.home = cfg.home; a.r = cfg.r; a.wait = 1 + Math.random() * 3;
       a.update = (b, dt) => wander(b, dt);
       npcs[id] = a;
@@ -365,7 +366,7 @@
   }
   function addMate(c, i, at) {
     const p = at || spawnPos(c, i);
-    const a = Wd.actor({ mate: c.id, x: p.x, y: p.y, char: () => OC.Chars.get(c.id), interact: { type: 'mate', id: c.id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: OC.Chars.name(c) } });
+    const a = Wd.actor({ mate: c.id, x: p.x, y: p.y, char: () => OC.Chars.get(c.id), interact: { type: 'mate', id: c.id, hit: { w: 44, h: 42, d: 6 }, prio: 2, label: OC.Chars.name(c) } });
     a.update = (b, dt) => { const cc = OC.Chars.get(c.id); applyFace(b, cc); personalityIdle(b, dt, cc); };
     mates[c.id] = a; OC.Brain.attach(a, c); return a;
   }
@@ -527,10 +528,20 @@
       const b = OC.Brain.get(id), asleep = b && b.act === 'sleep' && b.st === 'do', sl = asleep ? '正在睡覺' : null, busy = b && b.holds.has('event') ? '正在特別的事情中' : null;
       // 10.1: the OC pays attention while the ring is open — it stops, turns to you with a little bounce — and is released
       // when the ring closes (whatever way it closes; a watchdog also releases an orphaned 'menu' hold)
-      const held = !sl && OC.Brain.hold(id, 'menu'); if (held) { a.path = null; a.tFace = 0; a.tBack = 0; a.squashT = 0; }   // a sleeping OC is not woken by the menu
-      OC.Radial.open({ x: pt.x, y: pt.y, title: OC.Chars.name(c), sub: `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, target: id,
-        track: () => (a.dead || a.hidden ? null : screenOf(a)), onClose: () => { if (held) OC.Brain.unhold(id, 'menu'); }, items: [
-        { ic: 'paw', label: '摸摸', main: true, run: () => L.pet(id) },
+      const ring = (title, subTxt, items) => {
+        const held = !sl && OC.Brain.hold(id, 'menu'); if (held) { a.path = null; a.tFace = 0; a.tBack = 0; a.squashT = 0; }   // a sleeping OC is not woken by the menu
+        OC.Radial.open({ x: pt.x, y: pt.y, title, sub: subTxt, target: id, track: () => (a.dead || a.hidden ? null : screenOf(a)), onClose: () => { if (held) OC.Brain.unhold(id, 'menu'); }, items });
+      };
+      // 11.0: 親近 opens a second ring (pat · hug · high-five · poke · hold hands); the first ring keeps the everyday actions
+      const closeness = () => ring(OC.Chars.name(c), '想怎麼親近？', [
+        { ic: 'paw', label: '摸頭', main: true, off: sl, run: () => L.pet(id) },
+        { ic: 'heart', label: '抱抱', off: sl || busy, run: () => L.hug(id) },
+        { ic: 'hand', label: '擊掌', off: sl || busy, run: () => L.highfive(id) },
+        { ic: 'sparkle', label: '戳戳', off: sl || busy, run: () => L.poke(id) },
+        { ic: 'users', label: '牽手', off: self ? '自己牽不了自己' : (sl || busy), run: () => L.handhold(id) },
+      ]);
+      ring(OC.Chars.name(c), `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, [
+        { ic: 'heart', label: '親近', main: true, run: () => setTimeout(closeness, 60) },
         { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
         { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
         { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
@@ -538,7 +549,7 @@
         self ? { ic: 'eye', label: '跟拍', run: () => setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L.call(id) },
         { ic: 'person', label: '檔案', run: () => Pg.open('profile', { id }) },
         { ic: 'more', label: '更多', run: () => L.interact(id) },
-      ] });
+      ]);
       St.emit('menu:open', { kind: 'oc', id });
       return;
     }
@@ -832,6 +843,7 @@
     if (hud.name) updateHUD();
     updateGlow(dt);
     holdWatchdog();
+    OC.LifeUI.tick(dt);
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
