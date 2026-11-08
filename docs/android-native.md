@@ -103,7 +103,11 @@ OverlayPetService (前景服務 specialUse)
 - 番茄鐘（專注 15/25/45、休息 5/10/15、自動接休息）、休息提醒（每 30/45/60/90 分鐘重複）、鬧鐘：`AlarmManager`，預設 `setAndAllowWhileIdle`（不需特別權限，省電時可能晚幾分鐘），玩家開「準時」且系統允許 `SCHEDULE_EXACT_ALARM` 才用 `setExactAndAllowWhileIdle`；頁面顯示實際精度。提醒存在 `filesDir/pet/reminders.json`，重開機／更新後由 `ReminderReceiver` 重新登記。
 - 時間到：通知（頻道「番茄鐘與提醒」）＋桌寵說話（若在桌面）＋`tool` 事件（遊戲記錄完成的番茄數，可接續休息）。
 - 待辦與筆記存在遊戲存檔（`S.pet.tools`），瀏覽器版也能用。
-- 主畫面小工具 `PetWidget`（和桌寵是不同的東西）：OC 頭像、心情與一句話、最上面的待辦、下一個提醒；「放出／收起桌寵」。顏色用 `values` / `values-night` → 跟著系統深淺色。內容由遊戲寫入，小工具不跑模擬。
+- 主畫面小工具 `PetWidget`（和桌寵是不同的東西，8.0 重做）：
+  - 依大小選版面（`onAppWidgetOptionsChanged`，寬 < 180dp＝小）：小＝角色＋名字＋心情；中／大＝角色、心情與一句話、三個需求條（玩家在「桌寵管理 › 主畫面小工具」選哪三個）、最上面的待辦、下一個提醒、放出／收起桌寵。
+  - 角色會眨眼：兩張影格放在 `ViewFlipper`（`autoStart`，2.6 秒），由桌面程式輪播，**不會喚醒 App**；不使用定時更新（`updatePeriodMillis=0`），只在遊戲切到背景、桌寵狀態或提醒改變時更新。
+  - 顏色用 `values` / `values-night` → 跟著系統深淺色。內容由遊戲寫入（`widget.json` ＋ 兩張 PNG），小工具不跑模擬。
+- 觸覺回饋（8.0）：`OCNative.hapticKind(tick|light|confirm|long|heavy|error)` → `HapticFeedbackConstants`（CLOCK_TICK、KEYBOARD_TAP、CONFIRM／REJECT（API 30+）、LONG_PRESS），系統的「觸控回饋」設定仍然有效；遊戲設定可全部關閉；沒有震動器的裝置不會出錯。
 
 ## 11. 主題與安全區
 泡泡、選單用 `PetTheme`（依遊戲主題設定：淺／深／跟隨系統），通知用系統樣式，小工具用 night 資源；寵物活動範圍避開狀態列、導覽列與瀏海（`displayCutout`）。

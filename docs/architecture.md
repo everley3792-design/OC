@@ -105,6 +105,18 @@ game  OC.PetSync ──config.json（設定＋快照＋台詞池＋背包＋關�
 - 詳細：[`android-native.md`](android-native.md)、[`permissions.md`](permissions.md)、[`backup.md`](backup.md)、[`performance.md`](performance.md)、[`compat-test-plan.md`](compat-test-plan.md)。
 - **實機驗證尚未進行**（下方第一階段的驗證清單已由 `compat-test-plan.md` 的情境 1–17 取代）。
 
+### 8.0（0.8.0-alpha）互動與首次遊玩層
+```
+開機：OC.Intro.logo → (新遊戲) World.loadArea(晴日島, 無玩家) → Intro.opening（World.shot 腳本鏡頭）→ welcome → Creator → 登場 → OC.Tutorial
+輸入：World 指標事件 ─┬─ 落在角色上 → claim → OC.Touch（點＝OC.Radial、撫摸＝LifeUI.pet、抱起／甩動＝startCarry / dragEnd）
+                     ├─ 單指空地＝平移（screenDelta 含旋轉）、雙指＝縮放＋旋轉（非經典模式）
+                     └─ 點＝移動／設施、長按地面＝OC.Radial
+鏡頭：World.setMode(classic|follow|focus|free) · shot()（腳本）· saveView/restoreView（演出結束回到原本鏡頭）
+HUD：狀態卡（就地更新）· 時間面板（Clock: real|cycle|fixed；Sim.skipTo 快轉＝抽象模擬、不給獎勵；timePaused）
+聲音：OC.Sound.music(mood) 即時生成音樂 · 說話：OC.Chars.speak(c, text, {to, emo, cat, rnd})
+```
+- 存檔 v7：`world.residents`、`intro`（seen、tutorial）、`view`（鏡頭模式、角度）、`pet.widget`；`migrateV6`。
+
 ## 第一階段規劃（歷史紀錄）
 
 

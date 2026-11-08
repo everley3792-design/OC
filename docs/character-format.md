@@ -20,7 +20,12 @@
   personality: { pace, energy, social, expression, thinking, speech,   // 0–100 滑桿
                  traits:[traitId…] (≤5, 互斥檢查), customTraits:[{id, name, desc}] },
   quirks: { walk, sit, sleep, eat, greet, habit, face },               // Little Quirks
-  speech: { style: casual|polite|cute|cool|energetic|whisper, catchphrase, ending },
+  speech: { style: casual|polite|cute|cool|energetic|whisper,
+            self: '我'|'人家'|'俺'|…,  you: '你'|'妳'|'您'|…,  playerName,       // 8.0 自稱、稱呼你、怎麼叫玩家
+            ending, endingRate (0–1，預設 0.35，不是每句都加),
+            phrases: [{ text, rate, when: any|happy|sad|greet|<分類>, at: start|end }],   // 多個口頭禪
+            pace: slow|normal|fast, moods (心情影響語氣), banned: [詞…], call: { ocId: 專屬稱呼 },
+            catchphrase },                                                   // 舊欄位：第一次編輯時轉成 phrases
   tastes: { likeItems:[itemId], dislikeItems:[itemId] },
   look: { 毛色/耳內/眼睛/腮紅/耳型/尾巴/上衣/圖案/配件/髮夾,
           headSize, bodyW, bodyH, legLen, earSize, tailSize,                       // 比例
@@ -56,7 +61,7 @@
 | 懶散 + 低 energy | 發呆時坐下的機率 |
 | 習慣動作 | 東張西望、甩尾巴、哼歌（♪）、伸懶腰 |
 | 坐姿／睡相／進食速度／招牌表情 | 對應動作的姿勢與時長 |
-| speech | `OC.Chars.speak()` 改寫台詞語氣、加口癖 |
+| speech | `OC.Chars.speak(c, text, {to, emo, cat, rnd})`：自稱／稱呼替換、風格、心情、節奏、句尾（依頻率、不重複）、口頭禪（依條件）、禁用詞、對其他 OC 的專屬稱呼 |
 | 特質 | 需求下降速度（開朗、悲觀、害羞、懶散、夜貓子）、互動效果（貪吃、文藝、愛整潔、好奇…） |
 
 ## 成長（需要玩家同意）
