@@ -33,7 +33,7 @@
         role: 'menuitem', 'aria-label': it.label + (it.off ? `（${it.off}）` : ''), 'aria-disabled': it.off ? 'true' : 'false',
         style: { '--x': Math.cos(a) * R + 'px', '--y': Math.sin(a) * R + 'px', '--d': i * 22 + 'ms' },
         on: { click: (e) => { e.stopPropagation(); if (it.off) { haptic(); toast(it.off, 'info'); return; } OC.Sound && OC.Sound.play('tap'); haptic(); close(); setTimeout(() => it.run(), 40); } },
-      }, icon(it.ic), h('span', null, it.label));
+      }, OC.UI.STICKERS && OC.UI.STICKERS[it.ic] ? OC.UI.sticker(it.ic) : icon(it.ic), h('span', null, it.label));
       ring.append(b);
     });
     el.append(ring);

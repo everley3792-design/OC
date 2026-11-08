@@ -50,32 +50,58 @@
     }
   }
 
-  // =============================== HUD ===============================
-  let hud = {}, fpsEl;
+  // =============================== HUD (10.0 layout) ===============================
+  // top-left: avatar + name plate (coins, mood) → status card · under it: weather / time pill → time panel
+  // top-right: bell (only with notices) + settings · right rail: quick bag, camera, decorate
+  // bottom-left: "interact" (ring menu of your OC) · bottom-right: today's quest card → 日常 · bottom: tab bar
+  // The HUD calms down (fades back) while you look around the island and returns when you stop (hudCalm).
+  let hud = {}, fpsEl, calmT = 0;
+  const stk = (n, c) => OC.UI.sticker(n, c);
   function buildHUD() {
     const el = $('#hud');
-    hud.av = h('canvas', { width: 96, height: 96 }); hud.name = h('div.name'); hud.mood = h('div.mood');
-    hud.me = h('button.hud-me', { 'aria-label': '角色狀態', 'aria-expanded': 'false', on: { click: () => toggleStatus() } }, h('div.avatar', null, hud.av), h('div', null, hud.name, hud.mood));
-    hud.cam = h('button.icon-btn', { 'aria-label': '鏡頭模式', on: { click: () => camSheet() } }, icon('island'));
-    hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span');
-    hud.coins = h('span.num');
-    hud.deco = h('button.icon-btn', { 'aria-label': '佈置模式', on: { click: () => setDecorate(!decorate) } }, icon('sofa'));
-    hud.badge = h('span.badge.num'); hud.bell = h('button.icon-btn.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => OC.LifeUI.notices() } }, icon('bell'), hud.badge);
-    el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timePanel() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '星幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.bell, hud.cam, hud.deco)));
+    hud.av = h('canvas', { width: 128, height: 128 }); hud.name = h('b.hud-name'); hud.mood = h('span.hud-moodtxt');
+    hud.coins = h('span.num'); hud.moodBar = h('i');
+    hud.me = h('button.hud-me', { 'aria-label': '角色狀態', 'aria-expanded': 'false', on: { click: () => { haptic('tick'); toggleStatus(); } } },
+      h('div.hud-av', null, hud.av),
+      h('div.hud-plate', null,
+        h('div.hud-row', null, hud.name, h('span.hud-coins', { 'aria-label': '星幣' }, stk('coin', 's'), hud.coins)),
+        h('div.hud-row', null, stk('heart', 's'), h('div.hud-bar', null, hud.moodBar), hud.mood)));
+    hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span.hud-wx');
+    hud.timeBtn = h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => { haptic('tick'); timePanel(); } } }, hud.wxIc, h('div', null, h('b', null, hud.wx), hud.time));
+    hud.badge = h('span.badge.num');
+    hud.bell = h('button.hud-sq.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => { haptic('tick'); OC.LifeUI.notices(); } } }, stk('bell'), hud.badge);
+    hud.gear = h('button.hud-sq', { 'aria-label': '設定', on: { click: () => { haptic('tick'); OC.Pages.open('settings'); } } }, stk('gear'));
+    hud.cam = h('button.rail-btn', { 'aria-label': '鏡頭模式', on: { click: () => { haptic('tick'); camSheet(); } } }, stk('camera'), h('small', null, '鏡頭'));
+    hud.deco = h('button.rail-btn', { 'aria-label': '佈置模式', on: { click: () => { haptic('tick'); setDecorate(!decorate); } } }, stk('sofa'), h('small', null, '佈置'));
+    hud.rail = h('div.hud-rail', null, hud.cam, hud.deco);
+    hud.questT = h('b.ellipsis'); hud.questS = h('small.ellipsis'); hud.questIc = h('span.hud-qic');
+    hud.quest = h('button.hud-quest', { 'aria-label': '今天的任務', hidden: true, on: { click: () => { haptic('tick'); tab('more'); } } }, hud.questIc, h('div.grow', null, hud.questT, hud.questS), icon('chev', 's'));
+    hud.act = h('button.hud-act', { 'aria-label': '和你的 OC 互動', on: { click: () => { haptic('tick'); if (player) menuFor({ type: 'self', id: S().activeId }, screenOf(player)); } } }, stk('hand', 'l'));
+    el.append(hud.me, hud.timeBtn, h('div.hud-sys', null, hud.bell, hud.gear), hud.rail, hud.quest, hud.act);
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
-    hud.mood.classList.add('ellipsis');
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();
   }
+  /** while the player pans / zooms the island the HUD steps back (more of the world, less chrome) */
+  function hudCalm() { const el = $('#hud'); if (!el) return; el.classList.add('calm'); clearTimeout(calmT); calmT = setTimeout(() => el.classList.remove('calm'), 1100); }
   let lastHudKey = '';
+  function questCard() {
+    if (!OC.Quests) return null;
+    const q = OC.Quests.list('daily').find((x) => !x.claimed); if (!q) return null;
+    return { t: q.done ? `完成了！領取獎勵` : q.zh, s: q.done ? q.zh : `${q.d || ''}（${q.prog}/${q.n}）`, ic: q.done ? 'gift' : 'flag', done: q.done };
+  }
   function updateHUD() {
-    const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount();
-    const key = [OC.Chars.name(c), OC.Mind.label(c), doing, L.time, L.wx, S().coins, L.date, nn].join('|');
+    const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
+    const key = [OC.Chars.name(c), OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
-    hud.name.textContent = OC.Chars.name(c); hud.mood.textContent = `${OC.Mind.label(c)}${doing ? '・' + doing : ''}`;
+    hud.name.textContent = OC.Chars.name(c); hud.mood.textContent = doing || OC.Mind.label(c);
+    hud.moodBar.style.width = Math.max(4, Math.min(100, mood)) + '%'; hud.moodBar.classList.toggle('low', mood < 30);
     hud.bell.hidden = !nn; hud.badge.textContent = nn > 9 ? '9+' : nn;
-    hud.time.textContent = `${L.date} ${L.time}`; hud.wx.textContent = L.wxZh; hud.wxIc.replaceChildren(icon(L.phase === 'night' ? 'moon' : L.wxIcon, 's'));
+    hud.time.textContent = L.cycle ? `${L.date}・${L.time}` : `${L.date} ${L.time}`; hud.wx.textContent = L.phase === 'night' && L.wx === 'clear' ? '晴朗的夜' : L.wxZh;
+    const wi = L.phase === 'night' && (L.wx === 'clear' || L.wx === 'cloudy') ? 'moon' : L.wxIcon;
+    if (hud.wxIc.dataset.k !== wi) { hud.wxIc.dataset.k = wi; hud.wxIc.replaceChildren(stk(wi, 'm')); }
     hud.coins.textContent = S().coins.toLocaleString();
+    hud.quest.hidden = !q; if (q) { hud.questT.textContent = q.t; hud.questS.textContent = q.s; hud.quest.classList.toggle('ready', q.done); if (hud.questIc.dataset.k !== q.ic) { hud.questIc.dataset.k = q.ic; hud.questIc.replaceChildren(stk(q.ic, 'm')); } }
   }
   // =============================== 8.0 time & weather panel ===============================
   const TIME_PRESETS = [['凌晨', 3], ['清晨', 5.5], ['早晨', 7.5], ['上午', 10], ['中午', 12.5], ['下午', 15], ['黃昏', 17.75], ['晚上', 20], ['深夜', 23]];
@@ -153,7 +179,7 @@
   let tabEls = {}, ink;
   function buildTabbar() {
     const bar = h('nav.tabbar', { 'aria-label': '主選單' }); ink = h('div.tab-ink'); bar.append(ink);
-    TABS.forEach(([id, label, ic], i) => { const b = h('button.tab', { 'aria-label': label, on: { click: () => { haptic(); tab(id); } } }, icon(ic), label); b.dataset.i = i; tabEls[id] = b; bar.append(b); });
+    TABS.forEach(([id, label, ic], i) => { const b = h('button.tab', { 'aria-label': label, on: { click: () => { haptic('tick'); tab(id); } } }, OC.UI.sticker(ic), h('span', null, label)); b.dataset.i = i; tabEls[id] = b; bar.append(b); });
     $('#app').append(bar);
   }
   function tab(id) {
@@ -174,7 +200,7 @@
   // =============================== quick bag ===============================
   let bagFab, tray, slots, trayY = 0;
   function buildBag() {
-    bagFab = h('button.bag-fab', { 'aria-label': '快速背包', on: { click: () => (tray.classList.contains('open') ? closeTray() : openTray()) } }, icon('bag', 'l'));
+    bagFab = h('button.rail-btn.bag-fab', { 'aria-label': '快速背包', on: { click: () => { haptic('tick'); tray.classList.contains('open') ? closeTray() : openTray(); } } }, OC.UI.sticker('bag'), h('small', null, '背包'));
     slots = h('div.slots');
     const grab = h('div.grab', { 'aria-label': '拖曳以移動或收合' });
     tray = h('div.tray', { role: 'region', 'aria-label': '快速背包' }, h('div.tray-head', null, h('b', null, '快速背包'), grab, h('button.btn.ghost.s', { on: { click: () => { closeTray(); OC.Pages.open('bag'); } } }, '全部'), h('button.icon-btn', { 'aria-label': '收起', on: { click: closeTray } }, icon('close', 's'))), slots);
@@ -184,10 +210,10 @@
     grab.addEventListener('pointermove', (e) => { if (y0 == null) return; trayY = Math.min(80, Math.max(-(window.innerHeight * 0.45), base + e.clientY - y0)); tray.style.setProperty('--tray-y', trayY + 'px'); });
     const up = () => { if (y0 == null) return; y0 = null; tray.style.transition = ''; if (trayY > 50) { trayY = 0; tray.style.setProperty('--tray-y', '0px'); closeTray(); } };
     grab.addEventListener('pointerup', up); grab.addEventListener('pointercancel', up);
-    $('#app').append(tray, bagFab);
+    $('#app').append(tray); hud.rail.prepend(bagFab);
   }
-  function openTray() { renderSlots(); tray.classList.add('open'); bagFab.classList.add('hide'); }
-  function closeTray() { tray.classList.remove('open'); if (curTab === 'island') bagFab.classList.remove('hide'); }
+  function openTray() { renderSlots(); tray.classList.add('open'); bagFab.classList.add('on'); }
+  function closeTray() { tray.classList.remove('open'); bagFab.classList.remove('on'); }
   function renderSlots() {
     const fav = S().favs || {};
     const ids = Object.keys(S().inv).filter((id) => Sty.ITEMS[id] && St.count(id) > 0).sort((a, b) => (fav[b] ? 1 : 0) - (fav[a] ? 1 : 0) || OC.Items.groupOf(a).localeCompare(OC.Items.groupOf(b)));
@@ -506,7 +532,7 @@
   function setCamMode(m, subj) {
     if (!CAM_ZH[m]) return; S().view.mode = m; St.touch('view');
     Wd.setMode(m, { subject: subj || (m === 'classic' ? null : player) });
-    if (hud.cam) hud.cam.replaceChildren(icon(CAM_ZH[m][1]));
+    if (hud.cam) { hud.cam.querySelector('small').textContent = { classic: '鏡頭', follow: '跟隨', focus: '特寫', free: '自由' }[m]; hud.cam.classList.toggle('on', m !== 'classic'); }
     St.emit('cam:mode', m);
   }
   function camSheet() {
@@ -630,7 +656,7 @@
 
   // =============================== decorate / placement ===============================
   let decoEl = null;
-  function setDecorate(v) { decorate = v; hud.deco.style.color = v ? 'var(--accent)' : ''; hud.deco.setAttribute('aria-pressed', v); decoBanner(v); if (!v && placing) cancelPlacement(); }
+  function setDecorate(v) { decorate = v; hud.deco.classList.toggle('on', !!v); hud.deco.setAttribute('aria-pressed', v); decoBanner(v); if (!v && placing) cancelPlacement(); }
   function decoBanner(v) {
     if (decoEl) { decoEl.remove(); decoEl = null; }
     if (!v) return;
@@ -732,7 +758,7 @@
     joy.addEventListener('pointermove', move); joy.addEventListener('pointerup', up); joy.addEventListener('pointercancel', up);
     $('#app').append(joy);
   }
-  function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; }
+  function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; document.documentElement.classList.toggle('joy-on', S().settings.control === 'joy'); }
 
   // =============================== main loop ===============================
   let presT = 0, autoSaveT = 0, last = performance.now(), lastSim = performance.now(), acc = 0, fpsN = 0, fpsT = 0, saveStepT = 0, lastWx = null, holdT = 0, editing = new Set();
@@ -847,7 +873,7 @@
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
-    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, claimDown: (r, p) => !decorate && OC.Touch.down(r, p), claimMove: (d, p) => OC.Touch.move(d, p), claimUp: (d, p) => OC.Touch.up(d, p), claimCancel: () => OC.Touch.cancel(), panned: () => St.emit('cam:pan'), rotated: (y) => { S().view.yaw = y; St.emit('cam:rotate', y); }, ghostMoved: () => syncPlace(), ghostDone: () => placing && placing.commit && placing.commit(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
+    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, claimDown: (r, p) => !decorate && OC.Touch.down(r, p), claimMove: (d, p) => OC.Touch.move(d, p), claimUp: (d, p) => OC.Touch.up(d, p), claimCancel: () => OC.Touch.cancel(), panned: () => { St.emit('cam:pan'); hudCalm(); }, rotated: (y) => { S().view.yaw = y; St.emit('cam:rotate', y); }, ghostMoved: () => syncPlace(), ghostDone: () => placing && placing.commit && placing.commit(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); } } });
     Wd.hourFn = () => OC.Clock.hour(); Wd.weatherFn = () => OC.Clock.weather();
     requestAnimationFrame(loop);
     window.__ocBooted = true;

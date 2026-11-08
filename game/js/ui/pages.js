@@ -10,14 +10,19 @@
   const pages = {};
   const app = () => OC.App;
 
-  function head(title, sub, right) {
-    return h('div.page-head', null, h('div.head-bg'), sub ? h('button.icon-btn', { 'aria-label': '返回', on: { click: () => OC.UI.back() } }, icon('back')) : null, h('h1', null, title), right || null);
+  // 10.0: every page head carries a sticker (what this place is), on a white toy pad
+  const PAGE_STK = { char: 'person', profile: 'person', charedit: 'person', workshop: 'brush', studio: 'sparkle', library: 'sparkle', explore: 'compass', more: 'flag', quests: 'flag', goals: 'star',
+    bag: 'bag', shop: 'shop', products: 'shop', ledger: 'coin', settings: 'gear', about: 'star', collection: 'book', ach: 'trophy', needs: 'heart', npc: 'users', lifeset: 'heart', dialogue: 'chat', lifedev: 'gear',
+    petcenter: 'phone', petone: 'phone', petapps: 'phone', pettools: 'clock', petdiag: 'gear' };
+  function head(title, sub, right, stk) {
+    return h('div.page-head', null, h('div.head-bg'), sub ? h('button.icon-btn', { 'aria-label': '返回', on: { click: () => OC.UI.back() } }, icon('back')) : null,
+      stk && OC.UI.sticker ? h('span.stk-pad', null, OC.UI.sticker(stk)) : null, h('h1', null, title), right || null);
   }
   function define(id, title, o) { pages[id] = Object.assign({ id, title, sub: !!o.sub, el: null }, o); }
   function ensure(p) {
     if (p.el) return p;
     p.el = h('section.page' + (p.sub ? '.sub' : ''), { 'data-page': p.id, 'aria-label': p.title });
-    p.el.append(head(p.title, p.sub, p.headRight && p.headRight(p)));
+    p.el.append(head(p.title, p.sub, p.headRight && p.headRight(p), p.stk || PAGE_STK[p.id]));
     p.inner = h('div.page-inner'); p.el.append(p.inner);
     document.getElementById('pages').append(p.el);
     p.build && p.build(p, p.inner);
