@@ -244,7 +244,7 @@
     const cf = () => (S().settings.sound = Object.assign({ on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8 }, S().settings.sound || {}));
     const slider = (k, zh) => h('div.hstack', { style: { marginTop: '8px' } }, h('span', { style: { width: '72px', flex: 'none' } }, zh), h('input', { type: 'range', min: 0, max: 100, value: Math.round(cf()[k] * 100), 'aria-label': zh, style: { flex: 1 }, on: { input: (e) => { cf()[k] = +e.target.value / 100; OC.Sound.apply(); St.touch('settings'); }, change: () => OC.Sound.play(k === 'ui' ? 'tap' : k === 'amb' ? 'water' : k === 'event' ? 'chime' : 'pickup') } }));
     el.append(h('div.section-title', null, '聲音'), h('div.card', null, h('div.hstack', null, h('span.grow', null, '開啟聲音'), toggle(cf().on, (v) => { cf().on = v; OC.Sound.unlock(); OC.Sound.apply(); St.touch('settings'); })),
-      slider('master', '主音量'), slider('ui', '介面'), slider('sfx', '角色與物品'), slider('amb', '環境音'), slider('event', '事件與獎勵'),
+      slider('master', '主音量'), slider('music', '背景音樂'), slider('ui', '介面'), slider('sfx', '角色與物品'), slider('amb', '環境音'), slider('event', '事件與獎勵'),
       small('全部是即時合成的原創音效（沒有外部音檔）。App 切到背景會自動暫停。')));
   };
 

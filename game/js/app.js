@@ -755,6 +755,7 @@
     if (now - aspT > 20000) { aspT = now; OC.Growth.tick(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
     const night = OC.Clock.phase(OC.Clock.hour()) === 'night'; if (Wd.area && (night !== lastNight || wx !== lastAmbWx)) { lastNight = night; lastAmbWx = wx; OC.Sound.ambient({ area: Wd.area.id, wx, night }); }
+    if (Wd.area && player) { const ph = OC.Clock.phase(OC.Clock.hour()), mk = `${Wd.area.id}|${wx}|${ph}`; if (mk !== lastMusicKey) { lastMusicKey = mk; OC.Sound.music(OC.Sound.musicFor({ area: Wd.area.id, wx, phase: ph })); } }
     if (now - holdT > 400) { holdT = now; syncEditorHolds(); }   // real time (dt is capped per frame)
     drawLives(now);
     if (player) {
@@ -768,7 +769,7 @@
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
-  let world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
+  let lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }
   /** OCs open in the editor / workshop are "dressing": they pause their life until the page closes */
   function syncEditorHolds() {

@@ -12,14 +12,15 @@
   const S = () => OC.Store.s;
   let ctx = null, master = null, bus = {}, noiseBuf = null, voices = 0, unlocked = false;
   const last = {};
-  const cfg = () => Object.assign({ on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8 }, S().settings.sound || {});
+  const cfg = () => Object.assign({ on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8, music: 0.45 }, S().settings.sound || {});
 
   function init() {
     if (ctx) return true;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
     try { ctx = new AC(); } catch (e) { return false; }
     master = ctx.createGain(); master.connect(ctx.destination);
-    for (const k of ['ui', 'sfx', 'amb', 'event']) { bus[k] = ctx.createGain(); bus[k].connect(master); }
+    for (const k of ['ui', 'sfx', 'amb', 'event', 'music']) { bus[k] = ctx.createGain(); bus[k].connect(master); }
+    mfade = ctx.createGain(); mfade.gain.value = 0.0001; mfade.connect(bus.music);
     const n = ctx.sampleRate * 2; noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate); const d = noiseBuf.getChannelData(0); let b = 0; for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; b = 0.97 * b + 0.03 * w; d[i] = w * 0.6 + b * 2.2; }   // soft (pinkish) noise
     apply(); return true;
   }
@@ -125,6 +126,58 @@
     else if (ambState.area !== 'beach' && ambState.area !== 'street') { birdT = 3 + Math.random() * 6; const f = 2200 + Math.random() * 1400; tone('amb', f, { d: 0.12, v: 0.02, to: f * 1.4, slide: 0.08 }); tone('amb', f * 1.2, { t: 0.15, d: 0.1, v: 0.016, to: f * 0.9, slide: 0.08 }); }
     else birdT = 4;
   }
+  // ================= 8.0 music: original, generated live (no recordings) =================
+  // Each mood = tempo, key, a 4-chord loop and an instrument set. A 2-bar motif is generated per section and repeated
+  // with small variations (A A' B A), so it sounds like a tune rather than random notes. Scheduled ~0.6 s ahead on the
+  // audio clock (setInterval only feeds the audio scheduler; no game logic depends on it).
+  let mfade = null, mood = null, mTimer = 0, mNext = 0, mBeat = 0, motif = null, motifB = null, section = 0;
+  const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  const MOODS = {
+    title: { bpm: 84, root: 60, scale: [0, 2, 4, 7, 9], chords: [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]], lead: 'bell', pad: 0.05, density: 0.55 },
+    day: { bpm: 96, root: 62, scale: [0, 2, 4, 7, 9], chords: [[0, 4, 7], [5, 9, 12], [-3, 0, 4], [7, 11, 14]], lead: 'pluck', pad: 0.04, density: 0.62 },
+    dusk: { bpm: 78, root: 57, scale: [0, 2, 3, 7, 10], chords: [[0, 3, 7], [-4, 0, 3], [-2, 2, 5], [-5, -2, 2]], lead: 'pluck', pad: 0.05, density: 0.45 },
+    night: { bpm: 66, root: 64, scale: [0, 2, 4, 7, 9], chords: [[0, 4, 7], [-3, 0, 4], [-8, -5, -1], [-5, -1, 2]], lead: 'box', pad: 0.035, density: 0.35 },
+    rain: { bpm: 70, root: 55, scale: [0, 2, 3, 5, 7, 10], chords: [[0, 3, 7], [-2, 2, 5], [-4, 0, 3], [-5, -2, 2]], lead: 'piano', pad: 0.045, density: 0.4 },
+    indoor: { bpm: 88, root: 60, scale: [0, 2, 4, 5, 7, 9, 11], chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [2, 5, 9, 12], [-5, -1, 2, 5]], lead: 'piano', pad: 0.035, density: 0.5 },
+  };
+  function voice(kind, f, t, d, v) {
+    if (!ctx || voices > 22) return;
+    const g = ctx.createGain(), o = ctx.createOscillator(); g.connect(mfade);
+    if (kind === 'pad') { o.type = 'triangle'; const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 1.004; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; o.connect(lp); o2.connect(lp); lp.connect(g); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + d * 0.35); g.gain.linearRampToValueAtTime(0.0001, t + d); o2.start(t); o2.stop(t + d + 0.05); }
+    else { o.type = kind === 'bell' || kind === 'box' ? 'sine' : kind === 'piano' ? 'triangle' : 'sine'; o.connect(g);
+      const h2 = ctx.createOscillator(), g2 = ctx.createGain(); h2.type = 'sine'; h2.frequency.value = f * (kind === 'bell' ? 2.76 : kind === 'box' ? 4 : 2); g2.gain.value = kind === 'pluck' ? 0.25 : 0.18; h2.connect(g2); g2.connect(g); h2.start(t); h2.stop(t + d + 0.05);
+      const dec = kind === 'bell' || kind === 'box' ? d * 1.6 : kind === 'piano' ? d * 1.2 : d * 0.8;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); }
+    o.frequency.value = f; o.start(t); o.stop(t + d * 1.7 + 0.1); voices++; o.onended = () => { voices--; };
+  }
+  function makeMotif(m) { const out = []; let deg = Math.floor(Math.random() * m.scale.length); for (let i = 0; i < 16; i++) { if (Math.random() > m.density) { out.push(null); continue; } deg = Math.max(0, Math.min(m.scale.length * 2 - 1, deg + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)])); out.push(deg); } if (out.every((x) => x == null)) out[0] = 0; return out; }
+  function degNote(m, deg) { const n = m.scale.length; return m.root + 12 + m.scale[deg % n] + 12 * Math.floor(deg / n); }
+  function schedule() {
+    if (!ctx || !mood || !cfg().on || cfg().music <= 0 || document.hidden) return;
+    const m = MOODS[mood], beat = 60 / m.bpm, eighth = beat / 2;
+    while (mNext < ctx.currentTime + 0.6) {
+      const t = Math.max(mNext, ctx.currentTime + 0.02), step = mBeat % 32, bar = Math.floor(mBeat / 8) % 4, ch = m.chords[bar];
+      if (mBeat % 32 === 0) { section++; if (!motif || section % 4 === 1) motif = makeMotif(m); if (!motifB || section % 8 === 3) motifB = makeMotif(m); }
+      if (mBeat % 8 === 0) { for (const iv of ch.slice(0, 3)) voice('pad', NOTE(m.root + iv), t, beat * 4.1, m.pad); voice('pluck', NOTE(m.root - 12 + ch[0]), t, beat * 1.4, 0.05); }
+      if (mBeat % 8 === 4 && mood !== 'night') voice('pluck', NOTE(m.root - 12 + ch[0] + 7), t, beat, 0.035);
+      // A A' B A: the second pass varies one note, the third uses the B motif
+      const sec = section % 4, src = sec === 2 ? motifB : motif, deg = src[step % 16];
+      if (deg != null && !(sec === 1 && step % 16 === 13)) voice(m.lead, NOTE(degNote(m, deg + (sec === 1 && step % 16 === 6 ? 1 : 0))), t, eighth * 1.6, m.lead === 'box' ? 0.05 : 0.06);
+      mNext += eighth; mBeat++;
+    }
+  }
+  /** choose the background music: title | day | dusk | night | rain | indoor | null (silence). Cross-fades over ~1.5 s */
+  function music(want) {
+    if (!init()) { mood = want; return; }
+    if (want === mood) return;
+    const t0 = ctx.currentTime;
+    mfade.gain.cancelScheduledValues(t0); mfade.gain.setValueAtTime(Math.max(0.0001, mfade.gain.value), t0); mfade.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.2);
+    setTimeout(() => { mood = want; if (!ctx || !want) return; mBeat = 0; section = 0; motif = motifB = null; mNext = ctx.currentTime + 0.1; const t1 = ctx.currentTime; mfade.gain.cancelScheduledValues(t1); mfade.gain.setValueAtTime(0.0001, t1); mfade.gain.exponentialRampToValueAtTime(1, t1 + 2.5); }, 1250);
+    if (!mTimer) mTimer = setInterval(schedule, 150);
+  }
+  /** pick the mood from place / weather / time (app calls this when they change) */
+  function musicFor(o) { const P = OC.Places && OC.Places.get(o.area); return P && P.interior ? 'indoor' : o.wx === 'rain' ? 'rain' : o.phase === 'night' ? 'night' : o.phase === 'dusk' ? 'dusk' : 'day'; }
+
   function suspend(v) { if (!ctx) return; if (v) ctx.suspend(); else if (unlocked) ctx.resume(); }
 
   function boot() {
@@ -135,5 +188,5 @@
     document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('button, .row.tap, .tile, .chip-btn, [role="tab"]'); if (t && !t.disabled) play(t.closest('.tabbar') ? 'tab' : 'tap'); }, true);
     OC.Store.on('coins', (e) => { if (e && e.d > 0) play('coin'); });
   }
-  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
+  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
 })();

@@ -61,7 +61,7 @@
       const skip = h('button.intro-skip', { 'aria-label': '跳過開場', on: { click: () => finish(true) } }, '跳過 ›');
       const el = h('div.intro-film', null, top, bot, sub, skip);
       document.getElementById('app').append(el); requestAnimationFrame(() => el.classList.add('on'));
-      try { OC.Sound.ambient({ area: 'isle', wx: 'clear', night: false }); } catch (e) { /* audio is optional */ }
+      try { OC.Sound.ambient({ area: 'isle', wx: 'clear', night: false }); OC.Sound.music('title'); } catch (e) { /* audio is optional */ }
       const tick = (now) => {
         if (done) return;
         const dt = Math.min(0.1, (now - last) / 1000); last = now; t = (now - start) / 1000;   // real time: a slow device must not stretch the film
@@ -104,6 +104,7 @@
           h('button.btn.ghost.grow', { on: { click: replay } }, icon('film', 's'), '觀看開場'),
           o.returning ? h('button.btn.ghost.grow', { on: { click: () => go('new') } }, icon('plus', 's'), '新遊戲') : null)));
       document.getElementById('app').append(el); requestAnimationFrame(() => el.classList.add('on'));
+      OC.Sound && OC.Sound.music('title');
     });
   }
 

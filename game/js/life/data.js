@@ -121,7 +121,7 @@
     ['greet', '初次見面，我是{name}。', { rel: ['stranger'] }, 2], ['greet', '喲，老朋友！', { rel: ['bestfriend', 'family'] }, 3], ['greet', '是你呀～', { rel: ['friend', 'bestfriend'] }, 2], ['greet', '……又是你。', { rel: ['rival'] }, 4],
     ['greet_r', '嗨嗨！', B], ['greet_r', '你好呀。', C], ['greet_r', '嗯。', K], ['greet_r', '喔，{other}！', P], ['greet_r', '你、你好……', { trait: 'shy', rel: ['stranger', 'acquaintance'] }, 3], ['greet_r', '哼。', { rel: ['rival'] }, 4],
     // ---- small talk (topics) ----
-    ['talk', '今天的{wx}天氣，你喜歡嗎？', P], ['talk', '你知道嗎？我最近超喜歡{like}！', B], ['talk', '我在想……雲會不會也有自己的名字呢。', Object.assign({}, C)], ['talk', '根據我的觀察，今天適合{act}。', K],
+    ['talk', '今天的{wx}天氣，你喜歡嗎？', P], ['talk', '你知道嗎？我最近超喜歡{like}！', B], ['talk', '我在想……雲會不會也有自己的名字呢。', Object.assign({}, C)], ['talk', '今天好像很適合{act}。', K],
     ['talk', '下雨的聲音好好聽喔。', { wx: ['rain'] }, 3], ['talk', '霧好濃，感覺會有神秘的事情發生。', { wx: ['fog'] }, 3], ['talk', '晚上的小島好安靜。', { phase: 'night' }, 2], ['talk', '早上的空氣最新鮮了！', { phase: 'morning' }, 2],
     ['talk', '我好餓……你有吃的嗎？', { need: { food: '<35' } }, 3], ['talk', '呼啊……我有點想睡了。', { need: { sleep: '<35' } }, 3], ['talk', '好無聊喔，要不要一起做點什麼？', { need: { fun: '<35' } }, 3],
     ['talk', '還記得{mem}嗎？', { hasMem: true }, 3], ['talk', '我最近有個小願望：{wish}。', { hasWish: true }, 3], ['talk', '你也喜歡{shared}嗎？太好了！', { hasShared: true }, 3],
@@ -174,9 +174,9 @@
     ['call', '來了來了！', B], ['call', '叫我嗎？', P], ['call', '嗯？有什麼事？', K], ['call', '好……我過去。', C],
     ['fed_like', '是{item}！我最喜歡了！', P], ['fed_ok', '謝謝你的{item}～', P], ['fed_bad', '呃……{item}嗎……謝謝你的心意。', P], ['fed_full', '我吃不下了啦……', P],
     ['played', '好好玩！再來一次！', B], ['played', '嘿嘿，謝謝你陪我玩。', P], ['played', '……還不錯。', K],
-    ['chat_player', '你今天過得好嗎？', P], ['chat_player', '跟你說，{other}今天和我{act}喔！', { hasRecentWith: true }, 4], ['chat_player', '我現在覺得{emo}。', P], ['chat_player', '有你在，我覺得很安心。', { aff_player: '>=1' }, 2],
+    ['chat_player', '你今天過得好嗎？', P], ['chat_player', '跟你說，{other}今天和我{act}喔！', { hasRecentWith: true }, 4], ['chat_player', '剛剛想到一件事，結果你一出現就忘了。', P], ['chat_player', '有你在，我覺得很安心。', { aff_player: '>=1' }, 2],
     ['chat_player', '我想要……{wish}。', { hasWish: true }, 4], ['chat_player', '我最近很常{habit}。', { hasHabit: true }, 3], ['chat_player', '還記得{mem}嗎？', { hasMem: true }, 3],
-    ['chat_player', '今天是{wx}天呢。', P], ['chat_player', '偷偷告訴你，我很喜歡{like}。', P],
+    ['chat_player', '今天天氣{wx}呢。', P], ['chat_player', '偷偷告訴你，我很喜歡{like}。', P],
     ['wish_done', '願望實現了！謝謝你！', P], ['wish_done', '耶——！好開心！', B], ['wish_done', '……嗯，太好了。', K],
     // ---- event lines ----
     ['ev_meet', '你好，我是{name}，以後請多指教！', P], ['ev_meet_r', '我是{name}，請多指教～', P], ['ev_friend', '我覺得……我們已經是朋友了吧？', P], ['ev_friend_r', '當然！', P],
