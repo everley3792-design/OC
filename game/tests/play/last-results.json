@@ -1,5 +1,5 @@
 {
- "at": "2026-11-07T23:02:59.630Z",
+ "at": "2026-11-08T00:02:58.333Z",
  "results": [
   {
    "name": "1a 不同個性的 OC 最想提出的請求不同",
@@ -9,7 +9,7 @@
   {
    "name": "1b 同一個請求，不同 OC 說法不同（聲線）",
    "ok": true,
-   "detail": "麻糬「欸欸！我想吃起司！可以嗎可以嗎喵～？」 栗子「肚子在說……它想吃起司！！」 小空「（小聲）……我想吃起司。不、不是很急啦…。」"
+   "detail": "麻糬「欸欸！我想吃起司！可以嗎可以嗎喵～？」 栗子「欸欸！我想吃起司！可以嗎可以嗎！？」 小空「（小聲）小、小聲說喔……我想吃起司…。」"
   },
   {
    "name": "1c 演出版本依個性不同（活潑／害羞／冷靜…）",
@@ -23,12 +23,12 @@
   {
    "name": "1e 接受 → 進行中 → 實際陪玩後完成",
    "ok": true,
-   "detail": "想玩風箏：active → done"
+   "detail": "想玩木頭積木：active → done"
   },
   {
    "name": "1f 完成後：獎勵入帳一次、好感上升、寫入回憶",
    "ok": true,
-   "detail": "{\"aff\":6,\"mem\":true,\"paid\":true,\"coins\":450,\"n\":1}"
+   "detail": "{\"aff\":6,\"mem\":true,\"paid\":true,\"coins\":460,\"n\":1}"
   },
   {
    "name": "1g 同一個請求就算再次觸發也不會重複給獎勵",
@@ -43,7 +43,7 @@
   {
    "name": "2a 每日 4 個任務、類型分散；本週 3 個",
    "ok": true,
-   "detail": "{\"daily\":[\"d_shake\",\"d_sell\",\"d_feed\",\"d_critter\"],\"tags\":4,\"weekly\":[\"w_gift\",\"w_fish\",\"w_places\"],\"bad\":[]}"
+   "detail": "{\"daily\":[\"d_forage\",\"d_street\",\"d_cook\",\"d_talk\"],\"tags\":4,\"weekly\":[\"w_gift\",\"w_fish\",\"w_places\"],\"bad\":[]}"
   },
   {
    "name": "2b 不會出現無法完成的任務（全部符合開放條件）",
@@ -53,12 +53,12 @@
   {
    "name": "2c 每日任務由真實行為的進度事件完成（餵食完成了餵食類任務）",
    "ok": true,
-   "detail": "[[\"d_shake\",true],[\"d_sell\",true],[\"d_feed\",true],[\"d_critter\",true]]"
+   "detail": "[[\"d_forage\",true],[\"d_street\",true],[\"d_cook\",true],[\"d_talk\",true]]"
   },
   {
    "name": "2d 在「日常」點「領取」入帳；再領一次被拒絕",
    "ok": true,
-   "detail": "460 → 520；再領：已經領過了"
+   "detail": "470 → 540；再領：已經領過了"
   },
   {
    "name": "2e 每週任務（不同種類計數）可以完成",
@@ -122,7 +122,7 @@
   {
    "name": "4c 完成：獎勵、稱號、里程碑回憶，並提出（需同意的）成長建議",
    "ok": true,
-   "detail": "{\"coins\":1210,\"title\":true,\"mem\":true,\"sugg\":[\"釣魚\"]}"
+   "detail": "{\"coins\":610,\"title\":true,\"mem\":true,\"sugg\":[\"釣魚\"]}"
   },
   {
    "name": "5a 新取得的物品寫入圖鑑；用掉後仍保留發現紀錄（曾經持有）",
@@ -146,7 +146,7 @@
   {
    "name": "6b 領取成就獎勵入帳；同一個成就不能領兩次",
    "ok": true,
-   "detail": "2080 → 2180"
+   "detail": "1500 → 1600"
   },
   {
    "name": "6c 已領的再領全部被拒絕",
@@ -165,7 +165,7 @@
   {
    "name": "7b 「日誌」直接讀角色回憶（新回憶立即出現，重要的有故事時間軸）",
    "ok": true,
-   "detail": "7 → 8"
+   "detail": "5 → 6"
   },
   {
    "name": "7c 回憶可以珍藏",
@@ -174,12 +174,12 @@
   {
    "name": "8a 吃到最愛：期待（吃）→ 品嚐停頓 → 驚喜反應（多段動作，不是單一彈跳）",
    "ok": true,
-   "detail": "think → eat → taste → surprised → yum → dance → idle → tend → idle"
+   "detail": "think → eat → taste → surprised → yum → dance → eat → idle → play → idle"
   },
   {
    "name": "8b 音效跟著演出（咀嚼 → 好吃）",
    "ok": true,
-   "detail": "chime,sparkle,chew,fanfare,fanfare,jump,yum,fanfare,levelup,card,card,card,card,card,sparkle,sparkle"
+   "detail": "chime,chime,chime,chew,jump,chime,yum,levelup,levelup,chime,sparkle,fanfare,fanfare,fanfare,levelup"
   },
   {
    "name": "8c 新動作有連續的姿勢變化（預備→動作→收尾）",
@@ -189,7 +189,7 @@
   {
    "name": "8d 同一個「開心」，不同個性的姿勢不同（幅度、手勢、臉紅），不是只改速度",
    "ok": true,
-   "detail": "{\"麻糬\":[1.2,-0.3,0],\"栗子\":[6.1,-1.84,0],\"小空\":[1.6,-0.35,0.8]}"
+   "detail": "{\"麻糬\":[5.5,-1.92,0],\"栗子\":[6.1,-1.84,0],\"小空\":[1.6,-0.35,0.8]}"
   },
   {
    "name": "9a 自製逐格動畫沒有的新動作，會依備用鏈用相近的動作（例如「好吃」→自製的「開心」）",
@@ -203,23 +203,23 @@
   },
   {
    "name": "9c 自製角色也能播放升級演出（完整結束）",
-   "ok": true,
-   "detail": "640ms"
+   "ok": false,
+   "detail": "0ms"
   },
   {
    "name": "10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅",
    "ok": true,
-   "detail": "{\"d0\":111,\"d\":16,\"z0\":1.9201713755429128,\"z\":2.3}"
+   "detail": "{\"d0\":124,\"d\":26,\"z0\":1.9,\"z\":2.3}"
   },
   {
    "name": "10b 演出中角色被保留（不會被自主行為打斷），結束後鏡頭與保留都恢復",
    "ok": true,
-   "detail": "{\"zoom\":1.9393439369346397,\"held\":[\"event\"],\"ui\":false,\"state\":\"done\"}"
+   "detail": "{\"zoom\":1.9201713755429133,\"held\":[],\"ui\":false,\"state\":\"done\"}"
   },
   {
    "name": "11a 跳過演出：立刻結束，資料照樣正確（扣 1 個、品嚐紀錄、回憶各一次）",
    "ok": true,
-   "detail": "{\"ms\":74,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
+   "detail": "{\"ms\":75,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
   },
   {
    "name": "11b 跳過後角色沒有卡在演出狀態",
@@ -228,8 +228,8 @@
   },
   {
    "name": "11c 觀看中的特殊事件可以跳過：立刻結束、結果只套用一次、角色沒有卡住",
-   "ok": true,
-   "detail": "{\"started\":true,\"id\":\"firstMeet\",\"ms\":64,\"ended\":true,\"logged\":1,\"why\":\"done\",\"held\":[],\"ui\":false}"
+   "ok": false,
+   "detail": "{\"started\":false,\"diag\":\"[{\\\"id\\\":\\\"stargaze\\\",\\\"a\\\":\\\"cmw72h1rkb1mq\\\",\\\"b\\\":\\\"cmw72gvw64fjv\\\",\\\"ok\\\":false,\\\"why\\\":\\\"時段\\\"},{\\\"id\\\":\\\"giftPlayer\\\",\\\"a\\\":\\\"cmw72h1rkb1mq\\\",\\\"b\\\":null,\\\"ok\\\":false,\\\"why\\\":\\\"emo\\\"},{\\\"id\\\":\\\"nostalgia\\\",\\\"a\\\":\\\"cmw72h1rkb1mq\\\",\\\"b\\\":null,\\\"ok\\\":false,\\\"why\\\":\\\"emo\\\"},{\\\"id\\\":\\\"lonelyMoment\\\",\\\"a\\\":\\\"cmw72h1rkb1mq\\\",\\\"b\\\":null,\\\"ok\\\":true,\\\"why\\\":\\\"\\\"},{\\\"id\\\":\"}"
   },
   {
    "name": "12a 切換效能／主題／時間／天氣／降低動態時演出照常結束、渲染器不重建",
@@ -249,22 +249,22 @@
   {
    "name": "13a 反覆開關「日常」、圖鑑、角色檔案、背包 12 次：DOM 不持續增加",
    "ok": true,
-   "detail": "1178 → 811"
+   "detail": "1199 → 866"
   },
   {
    "name": "13b 3D 資源不重新載入（材質、幾何不變，renderer 同一個）",
    "ok": true,
-   "detail": "tex 14→14 geo 229→229"
+   "detail": "tex 14→13 geo 227→227"
   },
   {
    "name": "13c JS heap 穩定（< +30MB）",
    "ok": true,
-   "detail": "25→25MB"
+   "detail": "26→26MB"
   },
   {
    "name": "14 重開後保留：coins",
    "ok": true,
-   "detail": "2580 → 2580"
+   "detail": "2010 → 2010"
   },
   {
    "name": "14 重開後保留：q",
@@ -317,7 +317,7 @@
    "detail": ""
   },
   {
-   "name": "14 存檔版本 v5",
+   "name": "14 存檔版本 v6（第七階段）",
    "ok": true
   },
   {
