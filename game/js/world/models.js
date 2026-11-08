@@ -126,9 +126,10 @@
     const g = new THREE.Group(); const r = rng(seed * 97 + 3);
     add(g, trunk(28, 3.6, 2.6), mat(P.wood), 0, 0, 0);
     const crown = new THREE.Group(); crown.position.y = 38; g.add(crown);
-    const leaf = mat('#5FBF4E'), leaf2 = mat('#6FCB57'), leafLo = mat('#4FAA45');
+    // 10.1: faceted low-poly foliage (flat shading on a coarse icosphere) — the soft toy-diorama look of the art direction
+    const FL = { p: { flatShading: true } }, leaf = mat('#5FBF4E', FL), leaf2 = mat('#72CE58', FL), leafLo = mat('#4FAA45', FL);
     const blobs = [[0, 6, 0, 17, leaf], [-12, -1, 3, 12, leaf2], [12, 0, -2, 12.5, leaf], [0, 0, 11, 12, leaf2], [4, 13, -5, 11, leaf2], [-6, 9, -9, 10, leafLo], [8, -3, 8, 9, leafLo]];
-    for (const [x, y, z, rr2, m] of blobs) { const b = add(crown, ico(rr2, 2), m, x, y, z); b.scale.y = 0.9; }
+    for (const [x, y, z, rr2, m] of blobs) { const b = add(crown, ico(rr2, 1), m, x, y, z); b.scale.y = 0.9; b.rotation.set(r() * 3, r() * 3, 0); }
     const fruits = [];
     const fm = mat(fruit);
     for (let i = 0; i < 6; i++) { const a = r() * TAU, yy = r() * 14 - 4; const f = add(crown, sphere(2.8, 12, 10), fm, Math.cos(a) * 14, yy, Math.sin(a) * 12 + 4, { cast: false }); fruits.push(f); }
@@ -150,13 +151,13 @@
     const g = new THREE.Group();
     add(g, trunk(16, 3.4, 2.6), mat(P.wood));
     const crown = new THREE.Group(); g.add(crown);
-    for (let i = 0; i < 3; i++) add(crown, cone(18 - i * 4.2, 22, 14), mat(i % 2 ? '#3FA357' : '#348F4B'), 0, 22 + i * 14, 0);
+    for (let i = 0; i < 3; i++) add(crown, cone(18 - i * 4.2, 22, 8), mat(i % 2 ? '#3FA357' : '#348F4B', { p: { flatShading: true } }), 0, 22 + i * 14, 0, { ry: i * 0.4 });
     g.userData.size = { w: 14, d: 12 };
     return { group: g, crown };
   }
   function bush(seed = 1, col = '#5DB64C') {
     const g = new THREE.Group(); const r = rng(seed * 31);
-    for (let i = 0; i < 4; i++) { const b = add(g, ico(6 + r() * 3, 1), mat(i % 2 ? col : mix(col, '#2e6a30', 0.15)), (r() - 0.5) * 12, 5 + r() * 3, (r() - 0.5) * 8); b.scale.y = 0.85; }
+    for (let i = 0; i < 4; i++) { const b = add(g, ico(6 + r() * 3, 1), mat(i % 2 ? col : mix(col, '#2e6a30', 0.15), { p: { flatShading: true } }), (r() - 0.5) * 12, 5 + r() * 3, (r() - 0.5) * 8); b.scale.y = 0.85; b.rotation.set(r() * 3, r() * 3, 0); }
     if (seed % 2) for (let i = 0; i < 5; i++) add(g, sphere(1.4, 8, 6), mat(seed % 4 === 1 ? '#FFFFFF' : P.pink), (r() - 0.5) * 14, 8 + r() * 4, 3 + r() * 4, { cast: false });
     g.userData.size = { w: 18, d: 12 };
     return { group: g, crown: g };
