@@ -214,17 +214,17 @@ const { check, wait } = H;
         const f = OC.Sound.musicFor; const kinds = { mini: f({ area: 'isle', mini: true }), cozy: f({ area: 'home', phase: 'night' }), indoor: f({ area: 'cafe', phase: 'day' }), day: f({ area: 'isle', phase: 'day' }), rain: f({ area: 'isle', wx: 'rain', phase: 'day' }) };
         const sc = OC.Store.s.settings.sound; sc.music = 0.45; OC.Sound.apply();
         OC.Sound.music('day'); await new Promise((r) => setTimeout(r, 2600));
-        OC.Sound.setIntensity(0, 9000); await new Promise((r) => setTimeout(r, 400)); const calm = await window.__measure(() => 0, 5000);
-        OC.Sound.setIntensity(2, 9000); await new Promise((r) => setTimeout(r, 400)); const busy = await window.__measure(() => 0, 5000);
+        OC.Sound.setIntensity(0, 12000); await new Promise((r) => setTimeout(r, 400)); const st0 = Object.assign({}, OC.Sound.stats); const calm = await window.__measure(() => 0, 5000); const st1 = Object.assign({}, OC.Sound.stats);
+        OC.Sound.setIntensity(2, 12000); await new Promise((r) => setTimeout(r, 400)); const st2 = Object.assign({}, OC.Sound.stats); const busy = await window.__measure(() => 0, 5000); const st3 = Object.assign({}, OC.Sound.stats);
         OC.Sound.setIntensity(0, 1);
         const g = OC.Sound._tap(), base = OC.Sound.cfg().music, calls = [], o = g.bus.music.gain.setTargetAtTime.bind(g.bus.music.gain); g.bus.music.gain.setTargetAtTime = (v, t, k) => { calls.push({ v: +v.toFixed(3), t: +t.toFixed(2) }); return o(v, t, k); };
         OC.Sound.speak(OC.Chars.active(), '嗨，早安呀！', { emo: 'happy' }); await new Promise((r) => setTimeout(r, 200)); g.bus.music.gain.setTargetAtTime = o;
         sc.music = 0; OC.Sound.apply();
-        return { kinds, mood: OC.Sound.mood, calmZ: Math.round(calm.zcr), busyZ: Math.round(busy.zcr), calmHF: +calm.hf.toExponential(3), busyHF: +busy.hf.toExponential(3), base, calls };
+        return { kinds, mood: OC.Sound.mood, calm: { perc: st1.perc - st0.perc, kick: st1.kick - st0.kick }, busy: { perc: st3.perc - st2.perc, kick: st3.kick - st2.kick }, calmHF: +calm.hf.toExponential(3), busyHF: +busy.hf.toExponential(3), base, calls };
       });
       const dk = mu.calls;
       check('6f 音樂依場合選曲（小遊戲、夜晚的家、室內、白天、雨天）', mu.kinds.mini === 'minigame' && mu.kinds.cozy === 'cozy' && mu.kinds.indoor === 'indoor' && mu.kinds.day === 'day' && mu.kinds.rain === 'rain' && mu.mood === 'day', mu.kinds);
-      check('6g 音樂強度層真的改變聲音（強度 2 比 0 的高頻更多、更亮）；有人說話時音樂先讓位（降到 ~55%）、說完才回來', mu.busyHF > mu.calmHF * 1.15 && mu.busyZ > mu.calmZ && dk.length >= 2 && dk[0].v < mu.base * 0.7 && dk[dk.length - 1].v === mu.base && dk[dk.length - 1].t > dk[0].t + 0.5, mu);
+      check('6g 音樂強度層真的啟動（強度 0 沒有打擊樂；強度 2 排進沙鈴與輕鼓）；有人說話時音樂先讓位（降到 ~55%）、說完才回來', mu.calm.perc === 0 && mu.calm.kick === 0 && mu.busy.perc >= 8 && mu.busy.kick >= 2 && dk.length >= 2 && dk[0].v < mu.base * 0.7 && dk[dk.length - 1].v === mu.base && dk[dk.length - 1].t > dk[0].t + 0.5, mu);
 
       // 6h hooks: a new action makes its sound once, spoken bubbles are voiced (thoughts are not), footsteps by ground, haptic rhythms
       const hk = await page.evaluate(async () => {

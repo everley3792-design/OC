@@ -339,13 +339,13 @@
       mNext += eighth; mBeat++;
     }
   }
-  let intensity = 0;
+  let intensity = 0; const stats = { perc: 0, kick: 0 };
   /** 0 calm · 1 lively · 2 festive — the app sets it from the mood of the OC, mini-games and events */
   let intLock = 0;
   /** `holdMs` keeps this level against the app's own mood-based updates for that long (a performance, a party) */
   function setIntensity(i, holdMs) { const now = performance.now(); if (!holdMs && now < intLock) return; if (holdMs) intLock = now + holdMs; intensity = Math.max(0, Math.min(2, i | 0)); }
-  function perc(t, v) { if (!ctx || nv() > 22) return; const s2 = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); s2.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.05); s2.connect(hp); hp.connect(g); g.connect(mfade); s2.start(t, Math.random()); s2.stop(t + 0.07); hold(t + 0.07); }
-  function kick(t) { if (!ctx || nv() > 22) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.16); o.connect(g); g.connect(mfade); o.start(t); o.stop(t + 0.18); hold(t + 0.18); }
+  function perc(t, v) { if (!ctx || nv() > 22) return; stats.perc++; const s2 = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); s2.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.05); s2.connect(hp); hp.connect(g); g.connect(mfade); s2.start(t, Math.random()); s2.stop(t + 0.07); hold(t + 0.07); }
+  function kick(t) { if (!ctx || nv() > 22) return; stats.kick++; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.16); o.connect(g); g.connect(mfade); o.start(t); o.stop(t + 0.18); hold(t + 0.18); }
   /** a short phrase in the key of the current music: 'win' (up), 'warm' (settles), 'wonder' (sparkle) */
   function stinger(kind) {
     if (!ctx || !unlocked || !cfg().on || document.hidden) return;
@@ -375,5 +375,5 @@
     document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('button, .row.tap, .tile, .chip-btn, [role="tab"]'); if (t && !t.disabled) play(t.closest('.tabbar') ? 'tab' : 'tap'); }, true);
     OC.Store.on('coins', (e) => { if (e && e.d > 0) play('coin'); });
   }
-  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, ACT_SND, get intensity() { return intensity; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
+  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, ACT_SND, get intensity() { return intensity; }, get stats() { return stats; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
 })();

@@ -1,5 +1,5 @@
 {
- "at": "2026-11-08T18:16:35.445Z",
+ "at": "2026-11-08T19:03:37.286Z",
  "results": [
   {
    "name": "1a 全新安裝：開場期間沒有任何角色或居民（小島是空的）",
@@ -7,7 +7,7 @@
    "detail": {
     "chars": 0,
     "npcs": 0,
-    "yaw": 0.10590245689894155,
+    "yaw": 0.05865144058153173,
     "sub": "和一間一直等著住客的小屋。"
    }
   },
@@ -17,14 +17,14 @@
    "detail": {
     "chars": 0,
     "npcs": 0,
-    "yaw": 0.10590245689894155,
+    "yaw": 0.05865144058153173,
     "sub": "和一間一直等著住客的小屋。"
    }
   },
   {
    "name": "2b 開場可以跳過（立刻到歡迎畫面），並記住看過了",
    "ok": true,
-   "detail": 1819
+   "detail": 993
   },
   {
    "name": "2c 歡迎畫面可以重新觀看開場",
@@ -74,8 +74,8 @@
    "detail": {
     "a": [
      "好耶 俺超喜歡你送的禮物啦！",
-     "俺超喜歡你送的禮物！",
-     "俺超喜歡你送的禮物啦！"
+     "好耶 俺超喜歡你送的禮物！",
+     "俺超喜歡你送的禮物！"
     ],
     "b": [
      "我喜歡您送的禮物。"
@@ -85,7 +85,7 @@
   {
    "name": "3b 句尾口癖依頻率出現（不是每句都加）",
    "ok": true,
-   "detail": 0.565
+   "detail": 0.61
   },
   {
    "name": "3c 特質改變行為：活潑走得快、跳得高；懶散內向較慢",
@@ -114,7 +114,7 @@
    "ok": true,
    "detail": {
     "overlap": 0,
-    "la": 11,
+    "la": 10,
     "lb": 9
    }
   },
@@ -214,7 +214,7 @@
       "mode": "classic"
      }
     ],
-    "yaw": 0.6858306619879369,
+    "yaw": 0.6889638048962704,
     "saved": "free"
    }
   },
@@ -242,7 +242,7 @@
   },
   {
    "name": "6c 家具與地面也有各自的情境選單",
-   "ok": false,
+   "ok": true,
    "detail": {
     "furn": [
      "使用",
@@ -250,31 +250,34 @@
      "收回",
      "資訊"
     ],
-    "ground": [],
+    "ground": [
+     "走過去",
+     "大家過來",
+     "放家具",
+     "看這裡"
+    ],
     "lg": {
      "log": [
       "down mouse id=1 primary=true n=0 g=null",
-      "up pointerup id=1 known=true n=1 g=press moved=false",
-      "tap pick=none ghost=false",
-      "onTap dlg=false placing=false decorate=false covered=island"
+      "up pointerup id=1 known=true n=1 g=long moved=false"
      ],
-     "stack": 0,
+     "stack": 1,
      "tab": "island",
-     "top": "CANVAS"
+     "top": "DIV"
     },
     "G": {
-     "x": 196.5,
-     "y": 566.5999999999996
+     "x": 196.50000000000009,
+     "y": 566.5999999999993
     }
    }
   },
   {
    "name": "7a 在 OC 身上來回撫摸＝摸摸頭（好感增加，不會誤開選單）",
-   "ok": false,
+   "ok": true,
    "detail": {
     "aff0": 0,
     "pet": {
-     "aff": 0,
+     "aff": 1,
      "menu": false
     }
    }
@@ -284,7 +287,7 @@
    "ok": true,
    "detail": {
     "lift": 24,
-    "swing": 0.75,
+    "swing": 0.4285271466348758,
     "hold": [
      "drag"
     ],
@@ -341,8 +344,8 @@
    "name": "8c 可以暫停時間（遊戲時鐘不前進）",
    "ok": true,
    "detail": {
-    "gmA": 29902897.76201679,
-    "gmB": 29902897.76201679
+    "gmA": 29902968.60995027,
+    "gmB": 29902968.60995027
    }
   },
   {
@@ -364,7 +367,7 @@
    "name": "9c 可以直接切換操控的角色，並進入完整檔案",
    "ok": true,
    "detail": {
-    "sw": "cmw85ggqep5ae",
+    "sw": "cmw874ivrufyv",
     "prof": true
    }
   },
@@ -372,7 +375,7 @@
    "name": "11a 重要演出完整播放，結束後回到玩家原本的鏡頭模式、角色沒有卡住",
    "ok": true,
    "detail": {
-    "ms": 3307,
+    "ms": 3151,
     "mode": "follow",
     "holds": []
    }
@@ -384,12 +387,8 @@
   },
   {
    "name": "12b 無錯誤",
-   "ok": false,
-   "detail": [
-    "TypeError: OC.Sound.setIntensity is not a function",
-    "TypeError: OC.Sound.setIntensity is not a function",
-    "TypeError: OC.Sound.setIntensity is not a function"
-   ]
+   "ok": true,
+   "detail": []
   },
   {
    "name": "15a 反覆切換頁面、地點、鏡頭、選單：沒有殘留的選單元件，記憶體沒有持續大幅成長",
@@ -461,7 +460,7 @@
   {
    "name": "17d 白天晴天時場景裡有蝴蝶等環境生物（效果開啟時）",
    "ok": true,
-   "detail": 2
+   "detail": 5
   },
   {
    "name": "17e 新發現只出現一張卡片（不再同時跳出提示＋卡片）",

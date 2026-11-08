@@ -538,6 +538,7 @@
   function setQuality(q) {
     const bbChanged = q.bb !== quality.bb, shChanged = q.shadows !== quality.shadows;
     quality = Object.assign({}, q);
+    if (quality.fx === false) { leaves = []; puffs = []; if (leafMesh) { leafMesh.count = 0; puffMesh.count = 0; } }   // effects off: nothing already in the air stays
     R.setPixelRatio(q.ratio); R.setSize(W, H, false);
     if (shChanged) {
       const was = R.shadowMap.enabled; R.shadowMap.enabled = !!q.shadows;
