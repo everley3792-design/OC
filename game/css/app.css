@@ -699,3 +699,4 @@ html.cinema #world-dof { display: none; }
 .portrait { background: radial-gradient(circle at 50% 80%, var(--sun-soft) 0 28%, transparent 29%), linear-gradient(180deg, var(--sky-mid), var(--surface) 85%); }
 .hero h2 { font-size: 26px; letter-spacing: .02em; }
 .hub-head .stk-pad { background: var(--sun-soft); }
+#hud.placing .hud-quest, #hud.placing .hud-act { opacity: 0; transform: translateY(16px) scale(.9); pointer-events: none; }

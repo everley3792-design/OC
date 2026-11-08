@@ -707,7 +707,7 @@
       placing.mode === 'move' ? h('button.icon-btn', { 'aria-label': '收回背包', on: { click: () => storeFurniture() } }, icon('bag', 's')) : null,
       h('button.icon-btn', { 'aria-label': '取消', on: { click: () => cancelPlacement() } }, icon('close', 's')),
       h('button.btn.s.primary', { 'data-ok': '', on: { click: () => confirmPlacement() } }, icon('check', 's'), '放這裡'));
-    $('#app').append(placeBar); bagFab.classList.add('hide'); Wd.ghostSnap(6); syncPlace();
+    $('#app').append(placeBar); bagFab.classList.add('hide'); $('#hud').classList.add('placing'); Wd.ghostSnap(6); syncPlace();
     toast('拖曳家具移動；可以旋轉、縮放、復原', 'move');
   }
   /** nearest valid spot (spiral search on the 6-unit placement grid) */
@@ -716,7 +716,7 @@
     return { x: x0, y: y0 };
   }
   function syncPlace() { if (!placeBar) return; const ok = Wd.ghost && Wd.ghost.ok; const b = placeBar.querySelector('[data-ok]'); b.disabled = !ok; b.classList.toggle('locked', !ok); }
-  function endPlacementUI() { if (placeBar) { placeBar.remove(); placeBar = null; } Wd.setGhost(null); if (placing && placing.layer) OC.UI.popLayer(placing.layer); placing = null; if (curTab === 'island') bagFab.classList.remove('hide'); }
+  function endPlacementUI() { if (placeBar) { placeBar.remove(); placeBar = null; } Wd.setGhost(null); if (placing && placing.layer) OC.UI.popLayer(placing.layer); placing = null; $('#hud').classList.remove('placing'); if (curTab === 'island') bagFab.classList.remove('hide'); }
   function cancelPlacement(silent) { if (!placing) return; if (placing.mode === 'move') Wd.addFurniture(placing.orig); endPlacementUI(); OC.Brain.rebuild(); if (!silent) toast('已取消', 'close'); }
   function confirmPlacement() {
     const g = Wd.ghost; if (!g || !g.ok) { toast('這裡放不下', 'info'); return; }
