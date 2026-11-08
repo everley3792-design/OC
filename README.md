@@ -2,9 +2,9 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.10.0-alpha（10.0 美術與體驗重構）
+## 目前版本 0.10.1-alpha（10.0 美術與體驗重構＋10.1 修正與打磨）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.10.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.10.0-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋舊版，存檔不變）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.10.1-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.10.1-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋舊版，存檔不變）
 - 10.0 紀錄（新的 Design System、HUD、頁面、世界畫面、修正的問題、測試、限制）：[`docs/v10-report.md`](docs/v10-report.md)；規格：[`docs/design-system.md`](docs/design-system.md)；畫面：`deliverables/v10/`（淺色＋深色）
 - 0.9 紀錄：[`docs/v9-report.md`](docs/v9-report.md)；8.0 紀錄：[`docs/v8-report.md`](docs/v8-report.md)
 - 測試：`node game/tests/v8/run.js`（8.0／0.9 驗收）＋第四～七階段回歸；畫面圖庫：`node game/tests/v10/shots.js deliverables/v10 both`；Kotlin：`cd android && gradle -PcoreOnly=true test`

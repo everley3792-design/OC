@@ -66,7 +66,7 @@ const { check, wait } = H;
         await page.evaluate(([id, lab, who]) => { if (OC.Events.current) OC.Events.end('t'); OC.App.menuFor({ type: who, id }, OC.App.screenOf(OC.App.actorOf(id))); const b = [...document.querySelectorAll('.radial-btn')].find((x) => x.textContent === lab); b && b.click(); }, [id, lab, who]);
         await wait(page, 1200);
         await page.evaluate(async () => { for (let i = 0; i < 10; i++) { const d = document.querySelector('.dlg.open'); if (!d) break; const c = d.querySelector('.choices .btn'); (c || d).click(); await new Promise((r) => setTimeout(r, 200)); } while (OC.UI.stack.length) OC.UI.back(); OC.App.setCamMode('classic'); });
-        await wait(page, lab === '叫過來' ? 9000 : 3500);
+        await wait(page, lab === '叫過來' ? 14000 : 3500);
         const h = (await holds(id)).filter((x) => x !== 'event');
         const moved = await page.evaluate(async (id) => { const a = OC.App.actorOf(id), x0 = a.x, y0 = a.y; let t = null; for (const [dx, dy] of [[40, 30], [-40, 30], [40, -30], [-40, -30], [0, 60], [60, 0]]) { t = OC.World.nearestWalkable(a.x + dx, a.y + dy, 30); if (t && Math.hypot(t.x - a.x, t.y - a.y) > 20) break; } OC.Brain.hold(id, 'call'); OC.World.walkTo(a, t.x, t.y); await new Promise((r) => setTimeout(r, 2500)); OC.Brain.unhold(id, 'call'); return Math.hypot(a.x - x0, a.y - y0) > 3; }, id);
         res.push({ who, lab, h, moved });

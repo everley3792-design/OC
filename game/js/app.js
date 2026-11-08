@@ -39,9 +39,8 @@
   /** 10.0 safety net: an interaction hold whose owner is gone (nothing carried, no dialogue, no ring menu) is released after 2 s,
    *  so an OC can never stay frozen because some UI path forgot to let go */
   let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000 };
-  function holdWatchdog(dt) {
-    wdT -= dt; if (wdT > 0) return; wdT = 1;
-    const now = performance.now();
+  function holdWatchdog() {
+    const now = performance.now(); if (now - wdT < 1000) return; wdT = now;   // real time: slow frames must not stretch the guarantee
     for (const k of Object.keys(heldSince)) { const [id, r] = k.split(':'); const b = OC.Brain.brains[id]; if (!b || !b.holds.has(r)) delete heldSince[k]; }   // released normally
     for (const b of Object.values(OC.Brain.brains || {})) {
       if (!b || !b.holds || !b.holds.size) continue;
@@ -832,7 +831,7 @@
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
     if (hud.name) updateHUD();
     updateGlow(dt);
-    holdWatchdog(dt);
+    holdWatchdog();
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }

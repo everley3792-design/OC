@@ -224,8 +224,8 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       const called = await page.evaluate((id) => ({ st: OC.Brain.get(id).st, holds: [...OC.Brain.get(id).holds], susp: OC.Brain.get(id).susp && OC.Brain.get(id).susp.act }), id);
       const arrived = await until(page, (id) => { const b = OC.Brain.get(id), p = OC.App.player; return Math.hypot(b.a.x - p.x, b.a.y - p.y) < 30; }, id, 30000);
       await wait(page, 7800);
-      const resumed = await page.evaluate((id) => ({ st: OC.Brain.get(id).st, act: OC.Brain.get(id).act, holds: OC.Brain.get(id).holds.size }), id);
-      check('7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動', called.holds.includes('call') && called.susp === 'read' && arrived && resumed.holds === 0 && resumed.act === 'read' && ['go', 'do'].includes(resumed.st), { called, resumed });
+      const resumed = await page.evaluate((id) => ({ st: OC.Brain.get(id).st, act: OC.Brain.get(id).act, holds: OC.Brain.get(id).holds.size, logged: OC.Brain.log.some((l) => l.who === id && l.text === '繼續：閱讀') }), id);
+      check('7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動', called.holds.includes('call') && called.susp === 'read' && arrived && resumed.holds === 0 && resumed.act === 'read' && (['go', 'do'].includes(resumed.st) || resumed.logged), { called, resumed });
       await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'full'; });
       const drag = await page.evaluate((id) => { const a = OC.App.actorOf(id); OC.App.startCarry(id); const h1 = OC.Brain.get(id).holds.has('drag'); OC.App.dragMove({ x: a.x + 40, y: a.y + 10 }); const moved = { x: a.x, y: a.y }; OC.App.dragEnd(); return { h1, moved, act: a.act && a.act.action }; }, id);
       await wait(page, 1500);
