@@ -7,4 +7,5 @@
     <color name="widget_fg">#3B2B25</color>
     <color name="widget_sub">#7A6A60</color>
     <color name="widget_btn_fg">#FFFFFF</color>
+    <color name="widget_track">#1A302A40</color>
 </resources>

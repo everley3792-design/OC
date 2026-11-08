@@ -275,6 +275,8 @@ class PetBrain(seed: Int = 7) {
             State.JUMP to if (allow.jump && allow.level >= 1) lively * 0.35f else 0f,
             State.CLIMB to if (allow.climb && allow.level >= 1) (traits.curious * 0.4f + lively * 0.2f) else 0f,
             State.PEEK to if (allow.peek && allow.level >= 1) traits.shy * 0.35f + traits.curious * 0.15f else 0f,
+            // 8.0: little moments on its own — a wave at you, a yawn at night, a happy cheer, a shy fidget
+            State.REACT to 0.25f + traits.social * 0.25f,
         )
         if (allow.level == 0) { w[State.RUN] = 0f; w[State.JUMP] = 0f; w[State.CLIMB] = 0f; w[State.WALK] = (w[State.WALK] ?: 0f) * 0.5f }
         if (state == State.SLEEP && !night) w[State.SLEEP] = 0.1f
@@ -285,6 +287,7 @@ class PetBrain(seed: Int = 7) {
             State.JUMP -> jump(if (rnd.nextBoolean()) 0f else facing)
             State.CLIMB -> { facing = if (x < (minX + maxX) / 2) -1f else 1f; walkTo = if (facing < 0) minX else maxX; set(State.WALK, 30f) }  // walk to the nearest edge; the edge decides climb/peek/turn
             State.PEEK -> { facing = if (x < (minX + maxX) / 2) -1f else 1f; walkTo = Float.NaN; set(State.WALK, 30f) }
+            State.REACT -> react(when { night && tired > 0.8f -> "yawn"; mood.emotion in HAPPY && rnd.nextFloat() < 0.5f -> "cheer"; traits.shy > 0.6f -> "shy"; mood.emotion in SAD -> "sad"; else -> "greet" }, 1.6f)
             else -> set(pick)
         }
     }

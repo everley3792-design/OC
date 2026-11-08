@@ -35,7 +35,7 @@
     onHide(p) { clearInterval(p.timer); },
     refresh(p) {
       const n = N(), st = PS().status(), pm = PS().perms(), G = P().global;
-      const ids = PS().on(), sig = JSON.stringify([!!n, st && [st.code, st.msg, (st.pets || []).length, st.paused], pm, ids, G, Ch().all().map((c) => c.id + c.updated), P().app.enabled]);
+      const ids = PS().on(), sig = JSON.stringify([!!n, st && [st.code, st.msg, (st.pets || []).length, st.paused], pm, ids, G, Ch().all().map((c) => c.id + c.updated), P().app.enabled, P().widget]);
       if (same(p, sig)) return;
       if (!n) {
         p.top.replaceChildren(card(h('div.lock-note', null, icon('lock', 's'), '桌寵是 Android 的系統懸浮視窗：需要安裝 Android App。在瀏覽器裡無法顯示在其他 App 上方。')));
@@ -74,11 +74,21 @@
           line('同時在桌面的數量', seg([['1', '1'], ['2', '2'], ['3', '3']], String(G.maxPets), (v) => { G.maxPets = +v; P().on = P().on.slice(0, G.maxPets); p._sig = ''; changed('maxPets'); p.refresh(p); })),
           line('螢幕關閉時暫停', toggle(G.pauseScreenOff, (v) => { G.pauseScreenOff = v; changed('screenoff'); })),
           line('影格快取', seg([['16', '16MB'], ['24', '24MB'], ['48', '48MB']], String(G.cacheMB), (v) => { G.cacheMB = +v; changed('cache'); }), '記憶體不足時系統通知會自動清掉快取，之後再慢慢載入。')),
+        T('主畫面小工具', '和桌寵分開：加到手機桌面上看狀態'), widgetCard(p),
         h('div.list', { style: { marginTop: '12px' } },
           row('target', '診斷', '服務狀態、幀率、快取、同步紀錄', null, () => Pg().open('petdiag')),
           row('trash', '清除桌寵資料', '收起桌寵、刪除桌面用的圖像、提醒與待同步的互動（遊戲存檔不受影響）', null, async () => { if (!(await confirm('清除桌寵資料？', '還沒同步回遊戲的桌面互動也會一起刪除。', '清除', true))) return; n.petClearAll(); P().exported = {}; St.touch('pet'); toast('已清除', 'trash'); p._sig = ''; p.refresh(p); })));
     },
   });
+  function widgetCard(p) {
+    const W = PS().wcfg(), chars = Ch().all(), NEEDS = OC.LifeData.NEEDS;
+    const pushW = () => { St.touch('pet'); PS().widget(); };
+    return card(
+      h('div.muted', null, '顯示的角色'), h('div.chips', null, ...[[null, '第一隻桌寵']].concat(chars.map((c) => [c.id, name(c)])).map(([id, zh]) => h('button.chip-btn' + ((W.oc || null) === id ? '.on' : ''), { on: { click: () => { W.oc = id; pushW(); p._sig = ''; p.refresh(p); } } }, zh))),
+      h('div.muted', { style: { marginTop: '10px' } }, '顯示的需求（選三個）'), h('div.chips', null, ...NEEDS.map((n) => h('button.chip-btn' + (W.needs.includes(n.id) ? '.on' : ''), { on: { click: () => { W.needs = W.needs.includes(n.id) ? W.needs.filter((x) => x !== n.id) : W.needs.concat(n.id).slice(-3); pushW(); p._sig = ''; p.refresh(p); } } }, n.zh))),
+      line('顯示需求', toggle(W.showNeeds, (v) => { W.showNeeds = v; pushW(); })), line('顯示待辦', toggle(W.showTodo, (v) => { W.showTodo = v; pushW(); })),
+      small('在手機桌面長按空白處 › 小工具 › OC Shimeji 加入。縮小時只顯示角色與心情；角色會眨眼（兩張影格由系統輪播，不會喚醒 App）。內容在你打開遊戲或桌寵執行時更新。'));
+  }
   function toolsSub() { const t = P().tools; const a = t.pomo.active; return [a ? `番茄鐘進行中（${a.phase === 'break' ? '休息' : '專注'}）` : null, `${t.todos.filter((x) => !x.done).length} 件待辦`, t.rest.on ? `每 ${t.rest.every} 分鐘提醒休息` : null].filter(Boolean).join('・'); }
   function pickList(p, native) {
     const ids = PS().on(), G = P().global;

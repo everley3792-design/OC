@@ -139,6 +139,7 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun widgetData(json: String, avatarDataUrl: String): Boolean = runCatching {
         val o = JSONObject(json)
         if (avatarDataUrl.startsWith("data:image/png;base64,")) { File(PetFiles.root(act), "widget_avatar.png").writeBytes(Base64.decode(avatarDataUrl.substringAfter("base64,"), Base64.DEFAULT)); o.put("avatar", "widget_avatar.png") }
+        o.optString("avatar2Data").takeIf { it.startsWith("data:image/png;base64,") }?.let { File(PetFiles.root(act), "widget_avatar2.png").writeBytes(Base64.decode(it.substringAfter("base64,"), Base64.DEFAULT)); o.remove("avatar2Data"); o.put("avatar2", "widget_avatar2.png") }
         PetFiles.atomic(File(PetFiles.root(act), "widget.json"), o.toString()); PetWidget.refresh(act); true
     }.getOrDefault(false)
 
@@ -157,13 +158,12 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun haptic() = act.runOnUiThread { act.web.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP) }
     /** graded haptics (8.0): the system's own feedback constants, so the user's system touch-feedback setting still applies */
     @JavascriptInterface fun hapticKind(kind: String) = act.runOnUiThread {
-        val H = android.view.HapticFeedbackConstants
         val c = when (kind) {
-            "tick" -> H.CLOCK_TICK
-            "confirm" -> if (android.os.Build.VERSION.SDK_INT >= 30) H.CONFIRM else H.VIRTUAL_KEY
-            "error" -> if (android.os.Build.VERSION.SDK_INT >= 30) H.REJECT else H.LONG_PRESS
-            "long", "heavy" -> H.LONG_PRESS
-            else -> H.KEYBOARD_TAP
+            "tick" -> android.view.HapticFeedbackConstants.CLOCK_TICK
+            "confirm" -> if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM else android.view.HapticFeedbackConstants.VIRTUAL_KEY
+            "error" -> if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.REJECT else android.view.HapticFeedbackConstants.LONG_PRESS
+            "long", "heavy" -> android.view.HapticFeedbackConstants.LONG_PRESS
+            else -> android.view.HapticFeedbackConstants.KEYBOARD_TAP
         }
         runCatching { act.web.performHapticFeedback(c) }
     }

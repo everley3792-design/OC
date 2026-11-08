@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home-screen widget, small (about 2×2 cells): the OC, its name and how it feels; tap opens the game -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp">
+    <ViewFlipper android:id="@+id/w_flip" android:layout_width="64dp" android:layout_height="64dp" android:autoStart="true" android:flipInterval="2600">
+        <ImageView android:id="@+id/w_avatar" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@string/app_name" android:scaleType="fitCenter" />
+        <ImageView android:id="@+id/w_avatar2" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@string/app_name" android:scaleType="fitCenter" />
+    </ViewFlipper>
+    <TextView android:id="@+id/w_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:maxLines="1" android:textColor="@color/widget_fg" android:textSize="13sp" android:textStyle="bold" />
+    <TextView android:id="@+id/w_mood" android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="center" android:maxLines="1" android:textColor="@color/widget_sub" android:textSize="11sp" />
+</LinearLayout>

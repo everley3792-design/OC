@@ -295,13 +295,18 @@
   }
 
   // ------------------------------------------------------------------ widget
+  /** 8.0 home-screen widget: the chosen OC (or the first desktop pet), two idle frames (open eyes / blink) for the
+   *  launcher's ViewFlipper, three chosen needs, the top to-do. The widget never runs the simulation. */
+  function wcfg() { const p = P(); return (p.widget = Object.assign({ oc: null, needs: ['food', 'energy', 'mood'], showNeeds: true, showTodo: true }, p.widget || {})); }
   function widget() {
     const n = N(); if (!n || !n.widgetData) return false;
-    const c = Ch().get(on()[0]) || Ch().active(); if (!c) return false;
+    const W = wcfg(), c = Ch().get(W.oc) || Ch().get(on()[0]) || Ch().active(); if (!c) return false;
     const todo = (P().tools.todos || []).find((t) => !t.done);
-    const cv = OC.makeCanvas(128, 128); OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile' } });
+    const frame = (blink) => { const cv = OC.makeCanvas(128, 128); OC.CharRender.portrait(cv, c, { pose: { mouth: 'smile', blink: blink ? 1 : 0 } }); return cv.toDataURL('image/png'); };
     const line = (() => { const life = S().life, said = JSON.stringify(life.said); try { const r = OC.Talk.say('desk_idle', c, null); return r ? r.text : ''; } finally { life.said = JSON.parse(said); } })();
-    try { return !!n.widgetData(JSON.stringify({ name: name(c), mood: `${M().label(c)}${line ? '・' + line : ''}`, todo: todo ? todo.text : '', at: Date.now() }), cv.toDataURL('image/png')); } catch (e) { return false; }
+    const NZ = Object.fromEntries(OC.LifeData.NEEDS.map((x) => [x.id, x.zh]));
+    const emo = (OC.LifeData.EMOTIONS[M().dominant(c)] || {}).e || '';
+    try { return !!n.widgetData(JSON.stringify({ name: name(c), mood: `${M().label(c)}${line ? '・' + line : ''}`, moodShort: `${emo ? emo + ' ' : ''}${M().label(c)}`, todo: todo ? todo.text : '', needs: W.needs.slice(0, 3).map((k) => ({ id: k, zh: NZ[k] || k, v: Math.round(c.needs[k] || 0) })), showNeeds: W.showNeeds, showTodo: W.showTodo, avatar2Data: frame(true), at: Date.now() }), frame(false)); } catch (e) { return false; }
   }
 
   // ------------------------------------------------------------------ tools (pomodoro / rest / alarms; to-dos & notes live in the save)
@@ -335,8 +340,8 @@
     tickT += dt; if (tickT < 60) return; tickT = 0;
     if (N().isPetRunning()) { pull('tick'); push('tick'); }
   }
-  function onPause() { if (N() && N().isPetRunning()) { push('pause'); widget(); } }
+  function onPause() { if (!N()) return; if (N().isPetRunning()) push('pause'); widget(); }   // the widget shows the latest state even when the pets are not out
   function onResume() { if (!N()) return; OC.PetSync.pull('resume'); if (N().isPetRunning()) push('resume'); }
 
-  OC.PetSync = { ANIMS, LINE_CATS, CAT_ZH, APP_CATS, DEF_ONE, one, on, setOn, config, push, renderLines, renderSprites, exportSprites, sourceOf, start, stop, status, perms, pull, HANDLERS, widget, Tools, tick, onPause, onResume, native: () => !!N(), log };
+  OC.PetSync = { ANIMS, LINE_CATS, CAT_ZH, APP_CATS, DEF_ONE, one, on, setOn, config, push, renderLines, renderSprites, exportSprites, sourceOf, start, stop, status, perms, pull, HANDLERS, widget, wcfg, Tools, tick, onPause, onResume, native: () => !!N(), log };
 })();
