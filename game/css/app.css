@@ -723,3 +723,18 @@ html.lite *, html.lite *::before, html.lite *::after { -webkit-backdrop-filter: 
 /* decorative loops cost a repaint every frame (battery): they play a few times only, and not at all with effects off */
 html.lite .hud-wx .stk, html.lite .hud-bell .stk, html.lite .hud-quest .stk, html.lite .hud-quest::after, html.lite .req-badge { animation: none !important; }
 html.ring-open #overlays .speech, html.ring-open .req-badge { opacity: .12; transition: opacity 200ms var(--ease-out); }
+
+/* ===================== 10.1 polish (audit) ===================== */
+/* bare text fields (tools, notes, dialogue editor) look like the rest of the inputs, never the browser default */
+input[type=text]:not(.input), input[type=number]:not(.input), input[type=search]:not(.input), input:not([type]):not(.input), textarea:not(.input) {
+  min-height: 46px; padding: 10px 14px; border: 0; outline: none; border-radius: var(--r-m); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-m);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong), inset 0 2px 4px rgba(40, 30, 90, .05); -webkit-user-select: text; user-select: text; min-width: 0; }
+input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textarea:not(.input):focus { box-shadow: inset 0 0 0 2.5px var(--accent); }
+/* a button next to something in a row keeps its label on one line */
+.hstack > .btn:not(.block) { flex: none; white-space: nowrap; }
+/* toggle chips (multi-select: activities, tags, time presets) are soft when on — a wall of solid colour is heavy; single filters keep the solid look */
+.chip-btn.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), 0 2px 0 var(--accent-lip); }
+.cats .chip-btn.on, .seg .chip-btn.on { background: none; box-shadow: none; }
+/* feedback cards over a page: smaller, single-line, never stacked more than two */
+.page.open ~ .p6-cards .p6-card, html.page-open .p6-card { padding: 8px 12px; }
+.p6-cards .p6-card:nth-last-child(n+3) { display: none; }
