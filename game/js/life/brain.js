@@ -200,6 +200,7 @@
       if (c.needs.fun < 60 && c.needs.energy > 40 && OC.Clock.weather() !== 'rain' && OC.Clock.phase() !== 'night') K('playTogether', s0 + 0.3 * def(c.needs.fun), '一起玩');
       if (OC.Clock.phase() === 'night' && OC.Clock.weather() !== 'rain' && r.aff >= 30) K('stargaze', s0 + 0.15, '夜空');
       if (myE === 'annoyed' && M().intensity(c, 'annoyed') > 0.35 && (r.conflict >= 15 || has(c, 'stubborn'))) K('argue', 0.3 + M().intensity(c, 'annoyed') * 0.5 + r.conflict / 200, '煩躁');
+      if (OC.Social11) OC.Social11.cands(c, oc, r, s0, K, myE, oe);
       if (r.conflict >= 20 && myE !== 'annoyed' && (has(c, 'gentle') || r.aff >= 20 || r.trust >= 30) && (!c.life.apolAt || Sim().now() - c.life.apolAt > 240)) K('apologize', 0.5 + r.conflict / 120, '想和好');
     }
     return out;
@@ -241,6 +242,7 @@
     if (b.manual && !settings().playerAuto && !(b.manualOverride > nowR()) && (nowR() - b.cmdAt < 40 || b.a.path || b.a.joy || b.a.mode === 'sit' || b.a.mode === 'talk')) { b.thinkAt = nowR() + 2; return; }
     if (b.resumeTrip) { const L = b.resumeTrip; b.resumeTrip = null; if (OC.Places.open(L.to) && settings().travel !== false) { dlog(b, `繼續前往${OC.Places.get(L.to).zh}`); startTravel(b, L.to, L.act); return; } }
     let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
+    if (OC.Mind11) list = OC.Mind11.shape(c, b, list);                                     // 11.0: plans · goals · knowledge
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
@@ -283,7 +285,12 @@
     if (!resumed) OC.Events && OC.Events.trigger('actStart', { a: c.id, act: b.act, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '' });
     if (s && s.obj.kind === 'plot' && b.act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
   }
-  function anim(b) { const A = D().ACTS[b.act]; if (!A || !b.a) return; if (A.anim && A.anim !== 'idle') Wd().setAction(b.a, A.anim, { priority: A.lock ? 5 : 4 }); else Wd().setAction(b.a, 'idle'); }
+  function anim(b) {
+    const A = D().ACTS[b.act]; if (!A || !b.a) return; let an = A.anim;
+    const V = OC.Anim11 && OC.Anim11.VARIED[b.act];                     // 11.0: variety — the same activity is performed in different ways
+    if (V) { const pick = V[Math.floor(Math.random() * V.length)]; if (!(pick === 'stargaze' && OC.Clock.phase() !== 'night')) an = pick; }
+    if (an && an !== 'idle') Wd().setAction(b.a, an, { priority: A.lock ? 5 : 4 }); else Wd().setAction(b.a, 'idle');
+  }
   const St = () => OC.Store;
   /** end the current activity normally (or early) */
   function finish(b, why = 'done') {
@@ -302,6 +309,7 @@
       if (act === 'sleep') OC.Events && OC.Events.trigger('wake', { a: c.id });
     }
     OC.Events && OC.Events.trigger('actEnd', { a: c.id, act, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '' });
+    if (OC.Mind11) OC.Mind11.onFinish(b, act, why, gm);
     cleanup(b); b.last.unshift(act); b.last.length = Math.min(b.last.length, 6);
     b.st = 'think'; b.thinkAt = nowR() + (0.6 + 1.6 * (1 - c.personality.pace / 100)) * (0.7 + Math.random() * 0.6);
     dlog(b, `結束 ${A.zh}（${why}，${Math.round(gm)} 分鐘）`);
@@ -397,7 +405,7 @@
       if (!done && A.lock && b.act === 'sleep' && c.needs.food < 6) done = true;
       if (done) { finish(b); return; }
       // small life signs while doing (thoughts, looking around)
-      if (t >= b.soloAt) { b.soloAt = t + 12 + Math.random() * 20; if (A.look) a.tFace = (Math.random() - 0.5) * 1.6; if (S().life.settings.bubbles && Math.random() < 0.55) { const ln = T().say('solo_' + b.act, c, null, { act: b.act, placeZh: b.slot && b.slot.obj.zh }) || (Math.random() < 0.4 ? T().say('solo_need', c, null) : null); if (ln) hooks.say(a, ln.text, null, 2.4, { thought: true }); } else if (A.ic) hooks.emote(a, A.ic); }
+      if (t >= b.soloAt) { b.soloAt = t + 12 + Math.random() * 20; if (OC.Anim11 && OC.Anim11.VARIED[b.act] && !b.aligning) anim(b); if (A.look) a.tFace = (Math.random() - 0.5) * 1.6; if (S().life.settings.bubbles && Math.random() < 0.55) { const ln = T().say('solo_' + b.act, c, null, { act: b.act, placeZh: b.slot && b.slot.obj.zh }) || (Math.random() < 0.4 ? T().say('solo_need', c, null) : null); if (ln) hooks.say(a, ln.text, null, 2.4, { thought: true }); } else if (A.ic) hooks.emote(a, A.ic); }
     }
   }
   /** abstract simulation for OCs without an actor (other area / offline) */
@@ -543,7 +551,15 @@
       const A = charOf(conv.a), B = charOf(conv.b), kind = conv.kind, L = [], r = M().rel(A.id, B.id);
       const say = (who, cat, extra) => L.push({ who, cat, extra });
       const greeted = A.life.socialAt && A.life.socialAt[B.id] && Sim().now() - A.life.socialAt[B.id] < 240;
-      if (!greeted) { say('a', 'greet'); say('b', 'greet_r'); }
+      if (!greeted) { const fr = r.aff >= 15, ga = !fr ? null : r.aff >= 45 && has(A, 'energetic') ? 'highfive' : (has(A, 'shy') || A.speech && A.speech.style === 'polite') ? 'bow' : 'wave'; say('a', 'greet', ga ? { anim: ga, other: ga === 'highfive' ? 'highfive' : null, dur: ga === 'highfive' ? 1.0 : 1.2 } : null); say('b', 'greet_r', fr ? { anim: ga === 'highfive' ? 'cheer' : ga === 'bow' ? 'bow' : 'wave', dur: 1.2 } : null); }
+      // 11.0: it remembers what it has noticed about you (favourite activity / how you looked a moment ago)
+      if (OC.Mind11 && ['chat', 'share', 'comfort'].includes(kind) && Sim().rnd() < 0.45) {
+        const kn = OC.Mind11.st(A).know[B.id];
+        if (kn) {
+          if (kind === 'comfort' && kn.mood && Sim().now() - kn.moodAt < 360 && D().EMOTIONS[kn.mood]) say('a', 'know_mood', { vars: { mood: D().EMOTIONS[kn.mood].zh } });
+          else { const f = OC.Mind11.favAct(kn); if (f && D().ACTS[f]) say('a', 'know_fav', { vars: { favact: D().ACTS[f].zh } }); }
+        }
+      }
       const def = D().SOCIAL[kind];
       conv.answer = Social.respond(conv.b, conv.a, kind);
       if (def.joint || kind === 'chat' || kind === 'share') {
@@ -555,14 +571,15 @@
       switch (kind) {
         case 'chat': say('a', 'talk'); say('b', 'talk_r'); if (deep) { say('b', 'talk'); say('a', 'talk_r'); } break;
         case 'share': say('a', 'share'); say('b', 'share_r'); break;
-        case 'compliment': say('a', 'compliment'); say('b', 'compliment_r', { anim: has(B, 'shy') ? 'shy' : 'happy' }); break;
-        case 'comfort': say('a', 'comfort'); say('b', 'comfort_r'); break;
-        case 'joke': { say('a', 'joke'); const fun = (B.personality.expression - 30) / 100 + r.aff / 150 + (Sim().rnd() - 0.4) * 0.6; conv.funny = fun > 0.2; say('b', conv.funny ? 'laugh' : 'flat', { anim: conv.funny ? 'laugh' : 'idle' }); break; }
-        case 'prank': { say('a', 'prank', { anim: 'jump' }); const ok = r.aff / 100 + (B.personality.expression - 50) / 120 - (has(B, 'sensitive') ? 0.3 : 0) - (has(B, 'stubborn') ? 0.15 : 0) + (Sim().rnd() - 0.5) * 0.5 > 0.15; conv.prankOk = ok; say('b', ok ? 'prank_ok' : 'prank_bad', { anim: ok ? 'laugh' : 'angry', pre: 'surprised' }); break; }
-        case 'food': say('a', 'food', { anim: 'eat' }); say('b', 'food_r', { anim: 'eat' }); break;
-        case 'gift': say('a', 'gift', { anim: 'greet' }); say('b', 'gift_r', { anim: 'happy' }); break;
-        case 'argue': say('a', 'argue', { anim: 'angry' }); say('b', 'argue_r', { anim: has(B, 'gentle') ? 'sad' : 'angry' }); break;
-        case 'apologize': say('a', 'apologize', { anim: 'sad' }); say('b', conv.answer.ans === 'yes' ? 'forgive' : 'refuse', { anim: conv.answer.ans === 'yes' ? 'happy' : 'angry' }); break;
+        case 'compliment': say('a', 'compliment', r.aff >= 40 ? { anim: 'pat', other: 'patted', dur: 1.6, nudge: 0.4 } : null); say('b', 'compliment_r', { anim: has(B, 'shy') ? 'shy' : 'happy' }); break;
+        case 'comfort': say('a', 'comfort', { anim: 'comfort', other: 'comforted', dur: 2.2, nudge: 0.6 }); say('b', 'comfort_r', { anim: 'nod' }); break;
+        case 'joke': { say('a', 'joke'); const fun = (B.personality.expression - 30) / 100 + r.aff / 150 + (Sim().rnd() - 0.4) * 0.6; conv.funny = fun > 0.2; say('b', conv.funny ? 'laugh' : 'flat', { anim: conv.funny ? 'laugh' : 'shrug', dur: 1.6 }); break; }
+        case 'prank': { say('a', 'prank', { anim: 'jump' }); const ok = r.aff / 100 + (B.personality.expression - 50) / 120 - (has(B, 'sensitive') ? 0.3 : 0) - (has(B, 'stubborn') ? 0.15 : 0) + (Sim().rnd() - 0.5) * 0.5 > 0.15; conv.prankOk = ok; say('b', ok ? 'prank_ok' : 'prank_bad', { anim: ok ? 'laugh' : 'pout', pre: 'startle' }); break; }
+        case 'food': say('a', 'food', { anim: 'feedbite', other: 'bitefed', dur: 2.2, nudge: 0.5 }); say('b', 'food_r', { anim: 'yum' }); break;
+        case 'gift': say('a', 'gift', { anim: 'bow', dur: 1.2 }); say('b', 'gift_r', { anim: 'receive' }); break;
+        case 'argue': say('a', 'argue', { anim: 'argue', other: has(B, 'gentle') ? 'upset' : 'argue', dur: 1.8 }); say('b', 'argue_r', { anim: has(B, 'gentle') ? 'upset' : 'stomp' }); break;
+        case 'apologize': say('a', 'apologize', { anim: 'apologize', dur: 1.8 }); say('b', conv.answer.ans === 'yes' ? 'forgive' : 'refuse', { anim: conv.answer.ans === 'yes' ? 'accept' : 'turnaway', dur: 1.6 }); break;
+        default: if (OC.Social11) OC.Social11.script(kind, conv, say, A, B, r);
       }
       if (!def.joint) say('a', 'bye', { anim: 'greet' });
       return L;
@@ -593,10 +610,14 @@
           const extra = Object.assign({ act: (ln.extra && ln.extra.act) || null }, ln.extra || {});
           const out = T().say(ln.cat, charOf(sp), charOf(ot), extra);
           if (ln.extra && ln.extra.pre) Wd().setAction(sp.a, ln.extra.pre, { dur: 0.6, priority: 3, once: true });
-          if (ln.extra && ln.extra.anim) Wd().setAction(sp.a, ln.extra.anim, { dur: 1.6, priority: 3 }); else Wd().setAction(sp.a, 'talk', { dur: 1.4, priority: 2 });
+          const adur = (ln.extra && ln.extra.dur) || 1.6;
+          if (ln.extra && ln.extra.anim) Wd().setAction(sp.a, ln.extra.anim, { dur: adur, priority: 3 }); else Wd().setAction(sp.a, 'talk', { dur: 1.4, priority: 2 });
+          // 11.0 paired gestures: the other one performs the complementary action at the same time, and they step toward each other
+          if (ln.extra && ln.extra.other) Wd().setAction(ot.a, ln.extra.other, { dur: adur, priority: 3 });
+          { const dir = Math.sign(ot.a.x - sp.a.x) || 1, nd = (ln.extra && ln.extra.nudge) || 0; sp.a.nudgeT = nd * 5 * dir; ot.a.nudgeT = -nd * 5 * dir; sp.a.nudgeUntil = ot.a.nudgeUntil = (nd ? Math.max(sp.a.t, ot.a.t) + adur + 0.2 : 0); }
           const d = out ? hooks.say(sp.a, out.text, OC.Chars.name(charOf(sp)), null, { conv: conv.id }) : 0.4;
           if (out && out.reply && (!conv.lines[conv.i] || conv.lines[conv.i].who === ln.who)) conv.lines.splice(conv.i, 0, { who: ln.who === 'a' ? 'b' : 'a', cat: out.reply });   // data-driven branch
-          conv.nextAt = t + d + 0.35;
+          conv.nextAt = t + Math.max(d + 0.35, (ln.extra && ln.extra.dur) ? ln.extra.dur + 0.25 : 0);
           continue;
         }
         if (conv.st === 'joint') {
@@ -639,12 +660,12 @@
           argue: [{ fam: 2, aff: -8, conflict: 22, trust: -4 }, { social: 2 }, '和{other}吵架了', 0.65, 'annoyed'],
           apologize: [ans.ans === 'yes' ? { conflict: -30, aff: 6, trust: 8 } : { conflict: -6 }, { social: 10 }, ans.ans === 'yes' ? '和{other}和好了' : '向{other}道歉，但對方還沒原諒', ans.ans === 'yes' ? 0.7 : 0.5, ans.ans === 'yes' ? 'content' : 'down'],
           greet: [{ fam: 1 }, { social: 3 }, '', 0, null],
-        }[kind] || [{ fam: 2 }, { social: 8 }, '和{other}相處', 0.25, 'happy'];
+        }[kind] || (OC.Social11 && OC.Social11.fx(kind, conv)) || [{ fam: 2 }, { social: 8 }, '和{other}相處', 0.25, 'happy'];
         const [rd, nd, text, imp, emo] = R;
         M().relPair(A.id, B.id, rd, D().SOCIAL[kind].zh);
         gain(A, nd); gain(B, Object.assign({}, nd, kind === 'food' ? { food: 14 } : {}));
         if (emo) { M().feel(A, kind === 'compliment' ? 'happy' : emo, 0.4, `${D().SOCIAL[kind].zh}・${OC.Chars.name(B)}`, B.id); M().feel(B, emo, 0.45, `${D().SOCIAL[kind].zh}・${OC.Chars.name(A)}`, A.id); }
-        if (kind === 'comfort') { for (const x of B.life.emo.list) if (!x.need && D().EMOTIONS[x.id].v < 0) x.k *= 0.5; }
+        if (kind === 'comfort' || kind === 'hug' || kind === 'leanOn' || kind === 'pat') { for (const x of B.life.emo.list) if (!x.need && D().EMOTIONS[x.id].v < 0) x.k *= 0.5; }
         if (kind === 'share') { const sh = M().sharedInterests(A, B); const r = M().rel(A.id, B.id); for (const s of sh) if (!r.shared.includes(s)) r.shared.push(s); const r2 = M().rel(B.id, A.id); for (const s of sh) if (!r2.shared.includes(s)) r2.shared.push(s); }
         if (kind === 'gift') A.life.giftAt = now; if (kind === 'apologize') A.life.apolAt = now;
         if (text) shared(text, imp);
@@ -655,6 +676,7 @@
         if (OC.Growth && OC.Growth.has(A, 'teach') && ['chat', 'share'].includes(kind)) { M().skill(B, 'reading', 2); M().remember(B, { type: 'social', imp: 0.35, who: [A.id], text: `${OC.Chars.name(A)}教了我書裡讀到的事`, key: conv.id + 'teach' }); }
         if (OC.Progress) OC.Progress.emit('social', { oc: A.id, other: B.id, ocs: [A.id, B.id], kind, place: OC.World.area && OC.World.area.id });
         for (const [x, y] of [[A, B], [B, A]]) { const r = M().rel(x.id, y.id); M().wishEvent(x, { type: 'rel', other: y.id, to: r.type }); }
+        if (OC.Mind11 && kind !== 'greet') OC.Mind11.onSocial(A, B, kind, true);
       }
       Social.end(conv, early ? 'urgent' : 'done');
     },
@@ -730,8 +752,8 @@
   }
 
   OC.Brain = {
-    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); }); OC.Store.on('life:offline', afterOffline); },
-    entryPoint, arrived, noticeNew, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
+    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); },
+    entryPoint, arrived, noticeNew, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,
   };

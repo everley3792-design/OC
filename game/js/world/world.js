@@ -152,10 +152,12 @@
   }
   function poseOf(a) {
     const ca = currentAction(a);
-    return { action: ca.action, at: ca.at, dir: a.dir, face: a.face, back: a.back, walk: a.walk, phase: a.phase, blink: a.blink, breath: 0, lookX: a.lookX || 0, eyes: a.eyes, mouth: a.mouth, blush: a.blush || 0, overrides: a.overrides || null, touch: a.touch || null };
+    return { action: ca.action, at: ca.at, dir: a.dir, face: a.face, back: a.back, walk: a.walk, phase: a.phase, blink: a.blink, breath: 0, lookX: a.lookX || 0, eyes: a.eyes, mouth: a.mouth, blush: a.blush || 0, overrides: a.overrides || null, touch: a.touch || null, nudge: a.nudgeC || 0, bk: a.blendK == null ? 1 : a.blendK, blend: a.blendFrom || null };
   }
   function paintActor(a) {
     const ch = a.char(); if (!ch) return;
+    // 11.0: ease from the previous pose for ~0.2 s whenever the action changes
+    { const act = currentAction(a).action; if (a.lastAct !== act) { a.blendFrom = reduce ? null : a.lastState || null; a.blendT0 = a.t; a.lastAct = act; } a.blendK = a.blendFrom ? Math.min(1, (a.t - a.blendT0) / 0.2) : 1; if (a.blendK >= 1) a.blendFrom = null; }
     const p = poseOf(a), pl = OC.CharRender.plan(ch, p);
     // a sprite that mirrors (left ↔ right) does a quick squash-turn instead of snapping
     if (pl.sprite && pl.mirror !== a.lastMirror) { a.turnT = 0.16; a.lastMirror = pl.mirror; }
@@ -168,6 +170,7 @@
     if (a.pixel === undefined) pixelFilter(a);
     x.imageSmoothingEnabled = !a.pixel; x.imageSmoothingQuality = 'high';   // big player images are downsampled with a proper filter
     const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / 120, a.t);
+    if (res && res.state) a.lastState = res.state;
     if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
     if (!pl.sprite && quality.fx !== false) toyShade(x, r);
     a.tex.needsUpdate = true;
@@ -223,6 +226,7 @@
     }
     if (a.squashT != null) { a.squashT += dt; const q = a.squashT / 0.42; a.squash = q >= 1 ? 1 : 1 - 0.16 * Math.exp(-q * 3) * Math.cos(q * Math.PI * 2.2); if (q >= 1) a.squashT = null; }
     if (a.turnT > 0) a.turnT = Math.max(0, a.turnT - dt);
+    { const nt = a.nudgeUntil && a.t < a.nudgeUntil ? (a.nudgeT || 0) : 0; a.nudgeC = (a.nudgeC || 0) + (nt - (a.nudgeC || 0)) * Math.min(1, dt * 7); if (Math.abs(a.nudgeC) < 0.02 && !nt) a.nudgeC = 0; }   // 11.0 step toward the partner during a paired gesture
     if (a.update) a.update(a, dt);
     a.lvl = levelAt(a.x, a.y);
     const gy = groundY(a.x, a.y) + (a.seatY || 0); a.gy = lerp(a.gy, gy, 1 - Math.exp(-dt * 14));

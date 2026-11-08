@@ -26,6 +26,7 @@
     };
   }
 
+  const BLEND = ['lean', 'lift', 'squash', 'headDy', 'headDx', 'tilt', 'armL', 'armR', 'ear', 'earL', 'earR', 'tail', 'legL', 'legR', 'lookX', 'lookY', 'blush', 'shiftX'];
   /** procedural pose for an action: phases (anticipation → action → follow-through → settle), temperament, secondary motion */
   function rigState(c, p, t) {
     const b = OC.Chars.behavior(c), m = motion(c), at = p.at || 0, T = at * m.tempo, s = {
@@ -128,6 +129,9 @@
         if (m.tired) { droop(); s.eyes = s.eyes || 'sleepy'; if ((T % 11) > 10.2) { s.mouth = 'o'; s.eyes = 'line'; } }
       }
     }
+    if (p.nudge) s.shiftX = (s.shiftX || 0) + p.nudge;
+    // 11.0 soft transition: for ~0.2 s after an action change the pose eases from the previous one (no snapping between actions)
+    if (p.blend && p.bk != null && p.bk < 1) { const f = p.blend, k = p.bk * p.bk * (3 - 2 * p.bk); for (const n of BLEND) { const from = f[n] == null ? (n === 'squash' ? 1 : 0) : f[n], to = s[n] == null ? (n === 'squash' ? 1 : 0) : s[n]; if (typeof from === 'number' && typeof to === 'number') s[n] = from + (to - from) * k; } }
     if (p.overrides) Object.assign(s, p.overrides);
     return s;
   }
@@ -188,7 +192,7 @@
   const FAST = new Set(['eat', 'drink', 'greet', 'happy', 'play', 'jump', 'surprised', 'climb', 'angry', 'pet', 'sit', 'sleep', 'taste', 'yum', 'yuck', 'cheer', 'proud', 'nod', 'shake', 'receive', 'sing', 'sketch', 'dance', 'talk', 'laugh', 'cry', 'run', 'yawn', 'stretch']);
   /** cache key: repaint a billboard/portrait only when this changes */
   function key(c, p, res) {
-    const tk = p.touch ? `:t${p.touch.zone}${Math.round(p.touch.lv * 8)}${Math.round((p.touch.dir || 0) * 2)}${p.touch.annoyed ? 'a' : ''}` : '';
+    const tk = (p.bk != null && p.bk < 1 ? `:b${Math.round(p.bk * 5)}` : '') + (p.nudge ? `:n${Math.round(p.nudge)}` : '') + (p.touch ? `:t${p.touch.zone}${Math.round(p.touch.lv * 8)}${Math.round((p.touch.dir || 0) * 2)}${p.touch.annoyed ? 'a' : ''}` : '');
     if (res && res.sprite) return `S${res.doc.id}:${res.doc.updated}:${res.i}:${res.mirror ? 1 : 0}:${(p.blink || 0) > 0.5 ? 1 : 0}:${res.loading ? 'L' + Math.random() : ''}:${c.updated}:${(p.lift || 0).toFixed(1)}`;
     const q = (v, n) => Math.round((v || 0) * n);
     const loaded = (c.parts || []).reduce((n, pt) => n + (OC.Assets.peek(pt.assetId) ? 1 : 0), 0);

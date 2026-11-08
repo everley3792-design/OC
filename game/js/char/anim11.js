@@ -111,6 +111,39 @@
   def('peekaboo', '躲貓貓', 1, 1.6, { armL: '0:-1.6 .6:-1.6 .8:-.4 1.6:-.4', armR: '0:-1.6 .6:-1.6 .8:-.4 1.6:-.4', eyes: '0:line .8:happy', mouth: '0:flat .8:open', headDy: '0:.8 .8:-.5 1.6:-.2', ear: '0:.2 .8:-.3', tail: '0:0 .8:.5 1.6:.2' }, '', ['hide', 'happy', 'idle']);
   def('stunned', '看呆了', 1, 2.0, { eyes: '0:wide', mouth: '0:o', ear: '0:-.3', armL: '0:.2', armR: '0:.2', headDy: '0:-.4', tail: '0:.05' }, 'shock', ['surprised', 'idle']);
 
+  // ---------------------------------------------------------------- more everyday acting (work, feelings, signals)
+  def('sweep', '掃地', 1, 1.2, { armL: '0:-.6 .6:-.9 1.2:-.6', armR: '0:-.9 .6:-.5 1.2:-.9', lean: '0:.06 .6:.12 1.2:.06', shiftX: '0:-1 .6:1 1.2:-1', headDy: '0:.8', lookY: '0:.8', eyes: '0:round', mouth: '0:smile', tail: '0:.1 .6:-.1 1.2:.1' }, '', ['tend', 'idle']);
+  def('dig', '挖土', 1, 1.0, { lean: '0:.04 .3:.2 .6:.04 1:.04', armL: '0:-.7 .3:-.2 .6:-.9', armR: '0:-.7 .3:-.2 .6:-.9', headDy: '0:.8 .3:1.8 .6:.8', lift: '0:0 .3:-1 .6:.6 1:0', eyes: '0:round', mouth: '0:flat', lookY: '0:.9' }, '', ['tend', 'forage', 'idle']);
+  def('pull', '用力拔', 1, 1.6, { lean: '0:.04 .5:-.12 .8:-.12 1:.12 1.6:.04', armL: '0:-.6 .5:-.1 .8:-.1 1:-1.3', armR: '0:-.6 .5:-.1 .8:-.1 1:-1.3', squash: '0:1 .5:.93 .8:.93 1:1.05 1.6:1', eyes: '0:line .8:wide', mouth: '0:frown .9:open', lift: '0:0 1:2.5 1.2:0' }, 'sweat', ['tend', 'forage', 'idle']);
+  def('carry', '搬東西', 1, 0.8, { lean: '0:-.08', armL: '0:-.9', armR: '0:-.9', legL: '0:0 .2:1.4 .4:0', legR: '0:0 .4:0 .6:1.4 .8:0', lift: '0:0 .2:.5 .4:0 .6:.5 .8:0', eyes: '0:line', mouth: '0:frown', squash: '0:.97' }, 'sweat', ['walk', 'idle']);
+  def('sniff', '聞一聞', 1, 1.6, { headDy: '0:1.4 .4:2.2 .8:1.4 1.2:2.2 1.6:1.4', lean: '0:.1', lookY: '0:1', eyes: '0:line', mouth: '0:o', ear: '0:-.1', tail: '0:.2 .8:-.2 1.6:.2', blush: '0:.2' }, '', ['browse', 'idle']);
+  def('lickips', '舔舔嘴巴', 0, 1.2, { headDy: '0:0 .3:.5 .6:0 .9:.5 1.2:0', mouth: '0:chew .3:smile .6:chew', eyes: '0:happy', blush: '0:.4', tail: '0:.3 .6:-.3 1.2:.3', armL: '0:.2', armR: '0:-.2' }, '', ['yum', 'happy', 'idle']);
+  def('jealous', '吃醋斜眼', 1, 2.4, { lookX: '0:1', tilt: '0:-.08', lean: '0:-.04', armL: '0:.4', armR: '0:.4', brows: '0:angry', mouth: '0:flat', eyes: '0:line', blush: '0:.3', ear: '0:.25', tail: '0:-.1 1.2:-.25 2.4:-.1' }, '', ['pout', 'angry', 'idle']);
+  def('embarrassed', '害羞摀臉', 1, 2.0, { armL: '0:-1.5', armR: '0:-1.5', headDy: '0:1.2', blush: '0:1', lean: '0:.04 1:-.04 2:.04', ear: '0:.4', tail: '0:-.1', eyes: '0:line', mouth: '0:wave', squash: '0:.96', shiftX: '0:.4 1:-.4 2:.4' }, '', ['shy', 'idle']);
+  def('worried', '坐立不安', 1, 1.4, { armL: '0:-.6 .35:-.8 .7:-.6 1.05:-.8', armR: '0:-.6 .35:-.8 .7:-.6 1.05:-.8', lookX: '0:1 .7:-1 1.4:1', ear: '0:.35', headDy: '0:.8', brows: '0:worry', mouth: '0:wave', eyes: '0:round', legL: '0:0 .35:.8 .7:0', tail: '0:-.15', lean: '0:.03 .7:-.03 1.4:.03' }, 'sweat', ['sad', 'idle']);
+  def('nervous', '緊張發抖', 1, 0.5, { lean: '0:.02 .08:-.02 .16:.02 .24:-.02 .32:.02', armL: '0:-.5', armR: '0:-.5', ear: '0:.3', eyes: '0:wide', mouth: '0:wave', headDy: '0:.5', tail: '0:-.1', blush: '0:.3' }, 'sweat', ['shiver', 'shy', 'idle']);
+  def('relieved', '鬆一口氣', 0, 1.8, { headDy: '0:0 .5:-.8 1.2:2 1.8:0', squash: '0:1 .5:1.04 1.2:.94 1.8:1', armL: '0:.2 .5:-.4 1.2:.3', armR: '0:.2 .5:-.4 1.2:.3', eyes: '0:line', mouth: '0:o .6:smile', ear: '0:0 1.2:.3 1.8:.1' }, 'puff', ['sigh', 'idle']);
+  def('lonely', '抱著自己', 1, 3.0, { armL: '0:-.7', armR: '0:-.7', squash: '0:.93', headDy: '0:1.4', lookY: '0:.8', ear: '0:.45', tail: '0:-.25', eyes: '0:line', mouth: '0:frown', brows: '0:worry', lean: '0:.03 1.5:-.03 3:.03' }, 'gloom', ['sad', 'idle']);
+  def('determined', '握拳加油', 1, 1.6, { armR: '0:-1.9 .4:-2.1 .8:-1.9 1.6:-1.9', lean: '0:.05', brows: '0:angry', mouth: '0:grin', eyes: '0:round', lift: '0:0 .4:.8 .8:0', ear: '0:-.3', tail: '0:.3 .8:-.3 1.6:.3' }, '', ['cheer', 'proud', 'idle']);
+  def('wave_far', '遠遠揮手', 1, 1.2, { armL: '0:-2.2 .3:-2.5 .6:-2.2 .9:-2.5 1.2:-2.2', armR: '0:-2.5 .3:-2.2 .6:-2.5 .9:-2.2 1.2:-2.5', lift: '0:.4 .3:1.2 .6:.4', eyes: '0:happy', mouth: '0:open', ear: '0:-.2', tail: '0:.3 .6:-.3 1.2:.3' }, '', ['wave', 'greet', 'idle']);
+  def('beckon', '招招手', 1, 1.0, { armR: '0:-1.6 .25:-1.15 .5:-1.6 .75:-1.15 1:-1.6', lean: '0:.04', eyes: '0:happy', mouth: '0:smile', tilt: '0:.05', ear: '0:-.1' }, '', ['wave', 'idle']);
+  def('shoo', '趕走', 0, 1.2, { armR: '0:.2 .2:-1.5 .4:-1.1 .6:-1.5 .8:-1.1 1.2:.2', lean: '0:0 .2:-.05 1.2:0', eyes: '0:line', mouth: '0:frown', brows: '0:angry', ear: '0:.2' }, '', ['angry', 'idle']);
+  def('thumbsup', '比讚', 0, 1.4, { armR: '0:.2 .25:-1.5 1:-1.5 1.4:.2', lift: '0:0 .25:1 .6:.4 1.4:0', eyes: '0:happy', mouth: '0:open', ear: '0:-.2', tail: '0:.3 .6:-.3 1.4:.3', blush: '0:.2' }, 'sparkle', ['cheer', 'happy', 'idle']);
+  def('facepalm', '扶額', 0, 1.8, { armR: '0:.2 .3:-1.5 1.4:-1.5 1.8:.2', headDy: '0:0 .3:1.4 1.4:1.4 1.8:0', lean: '0:0 .3:.06 1.4:.06', eyes: '0:line', mouth: '0:flat', ear: '0:.3', tail: '0:-.2' }, 'sweat', ['shrug', 'sad', 'idle']);
+  def('headscratch', '搔搔頭', 1, 1.2, { armR: '0:-1.7 .15:-1.55 .3:-1.7 .45:-1.55 .6:-1.7 1.2:-1.7', tilt: '0:.1', eyes: '0:round', mouth: '0:wave', ear: '0:.15', blush: '0:.3', lookY: '0:-.4' }, '', ['think', 'shy', 'idle']);
+  def('lookaround', '東張西望', 1, 3.0, { lookX: '0:0 .5:1 1:1 1.5:-1 2:-1 2.5:0 3:0', headDx: '0:0 .5:1.2 1:1.2 1.5:-1.2 2:-1.2 2.5:0', tilt: '0:0 .5:.06 1.5:-.06 2.5:0', ear: '0:0 .5:-.1 1.5:-.1 2.5:0', eyes: '0:round', mouth: '0:o .5:flat' }, '', ['browse', 'idle']);
+  def('squat', '蹲下看', 1, 3.0, { squash: '0:.76', lift: '0:-4', lean: '0:.1', headDy: '0:2', lookY: '0:1', armL: '0:-.4', armR: '0:-.4', eyes: '0:round', mouth: '0:o', ear: '0:-.05', tail: '0:.1 1.5:.3 3:.1' }, '', ['sit', 'forage', 'idle']);
+  def('recoil', '往後縮', 0, 0.8, { lean: '0:0 .1:-.2 .5:-.1 .8:0', lift: '0:0 .1:2 .4:0', shiftX: '0:0 .1:-2.4 .6:-1 .8:0', armL: '0:.2 .1:-1.3 .6:-.8', armR: '0:.2 .1:-1.3 .6:-.8', eyes: '0:wide', mouth: '0:o', ear: '0:-.35', tail: '0:.5' }, 'shock', ['surprised', 'idle']);
+  def('trip', '絆倒', 0, 1.6, { lean: '0:0 .15:.5 .4:1.35 1.0:1.35 1.4:.3 1.6:0', lift: '0:0 .15:1 .4:-3 1.0:-3 1.6:0', squash: '0:1 .4:.86 1.0:.86 1.6:1', armL: '0:.2 .2:-1.8 1.0:-.5', armR: '0:.2 .2:-1.8 1.0:-.5', eyes: '0:wide .4:line 1.2:round', mouth: '0:o .4:wave', headDy: '0:0 .4:1.2 1.4:0', ear: '0:-.3 .4:.4' }, 'shock', ['fall', 'hurt', 'idle']);
+  def('getup', '爬起來', 0, 1.4, { lean: '0:1.2 .5:.5 1:.1 1.4:0', lift: '0:-3 .5:-1.5 1:.5 1.4:0', squash: '0:.86 .5:.92 1:1.04 1.4:1', armL: '0:-.5 .5:-1 1.4:.2', armR: '0:-.5 .5:-1 1.4:.2', eyes: '0:round', mouth: '0:wave 1:smile', blush: '0:.7 .8:.3', ear: '0:.3 1.4:.05' }, '', ['stretch', 'shy', 'idle']);
+  def('stretch2', '側身伸展', 1, 3.0, { lean: '0:.2 1.5:-.2 3:.2', armL: '0:-2.4 1.5:-1.8 3:-2.4', armR: '0:-1.8 1.5:-2.4 3:-1.8', lift: '0:.5 1.5:.9 3:.5', eyes: '0:line', mouth: '0:o', ear: '0:-.1', tail: '0:.2 1.5:-.2 3:.2' }, '', ['stretch', 'idle']);
+  def('cast', '甩竿', 0, 1.4, { armR: '0:-.9 .3:-2.2 .6:-1.2 1.4:-1.2', armL: '0:-.8 .3:-1.6 .6:-1', lean: '0:.04 .3:-.08 .6:.1 1.4:.06', headDy: '0:0 .3:-.5 .6:.6', eyes: '0:round', mouth: '0:o .6:smile', lookY: '0:0 .4:-.3 .8:.4' }, '', ['fish', 'idle']);
+  def('reel', '收竿', 1, 1.0, { armR: '0:-1.2 .5:-1.6 1:-1.2', armL: '0:-.9 .25:-.4 .5:-.9 .75:-.4 1:-.9', lean: '0:.06 .5:-.04 1:.06', eyes: '0:round', mouth: '0:flat', lookY: '0:.6', headDy: '0:.4 .5:1 1:.4' }, 'sweat', ['fish', 'idle']);
+  def('stir', '攪拌', 1, 1.0, { armR: '0:-.9 .25:-.6 .5:-.9 .75:-1.1 1:-.9', armL: '0:-.6', lean: '0:.05', lookY: '0:.8', mouth: '0:smile', eyes: '0:round', shiftX: '0:.4 .5:-.4 1:.4', ear: '0:-.05' }, '', ['cook', 'idle']);
+  def('wash', '洗手', 1, 1.2, { armL: '0:-.7 .3:-.55 .6:-.7 .9:-.55 1.2:-.7', armR: '0:-.7 .3:-.55 .6:-.7 .9:-.55 1.2:-.7', headDy: '0:.8', lookY: '0:.8', eyes: '0:round', mouth: '0:smile', shiftX: '0:.3 .6:-.3 1.2:.3' }, 'bubbles', ['tend', 'idle']);
+  def('stretchcat', '拱背伸懶腰', 0, 2.4, { lean: '0:0 .6:.3 1.4:.3 2.4:0', headDy: '0:0 .6:2 1.4:2 2.4:0', armL: '0:.2 .6:-.3 1.4:-.3 2.4:.2', armR: '0:.2 .6:-.3 1.4:-.3 2.4:.2', squash: '0:1 .6:.94 1.4:.94 2.4:1', eyes: '0:line', mouth: '0:o', ear: '0:0 .8:.3 1.6:.3 2.4:.05', tail: '0:.1 .6:.6 1.4:.6 2.4:.1' }, '', ['stretch', 'yawn', 'idle']);
+  def('bounce', '開心彈跳', 1, 0.5, { lift: '0:0 .12:2.2 .25:0 .37:2.2 .5:0', squash: '0:.95 .12:1.05 .25:.95 .37:1.05', armL: '0:-.5 .25:-1 .5:-.5', armR: '0:-1 .25:-.5 .5:-1', eyes: '0:happy', mouth: '0:open', ear: '0:-.25 .12:-.35 .25:-.25', tail: '0:.4 .25:-.4 .5:.4' }, '', ['skip', 'happy', 'idle']);
+
   const names = Object.keys(LIB);
   const has = (a) => !!(a && LIB[a]);
 
@@ -157,6 +190,27 @@
     const AC = OC.Chars && OC.Chars.ACTIONS; if (!AC || register.done) return; register.done = true;
     for (const n of names) { if (AC.some((x) => x[0] === n)) continue; const d = LIB[n]; AC.push([n, d.zh, d.loop ? 'loop' : 'once', d.fb]); if (OC.Chars.ACTION_ZH) OC.Chars.ACTION_ZH[n] = d.zh; }
   }
-  OC.Anim11 = { LIB, has, apply, touchLayer, register, def, get names() { return names; }, num, step, P };
+  // ---------------------------------------------------------------- variety: what an OC does with its idle moments / while doing something
+  /** while doing an activity, the pose is picked from these (re-picked now and then → the same activity never looks the same twice) */
+  const VARIED = { play: ['play', 'skip', 'tailchase', 'spin', 'wiggle', 'happy'], daydream: ['daydream', 'think', 'daydream'], study: ['study', 'write', 'study'], drink: ['drink', 'sip'], observe: ['idle', 'daydream', 'stargaze'], tidy: ['tend', 'swish', 'tend'], browse: ['browse', 'point', 'browse', 'shrug'], explore: ['idle', 'tiptoe', 'point'], rest: ['sit', 'sit', 'sigh'] };
+  /** a small spontaneous action for an idle OC from its mood / needs / personality / weather: { action, dur } or null */
+  function fidget(c, ctx) {
+    const M = OC.Mind, has = (t) => OC.Chars.has(c, t), emo = M.dominant(c), k = M.intensity(c, emo), wx = OC.Clock.weather(), night = OC.Clock.phase() === 'night';
+    const W = []; const add = (action, w) => { if (w > 0 && LIB[action]) W.push([action, w]); };
+    if (['happy', 'excited', 'proud', 'content'].includes(emo) && k > 0.3) { add('wiggle', 1 + (has('energetic') ? 1 : 0)); add('skip', has('energetic') || has('cheerful') ? 1.5 : 0.3); add('spin', has('energetic') ? 1 : 0.4); add('peace', has('cheerful') ? 1 : 0.3); add('wave', 0.6); add('giggle', has('shy') ? 1.6 : 0.5); add('flex', has('energetic') ? 0.7 : 0); add('salute', has('diligent') ? 0.6 : 0); }
+    if (emo === 'tired' || c.needs.energy < 35) { add('yawn', 2); add('sigh', 1); add('nap', c.needs.energy < 25 ? 1 : 0); }
+    if (['bored'].includes(emo) || c.needs.fun < 35) { add('sigh', 1); add('swish', 1); add('shrug', 0.8); add('daydream', 1.2); add('tailchase', has('energetic') ? 1 : 0); }
+    if (['down', 'lonely'].includes(emo) && k > 0.3) { add('sigh', 1.6); add('sulk', 0.6); add('daydream', 0.8); }
+    if (emo === 'annoyed' && k > 0.3) { add('stomp', 1.5); add('pout', 1); }
+    if (emo === 'curious' || has('curious')) { add('tiptoe', 0.5); add('aha', 0.25); add('point', 0.4); add('daydream', 0.4); }
+    if (night && wx === 'clear' && (has('nightowl') || has('curious') || has('artsy'))) add('stargaze', 1.4);
+    if (wx === 'rain' || wx === 'fog') add('shiver', 0.5);
+    if (c.needs.food < 30) add('sigh', 1);
+    add('sneeze', 0.12); add('hiccup', 0.08);
+    if (!W.length) return null;
+    let tot = 0; for (const w of W) tot += w[1]; let r = Math.random() * tot, pick = W[0][0]; for (const w of W) { r -= w[1]; if (r <= 0) { pick = w[0]; break; } }
+    const d = LIB[pick]; return { action: pick, dur: d.loop ? Math.min(6, d.dur * (d.dur < 1.5 ? 3 : 1.4)) : d.dur + 0.2 };
+  }
+  OC.Anim11 = { VARIED, fidget, LIB, has, apply, touchLayer, register, def, get names() { return names; }, num, step, P };
   register();
 })();

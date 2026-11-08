@@ -34,5 +34,28 @@
     ['handhold_start', '好，一起走。', { voice: ['plain', 'cool'] }, 2], ['handhold_start', '牽著走好有安全感喔。', { voice: ['calm', 'bright'] }, 2], ['handhold_start', '手、手牽手……', { trait: 'shy' }, 3],
     ['handhold_end', '好啦，手鬆開了。下次再牽喔。', {}, 2],
   ];
+  // ---- 11.0 planning / knowing each other
+  L.push(
+    ['goal_done', '好，今天想做的事做到了。', { voice: ['plain', 'cool'] }, 2], ['goal_done', '耶，小小的目標達成！', { voice: 'bright' }, 3], ['goal_done', '嗯，這樣就夠了。心裡踏實多了。', { voice: 'calm' }, 2],
+    ['know_fav', '你好像很喜歡{favact}耶。我有注意到。', {}, 3], ['know_fav', '{favact}的時候你最有精神了。', { voice: 'bright' }, 2], ['know_fav', '我記得你常常在{favact}。', { voice: ['calm', 'plain'] }, 2],
+    ['know_fav', '……你常去{favact}吧。我只是碰巧看到。', { voice: 'cool' }, 2],
+    ['know_mood', '你剛剛看起來不太有精神，還好嗎？', {}, 3], ['know_mood', '我剛看到你有點{mood}。要不要聊聊？', { voice: ['calm', 'bright'] }, 2], ['know_mood', '嗯……我注意到你有點{mood}。', { voice: ['cool', 'plain'] }, 2],
+  );
+  // ---- 11.0 paired interactions (A asks / acts, B answers)
+  L.push(
+    ['hug_a', '……來，抱一下。', { voice: ['calm', 'cool', 'plain'] }, 3], ['hug_a', '過來過來，我要抱你！', { voice: 'bright' }, 3], ['hug_a', '你看起來需要一個擁抱。', { aff_player: '>=0' }, 2],
+    ['hug_b', '……謝謝。我好多了。', { voice: ['calm', 'plain'] }, 3], ['hug_b', '嘿嘿，暖暖的。', { voice: 'bright' }, 3], ['hug_b', '（把臉埋進去）', { trait: 'shy' }, 3], ['hug_b', '……別太用力啦。', { voice: 'cool' }, 2],
+    ['hf_a', '來，擊掌！', {}, 3], ['hf_a', '欸，這個要慶祝一下！', { voice: 'bright' }, 2], ['hf_b', '啪！', {}, 3], ['hf_b', '耶～！', { voice: 'bright' }, 3], ['hf_b', '……不錯。', { voice: 'cool' }, 2],
+    ['dance_a', '來跳舞吧，轉圈圈！', { voice: 'bright' }, 3], ['dance_a', '有沒有想動一動？', { voice: ['plain', 'calm'] }, 2], ['dance_a', '……跟著我的拍子，別踩到我。', { voice: 'cool' }, 2],
+    ['dance_b', '哈哈，頭都暈了！', {}, 3], ['dance_b', '再來一次！', { voice: 'bright' }, 2],
+    ['selfie_a', '靠過來一點，我們拍張照。', {}, 3], ['selfie_a', '三、二、一——！', { voice: 'bright' }, 3], ['selfie_b', '比個耶！', { voice: 'bright' }, 3], ['selfie_b', '我表情怪怪的嗎？', { trait: 'shy' }, 2], ['selfie_b', '……拍好看一點喔。', { voice: 'cool' }, 2],
+    ['rps_a', '猜拳決定吧！剪刀、石頭——', {}, 3], ['rps_win', '我贏了！', { voice: 'bright' }, 3], ['rps_win', '……嗯，運氣不錯。', { voice: 'cool' }, 2], ['rps_win', '耶！', {}, 2],
+    ['tickle_a', '嘿嘿，看招！', { voice: 'bright' }, 3], ['tickle_a', '我知道你的弱點在哪裡～', {}, 2],
+    ['tickle_ok', '哈哈哈！好癢！饒了我吧！', {}, 3], ['tickle_ok', '等一下等一下——哈哈！', { voice: ['bright', 'plain'] }, 2], ['tickle_bad', '……不要這樣。', { voice: ['cool', 'plain'] }, 3], ['tickle_bad', '別鬧了，真的很癢。', {}, 2],
+    ['pat_a', '乖乖。', { voice: ['calm', 'plain'] }, 2], ['pat_a', '辛苦了，拍拍。', {}, 3], ['pat_a', '拍拍頭，沒事的。', { voice: 'bright' }, 2], ['pat_b', '……幹嘛啦。', { voice: 'cool' }, 2], ['pat_b', '嗯……', { trait: 'shy' }, 3], ['pat_b', '被拍頭的感覺還不錯。', { voice: ['calm', 'plain'] }, 2],
+    ['whisper_a', '欸，我告訴你一個祕密，不要跟別人說。', {}, 3], ['whisper_a', '（小聲）我只跟你說喔。', { voice: ['bright', 'calm'] }, 2], ['whisper_b', '……真的假的？我不會說出去的。', {}, 3], ['whisper_b', '嘿嘿，我們有共同的祕密了。', { voice: 'bright' }, 2],
+    ['lean_a', '……借我靠一下。', { voice: ['calm', 'cool', 'plain'] }, 3], ['lean_a', '好累喔，讓我靠一下。', { voice: 'bright' }, 2], ['lean_b', '靠吧，我在這裡。', {}, 3], ['lean_b', '（沒有說話，只是坐穩了一點）', { voice: ['calm', 'cool'] }, 2],
+    ['peek_a', '（遮著臉）——找不到我！', { voice: 'bright' }, 3], ['peek_a', '看不見我看不見我～', {}, 2], ['peek_b', '哇啊！嚇我一跳！', {}, 3], ['peek_b', '哈哈，你躲在哪裡啦！', { voice: 'bright' }, 2],
+  );
   for (const l of L) D.LINES.push(l);
 })();

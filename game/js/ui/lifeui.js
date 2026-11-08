@@ -98,6 +98,7 @@
           self ? btn('clock', '安排活動', go(() => schedule(id)), !a) : btn('users', '陪伴', go(() => accompany(id)), !a),
           btn('chat', '聊天', go(() => chat(id)), !a),
           self ? btn('eye', '觀察', go(() => A().observe(id)), !a) : btn('clock', '安排活動', go(() => schedule(id)), !a),
+          btn('sparkle', '想法', go(() => think(id)), !a),
           self ? null : btn('eye', '觀察', go(() => A().observe(id)), !a),
           btn('book', '檔案', go(() => Pg().open('profile', { id }))))
       );
@@ -202,6 +203,23 @@
     if (Math.hypot(tx - h0.last.x, ty - h0.last.y) > 14 || (!a.path && Math.hypot(a.x - tx, a.y - ty) > 30)) {
       const q = OC.World.nearestWalkable(tx, ty, 26); if (q) { h0.last = { x: tx, y: ty }; a.run = Math.hypot(a.x - q.x, a.y - q.y) > 70; OC.World.walkTo(a, q.x, q.y, () => { a.run = false; B().face(a, pl); }); }
     }
+  }
+  /** 11.0 「想法」: what it intends right now and why (plan · goals · top candidates · moods · what it knows about others) */
+  function think(id) {
+    const c = Ch().get(id); if (!c) return;
+    sheet(`${name(c)}的想法`, (b) => {
+      const draw = () => {
+        const e = OC.Mind11.explain(c), box = h('div');
+        box.append(T('現在'), card(h('div', null, e.reason || '正在發呆'), small('這是牠自己決定的；你可以隨時用「更多 › 安排活動」插手。')));
+        if (e.plan) box.append(T('計畫', e.plan.why), card(h('div.hstack', { style: { flexWrap: 'wrap', gap: '6px' } }, ...e.plan.steps.map((s, i) => h('span.tag' + (i < e.plan.i ? '.teal' : i === e.plan.i ? '.accent' : ''), null, (i < e.plan.i ? '✓ ' : i === e.plan.i ? '▶ ' : '') + s))), small(`「${e.plan.zh}」`)));
+        if (e.goals.length) box.append(T('今天的小目標'), card(...e.goals.map((g) => h('div.hstack', null, h('span.grow', null, g.zh), h('span.tag' + (g.done ? '.teal' : ''), null, g.done ? '完成' : `${g.prog}/${g.n}`)))));
+        if (e.moods.length) box.append(T('心情'), card(...e.moods.map((m) => h('div.hstack', null, h('b', null, m.zh), h('span.muted.grow', { style: { fontSize: 'var(--fs-s)' } }, m.why)))));
+        if (e.cands.length) box.append(T('其他考慮過的選項', '分數越高越想做'), card(...e.cands.map((x) => h('div', { style: { padding: '3px 0' } }, h('div.hstack', null, h('span.grow', null, x.id), h('span.num.faint', null, x.s.toFixed(2))), small(x.why)))));
+        if (e.know.length) box.append(T('牠觀察到的', '平常看著大家'), card(...e.know.map((k) => h('div', { style: { padding: '3px 0' } }, h('b', null, k.name), small([k.fav ? `常${k.fav}` : null, k.mood ? `剛剛有點${k.mood}` : null, `聊過 ${k.talked} 次`].filter(Boolean).join('・'))))));
+        b.replaceChildren(box);
+      };
+      draw(); const iv = setInterval(() => { if (!b.isConnected) { clearInterval(iv); return; } draw(); }, 2500);
+    });
   }
   function call(id) {
     const c = Ch().get(id), a = A().actorOf(id), pl = A().player; if (!c || !a || !pl) return;
@@ -486,5 +504,5 @@
       T('預約中的位置'), card(small([...B().res.entries()].map(([k, v]) => `${k}→${name(Ch().get(v) || { profile: { name: '?' } })}`).join('、') || '—')));
   }
 
-  OC.LifeUI = { doingText, noticeCount, pushNotice, notices, interact, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
+  OC.LifeUI = { doingText, noticeCount, pushNotice, notices, interact, think, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
 })();

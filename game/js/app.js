@@ -186,7 +186,7 @@
     el._f.who = h('div.sc-who');
     el.append(h('div.sc-head', null, cv, h('div.grow', null, el._f.name, el._f.title, el._f.mood, el._f.doing)), grid, el._f.wish, el._f.who,
       h('div.sc-actions', null,
-        h('button.btn.s', { on: { click: () => { toggleStatus(false); OC.LifeUI.pet(S().activeId); } } }, icon('paw', 's'), '摸摸'),
+        h('button.btn.s', { on: { click: () => { toggleStatus(false); OC.LifeUI.think(S().activeId); } } }, icon('sparkle', 's'), '想法'),
         h('button.btn.s', { on: { click: () => { toggleStatus(false); setCamMode('focus', player); } } }, icon('eye', 's'), '特寫'),
         h('button.btn.s.primary', { on: { click: () => { toggleStatus(false); OC.Pages.open('profile', { id: S().activeId }); } } }, icon('person', 's'), '完整檔案')));
     $('#hud').append(el); statusEl = el; hud.me.setAttribute('aria-expanded', 'true');
@@ -331,6 +331,7 @@
     if (!c || a.path || a.joy || a.act || a.mode === 'talk' || (br && br.st !== 'think')) { a.idleT = 0; return; }
     const b = OC.Chars.behavior(c); a.idleT = (a.idleT || 0) + dt;
     if (a.idleT < b.fidgetEvery) return; a.idleT = 0;
+    if (Math.random() < 0.5 && OC.Anim11) { const f = OC.Anim11.fidget(c); if (f) { Wd.setAction(a, f.action, { dur: f.dur, priority: 1 }); if (f.action === 'sneeze') OC.Sound && OC.Sound.play('poke'); return; } }   // 11.0: spontaneous little actions
     const r = Math.random(), emo = OC.LifeData.EMOTIONS[OC.Mind.dominant(c)];
     if (emo.act && OC.Mind.intensity(c, OC.Mind.dominant(c)) > 0.35 && r < 0.45) { if (emo.act === 'jump') Wd.jump(a); else Wd.setAction(a, emo.act, { dur: 1.6, priority: 1 }); if (emo.e) emote(a, emo.e); return; }
     if (r < b.sitChance) Wd.setAction(a, 'sit', { dur: 4 + Math.random() * 4, priority: 1 });
@@ -844,6 +845,7 @@
     updateGlow(dt);
     holdWatchdog();
     OC.LifeUI.tick(dt);
+    if (OC.Mind11) OC.Mind11.update(dt);
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
