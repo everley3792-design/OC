@@ -40,7 +40,7 @@
 - 8.0 驗收：`node game/tests/v8/run.js` → **40/40**（情境 1–12、15、16 中能在瀏覽器驗證的部分；截圖 `deliverables/v8/`）
 - 回歸：第七階段 `tests/pet` **53/53**、第六階段 `tests/play` **67/67**、第五階段 `tests/world` **74/74**、第四階段 `tests/life` **52/52**。
 - Kotlin：`gradle -PcoreOnly=true test` → 38/38。
-- APK：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest）→ 通過；`deliverables/apk/oc-shimeji-0.8.0-alpha-debug.apk`（SHA-256 `198544b2ba2d54f4fecd294902c866117b631cf90f4253a727113d81dba2fd30`；APK 內 68 個遊戲檔與原始碼逐位元相同；versionCode 11、targetSdk 35）。
+- APK：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest）→ 通過；`oc-shimeji-0.8.0-alpha-debug.apk`（已由 0.9.0 取代；SHA-256 `198544b2ba2d54f4fecd294902c866117b631cf90f4253a727113d81dba2fd30`；APK 內 68 個遊戲檔與原始碼逐位元相同；versionCode 11、targetSdk 35）。
 
 ## 四、需要實機驗證（📱）
 情境 13（其他 App 上方的桌寵撫摸／拖曳／甩動、與遊戲同步）、14（加入小工具、調整大小、按鈕）、17（安裝、啟動、資源載入、存檔）、觸覺強度、音樂在手機喇叭上的聽感、120Hz 與低階機效能、長時間耗電。步驟：`docs/compat-test-plan.md`。

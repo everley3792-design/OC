@@ -1,6 +1,316 @@
 {
- "at": "2026-11-08T05:31:38.491Z",
+ "at": "2026-11-08T06:01:49.264Z",
  "results": [
+  {
+   "name": "1a 三個 OC 的說話聲線不同",
+   "ok": true,
+   "detail": "bright/bright/cool"
+  },
+  {
+   "name": "1b 同樣的「害羞」事件，害羞的小空反應最強、外向的栗子最弱",
+   "ok": true,
+   "detail": "0.67 > 0.62 > 0.26"
+  },
+  {
+   "name": "1c 熱愛閱讀的小空最想讀書、精力充沛的栗子最想玩",
+   "ok": true,
+   "detail": {
+    "麻糬": {
+     "voice": "bright",
+     "speed": 64,
+     "greet": [
+      "哇，是你！好巧喔喵～",
+      "你～早安！今天也一起加油吧～",
+      "初次見面，我是麻糬～"
+     ],
+     "shy": 0.62,
+     "readScore": 0.33,
+     "playScore": 0.12,
+     "routine": {
+      "sleep": 23,
+      "wake": 7.5,
+      "auto": true,
+      "early": false,
+      "late": false
+     }
+    },
+    "栗子": {
+     "voice": "bright",
+     "speed": 69,
+     "greet": [
+      "哇，是你！好巧喔！",
+      "初次見面，我是栗子！",
+      "你～早安！今天也一起加油吧！"
+     ],
+     "shy": 0.26,
+     "readScore": 0.18,
+     "playScore": 0.11,
+     "routine": {
+      "sleep": 22,
+      "wake": 6.5,
+      "auto": true,
+      "early": true,
+      "late": false
+     }
+    },
+    "小空": {
+     "voice": "cool",
+     "speed": 47,
+     "greet": [
+      "（小聲）那、那個……你好。",
+      "（小聲）初次見面，我是小空。",
+      "（小聲）……嗯，你…"
+     ],
+     "shy": 0.67,
+     "readScore": 0.87,
+     "playScore": -0.16,
+     "routine": {
+      "sleep": 23,
+      "wake": 7.5,
+      "auto": true,
+      "early": false,
+      "late": false
+     }
+    }
+   }
+  },
+  {
+   "name": "1d 作息不同（栗子早起）",
+   "ok": true,
+   "detail": "6.5 vs 7.5"
+  },
+  {
+   "name": "1e 實際生活紀錄不同",
+   "ok": true,
+   "detail": {
+    "麻糬": "sleep1,explore1,eat1|social0|asked0",
+    "栗子": "eat1|social0|asked2",
+    "小空": "|social0|asked0"
+   }
+  },
+  {
+   "name": "2a 肚子餓 → 選擇吃飯 → 走到用餐地點",
+   "ok": true,
+   "detail": {
+    "slot": "stall#0",
+    "reason": "吃飯（需求 food1.35、用餐時間+0.30、貪吃+0.15）",
+    "x": 276,
+    "y": 598,
+    "sx": 276,
+    "sy": 598,
+    "hidden": false
+   }
+  },
+  {
+   "name": "2b 吃完飽足恢復並記錄",
+   "ok": true,
+   "detail": {
+    "food": 63,
+    "rec": {
+     "n": 1,
+     "gm": 26,
+     "last": 29903840,
+     "ctx": {
+      "noon": 1,
+      "clear": 1
+     },
+     "place": {
+      "stall": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "2c 疲倦 → 走到床邊 → 對齊 → 睡覺（看板動作 sleep）",
+   "ok": true,
+   "detail": {
+    "bed": true,
+    "slot": "home#4",
+    "kind": "home",
+    "dx": 0,
+    "dy": 0,
+    "seatY": 0,
+    "hidden": true,
+    "act": "sleep",
+    "e0": 1.6372407102357511
+   }
+  },
+  {
+   "name": "2d 睡覺期間精力恢復",
+   "ok": true,
+   "detail": "2 → 22"
+  },
+  {
+   "name": "3a 兩個 OC 相遇並聊天（輪流說話、面對面）",
+   "ok": true,
+   "detail": "fam 6 → 10"
+  },
+  {
+   "name": "3b 雙方都留下共同回憶",
+   "ok": true,
+   "detail": {
+    "a": [
+     "和小空聊天"
+    ],
+    "b": [
+     "願望實現了：想和栗子聊聊天",
+     "和栗子聊天"
+    ]
+   }
+  },
+  {
+   "name": "3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）",
+   "ok": true,
+   "detail": {
+    "sa": "bench@356#0",
+    "sb": "bench@356#1",
+    "d": 18
+   }
+  },
+  {
+   "name": "3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）",
+   "ok": true,
+   "detail": {
+    "aff": "49 vs 0",
+    "score": "朋友 0.57 > 其他 0.30",
+    "mem": "和小空一起休息"
+   }
+  },
+  {
+   "name": "3e 成為朋友 → 里程碑事件與回憶",
+   "ok": true,
+   "detail": {
+    "t": "friend",
+    "m": [
+     "和小空成為了朋友"
+    ]
+   }
+  },
+  {
+   "name": "4a 雨天閱讀紀錄 → 提出「雨天閱讀」習慣建議（附原因）",
+   "ok": true,
+   "detail": {
+    "id": "gmw7f6cjm3a3",
+    "v": "rainread",
+    "ask": "麻糬最近總喜歡在雨天找個安靜的地方閱讀……要讓牠保留「雨天閱讀」這個習慣嗎？",
+    "why": "最近 8 次「閱讀」中有 8 次是在雨天（共約 4 小時）"
+   }
+  },
+  {
+   "name": "4b 長期閱讀 → 提出「熱愛閱讀」特質建議",
+   "ok": true,
+   "detail": "麻糬讀了好多書，要讓牠多一個特質「熱愛閱讀」嗎？"
+  },
+  {
+   "name": "4c 接受 → 習慣真的改變行為（雨天閱讀分數提高）",
+   "ok": true,
+   "detail": "0.75 → 1.20"
+  },
+  {
+   "name": "4d 拒絕 → 短期內不再提出；冷卻後才可能再提",
+   "ok": true,
+   "detail": {
+    "habits": [
+     "雨天閱讀"
+    ],
+    "before": 0.7467270314733058,
+    "afterS": 1.1967270314733058,
+    "again": false,
+    "came": true,
+    "locked": false,
+    "traits": [
+     "cheerful",
+     "curious"
+    ],
+    "hist": [
+     "熱愛閱讀:lock",
+     "熱愛閱讀:reject",
+     "雨天閱讀:accept"
+    ]
+   }
+  },
+  {
+   "name": "4e 鎖定 → 永遠不再提出，特質沒有被偷偷加上",
+   "ok": true,
+   "detail": [
+    "熱愛閱讀:lock",
+    "熱愛閱讀:reject",
+    "雨天閱讀:accept"
+   ]
+  },
+  {
+   "name": "4f 稍後決定（不再通知但保留）、關閉同類建議",
+   "ok": true,
+   "detail": {
+    "pend": false,
+    "stillListed": true,
+    "mutedHabit": false,
+    "muted": [
+     "habit"
+    ]
+   }
+  },
+  {
+   "name": "5a 天氣事件（下雨了）觸發且有冷卻、不重複",
+   "ok": true,
+   "detail": {
+    "wx": true,
+    "again": false
+   }
+  },
+  {
+   "name": "5b 時間事件（起床時沒睡好／早晨）",
+   "ok": true,
+   "detail": {
+    "at": 1794117406651,
+    "gm": 29958222,
+    "id": "badSleep",
+    "zh": "沒睡好",
+    "a": "cmw7f5dulvgkb",
+    "b": null,
+    "why": "done"
+   }
+  },
+  {
+   "name": "5c 物品事件：餵喜歡的食物 → 願望實現、情緒、和你的好感",
+   "ok": true,
+   "detail": {
+    "wish": "done",
+    "emo": [
+     "happy:願望實現：想吃蛋糕",
+     "happy:吃了草莓蛋糕",
+     "happy:發呆"
+    ],
+    "aff": 7
+   }
+  },
+  {
+   "name": "5d 情緒／需求事件（寂寞的時候）",
+   "ok": true,
+   "detail": "stargaze·時段 giftPlayer·aff_player nostalgia·emo lonelyMoment✓ cafeDate·地點 beachSunset·時段 confess·romance prank·trait prankBad·trait makeUp·conflict tasteFight·trait shareSnack·need clumsyTrip·trait helpUp·trait cloudShapes·trait midnightTalk·時段 jokeForYou·trait tidyUp·地點 birdFriend·trait baseFind·地點 baseInvite·flag baseBuild·地點"
+  },
+  {
+   "name": "5e 關係事件（最好的朋友）",
+   "ok": true,
+   "detail": {
+    "t": "bestfriend",
+    "log": [
+     "bestFriends",
+     "badSleep",
+     "rainArrives",
+     "becameFriends"
+    ],
+    "mem": [
+     "和小空成為了最好的朋友",
+     "和小空成為了朋友"
+    ]
+   }
+  },
+  {
+   "name": "5f 事件不會太頻繁（全域間隔）",
+   "ok": true,
+   "detail": 0
+  },
   {
    "name": "6a 6 個 OC 同時生活 30 秒：沒有瞬移",
    "ok": true,
@@ -11,9 +321,9 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 2,
+    "res": 0,
     "decisions": 31,
-    "convs": 5
+    "convs": 6
    }
   },
   {
@@ -31,10 +341,331 @@
     "endless": 0,
     "samples": 300,
     "worst": [],
-    "res": 2,
+    "res": 0,
     "decisions": 31,
-    "convs": 5
+    "convs": 6
    }
+  },
+  {
+   "name": "7a 呼叫：中斷閱讀 → 走過來 → 之後繼續原本的活動",
+   "ok": true,
+   "detail": {
+    "called": {
+     "st": "held",
+     "holds": [
+      "call"
+     ],
+     "susp": "read"
+    },
+    "resumed": {
+     "st": "do",
+     "act": "read",
+     "holds": 0
+    }
+   }
+  },
+  {
+   "name": "7b 拖曳：暫停 → 放下有反應 → 恢復自主",
+   "ok": true,
+   "detail": {
+    "h1": true,
+    "moved": {
+     "x": 387,
+     "y": 673.8636398400001
+    },
+    "act": null
+   }
+  },
+  {
+   "name": "7c 打開編輯器（換裝）時暫停、關閉後恢復",
+   "ok": true,
+   "detail": {
+    "ed": [
+     "editor"
+    ],
+    "ed2": [],
+    "edInfo": {
+     "stack": 0,
+     "open": false,
+     "dirty": false,
+     "sheets": []
+    }
+   }
+  },
+  {
+   "name": "7d 和玩家聊天時暫停，結束後恢復",
+   "ok": true,
+   "detail": [
+    "dialogue"
+   ]
+  },
+  {
+   "name": "8a 沒有自訂動畫時，新生活動作都有內建骨架姿勢（畫得出來）",
+   "ok": true,
+   "detail": {
+    "read": 1373,
+    "think": 1463,
+    "stretch": 1511,
+    "tend": 1430,
+    "talk": 1406,
+    "dance": 1460,
+    "cry": 1415,
+    "laugh": 1412,
+    "sleep": 1408,
+    "eat": 1421,
+    "fallbackRead": "idle",
+    "fallbackTend": "idle",
+    "chain": [
+     "read→sit>idle",
+     "think→idle",
+     "tend→idle"
+    ]
+   }
+  },
+  {
+   "name": "8b 圖片角色缺少動作時沿備用鏈回到已有的動畫",
+   "ok": true,
+   "detail": {
+    "read": 1373,
+    "think": 1463,
+    "stretch": 1511,
+    "tend": 1430,
+    "talk": 1406,
+    "dance": 1460,
+    "cry": 1415,
+    "laugh": 1412,
+    "sleep": 1408,
+    "eat": 1421,
+    "fallbackRead": "idle",
+    "fallbackTend": "idle",
+    "chain": [
+     "read→sit>idle",
+     "think→idle",
+     "tend→idle"
+    ]
+   }
+  },
+  {
+   "name": "9a 需求與步長無關（2 遊戲小時：1 步 vs 1200 步）",
+   "ok": true,
+   "detail": {
+    "diff": 7.048583938740194e-12,
+    "a": 60,
+    "b": 60.00000000000114
+   }
+  },
+  {
+   "name": "9b 遊戲時間跟幀率無關（30 / 60 fps、×5 / ×10 每現實秒的遊戲分鐘 ≈ 速度）",
+   "ok": true,
+   "detail": {
+    "saver5": 1.01,
+    "high5": 1,
+    "saver10": 0.99
+   }
+  },
+  {
+   "name": "9c 切換主題／天氣／效能不重建場景、不打斷生活",
+   "ok": true,
+   "detail": {
+    "same": true,
+    "br": "goeat,socialeat,socialeat",
+    "br2": "goeat,socialeat,socialeat"
+   }
+  },
+  {
+   "name": "10a 存檔重開：關係、回憶、願望、生活紀錄完整",
+   "ok": true,
+   "detail": {
+    "before": [
+     2,
+     0,
+     0
+    ],
+    "after": [
+     2,
+     0,
+     0
+    ],
+    "differs": [],
+    "wishes": [
+     [
+      1,
+      0,
+      0
+     ],
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "rec": [
+     [
+      2,
+      2,
+      2
+     ],
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   }
+  },
+  {
+   "name": "10b 重開後繼續進行中的活動",
+   "ok": true,
+   "detail": {
+    "before": [
+     "cmw7fa7vcmn5y:read"
+    ],
+    "after": [
+     "cmw7fa7vcmn5y:read"
+    ]
+   }
+  },
+  {
+   "name": "10c 第三階段（v2）存檔自動遷移（v2→…→v7），舊需求數值保留",
+   "ok": true,
+   "detail": {
+    "social0": 40,
+    "v": 7,
+    "life": true,
+    "chars": 3,
+    "needs": "active,comfort,energy,food,fun,interest,mood,sleep,social,t",
+    "food": 50,
+    "emo": "neutral"
+   }
+  },
+  {
+   "name": "11a 離線 30 小時：只模擬上限 8 小時、需求不低於 15",
+   "ok": true,
+   "detail": {
+    "o": {
+     "at": 1794117620399,
+     "min": 1800,
+     "simulated": 480,
+     "capped": true,
+     "reason": "boot"
+    },
+    "needs": [
+     18,
+     15,
+     36
+    ],
+    "sum": [
+     1,
+     1,
+     1
+    ],
+    "ev": 0,
+    "inv": "{\"apple\":2,\"flower\":1}"
+   }
+  },
+  {
+   "name": "11b 離線期間不觸發事件、不發獎勵",
+   "ok": true,
+   "detail": {
+    "ev": 0
+   }
+  },
+  {
+   "name": "11c 重開不會重複計算離線（摘要只有一份）",
+   "ok": true,
+   "detail": {
+    "sum": [
+     1,
+     1,
+     1
+    ],
+    "o": {
+     "at": 1794117620399,
+     "min": 1800,
+     "simulated": 480,
+     "capped": true,
+     "reason": "boot"
+    }
+   }
+  },
+  {
+   "name": "11d 背景 2 小時後回來：補算 120 分鐘",
+   "ok": true,
+   "detail": {
+    "at": 1794117620974,
+    "min": 120,
+    "simulated": 120,
+    "capped": false,
+    "reason": "resume"
+   }
+  },
+  {
+   "name": "12 直向 360px：6 個 OC、HUD ≤ 6 個元件、無溢出、按鈕 ≥ 48px",
+   "ok": true,
+   "detail": {
+    "over": false,
+    "hud": 5,
+    "mates": 5,
+    "btns": 64,
+    "prof": {
+     "over": false
+    }
+   }
+  },
+  {
+   "name": "12 直向 412px：6 個 OC、HUD ≤ 6 個元件、無溢出、按鈕 ≥ 48px",
+   "ok": true,
+   "detail": {
+    "over": false,
+    "hud": 5,
+    "mates": 5,
+    "btns": 64,
+    "prof": {
+     "over": false
+    }
+   }
+  },
+  {
+   "name": "13a 對話資料：錯誤檔案被拒絕並說明原因",
+   "ok": true,
+   "detail": {
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！",
+    "exported": 1,
+    "cool": 9,
+    "picks": 9,
+    "eligible": 9,
+    "det": true
+   }
+  },
+  {
+   "name": "13b 匯入角色專屬台詞後真的會被說出、可再匯出",
+   "ok": true,
+   "detail": {
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！",
+    "exported": 1,
+    "cool": 9,
+    "picks": 9,
+    "eligible": 9,
+    "det": true
+   }
+  },
+  {
+   "name": "13c 台詞冷卻：可選的台詞全部用過之前不重複",
+   "ok": true,
+   "detail": "9 種／9 次（可選 9 句）"
+  },
+  {
+   "name": "13d 決策在相同種子下可重現",
+   "ok": true,
+   "detail": true
   },
   {
    "name": "沒有 JavaScript 錯誤",

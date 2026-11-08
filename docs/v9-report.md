@@ -27,7 +27,16 @@
 
 ## 三、測試（本環境實際執行）
 
-（測試結果在本節最後更新，見下方。）
+- 8.0／0.9 驗收：`node game/tests/v8/run.js` → **46/46**（情境 1–12、15、16、17；17a–17f 是本次新增）
+- 回歸：第七階段 `tests/pet` **53/53**、第六階段 `tests/play` **67/67**、第五階段 `tests/world` **74/74**、第四階段 `tests/life` **52/52**。
+- Kotlin：`gradle -PcoreOnly=true test` → **38/38**。
+- APK：`assembleDebug` + `verifyDebugApk`（v2/v3 簽章、編譯後 Manifest：targetSdk 35、specialUse 前景服務＋子類型、沒有無障礙／全部套件權限）→ 通過。
+  `deliverables/apk/oc-shimeji-0.9.0-alpha-debug.apk`（SHA-256 `2a848cb0d00284c42834fd6ca6c7ce66374491fe2bb8bc5d89a88fefdd21d1ab`；`aapt dump badging`：versionCode 12、versionName 0.9.0-alpha、targetSdk 35；APK 內 70 個遊戲檔與原始碼逐位元相同，測試與測試素材沒有打包進去）。0.8.0 的 APK 已從 `deliverables/apk/` 移除（git 歷史中仍可取得）。
+- 本次發現測試本身的不穩定，已修正（遊戲行為不變）：
+  - 第五階段與 v8 情境 17 的結果跟著**真實時鐘**走：在夜裡執行時 OC 會回家睡覺，佈置／家具／環境生物的前提不成立 → 測試固定在白天（`settings.time='fixed'`），第 10 情境的「21 點」步驟也真的改成夜晚畫面。
+  - 17b 依賴事件引擎的隨機挑選；OC 剛好在聊天時不會被挑中 → 測試每次嘗試前先讓 OC 有空。
+  - 開場取樣時機（見問題 7）。
+- 效能：本環境是軟體渲染（SwiftShader），fps 與載入時間**不代表手機**；只確認了：環境生物每個地點只建一次（16 個小網格、7 個材質，掛在地點的根節點下，換地點時隨場景一起釋放）；反覆切換頁面／地點／鏡頭／選單的長時間測試（v8 情境 15a）沒有殘留元件、記憶體沒有持續成長。
 
 ## 四、需要實機驗證（📱）
 與 8.0 相同：桌寵在其他 App 上方的觸控與同步、小工具、觸覺強度、音樂在手機喇叭上的聽感、120Hz／低階機效能、長時間耗電。步驟：`docs/compat-test-plan.md`。

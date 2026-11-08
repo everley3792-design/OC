@@ -280,8 +280,9 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
         OC.Store.s.life.ev.lastAny = 0; for (const k of Object.keys(OC.Store.s.life.ev.last)) delete OC.Store.s.life.ev.last[k];
         jk.chance = 1; OC.Events.trigger && 0;
         // run it directly through the engine's periodic picker
-        for (let i = 0; i < 60 && (!OC.Events.current || OC.Events.current.ev.id !== 'jokeForYou'); i++) { if (OC.Events.current) OC.Events.end('t'); OC.Brain.get(a.id).holds.clear(); OC.Events.update(5); }
+        for (let i = 0; i < 150 && (!OC.Events.current || OC.Events.current.ev.id !== 'jokeForYou'); i++) { if (OC.Events.current) OC.Events.end('t'); const bb = OC.Brain.get(a.id); bb.holds.clear(); if (!OC.Brain.available(bb)) OC.Brain.abort(bb, 'test'); OC.Events.update(5); }
         out.started = OC.Events.current && OC.Events.current.ev.id;
+        if (!out.started) { const b = OC.Brain.get(a.id); out.dbg = { dlg: OC.App.dlgOpen, placing: OC.App.placing, avail: OC.Brain.available(b), st: b && b.st, holds: b && [...b.holds], hasA: !!(b && b.a), byPlayer: b && b.byPlayer, manual: b && b.manual, area: OC.World.area.id, diag: (OC.Events.diag || []).filter((d) => d.id === 'jokeForYou').slice(0, 3) }; }
         const t0 = Date.now(); while (OC.Events.current && Date.now() - t0 < 25000) { const d = document.querySelector('.sheet.open .btn'); if (d && /哈哈|好冷|再講/.test(d.textContent)) d.click(); OC.Events.update(0.5); await new Promise((r) => setTimeout(r, 120)); }
         out.after = jk.steps.length === n0; out.mem = a.life.mem.recent.length > memBefore;
         return out;
