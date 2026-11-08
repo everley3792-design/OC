@@ -237,6 +237,7 @@
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); }))),
         // 聲音：Phase 6 adds the real sound settings at the end of this page (js/ui/p6pages.js)
         title('資料'), fileIn, h('div.list', null,
+          row('film', '重新觀看開場與教學', '開場動畫，然後由你的 OC 再教一次', null, async () => { close('settings'); app().tab('island'); await OC.Intro.opening({}); OC.Tutorial.start({ restart: true, force: true }); }),
           row('download', '匯出存檔', '存成 JSON 檔備份', null, () => app().exportSave()),
           row('upload', '匯入存檔', '從 JSON 檔還原', null, () => fileIn.click()),
           row('refresh', '重新開始', '刪除進度（保留設定）', null, async () => { if (await confirm('重新開始', '所有角色、物品與進度都會刪除，無法復原。', '刪除並重新開始', true)) { St.reset(); location.reload(); } })),

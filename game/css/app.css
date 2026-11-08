@@ -519,3 +519,14 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 .time-big { font-size: 44px; font-weight: 700; letter-spacing: .02em; }
 .time-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .time-chips .chip-btn small { color: var(--ink-3); font-size: var(--fs-xs); }
+
+/* ===================== 8.0 tutorial ===================== */
+.tut-card { position: fixed; left: 12px; right: 12px; bottom: calc(var(--tabbar-h, 64px) + var(--sab) + 86px); z-index: 55; max-width: 460px; margin: 0 auto; padding: 12px 14px 10px; border-radius: var(--r-l); background: var(--surface); box-shadow: var(--shadow-2);
+  opacity: 0; transform: translateY(10px); transition: opacity 260ms var(--ease-out), transform 360ms var(--ease-pop); }
+.tut-card.on { opacity: 1; transform: none; }
+.tut-row { display: flex; gap: 10px; align-items: center; } .tut-row canvas { width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); flex: none; }
+.tut-text { font-size: var(--fs-m); line-height: 1.5; } .tut-hint { margin-top: 4px; font-size: var(--fs-xs); color: var(--accent); display: flex; gap: 4px; align-items: center; }
+.tut-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; } .tut-actions .btn { min-height: 40px; }
+.tut-ring { position: fixed; z-index: 54; border-radius: var(--r-l); box-shadow: 0 0 0 3px var(--accent), 0 0 0 9px var(--accent-soft); pointer-events: none; opacity: 0; transition: opacity 300ms; animation: tut-pulse 1.4s var(--ease-in-out) infinite; }
+.tut-ring.on { opacity: 1; }
+@keyframes tut-pulse { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 0 14px transparent; } }
