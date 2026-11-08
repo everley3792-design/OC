@@ -538,24 +538,46 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 .debut-card small { color: var(--accent); font-weight: 700; letter-spacing: .1em; } .debut-card b { font-size: var(--fs-xl); } .debut-card span { color: var(--ink-3); font-size: var(--fs-s); }
 @media (prefers-reduced-motion: reduce) { .intro-mark, .intro-word span > span, .intro-word b > span { animation: none !important; } }
 
-/* ===================== 8.0 radial context menu ===================== */
-.radial { position: fixed; inset: 0; z-index: 60; background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), transparent 0, rgba(18,20,28,.10) 60%); opacity: 0; transition: opacity 180ms var(--ease-out); }
+/* ===================== 10.1 radial context menu: one continuous motion ===================== */
+/* open: the world dims around the OC (spotlight) → a soft halo blooms → the name tag drops in → the buttons swirl out of the
+   character one after another (spring) → labels fade in last. pick: the chosen button pops, the others tuck in. close: reverse. */
+.radial { position: fixed; inset: 0; z-index: 60; background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), transparent 0 64px, rgba(28, 22, 64, .18) 300px); opacity: 0; transition: opacity 280ms var(--ease-out); }
 .radial.on { opacity: 1; }
+.radial.out { opacity: 0; transition: opacity 240ms var(--ease-in) 60ms; }
 .radial-ring { position: absolute; width: 0; height: 0; }
-.radial-hub { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; padding: 6px 16px; border-radius: var(--r-pill); background: var(--surface); box-shadow: 0 3px 0 var(--lip), var(--shadow-2); white-space: nowrap; pointer-events: none; }
+.radial-halo { position: absolute; left: 0; top: 0; width: var(--hs); height: var(--hs); margin: calc(var(--hs) / -2) 0 0 calc(var(--hs) / -2); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .5) 0 34%, rgba(255, 255, 255, .22) 56%, transparent 70%); transform: scale(.35); opacity: 0;
+  transition: transform 560ms var(--spring-soft), opacity 260ms var(--ease-out); }
+:root[data-theme="dark"] .radial-halo { background: radial-gradient(circle, rgba(170, 170, 255, .22) 0 34%, rgba(170, 170, 255, .08) 56%, transparent 70%); }
+.radial.on .radial-halo { transform: scale(1); opacity: 1; }
+.radial.out .radial-halo { transform: scale(.5); opacity: 0; transition: transform 240ms var(--ease-in), opacity 200ms var(--ease-in); }
+.radial-hub { position: absolute; transform: translate(-50%, -50%) translateY(14px) scale(.85); opacity: 0; display: grid; justify-items: center; padding: 6px 16px; border-radius: var(--r-pill); background: var(--surface); box-shadow: 0 3px 0 var(--lip), var(--shadow-2); white-space: nowrap; pointer-events: none;
+  transition: transform 460ms var(--spring) 70ms, opacity 200ms var(--ease-out) 70ms; }
+.radial.on .radial-hub { transform: translate(-50%, -50%); opacity: 1; }
+.radial.out .radial-hub { transform: translate(-50%, -50%) translateY(10px) scale(.9); opacity: 0; transition: transform 200ms var(--ease-in), opacity 160ms var(--ease-in); }
 .radial-hub b { font-size: var(--fs-s); } .radial-hub small { font-size: var(--fs-xs); color: var(--ink-3); }
 .radial-btn { position: absolute; left: 0; top: 0; width: 58px; height: 58px; margin: -29px 0 0 -29px; border: 0; border-radius: 50%; background: var(--surface); color: var(--ink); box-shadow: var(--hl), 0 3.5px 0 var(--lip), var(--shadow-2); display: grid; place-items: center; font: inherit;
-  transform: translate(0, 0) scale(0.3); opacity: 0; transition: transform var(--t-spring) var(--spring) var(--d), opacity 200ms var(--ease-out) var(--d); }
+  transform: translate(var(--x0), var(--y0)) scale(.3); opacity: 0;
+  transition: transform 540ms var(--spring) var(--d), opacity 180ms var(--ease-out) var(--d); }
 .radial-btn .stk { width: 32px; height: 32px; }
-.radial.on .radial-btn { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; }
 .radial-btn svg { width: 24px; height: 24px; }
-.radial-btn > span:last-child { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-xs); font-weight: 800; color: var(--ink); background: var(--surface); padding: 2px 9px; border-radius: var(--r-pill); box-shadow: 0 2px 0 var(--line), var(--shadow-1); }
+.radial.on .radial-btn { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; }
+.radial.on .radial-btn:active { transform: translate(var(--x), var(--y)) scale(.9); transition: transform var(--t-press) var(--ease-out); }
+.radial.out .radial-btn { transform: translate(var(--x0), var(--y0)) scale(.3); opacity: 0; transition: transform 220ms var(--ease-in) var(--dc), opacity 180ms var(--ease-in) var(--dc); }
+.radial.picking .radial-btn:not(.picked) { transform: translate(calc(var(--x) * .55), calc(var(--y) * .55)) scale(.4); opacity: 0; transition: transform 200ms var(--ease-in), opacity 160ms var(--ease-in); }
+.radial.picking .radial-btn.picked { transform: translate(var(--x), var(--y)) scale(1.16); box-shadow: inset 0 0 0 3px var(--accent), 0 3.5px 0 var(--accent-lip), var(--shadow-3); transition: transform 260ms var(--spring); }
+.radial-btn > span:last-child { position: absolute; top: 60px; left: 50%; transform: translateX(-50%) translateY(-4px); opacity: 0; white-space: nowrap; font-size: var(--fs-xs); font-weight: 800; color: var(--ink); background: var(--surface); padding: 2px 9px; border-radius: var(--r-pill); box-shadow: 0 2px 0 var(--line), var(--shadow-1);
+  transition: opacity 200ms var(--ease-out) calc(var(--d) + 160ms), transform 300ms var(--ease-out) calc(var(--d) + 160ms); }
+.radial.on .radial-btn > span:last-child { opacity: 1; transform: translateX(-50%); }
+.radial.out .radial-btn > span:last-child, .radial.picking .radial-btn > span:last-child { opacity: 0; transition: opacity 100ms; }
 .radial-btn.main { box-shadow: inset 0 0 0 3px var(--accent), 0 3.5px 0 var(--accent-lip), var(--shadow-2); }
 .radial-btn.main > span:last-child { background: var(--accent); color: var(--on-accent); }
 .radial-btn.off { color: var(--ink-3); background: var(--surface-2); box-shadow: none; }
 .radial-btn.off .stk { filter: grayscale(1) opacity(.5); }
-.radial-btn:active { transform: translate(var(--x), var(--y)) scale(0.92); }
-@media (prefers-reduced-motion: reduce) { .radial-btn { transition: opacity 120ms; } }
+.radial-btn.nope { animation: nope 360ms var(--ease-out); }
+@keyframes nope { 20% { margin-left: -35px; } 45% { margin-left: -24px; } 70% { margin-left: -31px; } }
+@media (prefers-reduced-motion: reduce) { .radial-btn, .radial-halo, .radial-hub { transition: opacity 120ms !important; } }
+.reduce-motion .radial-btn, .reduce-motion .radial-halo, .reduce-motion .radial-hub { transition: opacity 120ms !important; }
 
 /* ===================== 8.0 HUD: status card · time panel ===================== */
 .status-card { position: absolute; left: 12px; top: calc(var(--sat) + 80px); width: min(340px, calc(100vw - 24px)); z-index: 30; padding: 16px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--hl), 0 4px 0 var(--lip), var(--shadow-3); pointer-events: auto;
@@ -700,3 +722,4 @@ html.lite { --hud-glass: var(--surface); --glass: var(--surface); }
 html.lite *, html.lite *::before, html.lite *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 /* decorative loops cost a repaint every frame (battery): they play a few times only, and not at all with effects off */
 html.lite .hud-wx .stk, html.lite .hud-bell .stk, html.lite .hud-quest .stk, html.lite .hud-quest::after, html.lite .req-badge { animation: none !important; }
+html.ring-open #overlays .speech, html.ring-open .req-badge { opacity: .12; transition: opacity 200ms var(--ease-out); }

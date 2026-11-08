@@ -393,7 +393,7 @@
   function onDown(e) {
     // a primary pointer starts a new gesture: drop stale pointers whose up never reached the canvas (they would turn a tap into a pinch)
     if (window.__ocInputLog) window.__ocInputLog.push(`down ${e.pointerType} id=${e.pointerId} primary=${e.isPrimary} n=${ptrs.size} g=${gesture && gesture.kind}`);
-    if (e.isPrimary) { ptrs.clear(); if (gesture && gesture.kind === 'drag') hooks.dragEnd && hooks.dragEnd(null); gesture = null; }
+    if (e.isPrimary) { ptrs.clear(); if (gesture && gesture.kind === 'drag') hooks.dragEnd && hooks.dragEnd(null); if (gesture && gesture.kind === 'claim') hooks.claimCancel && hooks.claimCancel(); gesture = null; }   // 10.0 fix: a lost finger-up on a character used to leave it held in the air forever
     canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now() });
     if (ptrs.size === 1) {
       const p = ptrs.get(e.pointerId); const g = { kind: 'press', id: e.pointerId, moved: false };

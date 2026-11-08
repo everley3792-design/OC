@@ -22,6 +22,7 @@
     if (!isChar(r.it) || A().dlgOpen || A().curTab !== 'island' || A().placing) return false;
     const id = idOf(r.it), a = A().actorOf(id); if (!a) return false;
     if (flights.has(a)) return false;
+    if (t) cancel();   // a stale gesture (its finger-up never arrived) is finished first: put down, never left hanging
     t = { id, a, x0: p.x, y0: p.y, lx: p.x, ly: p.y, t0: performance.now(), lastT: performance.now(), dir: 0, rev: 0, strokes: 0, petAt: 0, lifted: false, moved: false, hist: [], swing: 0, swingV: 0, vxPrev: 0 };
     t.timer = setTimeout(() => { if (t && !t.moved && !t.lifted && t.rev < 2) lift(true); }, 420);
     loop();
@@ -137,5 +138,8 @@
     raf = requestAnimationFrame(step);
   }
 
+  // the app going to the background / losing focus while an OC is held: put it down (the finger-up will never come)
+  document.addEventListener('visibilitychange', () => { if (document.hidden && t) cancel(); });
+  window.addEventListener('blur', () => { if (t) cancel(); });
   OC.Touch = { down, move, up, cancel, get active() { return !!t; }, get flying() { return flights.size; } };
 })();

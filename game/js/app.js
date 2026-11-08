@@ -36,6 +36,26 @@
     Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
     const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof); root.classList.toggle('lite', !Q.fx);   // saver: no backdrop blur (costly on weak GPUs), opaque glass instead
   }
+  /** 10.0 safety net: an interaction hold whose owner is gone (nothing carried, no dialogue, no ring menu) is released after 2 s,
+   *  so an OC can never stay frozen because some UI path forgot to let go */
+  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000 };
+  function holdWatchdog(dt) {
+    wdT -= dt; if (wdT > 0) return; wdT = 1;
+    const now = performance.now();
+    for (const k of Object.keys(heldSince)) { const [id, r] = k.split(':'); const b = OC.Brain.brains[id]; if (!b || !b.holds.has(r)) delete heldSince[k]; }   // released normally
+    for (const b of Object.values(OC.Brain.brains || {})) {
+      if (!b || !b.holds || !b.holds.size) continue;
+      const own = { drag: () => (carry && carry.id === b.id) || OC.Touch.active || OC.Touch.flying, dialogue: () => !!dlgOpen, menu: () => OC.Radial.open_ && OC.Radial.target === b.id };
+      for (const r of [...b.holds]) {
+        const k = b.id + ':' + r;
+        // short interaction holds released by a timer / walk callback: never longer than this (a lost callback must not freeze an OC)
+        if (MAX_AGE[r]) { if (!heldSince[k]) heldSince[k] = now; else if (now - heldSince[k] > MAX_AGE[r]) { delete heldSince[k]; OC.Brain.unhold(b.id, r); } continue; }
+        if (!own[r]) continue;
+        if (own[r]()) { delete orphanSince[k]; continue; }
+        if (!orphanSince[k]) orphanSince[k] = now; else if (now - orphanSince[k] > 2000) { delete orphanSince[k]; OC.Brain.unhold(b.id, r); }
+      }
+    }
+  }
   /** 10.0 sun glow over the world (soft-light): warm by day, golden in the afternoon, cool moonlight at night, faint in bad weather */
   let glowT = 0, glowKey = '';
   function updateGlow(dt) {
@@ -506,7 +526,11 @@
     if (it.type === 'self' || it.type === 'mate') {
       const id = it.type === 'self' ? S().activeId : it.id, c = OC.Chars.get(id), a = actorOf(id), self = id === S().activeId; if (!c || !a) return;
       const b = OC.Brain.get(id), asleep = b && b.act === 'sleep' && b.st === 'do', sl = asleep ? '正在睡覺' : null, busy = b && b.holds.has('event') ? '正在特別的事情中' : null;
-      OC.Radial.open({ x: pt.x, y: pt.y, title: OC.Chars.name(c), sub: `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, target: id, items: [
+      // 10.1: the OC pays attention while the ring is open — it stops, turns to you with a little bounce — and is released
+      // when the ring closes (whatever way it closes; a watchdog also releases an orphaned 'menu' hold)
+      const held = !sl && OC.Brain.hold(id, 'menu'); if (held) { a.path = null; a.tFace = 0; a.tBack = 0; a.squashT = 0; }   // a sleeping OC is not woken by the menu
+      OC.Radial.open({ x: pt.x, y: pt.y, title: OC.Chars.name(c), sub: `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, target: id,
+        track: () => (a.dead || a.hidden ? null : screenOf(a)), onClose: () => { if (held) OC.Brain.unhold(id, 'menu'); }, items: [
         { ic: 'paw', label: '摸摸', main: true, run: () => L.pet(id) },
         { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
         { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
@@ -646,6 +670,7 @@
   function buildDialogue() { dlg = { el: h('div.dlg', { role: 'dialog', 'aria-live': 'polite', on: { click: (e) => { if (!e.target.closest('button')) advanceDialogue(); } } }), who: h('div.who'), line: h('div.line'), choices: h('div.choices'), next: h('div.next', null, icon('next', 's')) }; dlg.el.append(dlg.who, dlg.line, dlg.choices, dlg.next); $('#app').append(dlg.el); }
   function showDialogue(who, lines, choices, done, custom) {
     closeTray();
+    if (dlgOpen) endDialogue();   // 10.0 fix: a dialogue replaced by another one never ran its done() — the OC stayed held ('dialogue') forever
     dlgOpen = { lines: lines.slice(), choices, done, i: 0, custom: !!custom, layer: { scrim: false, close: () => endDialogue() } };
     OC.UI.pushLayer(dlgOpen.layer);
     dlg.who.textContent = who; dlg.el.classList.add('open'); renderLine();
@@ -807,6 +832,7 @@
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
     if (hud.name) updateHUD();
     updateGlow(dt);
+    holdWatchdog(dt);
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
@@ -950,7 +976,10 @@
     hide: () => {},
     notice: (n) => OC.LifeUI.pushNotice(n),
     cam: (a, on) => { if (on && a) Wd.focus(a, 2.5); else if (!observing) Wd.focus(null); document.documentElement.classList.toggle('cinema', !!on); },
-    choice: (prompt, opts, cb) => showDialogue('', [prompt], opts.map((label, i) => ({ label, fx: () => { cb(i); return null; } })), null, true),
+    // 10.1 fix: closing the question without answering (Back, or another dialogue replacing it) used to leave the event — and both
+    // characters — waiting until its 90 s timeout; it now continues with the first answer
+    choice: (prompt, opts, cb) => { let done = false; const pick = (i) => { if (done) return; done = true; cb(i); };
+      showDialogue('', [prompt], opts.map((label, i) => ({ label, fx: () => { pick(i); return null; } })), () => pick(0), true); },
     sound: (id) => { OC.Mind.note(null, 'sound', `音效「${id}」（遊戲尚無音訊系統，只記錄）`); },
     busy: () => !!(dlgOpen || placing || testChar || carry || curTab !== 'island' || OC.UI.stack.length),
   };
