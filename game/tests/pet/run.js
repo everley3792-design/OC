@@ -272,6 +272,12 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
       await p2.close();
     }
 
+    // ================= 15. home-screen widget "放出桌寵" → the game exports first, then starts =================
+    if (want(15)) {
+      const r = await page.evaluate(async () => { __mock.perms.overlay = true; __mock.running = false; __mock.sprites = {}; window.OCApp.startPets(); for (let i = 0; i < 100 && !__mock.running; i++) await new Promise((x) => setTimeout(x, 100)); return { run: __mock.running, sprites: Object.keys(__mock.sprites).length, cfg: !!__mock.config }; });
+      check('15a 小工具的「放出桌寵」走遊戲的流程：先輸出外觀再啟動', r.run && r.sprites >= 1 && r.cfg, r);
+    }
+
     check('全程沒有 JavaScript 錯誤', errors.length === 0, errors.slice(0, 5));
   } catch (e) {
     console.error(e); check('執行中斷', false, String(e && e.stack || e));

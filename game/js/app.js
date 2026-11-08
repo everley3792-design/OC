@@ -660,6 +660,8 @@
     onPetState() { const pg = OC.Pages.pages.petcenter; if (pg && pg.el && pg.el.classList.contains('open')) { pg._sig = ''; pg.refresh(pg); } },
     /** runtime permission answer (notifications) → refresh the pet pages */
     onPermission(kind, result) { if (result === 'unavailable') toast('這支手機沒有這個設定頁面', 'info'); for (const k of ['petcenter', 'pettools', 'petapps']) { const pg = OC.Pages.pages[k]; if (pg && pg.el && pg.el.classList.contains('open')) { pg._sig = ''; pg.refresh(pg); } } },
+    /** widget "放出桌寵": export the current look, then start (same path as the pet center button) */
+    startPets() { OC.PetSync.start().then((r) => { if (!r.ok && r.why !== 'permission') toast(r.why, 'info'); }); },
     /** notification / widget / pet double-tap → a page */
     openPage(id) { if (!OC.Pages.pages[id]) return false; if (curTab !== 'island' && curTab !== 'more') tab('more'); OC.Pages.open(id); return true; },
   };

@@ -68,7 +68,7 @@
    ],
    "oriented": false,
    "src": "player",
-   "doc": "anmw72fwqfkn17"
+   "doc": "anmw730ec42254"
   }
  },
  {
@@ -102,7 +102,7 @@
    "mapped": "cheer",
    "tests": [
     [
-     "cmw72fgy4cm19",
+     "cmw72zyui0f1i",
      "jump"
     ]
    ]
@@ -113,19 +113,19 @@
   "ok": true,
   "detail": [
    [
-    "cmw72fgy4cm19",
+    "cmw72zyui0f1i",
     1,
     "normal",
     true
    ],
    [
-    "cmw72fmfmwgyk",
+    "cmw7304nrccod",
     1.4,
     "often",
     true
    ],
    [
-    "cmw72fmfm1bku",
+    "cmw7304nr5ver",
     1,
     "normal",
     false
@@ -170,7 +170,7 @@
   "detail": {
    "before": {
     "aff": 0,
-    "social": 44.74666666666678,
+    "social": 45.44000000000011,
     "pud": 2,
     "apple": 3,
     "mem": 3,
@@ -178,7 +178,7 @@
    },
    "mid": {
     "aff": 4,
-    "social": 59.74666666666678,
+    "social": 60.44000000000011,
     "pud": 1,
     "apple": 2,
     "mem": 7,
@@ -196,7 +196,7 @@
   "ok": true,
   "detail": {
    "aff": 4,
-   "social": 59.74666666666678,
+   "social": 60.44000000000011,
    "pud": 1,
    "apple": 2,
    "mem": 7,
@@ -238,7 +238,7 @@
   "ok": true,
   "detail": {
    "aff": 4,
-   "social": 59.74666666666678,
+   "social": 60.44000000000011,
    "pud": 1,
    "apple": 2,
    "mem": 7,
@@ -315,8 +315,8 @@
   "ok": true,
   "detail": {
    "a": [
-    "嗯喵～？",
-    "嘿嘿，找我嗎喵～？"
+    "嘿嘿，找我嗎喵～？",
+    "嗯喵～？"
    ],
    "b": [
     "嘿嘿，找我嗎！？",
@@ -384,7 +384,7 @@
     "id": "pomo",
     "kind": "pomodoro",
     "phase": "work",
-    "at": 1794097520610,
+    "at": 1794098476755,
     "title": "專注時間結束",
     "text": "完成 25 分鐘專注！",
     "exact": false,
@@ -392,7 +392,7 @@
    },
    "act": {
     "phase": "work",
-    "at": 1794097520610,
+    "at": 1794098476755,
     "exact": false
    }
   }
@@ -406,7 +406,7 @@
     "id": "pomo",
     "kind": "pomodoro",
     "phase": "break",
-    "at": 1794096320921,
+    "at": 1794097277122,
     "title": "休息結束",
     "text": "準備好再開始下一輪吧",
     "exact": false,
@@ -414,7 +414,7 @@
    },
    "act": {
     "phase": "break",
-    "at": 1794096320921,
+    "at": 1794097277122,
     "exact": false
    }
   }
@@ -432,7 +432,7 @@
    "rest": {
     "id": "rest",
     "kind": "rest",
-    "at": 1794098721458,
+    "at": 1794099677724,
     "repeatMin": 45,
     "title": "休息一下",
     "text": "站起來動一動、看看遠方吧",
@@ -450,11 +450,11 @@
   "detail": {
    "w": {
     "name": "麻糬",
-    "mood": "愉快・我想要想讓閱讀更厲害（Lv.1）…喵～…",
+    "mood": "愉快・你在忙什麼呀喵～？",
     "todo": "買牛奶",
-    "at": 1794096021527
+    "at": 1794096977811
    },
-   "av": 8002,
+   "av": 7426,
    "notes": 1
   }
  },
@@ -499,7 +499,7 @@
   "detail": {
    "v": 6,
    "on": [
-    "cmw72fgy4cm19"
+    "cmw72zyui0f1i"
    ],
    "size": 1.3
   }
@@ -529,7 +529,7 @@
     "seq": 27,
     "on": 3
    },
-   "mockState": "{\"sprites\":[\"cmw72fgy4cm19\"]}"
+   "mockState": "{\"sprites\":[\"cmw72zyui0f1i\"]}"
   }
  },
  {
@@ -559,6 +559,15 @@
   "name": "14b 無錯誤",
   "ok": true,
   "detail": []
+ },
+ {
+  "name": "15a 小工具的「放出桌寵」走遊戲的流程：先輸出外觀再啟動",
+  "ok": true,
+  "detail": {
+   "run": true,
+   "sprites": 3,
+   "cfg": true
+  }
  },
  {
   "name": "全程沒有 JavaScript 錯誤",

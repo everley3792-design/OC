@@ -235,7 +235,7 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('9a 自製逐格動畫沒有的新動作，會依備用鏈用相近的動作（例如「好吃」→自製的「開心」）', r.out.yum === 'happy' && r.out.cheer === 'happy' && r.out.proud === 'happy', JSON.stringify(r.out));
       check('9b 沒有任何對應影格的動作用內建骨架演出，不會出錯', r.ok && (r.out.yuck === 'rig' || r.out.yuck === 'idle'), JSON.stringify(r.out));
       const k = await page.evaluate(() => OC.Store.s.activeId);
-      const perf = await page.evaluate(async (id) => { const t0 = Date.now(); await OC.Stage.perform('levelup', { oc: id, zh: '測試', lv: 2, unlocks: [] }); return Date.now() - t0; }, k);
+      const perf = await page.evaluate(async (id) => { if (OC.Events.current) OC.Events.end('test'); OC.Brain.get(id).holds.clear(); const t0 = Date.now();   /* a wall-clock-dependent special event (e.g. firstVisit at night) must not own the OC */ await OC.Stage.perform('levelup', { oc: id, zh: '測試', lv: 2, unlocks: [] }); return Date.now() - t0; }, k);
       check('9c 自製角色也能播放升級演出（完整結束）', perf > 500, `${perf}ms`);
     }
 
@@ -279,7 +279,8 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       const ev = await page.evaluate(async (id) => {
         const c = OC.Chars.get(id); c.needs.social = 8; OC.Mind.tickEmotions(c, 1); const E = OC.Store.s.life.ev; E.lastAny = 0; for (const k2 of Object.keys(E.last)) if (k2.startsWith('lonelyMoment')) delete E.last[k2]; for (const k2 of Object.keys(E.once)) if (k2.includes('lonelyMoment')) delete E.once[k2]; OC.Brain.get(id).holds.clear(); OC.Brain.get(id).queued = null;
         for (const e of OC.Events.defs()) if (e.id === 'lonelyMoment') e.chance = 1;
-        const b = OC.Brain.get(id); b.st = 'think'; b.thinkAt = 1e9; OC.Events.update(5);
+        const b = OC.Brain.get(id); b.st = 'think'; b.thinkAt = 1e9; if (OC.Events.current) OC.Events.end('test');
+        for (let i = 0; i < 40 && !OC.Events.current; i++) { b.holds.clear(); OC.Events.update(5); }   // periodic() draws chance×0.25 per pass
         const cur = OC.Events.current; if (!cur) return { started: false, diag: JSON.stringify(OC.Events.diag || '').slice(0, 300) };
         cur.watched = true; OC.Stage.controls(true); const evId = cur.ev.id, n0 = OC.Store.s.life.ev.log.filter((x) => x.id === evId).length;
         await new Promise((r) => setTimeout(r, 400)); OC.Stage.skip();

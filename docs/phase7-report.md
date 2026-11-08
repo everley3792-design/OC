@@ -43,9 +43,9 @@
 
 ## 自動化測試（本環境實際執行）
 - Kotlin 核心：`cd android && gradle -PcoreOnly=true test` → **38/38**（新增 26：`PetBrainTest` 13、`GesturesTest` 5、`AnimClipTest` 3、`PetTalkTest` 4、`PetSocialTest` 1；原有 core 測試全過）。
-- 第七階段遊戲端：`node game/tests/pet/run.js` → **52/52**（使用 `tests/pet/mock-native.js`，與 `NativeBridge.kt` 同一份約定；它不模擬 overlay 本身）。
+- 第七階段遊戲端：`node game/tests/pet/run.js` → **53/53**（使用 `tests/pet/mock-native.js`，與 `NativeBridge.kt` 同一份約定；它不模擬 overlay 本身）。
 - 回歸：第六階段 `tests/play` REG_PLAY、第五階段 `tests/world` REG_WORLD、第四階段 `tests/life` REG_LIFE（說明見下）。
-- APK：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest 檢查、無無障礙服務／`QUERY_ALL_PACKAGES`）通過；APK 內 `assets/game` 與 `game/`（排除 tests、*.md）逐位元比對相同。
+- APK（SHA-256 `d8c8104535b6403a907f48006b704344ce22e4ad6290d20b53ed5852a83dab1f`）：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest 檢查、無無障礙服務／`QUERY_ALL_PACKAGES`）通過；APK 內 `assets/game` 與 `game/`（排除 tests、*.md）逐位元比對相同（63 個檔案）；dex 內含全部新類別（overlay／tools／widget／core:pet）；`aapt dump badging`：versionCode 10、targetSdk 35、7 個權限。
 
 REG_NOTES
 
