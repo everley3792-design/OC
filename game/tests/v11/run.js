@@ -2,6 +2,7 @@
  *   1 stroking: a slide over the body is petting (continuous level, body parts, taste, annoyance), not a pick-up or a menu
  *   2 closeness ring + gestures (hug · high-five · poke · hand-hold) release their OC and change real data once
  *   3 animation library: every action renders (no NaN), has a fallback chain, touch layer for every zone
+ *   7 world feedback: tap ripple that stays until the OC arrives, shaking trees with leaves + sound, dust puffs, 2 extra draw calls at most, effects follow quality / reduced motion
  *   6 audio: every sound is audible and never clips, character voices differ and follow the mood, stereo placement, music layers, ducking, action/footstep hooks, haptic rhythms, settings
  */
 const path = require('path');
@@ -243,6 +244,47 @@ const { check, wait } = H;
       // 6k the settings page has the voice slider
       const sl = await page.evaluate(async () => { OC.Pages.open('settings'); await new Promise((r) => setTimeout(r, 700)); const el = document.querySelector('input[aria-label="角色說話聲"]'); const r = !!el; OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); return r; });
       check('6k 設定的聲音區有「角色說話聲」滑桿', sl);
+    }
+    if (want(7)) {
+      // 7: touch feedback in the world
+      await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); OC.App.setCamMode && OC.App.setCamMode('classic'); const S = OC.Store.s; S.settings.perf = 'balanced'; OC.App.applyPerf(); S.settings.motion = 'full'; OC.World.reduce = false; });
+      await wait(page, 1500);
+      // 7a: ground tap → ripple at the tapped point, dot stays while the OC walks, gone after it arrives
+      const gp = await page.evaluate(() => { const a = OC.App.player; for (const [dx, dy] of [[0, 70], [60, 50], [-60, 50], [0, -70], [80, 0], [-80, 0], [70, 80], [-70, 80]]) { const x = a.x + dx, y = a.y + dy; if (!OC.World.walkable(x, y)) continue; const p = OC.World.project(x, y, OC.World.levelAt(x, y), 0); if (OC.World.pick(p.x, p.y).it || OC.World.shakeAt(p.x, p.y)) continue; if (p.y < 130 || p.y > 700) continue; return { x: p.x, y: p.y, dx, dy }; } return null; });
+      await page.mouse.click(gp.x, gp.y); await wait(page, 500);
+      const r1 = await page.evaluate(() => { const m = document.querySelector('.tap-ripple'); if (!m) return null; const b = m.getBoundingClientRect(); return { on: m.classList.contains('on'), op: m.style.opacity, x: Math.round(b.x), y: Math.round(b.y), rings: m.querySelectorAll('i').length, walking: !!OC.App.player.path }; });
+      let gone = false; for (let i = 0; i < 40 && !gone; i++) { await wait(page, 400); gone = await page.evaluate(() => { const m = document.querySelector('.tap-ripple'); return !m || m.style.opacity === '0'; }); }
+      check('7a 點地面：出現波紋（兩圈＋一個點）在點的位置，OC 走過去；抵達後消失', r1 && r1.on && r1.op === '1' && r1.rings === 2 && Math.hypot(r1.x - gp.x, r1.y - gp.y) < 40 && gone, { gp, r1, gone });
+
+      // 7b: tap a tree → it shakes, leaves fall, rustle + tick, the OC is not sent walking
+      const tg = await page.evaluate(() => { const pl = OC.App.player; const L = OC.World.swayTargets().filter((t) => t.x > 30 && t.x < 363 && t.y > 150 && t.y < 680); return { list: L.slice(0, 40), n: L.length, plx: pl.x, ply: pl.y }; });
+      let hit = null; for (const t of tg.list) { const ok = await page.evaluate((t) => { const r = OC.World.pick(t.x, t.y); return !r.it && !!OC.World.shakeAt(t.x, t.y); }, t); if (ok) { hit = t; break; } }
+      const sp = await page.evaluate(() => { window.__snd = []; const P = OC.Sound.play; OC.Sound.play = (n, o) => { window.__snd.push(n); return P.call(OC.Sound, n, o); }; window.__vib = []; navigator.vibrate = (p) => { window.__vib.push(p); return true; }; OC.Store.s.settings.haptics = true; const a = OC.App.player; return { x: a.x, y: a.y, path: !!a.path }; });
+      await page.mouse.click(hit.x, hit.y); await wait(page, 500);
+      const sh = await page.evaluate(() => ({ fx: OC.World.fx, snd: window.__snd, vib: window.__vib, path: !!OC.App.player.path, ripple: (() => { const m = document.querySelector('.tap-ripple'); return !!m && m.style.opacity === '1' && m.classList.contains('on'); })() }));
+      check('7b 點樹／灌木：搖晃、落葉、沙沙聲與觸覺；不會讓 OC 跑過去', hit && sh.fx.shaking >= 1 && sh.fx.leaves >= 6 && sh.snd.includes('rustle') && sh.vib.length >= 1 && !sh.path && !sh.ripple, { hit, sh, targets: tg.n });
+      // 7c: the shake dies down, the leaves land and vanish, nothing stays behind
+      let settled = null; for (let i = 0; i < 40; i++) { await wait(page, 500); settled = await page.evaluate(() => OC.World.fx); if (!settled.shaking && !settled.leaves) break; }
+      const rot = await page.evaluate(() => Math.max(...OC.World.swayTargets().map(() => 0), 0));
+      check('7c 搖晃會慢慢停下，葉子落地後消失（不留殘影、不累積）', settled && !settled.shaking && !settled.leaves, settled);
+
+      // 7d: dust: running makes puffs, a landing makes a cloud; it fades away; at most 2 extra draw calls
+      const du = await page.evaluate(async () => {
+        const W = OC.World, a = OC.App.player, dust = () => W.fx.puffs;
+        await new Promise((r) => setTimeout(r, 1200)); const c0 = W.fx.calls;
+        W.puff(a.x, a.y, W.levelAt(a.x, a.y), '#E8E0CC', 5, 1); const n0 = dust();
+        await new Promise((r) => setTimeout(r, 300)); const c1 = W.fx.calls;
+        let t0 = Date.now(); while (dust() > 0 && Date.now() - t0 < 12000) await new Promise((r) => setTimeout(r, 300));
+        const left = dust();
+        a.lift = 20; await new Promise((r) => setTimeout(r, 600)); a.lift = 0; await new Promise((r) => setTimeout(r, 900)); const landed = W.fx.puffs;
+        return { n0, calls0: c0, calls1: c1, left, landed };
+      });
+      check('7d 灰塵：會揚起、很快散掉；落地會揚起一小團；多用的繪製呼叫不超過 2 個', du.n0 >= 4 && du.left === 0 && du.landed >= 1 && du.calls1 - du.calls0 <= 2, du);
+
+      // 7e: effects follow the quality setting and reduced motion (the shake itself still shows, softer)
+      const lo = await page.evaluate(async () => { const S = OC.Store.s; S.settings.perf = 'saver'; OC.App.applyPerf(); await new Promise((r) => setTimeout(r, 800)); const W = OC.World, t = W.swayTargets().find((q) => q.x > 30 && q.x < 363 && q.y > 150 && q.y < 680); const s = W.shakeAt(t.x, t.y); W.shake(s); const a = OC.App.player; W.puff(a.x, a.y, 0, '#fff', 4, 1); const r = { shaking: W.fx.shaking, leaves: W.fx.leaves, puffs: W.fx.puffs }; S.settings.perf = 'balanced'; OC.App.applyPerf(); return r; });
+      const rm = await page.evaluate(async () => { OC.World.reduce = true; await new Promise((r) => setTimeout(r, 300)); const W = OC.World, t = W.swayTargets().find((q) => q.x > 30 && q.x < 363 && q.y > 150 && q.y < 680); const s = W.shakeAt(t.x, t.y); W.shake(s); const r = { shaking: W.fx.shaking, leaves: W.fx.leaves, k: s.shake && s.shake.k }; OC.World.reduce = false; return r; });
+      check('7e 省電模式沒有葉子和灰塵粒子（樹仍會晃）；減少動態時晃得很輕、也沒有粒子', lo.shaking >= 1 && lo.leaves === 0 && lo.puffs === 0 && rm.shaking >= 1 && rm.leaves === 0 && rm.k < 0.5, { lo, rm });
     }
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.message)); }

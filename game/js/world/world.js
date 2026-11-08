@@ -214,7 +214,7 @@
         a.tFace = clamp((sjx / m) * 1.1, -1, 1); a.tBack = sjy < -0.45 * m ? 1 : 0; moving = true; a.dist = (a.dist || 0) + sp;
       }
     }
-    a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) { const ph0 = Math.floor(a.phase); a.phase += dt * (a.speed / 15); if (Math.floor(a.phase) !== ph0 && a.walk > 0.6 && OC.Sound && OC.Sound.foot) OC.Sound.foot(a); }   // 11.0: a footstep per stride
+    a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) { const ph0 = Math.floor(a.phase); a.phase += dt * (a.speed / 15); if (Math.floor(a.phase) !== ph0 && a.walk > 0.6) { if (OC.Sound && OC.Sound.foot) OC.Sound.foot(a); if (a.run && !(a.lift > 0)) puff(a.x, a.y, levelAt(a.x, a.y), DUST[area && area.id] || '#E8E0CC', 2, 0.8); } }   // 11.0: a footstep per stride
     // smooth turning for the rig; 4 directions (with hysteresis) for frame animations
     a.face = lerp(a.face, a.tFace, 1 - Math.exp(-dt * 7)); a.back = lerp(a.back, a.tBack, 1 - Math.exp(-dt * 6));
     const want = a.tBack > 0.5 ? 'back' : a.tFace < -0.55 ? 'left' : a.tFace > 0.55 ? 'right' : a.dir === 'back' || (Math.abs(a.tFace) < 0.35) ? 'front' : a.dir;
@@ -234,6 +234,8 @@
     paintActor(a);
     const z = Zof(a.y, a.lvl), br = (a.act && a.act.action === 'sleep') ? Math.sin(a.t * 1.6) * 0.02 : Math.sin(a.t * 2.4) * 0.012;
     const bob = a.isSprite ? a.walk * Math.abs(Math.sin(a.phase * Math.PI)) * 1.2 * (beh ? beh.bounce : 1) : 0;
+    if ((a.pl || 0) > 3 && !(a.lift > 0.5)) puff(a.x, a.y, levelAt(a.x, a.y), DUST[area && area.id] || '#E8E0CC', 4, 1.1);   // landing: a small cloud
+    a.pl = a.lift || 0;
     a.m.position.set(a.x, a.gy + 0.6 + (a.lift + bob) * RIG_UNIT, z + 1.5);
     const turn = a.turnT > 0 ? Math.max(0.08, Math.abs(1 - 2 * (1 - a.turnT / 0.16))) : 1;
     const sx = turn * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
@@ -306,6 +308,68 @@
   }
   function removeDrop(d) { root.remove(d.m); drops = drops.filter((x) => x !== d); }
 
+  // ====================== 11.0 touch feedback in the world: shaking trees, falling leaves, dust ======================
+  // Two pooled InstancedMeshes (2 draw calls, whatever happens): leaves (lit, per-instance colour) and round dust puffs that
+  // always face the camera. Both are cleared on area change and skipped when the effects quality is off or motion is reduced.
+  const LEAF_N = 44, PUFF_N = 40; let leafMesh = null, puffMesh = null, leaves = [], puffs = [];
+  const _o3 = new THREE.Object3D(), _c3 = new THREE.Color(), _pv = new THREE.Vector3(), _bx = new THREE.Box3(), _sz = new THREE.Vector3();
+  function ensureParts() {
+    if (leafMesh) return;
+    const lg = new THREE.CircleGeometry(1, 6); lg.scale(2.6, 3.8, 1);   // a leaf-shaped oval
+    leafMesh = new THREE.InstancedMesh(lg, new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.1 }), LEAF_N);
+    puffMesh = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 7), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }), PUFF_N);
+    for (const m of [leafMesh, puffMesh]) { m.count = 0; m.frustumCulled = false; m.castShadow = false; m.receiveShadow = false; m.setColorAt(0, _c3.set('#ffffff')); m.renderOrder = 5; scene.add(m); }
+  }
+  const fxOn = () => quality.fx !== false && !reduce;
+  /** a tree / bush / flower patch under a screen point (the one whose centre is nearest, within its on-screen size) */
+  function shakeAt(sx, sy) {
+    let best = null, bd = 1e9;
+    for (const s of sways) {
+      if (s.c === undefined) { s.o.updateWorldMatrix(true, true); _bx.setFromObject(s.o); if (_bx.isEmpty()) { s.c = null; continue; } s.c = _bx.getCenter(new THREE.Vector3()); _bx.getSize(_sz); s.r = Math.max(3, Math.min(_sz.x, _sz.z) * 0.5, _sz.y * 0.3); s.top = _bx.max.y; s.base = _bx.min.y; }
+      if (!s.c) continue;
+      _pv.copy(s.c).project(cam); const px = (_pv.x * 0.5 + 0.5) * W, py = (-_pv.y * 0.5 + 0.5) * H;
+      _pv.copy(s.c); _pv.x += s.r; _pv.project(cam); const rpx = Math.max(18, Math.abs((_pv.x * 0.5 + 0.5) * W - px));
+      const d = Math.hypot(sx - px, sy - py) / rpx; if (d < 1 && d < bd) { best = s; bd = d; }
+    }
+    return best;
+  }
+  function leafColor(o) { let col = null; o.traverse((m) => { if (!col && m.isMesh && m.material && m.material.color && !m.material.map) col = m.material.color; }); return col || _c3.set('#7BC96F'); }
+  /** shake a tree: the crown rocks (decaying), leaves come down */
+  function shake(s, k = 1) {
+    if (!s) return false; s.shake = { t: 0, k: reduce ? 0.35 : k };
+    if (!fxOn()) return true; ensureParts();
+    const base = leafColor(s.o).clone(), n = Math.min(LEAF_N - leaves.length, 9 + Math.round(Math.random() * 5));
+    for (let i = 0; i < n; i++) {
+      const c = base.clone().lerp(_c3.set(Math.random() < 0.3 ? '#E8C24E' : '#9ED64F'), 0.35 + Math.random() * 0.25).offsetHSL((Math.random() - 0.5) * 0.04, 0, (Math.random() - 0.5) * 0.1);   // lighter and yellower than the crown, so they show against the grass
+      leaves.push({ p: new THREE.Vector3(s.c.x + (Math.random() - 0.5) * s.r * 1.6, s.c.y + s.r * (0.2 + Math.random() * 0.9), s.c.z + (Math.random() - 0.5) * s.r * 1.2), v: new THREE.Vector3((Math.random() - 0.5) * 18, -1 - Math.random() * 3, (Math.random() - 0.5) * 8), t: -Math.random() * 0.25, life: 5, seed: Math.random() * 6.28, spin: (Math.random() - 0.5) * 7, floor: s.base + 0.5, c });
+    }
+    return true;
+  }
+  /** a few round dust puffs at the feet (running, landing) */
+  function puff(x, y, lvl, color, n = 2, k = 1) {
+    if (!fxOn()) return; ensureParts();
+    for (let i = 0; i < n && puffs.length < PUFF_N; i++) puffs.push({ p: V3(x + (Math.random() - 0.5) * 6, y + 2, lvl, groundY(x, y) - lvl * HY + 1.5), v: new THREE.Vector3((Math.random() - 0.5) * 14 * k, 7 + Math.random() * 7 * k, (Math.random() - 0.5) * 6), t: 0, life: 0.42 + Math.random() * 0.22, r: (1.4 + Math.random() * 1.2) * k, c: new THREE.Color(color || '#E8E0CC') });
+  }
+  function stepParts(dt) {
+    if (!leafMesh) return;
+    let n = 0;
+    for (let i = leaves.length - 1; i >= 0; i--) {
+      const L = leaves[i]; L.t += dt; if (L.t < 0) continue;
+      if (L.t > L.life || (L.landed != null && L.t - L.landed > 0.5)) { leaves.splice(i, 1); continue; }
+      if (L.landed == null) {
+        L.v.y = Math.max(-7.5, L.v.y - 22 * dt); L.p.x += (L.v.x + Math.sin(L.t * 4.2 + L.seed) * 13) * dt; L.p.z += L.v.z * dt; L.p.y += (L.v.y + Math.cos(L.t * 5.3 + L.seed) * 3) * dt; L.v.x *= Math.exp(-dt * 1.2);
+        if (L.p.y <= L.floor) { L.p.y = L.floor; L.landed = L.t; }
+      }
+    }
+    for (const L of leaves) { if (L.t < 0 || n >= LEAF_N) continue; const k = Math.min(1, L.t / 0.08 + 0.2) * (L.landed != null ? Math.max(0, 1 - (L.t - L.landed) / 0.5) : 1), sp = L.landed != null ? 0 : L.t; _o3.position.copy(L.p); _o3.rotation.set(L.landed != null ? 1.45 : sp * L.spin, L.seed + sp * L.spin * 0.7, sp * L.spin * 0.5); _o3.scale.setScalar(Math.max(0.01, k)); _o3.updateMatrix(); leafMesh.setMatrixAt(n, _o3.matrix); leafMesh.setColorAt(n, L.c); n++; }
+    leafMesh.count = n; leafMesh.instanceMatrix.needsUpdate = true; if (leafMesh.instanceColor) leafMesh.instanceColor.needsUpdate = true;
+    let m = 0;
+    for (let i = puffs.length - 1; i >= 0; i--) { const P = puffs[i]; P.t += dt; if (P.t > P.life) { puffs.splice(i, 1); continue; } P.p.addScaledVector(P.v, dt); P.v.multiplyScalar(Math.exp(-dt * 3.2)); }
+    for (const P of puffs) { if (m >= PUFF_N) break; const q = P.t / P.life; _o3.position.copy(P.p); _o3.quaternion.copy(cam.quaternion); _o3.scale.setScalar(P.r * (0.5 + q * 1.6) * (1 - q * q)); _o3.updateMatrix(); puffMesh.setMatrixAt(m, _o3.matrix); puffMesh.setColorAt(m, P.c); m++; }
+    puffMesh.count = m; puffMesh.instanceMatrix.needsUpdate = true; if (puffMesh.instanceColor) puffMesh.instanceColor.needsUpdate = true;
+  }
+  const DUST = { isle: '#DDE5C6', forest: '#CBD6B2', beach: '#F2E4BA', street: '#E8E0D2' };
+
   // ====================== furniture ======================
   function furnRect(f) { const it = OC.Style.ITEMS[f.id] || {}; const fp = it.fp || [1, 1], sc = f.sc || 1; const rot = (f.rot || 0) % 2; const w = (rot ? fp[1] : fp[0]) * 18 * sc, d = (rot ? fp[0] : fp[1]) * 18 * SIN * sc; return { x: f.x, y: f.y, w, h: d }; }
   function addFurniture(f) {
@@ -368,7 +432,7 @@
   function clearArea() {
     if (root) { scene.remove(root); disposeTree(root); }   // shared geometries/materials stay cached; scene-owned ones are freed
     for (const a of actors) if (a.tex) a.tex.dispose();
-    actors = []; interacts = []; ticks = []; sways = []; drops = []; furn = []; grassMesh = null; ghost = null;
+    actors = []; interacts = []; ticks = []; sways = []; drops = []; furn = []; grassMesh = null; ghost = null; leaves = []; puffs = []; if (leafMesh) { leafMesh.count = 0; puffMesh.count = 0; }
     OC.Models.night.windows.length = 0; OC.Models.night.lamps.length = 0;
   }
   function loadArea(def, opts = {}) {
@@ -442,7 +506,7 @@
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
     if (gesture.kind === 'ghost' && gesture.moved) hooks.ghostDone && hooks.ghostDone();
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
-      const r = pick(p.x, p.y); if (window.__ocInputLog) window.__ocInputLog.push(`tap pick=${r.it ? r.it.type + ':' + (r.it.shop || r.it.id || '') : 'none'} ghost=${!!ghost}`);
+      const r = pick(p.x, p.y); r.s = { x: p.x, y: p.y }; if (window.__ocInputLog) window.__ocInputLog.push(`tap pick=${r.it ? r.it.type + ':' + (r.it.shop || r.it.id || '') : 'none'} ghost=${!!ghost}`);
       if (ghost) { moveGhost(r.p.x, r.p.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); }
       else hooks.tap && hooks.tap(r);
     }
@@ -515,7 +579,12 @@
     { const w = bbTarget(); if (w !== bbRes) { if (w !== bbWant) { bbWant = w; bbWantT = 0; } else if ((bbWantT += dt) > 0.35) { bbRes = w; actors.forEach(resizeActorCanvas); } } }
     if (envCur) bbTint.set(OC.mix(OC.mix('#FFFFFF', '#FFE3CC', clamp(1 - Math.abs(h - 18) / 1.6) * 0.8), '#A9B1E4', envCur.night * 0.85)).multiplyScalar(1 - envCur.rain * 0.12);
     for (const a of actors.slice()) updateActor(a, dt);
-    for (const s of sways) s.o.rotation.z = Math.sin(time * 1.3 + s.seed) * s.amp * (envCur ? envCur.wind : 1) * (reduce ? 0.3 : 1);
+    for (const s of sways) {
+      let rz = Math.sin(time * 1.3 + s.seed) * s.amp * (envCur ? envCur.wind : 1) * (reduce ? 0.3 : 1);
+      if (s.shake) { s.shake.t += dt; const k = Math.exp(-s.shake.t * 3.2) * s.shake.k; rz += Math.sin(s.shake.t * 26) * 0.11 * k; s.o.rotation.x = Math.sin(s.shake.t * 21 + 1) * 0.06 * k; if (s.shake.t > 1.8) { s.shake = null; s.o.rotation.x = 0; } }
+      s.o.rotation.z = rz;
+    }
+    stepParts(dt);
     for (const f of ticks) f(time, dt, envCur);
     for (const d of drops.slice()) {
       d.t += dt; const q = Math.min(1, d.t / 0.7), l = d.lvl;
@@ -533,7 +602,7 @@
   }
 
   OC.World = {
-    init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
+    init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
     get root() { return root; }, get camCenter() { return { x: camX + panX, y: camY + panY }; }, get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },

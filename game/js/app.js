@@ -422,6 +422,8 @@
     if (placing) return;
     if (observing) { stopObserve(); }
     const it = r.it;
+    // 11.0: a tap on a tree / bush / flower patch shakes it (leaves come down, it rustles) — the OC keeps doing what it was doing
+    if (!it && !decorate && r.s && Wd.shakeAt) { const sh = Wd.shakeAt(r.s.x, r.s.y); if (sh) { Wd.shake(sh); haptic('tick'); OC.Sound && OC.Sound.play('rustle', { pan: Math.max(-0.8, Math.min(0.8, (r.s.x - innerWidth / 2) / (innerWidth / 2) * 0.8)) }); St.emit('world:shake'); return; } }
     if (!it || !['self', 'mate'].includes(it.type)) { standUp(); OC.Brain.playerAct(S().activeId); }
     if (decorate && it && it.type === 'furn') { startPlacement({ uid: it.uid }); return; }
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
@@ -454,7 +456,12 @@
     toast(it.label || (it.type === 'self' ? `${OC.Chars.name(me())}・${OC.Chars.typeTitle(me())}` : '物品'), 'info');
   }
   let mk = null;
-  function marker(p) { if (!mk) { mk = h('div', { style: { position: 'absolute', width: '22px', height: '12px', margin: '-6px 0 0 -11px', borderRadius: '50%', border: '2.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.15)', pointerEvents: 'none', transition: 'opacity 300ms' } }); overlays().append(mk); } mk.dataset.x = p.x; mk.dataset.y = p.y; mk.style.opacity = 1; clearTimeout(mk._t); mk._t = setTimeout(() => (mk.style.opacity = 0), 900); }
+  /** 11.0: a ripple where you tapped (two rings + a dot that stays until the OC has arrived) */
+  function marker(p) {
+    if (!mk) { mk = h('div.tap-ripple', null, h('i'), h('i'), h('b')); overlays().append(mk); }
+    mk.classList.remove('on'); void mk.offsetWidth; mk.classList.add('on'); mk.style.opacity = 1;
+    mk.dataset.x = p.x; mk.dataset.y = p.y; mk._t0 = performance.now(); mk._hold = true; OC.Sound && OC.Sound.play('ping');
+  }
   function goThen(x, y, fn) { const near = Math.hypot(player.x - x, player.y - y) < 8; if (near) { fn(); return; } if (!Wd.walkTo(player, x, y, () => fn())) toast('到不了那裡', 'info'); }
   function face(a, dx, dy) { a.tFace = Math.max(-1, Math.min(1, dx)); a.tBack = dy < 0 ? 1 : 0; }
   function standUp() { if (player && player.mode === 'sit') { player.mode = 'idle'; player.seatY = 0; Wd.setAction(player, 'idle'); OC.Brain.release(player.cid); } }
@@ -865,7 +872,12 @@
     for (const id of editing) if (!now.has(id)) OC.Brain.unhold(id, 'editor');
     editing = now;
   }
-  function positionMarker() { if (!mk || mk.style.opacity === '0') return; const p = Wd.project(+mk.dataset.x, +mk.dataset.y, Wd.levelAt(+mk.dataset.x, +mk.dataset.y), Wd.groundY(+mk.dataset.x, +mk.dataset.y) - Wd.levelAt(+mk.dataset.x, +mk.dataset.y) * Wd.HY); mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px'; }
+  function positionMarker() {
+    if (!mk || mk.style.opacity === '0') return;
+    // the dot stays while the OC is on its way; once it has arrived (or after 12 s) it fades
+    if (mk._hold && performance.now() - mk._t0 > 700 && (!player || !player.path || performance.now() - mk._t0 > 12000)) { mk._hold = false; mk.classList.remove('on'); mk.style.opacity = 0; return; }
+    const x = +mk.dataset.x, y = +mk.dataset.y, l = Wd.levelAt(x, y), p = Wd.project(x, y, l, Wd.groundY(x, y) - l * Wd.HY); mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px';
+  }
 
   // =============================== native bridge hooks ===============================
   window.OCApp = {

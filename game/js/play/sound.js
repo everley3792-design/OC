@@ -114,6 +114,8 @@
     cheer: ['sfx', 500, () => { [523, 659, 784, 1046].forEach((f, i) => tone('sfx', f, { t: i * 0.07, d: 0.16, v: 0.06, type: 'triangle' })); }],
     wish: ['event', 500, () => { for (let i = 0; i < 5; i++) tone('event', 1400 + i * 260, { t: i * 0.07, d: 0.3, v: 0.035 }); }],
     slap: ['sfx', 200, () => { noise('sfx', { d: 0.05, v: 0.09, f: 1800, q: 1 }); tone('sfx', 240, { d: 0.08, v: 0.06, to: 160, slide: 0.06 }); }],
+    rustle: ['sfx', 250, () => { noise('sfx', { a: 0.02, d: 0.34, v: 0.06, f: 3200, to: 1500, q: 0.6 }); noise('sfx', { t: 0.09, a: 0.02, d: 0.28, v: 0.05, f: 2600, to: 1200, q: 0.7 }); tone('sfx', 190, { t: 0.01, d: 0.1, v: 0.03, to: 120, slide: 0.08 }); }],
+    ping: ['ui', 120, () => { tone('ui', 880, { d: 0.12, v: 0.035, to: 1180, slide: 0.07, type: 'sine' }); }],
     sparkleStep: ['sfx', 200, () => tone('sfx', 2200 + Math.random() * 800, { d: 0.1, v: 0.02 })],
     // footsteps by ground (very quiet; see foot())
     foot_grass: ['sfx', 60, () => noise('sfx', { d: 0.07, v: 0.02, type: 'lowpass', f: 900, q: 0.6 })],

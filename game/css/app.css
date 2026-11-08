@@ -753,3 +753,17 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 .intro-star.land { animation: star-land 1.6s var(--ease-out) forwards; top: 54%; }
 @keyframes star-fall { from { transform: translateY(0) rotate(0) scale(.7); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(54vh) rotate(540deg) scale(1.1); opacity: 1; } }
 @keyframes star-land { 0% { transform: scale(1.1); opacity: 1; } 30% { transform: scale(2.6); opacity: .9; text-shadow: 0 0 40px #fff, 0 0 90px #FFD23F; } 100% { transform: scale(5); opacity: 0; } }
+
+/* 11.0 tap ripple in the world: two rings + a dot that stays until the OC has arrived */
+.tap-ripple { position: absolute; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity 260ms var(--ease, ease); z-index: 3; }
+.tap-ripple i { position: absolute; left: -24px; top: -13px; width: 48px; height: 26px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 0 8px rgba(255, 255, 255, .55); opacity: 0; }
+.tap-ripple.on i { animation: tap-ping 880ms cubic-bezier(.2, .7, .3, 1) forwards; }
+.tap-ripple.on i:nth-child(2) { animation-delay: 150ms; }
+.tap-ripple b { position: absolute; left: -5px; top: -3px; width: 10px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(0, 0, 0, .22); transform: scale(0); }
+.tap-ripple.on b { animation: tap-dot 420ms var(--spring, cubic-bezier(.3, 1.6, .5, 1)) 80ms forwards, tap-pulse 1.1s ease-in-out 600ms infinite; }
+@keyframes tap-ping { 0% { transform: scale(.2); opacity: .95; } 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes tap-dot { to { transform: scale(1); } }
+@keyframes tap-pulse { 0%, 100% { box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(0, 0, 0, .22), 0 0 0 2px transparent; } 50% { box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(0, 0, 0, .22), 0 0 0 7px color-mix(in srgb, var(--accent) 26%, transparent); } }
+.reduce-motion .tap-ripple.on i { animation: none; opacity: .8; transform: scale(1); }
+.reduce-motion .tap-ripple.on b { animation: none; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) { .tap-ripple.on i { animation: none; opacity: .8; transform: scale(1); } .tap-ripple.on b { animation: none; transform: scale(1); } }
