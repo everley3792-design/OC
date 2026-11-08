@@ -34,7 +34,7 @@
   function applyPerf() {
     Q = perfOf(S().settings.perf); if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
     Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
-    const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof);
+    const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof); root.classList.toggle('lite', !Q.fx);   // saver: no backdrop blur (costly on weak GPUs), opaque glass instead
   }
   /** 10.0 sun glow over the world (soft-light): warm by day, golden in the afternoon, cool moonlight at night, faint in bad weather */
   let glowT = 0, glowKey = '';

@@ -98,7 +98,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await freeze(page, [A, B], { food: 85, sleep: 85, energy: 40, social: 30, fun: 70 });
       await page.evaluate(([a, b]) => { OC.Mind.relPair(a, b, { aff: 20 }); OC.Brain.Social.start(OC.Brain.get(a), OC.Brain.get(b), 'restTogether'); }, [A, B]);
       const joint = await until(page, ([a]) => OC.Brain.convs.some((c) => c.a.id === a && c.st === 'joint' && c.started), [A], 45000);
-      const jt = await page.evaluate(([a, b]) => { const x = OC.Brain.get(a), y = OC.Brain.get(b); return { sa: x.slot && x.slot.k, sb: y.slot && y.slot.k, d: Math.hypot(x.a.x - y.a.x, x.a.y - y.a.y) }; }, [A, B]);
+      const jt = await page.evaluate(([a, b]) => { const x = OC.Brain.get(a), y = OC.Brain.get(b); const cv = OC.Brain.convs.find((c) => c.a === x || c.b === x); return { sa: x.slot && x.slot.k, sb: y.slot && y.slot.k, d: Math.hypot(x.a.x - y.a.x, x.a.y - y.a.y), dbg: { st: [x.st, y.st, x.act, y.act], holds: [[...x.holds], [...y.holds]], conv: cv ? { st: cv.st, kind: cv.kind, started: cv.started } : null, ev: OC.Events.current && OC.Events.current.ev.id, log: OC.Brain.log.filter((l) => l.who === a || l.who === b).slice(0, 8).map((l) => OC.Chars.name(OC.Chars.get(l.who)) + ':' + l.text) } }; }, [A, B]);
       check('3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）', joint && jt.sa && jt.sb && jt.sa !== jt.sb && jt.sa.split('#')[0] === jt.sb.split('#')[0] && jt.d > 8, jt);
       await page.screenshot({ path: path.join(SHOTS, '3-rest-together.png') });
       await advance(page, 40);
