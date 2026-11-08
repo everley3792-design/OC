@@ -47,7 +47,8 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       const rq = await page.evaluate((id) => { for (const r of OC.Requests.open()) r.state = 'expired'; const x = OC.Requests.debugOffer(id, 'toy'); return x && { id: x.id, item: x.data.item, text: x.text }; }, k);
       const badge = await page.waitForSelector('.req-badge', { timeout: 8000 }).catch(() => null); check('1d 有請求的 OC 頭上出現泡泡（可以點）', !!badge);
       await shot(page, '1-request-badge');
-      if (badge) { const bb = await badge.boundingBox(); await page.touchscreen.tap(bb.x + bb.width / 2, bb.y + bb.height / 2); } await wait(page, 700);
+      for (let i = 0; i < 6 && badge; i++) { const b2 = await page.$('.req-badge'); const bb = b2 && await b2.boundingBox(); if (bb) { await page.touchscreen.tap(bb.x + bb.width / 2, bb.y + bb.height / 2); break; } await wait(page, 300); }   // the badge follows the OC and is re-placed every frame
+      await wait(page, 700);
       await shot(page, '1-request-sheet');
       const aff0 = await page.evaluate((id) => OC.Chars.get(id).life.player.aff || 0, k), coins0 = await page.evaluate(() => OC.Store.s.coins);
       await page.tap('.sheet.open .btn.primary.block'); await wait(page, 800);

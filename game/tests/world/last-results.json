@@ -1,5 +1,5 @@
 {
- "at": "2026-11-08T00:07:01.188Z",
+ "at": "2026-11-08T04:20:02.861Z",
  "results": [
   {
    "name": "T1 交易：同一個 key 只會入帳一次（防重複獎勵）",
@@ -58,7 +58,7 @@
   {
    "name": "2a 不在玩家身邊的 OC 會自己決定去別的地方（26 遊戲小時內）",
    "ok": true,
-   "detail": "栗子:home/street 小空:library/home/cafe/isle"
+   "detail": "栗子:street 小空:isle/library/cafe/home"
   },
   {
    "name": "2b 行程寫進生活紀錄（前往…）",
@@ -71,32 +71,32 @@
   {
    "name": "2d 地圖上的「大家在哪裡」列出每個 OC 的所在地與活動",
    "ok": true,
-   "detail": "在晴日商店街 | 在晴日商店街 | 在我的家・在我的家睡覺"
+   "detail": "在晴日商店街 | 在晴日商店街・在晴日商店街散步 | 在葉影圖書館・在葉影圖書館讀書"
   },
   {
    "name": "2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）",
    "ok": true,
-   "detail": "{\"from\":\"isle\",\"to\":\"beach\",\"act\":\"fish\",\"eta\":29903455.14746668}"
+   "detail": "{\"from\":\"isle\",\"to\":\"beach\",\"act\":\"fish\",\"eta\":29903741.967033334}"
   },
   {
    "name": "2f 玩家跟過去：在海灘看到栗子從門口走進來並在那裡活動",
    "ok": true,
-   "detail": "go/nap"
+   "detail": "go/walk"
   },
   {
    "name": "3a 角色在 3D 地形上移動（走了一段路）",
    "ok": true,
-   "detail": "234 單位"
+   "detail": "245 單位"
   },
   {
    "name": "3b 腳底貼地：看板高度跟地面高度一致（含台階）",
    "ok": true,
-   "detail": "最大差 2.26；層 0,0.2432432432432432,0.27201057297297415,0.3580541729729756,0.44418390270270547,0.5303136324324353,0.6164433621621652,0.6882755567567611,0.7600216216216287,0.8461513513513584,0.9179835459459543,1"
+   "detail": "最大差 2.22；層 0,0.23818477828590523,0.2432432432432432,0.3293729729729731,0.40120516756756897,0.4586536972972963,0.5447834270270262,0.6022319567567536,0.6883616864864834,0.7314265513513484,0.8174701513513498,0.8893023459459396,0.9754320756756695,1"
   },
   {
    "name": "3c 轉身平滑：方向不會瞬間翻轉（逐幀取樣，瞬間翻轉＝2）",
    "ok": true,
-   "detail": "每幀最大變化 0.35，57 幀"
+   "detail": "每幀最大變化 0.36，53 幀"
   },
   {
    "name": "3d 被建築遮住時有輪廓（x-ray）且使用深度排序",
@@ -136,12 +136,12 @@
   {
    "name": "5a 新家具立刻成為可供性（鞦韆：play，2 個位子）",
    "ok": true,
-   "detail": "{\"uid\":\"fmw72kmmo418\",\"verbs\":[\"sit\",\"read\",\"nap\",\"play\"],\"seats\":2}"
+   "detail": "{\"uid\":\"fmw7bltv0486\",\"verbs\":[\"sit\",\"read\",\"nap\",\"play\"],\"seats\":2}"
   },
   {
    "name": "5b OC 走過去使用新家具（預約位子後玩鞦韆）",
    "ok": true,
-   "detail": "go/play/furn:fmw72kmmo418#0"
+   "detail": "go/play/furn:fmw7bltv0486#1"
   },
   {
    "name": "6a 釣魚：蓄力→等待→上鉤點擊→收線，真的釣到魚並入背包",
@@ -174,12 +174,12 @@
   {
    "name": "6f 種田：播種扣種子→澆水在遊戲時間內成長→收成入背包，不能重複收成",
    "ok": true,
-   "detail": "{\"planted\":true,\"seedUsed\":true,\"growth\":0,\"got\":3,\"again\":false}"
+   "detail": "{\"planted\":true,\"seedUsed\":true,\"growth\":0,\"got\":2,\"again\":false}"
   },
   {
    "name": "6g OC 也會使用活動設施（OC 走去菜園澆水，菜園記得是誰澆的）",
    "ok": true,
-   "detail": "think/tend/cmw72jq0c52nv verbs=tend res= reason=照顧植物（玩家安排、需求 interest0.47 fun0.36 active0.47、人生目標+0.22） cands=[{\"id\":\"tend\",\"s\":7.044,\"why\":\"玩家安排、需求 interest0.47 fun0.36 active0.47、人生目標+0.22、地點+0.52\"},{\"id\":\"read\",\"s\":1.945,\"why\":\"需求 fun0.38 interest0.58 comfort0.35、特質+0.40、悠哉+0.04、願望+0.30、地點-0.11\"},{\"id\":\"stretch\",\"s\":1.174,\"why\":\"需求 active0.73 comfort0.49、活力-0.09\"}] loc=isle mate=true plot={\"seed\":\"seed_carrot\",\"at\":29910840,\"growth\":0.001388888888888889,\"last\":0,\"wateredDay\":20771,\"wateredBy\":\"cmw72jq0c52nv\"} day=20771 wx=clear log=結束 照顧植物（急需comfort，4 分鐘） / 照顧植物（玩家安排、需求 interest0.47 fun0.36 active0.47、人生目標+0.22）"
+   "detail": "think/tend/cmw7bkvnpsyjz verbs=tend res= reason=照顧植物（玩家安排、需求 interest0.47 fun0.45 active0.35、地點+0.75） cands=[{\"id\":\"tend\",\"s\":7.021,\"why\":\"玩家安排、需求 interest0.47 fun0.45 active0.35、地點+0.75\"},{\"id\":\"read\",\"s\":2.072,\"why\":\"需求 fun0.48 interest0.58 comfort0.37、特質+0.40、悠哉+0.04、願望+0.30、地點-0.10\"},{\"id\":\"daydream\",\"s\":1.23,\"why\":\"需求 fun0.45 interest0.33 comfort0.30、悠哉+0.04、情緒+0.10\"}] loc=isle mate=true plot={\"seed\":\"seed_carrot\",\"at\":29912280,\"growth\":0.004861111111111111,\"last\":0,\"wateredDay\":20772,\"wateredBy\":\"cmw7bkvnpsyjz\"} day=20772 wx=clear log=結束 照顧植物（急需comfort，4 分鐘） / 照顧植物（玩家安排、需求 interest0.47 fun0.45 active0.35、地點+0.75） / 放棄：被打斷 / 照顧植物（玩家安排、需求 interest0.47 fun0.36 active0.47、地點+0.41）"
   },
   {
    "name": "7a 工坊商品驗證（沒有名稱會被拒絕並說明原因）",
@@ -205,7 +205,7 @@
   {
    "name": "8a 拖曳時只標出可以接收的 OC（有效目標提示）",
    "ok": true,
-   "detail": "5 個"
+   "detail": "3 個"
   },
   {
    "name": "8b 放在空白處＝取消，不消耗",
@@ -218,7 +218,7 @@
   {
    "name": "8d 動畫進行中還沒扣；吃完才扣 1 個並留下品嚐紀錄",
    "ok": true,
-   "detail": "{\"n\":2,\"food\":35.666666666666636,\"tasted\":1,\"holds\":[\"stage\"],\"st\":\"held\",\"ev\":\"-\",\"toasts\":[\"拖到 OC 身上使用，拖到居民身上送禮。放開在空白處＝取消\"],\"uses\":[[\"cookie\",\"小空\"]],\"mate\":true,\"tx\":[\"小空吃了奶油餅乾\",\"新發現：奶油餅乾\"]}"
+   "detail": "{\"n\":2,\"food\":36.3333333333333,\"tasted\":1,\"holds\":[\"feed\",\"stage\"],\"st\":\"held\",\"ev\":\"-\",\"toasts\":[\"拖到 OC 身上使用，拖到居民身上送禮。放開在空白處＝取消\"],\"uses\":[[\"cookie\",\"小空\"]],\"mate\":true,\"tx\":[\"小空吃了奶油餅乾\",\"新發現：奶油餅乾\"]}"
   },
   {
    "name": "8e 吃到一半被抱走＝中斷，物品還在背包",
@@ -232,7 +232,7 @@
   {
    "name": "9a 三個 OC 同時被安排休息：都找到不同的位子，沒有搶位子或疊在一起",
    "ok": true,
-   "detail": "30 秒內使用過 6 個位子，最多同時 3 個"
+   "detail": "30 秒內使用過 8 個位子，最多同時 3 個"
   },
   {
    "name": "9b 多人設施：每個位子只能被一個 OC 預約，其他人改用下一個位子",
@@ -251,12 +251,12 @@
   {
    "name": "10c 沒有錯誤且資源數穩定",
    "ok": true,
-   "detail": "geo 308→321 tex 15→15"
+   "detail": "geo 303→320 tex 13→16"
   },
   {
    "name": "11 重開後保留：coins",
    "ok": true,
-   "detail": "1060 → 1060"
+   "detail": "1570 → 1570"
   },
   {
    "name": "11 重開後保留：inv",
@@ -271,7 +271,7 @@
   {
    "name": "11 重開後保留：ledger",
    "ok": true,
-   "detail": "47 → 47"
+   "detail": "49 → 49"
   },
   {
    "name": "11 重開後保留：custom",
@@ -299,13 +299,13 @@
    "detail": "[\"isle\",\"street\",\"cafe\",\"library\",\"beach\",\"forest\",\"home\"] → [\"isle\",\"street\",\"cafe\",\"library\",\"beach\",\"forest\",\"home\"]"
   },
   {
-   "name": "11 存檔版本 v6（第七階段）",
+   "name": "11 存檔版本 v7（8.0）",
    "ok": true
   },
   {
    "name": "12a 來回 32 次換場景：共用快取暖機後幾何數不再成長（第 3→4 輪 ≤ +10）",
    "ok": true,
-   "detail": "367→367→367→367"
+   "detail": "365→365→365→365"
   },
   {
    "name": "12b 材質數有上限（第 3→4 輪 ≤ +2，總數 < 40）",
@@ -320,7 +320,7 @@
   {
    "name": "12d 每個場景只載入自己的模型（新場景 draw calls < 250）",
    "ok": true,
-   "detail": "{\"isle\":542,\"street\":139,\"beach\":82,\"forest\":140,\"cafe\":96,\"home\":135,\"library\":183}"
+   "detail": "{\"isle\":570,\"street\":139,\"beach\":82,\"forest\":142,\"cafe\":93,\"home\":135,\"library\":183}"
   },
   {
    "name": "13a 新介面的觸控目標 ≥ 40px（地圖、商店、背包）",

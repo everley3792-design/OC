@@ -22,6 +22,8 @@
 | 12 | 沒有背景音樂 | — | 原創即時生成音樂（墊音、撥弦／鐘聲／音樂盒／鋼琴旋律、重複動機 A A' B A、低音），依地點、天氣、時段淡入淡出；新增「背景音樂」音量 | `sound.js` `app.js` `p6pages.js` | ◐ 程式與排程已測；音色品質需要人耳判斷 |
 | 13 | 主畫面小工具只有一張靜態圖 | 單一版面 | 依大小切換小／中大版面；兩張影格輪播（眨眼，不喚醒 App）；三個可選需求條；待辦；下一個提醒；角色可選；深淺色 | `PetWidget.kt` `widget_pet*.xml` `petsync.js` `petpages.js` | 📱（APK 內資源與程式已建置） |
 | 14 | 桌寵自主行為單調 | — | 依時段、心情、特質的小動作（揮手、打哈欠、歡呼、害羞、低落） | `PetBrain.kt` | Kotlin 測試 38/38 ✅；畫面 📱 |
+| 16 | 甩出去的角色在慢的裝置上像慢動作 | 物理每幀最多 0.05 秒 | 真實時間＋小步長積分 | `touch.js` | 7c ✅ |
+| 17 | 快速切換分頁時頁面會蓋住小島、擋住 HUD | 頁面在下一幀才加上 `open`，同一幀內的關閉被覆蓋 | 開啟前檢查是否已被關閉（頁面與底部面板） | `pages.js` `ui.js` | 12a ✅（由 8.0 測試發現） |
 | 15 | 特質多是文字標籤 | — | 新增 11 種特質，各自改變速度、彈跳、表情幅度、需求消耗、作息、打招呼、被丟出去的反應 | `model.js` `mind.js` `app.js` | 3c、3d ✅ |
 
 ## 二、各批次結果
@@ -34,10 +36,11 @@
 - **第七批（桌寵、小工具、測試、APK）**：✅ 小工具重做、桌寵小動作、0.8.0 APK；📱 實機驗證。
 
 ## 三、測試（本環境實際執行）
-- 8.0 驗收：`node game/tests/v8/run.js` → V8_RESULT
-- 回歸：第七階段 `tests/pet` PET_RESULT、第六階段 `tests/play` PLAY_RESULT、第五階段 `tests/world` WORLD_RESULT、第四階段 `tests/life` LIFE_RESULT。
+（另外修正了舊測試在深夜執行或時機變動時的不穩定：鏡頭／事件／請求泡泡的時序，與遊戲行為無關。）
+- 8.0 驗收：`node game/tests/v8/run.js` → **40/40**（情境 1–12、15、16 中能在瀏覽器驗證的部分；截圖 `deliverables/v8/`）
+- 回歸：第七階段 `tests/pet` **53/53**、第六階段 `tests/play` **67/67**、第五階段 `tests/world` **74/74**、第四階段 `tests/life` **52/52**。
 - Kotlin：`gradle -PcoreOnly=true test` → 38/38。
-- APK：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest）→ 通過；`deliverables/apk/oc-shimeji-0.8.0-alpha-debug.apk`（SHA-256 見同名 .sha256）。
+- APK：`assembleDebug` + `verifyDebugApk`（簽章、編譯後 Manifest）→ 通過；`deliverables/apk/oc-shimeji-0.8.0-alpha-debug.apk`（SHA-256 `198544b2ba2d54f4fecd294902c866117b631cf90f4253a727113d81dba2fd30`；APK 內 68 個遊戲檔與原始碼逐位元相同；versionCode 11、targetSdk 35）。
 
 ## 四、需要實機驗證（📱）
 情境 13（其他 App 上方的桌寵撫摸／拖曳／甩動、與遊戲同步）、14（加入小工具、調整大小、按鈕）、17（安裝、啟動、資源載入、存檔）、觸覺強度、音樂在手機喇叭上的聽感、120Hz 與低階機效能、長時間耗電。步驟：`docs/compat-test-plan.md`。
