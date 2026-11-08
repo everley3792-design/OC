@@ -2,12 +2,12 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.9.0-alpha（打磨）
+## 目前版本 0.10.0-alpha（10.0 美術與體驗重構）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.9.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.9.0-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋 0.7.0／0.8.0，存檔自動升級到 v7）
-- 0.9 紀錄（新事件與小故事、性格問答、環境生物、修正的錯誤、測試結果、限制）：[`docs/v9-report.md`](docs/v9-report.md)
-- 8.0 紀錄（每個問題的原因、修正、檔案、驗證；需實機與未完成項目）：[`docs/v8-report.md`](docs/v8-report.md)；截圖：`deliverables/v8/`
-- 測試：`node game/tests/v8/run.js`（8.0 驗收）＋第四～七階段回歸；Kotlin：`cd android && gradle -PcoreOnly=true test`
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.10.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.10.0-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋舊版，存檔不變）
+- 10.0 紀錄（新的 Design System、HUD、頁面、世界畫面、修正的問題、測試、限制）：[`docs/v10-report.md`](docs/v10-report.md)；規格：[`docs/design-system.md`](docs/design-system.md)；畫面：`deliverables/v10/`（淺色＋深色）
+- 0.9 紀錄：[`docs/v9-report.md`](docs/v9-report.md)；8.0 紀錄：[`docs/v8-report.md`](docs/v8-report.md)
+- 測試：`node game/tests/v8/run.js`（8.0／0.9 驗收）＋第四～七階段回歸；畫面圖庫：`node game/tests/v10/shots.js deliverables/v10 both`；Kotlin：`cd android && gradle -PcoreOnly=true test`
 - ⚠️ 桌寵、小工具、觸覺等原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
 
 ## 0.7.0-alpha（第七階段：Android 系統懸浮桌寵）
