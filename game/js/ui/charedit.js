@@ -17,12 +17,20 @@
     const px = o.size || 300, cv = h('canvas', { width: px * 2, height: px * 2, 'aria-label': '角色預覽' });
     Object.assign(cv.style, { width: '100%', maxWidth: px + 'px', aspectRatio: '1', display: 'block', margin: '0 auto', touchAction: 'none' });
     const el = h('div.portrait', { style: { height: 'auto', padding: '6px 0', position: 'relative' } }, cv);
-    const st = { react: null, walk: false, t0: performance.now(), blinkAt: 0, face: 0.15, selected: null, dirDemo: null };
+    const st = { react: null, walk: false, t0: performance.now(), blinkAt: 0, face: 0.15, selected: null, dirDemo: null, theta: 0.15, omega: 0, look: null, fidgetAt: performance.now() + 4500, lastNow: performance.now() };
     const ctx = cv.getContext('2d');
     let unit = 1, feetY = 0;
     function pose(now) {
-      const t = (now - st.t0) / 1000; if (now > st.blinkAt + 130) st.blinkAt = now + 2200 + Math.random() * 2400;
-      const p = { action: 'idle', at: t, face: st.face, back: 0, blink: now > st.blinkAt ? 1 : 0, breath: Math.sin(now / 600), dir: 'front', noShadow: false };
+      const t = (now - st.t0) / 1000, dt = Math.min(0.1, (now - st.lastNow) / 1000); st.lastNow = now; if (now > st.blinkAt + 130) st.blinkAt = now + 2200 + Math.random() * 2400;
+      // 11.0 turntable: the whole turn (front → side → back) with inertia; a spin you flick keeps going and settles
+      if (!st.dragging && Math.abs(st.omega) > 0.01) { st.theta += st.omega * dt; st.omega *= Math.exp(-dt * 2.6); } else if (!st.dragging) st.omega = 0;
+      const th = st.theta, fcs = Math.sin(th), bk = Math.max(0, Math.min(1, -Math.cos(th) * 1.4));
+      st.face = fcs;
+      const p = { action: 'idle', at: t, face: fcs, back: bk, blink: now > st.blinkAt ? 1 : 0, breath: Math.sin(now / 600), dir: bk > 0.5 ? 'back' : fcs > 0.55 ? 'right' : fcs < -0.55 ? 'left' : 'front', noShadow: false };
+      // the eyes follow the finger / pointer
+      if (st.look && now - st.look.t < 1800 && bk < 0.5) { p.lookX = Math.max(-1, Math.min(1, st.look.x)); p.overrides = Object.assign({ lookY: Math.max(-1, Math.min(1, st.look.y)) }, p.overrides || {}); }
+      // now and then it does something by itself (mood / personality; only while nothing else is playing)
+      if (!st.react && !st.walk && !st.dragging && now > st.fidgetAt && OC.Anim11) { st.fidgetAt = now + 5000 + Math.random() * 5000; const c = getChar(), f = c && c.appearance.mode !== 'sprite' ? OC.Anim11.fidget(c) : null; if (f) st.react = { action: f.action, t0: now, until: now + f.dur * 1000 }; }
       if (st.walk) { p.walk = 1; p.phase = t * 4; p.action = 'walk'; p.face = Math.sin(t * 0.6) * 0.9; p.dir = p.face > 0.5 ? 'right' : p.face < -0.5 ? 'left' : 'front'; }
       if (st.react && now < st.react.until) { p.action = st.react.action; p.at = (now - st.react.t0) / 1000; Object.assign(p, st.react.extra || {}); }
       else st.react = null;
@@ -37,8 +45,17 @@
       const ht = c.appearance.mode === 'sprite' ? 62 : Rig().height(c.look) + 6;
       unit = Math.min((H * 0.86) / ht, W / 52); feetY = H * 0.93;
       const p = pose(now);
+      drawPlatform(W, H, st.theta);
       OC.CharRender.draw(ctx, c, p, W / 2, feetY, unit, p.at);
       if (st.selected) drawSel(c);
+    }
+    /** a little round stage under the feet with a notch that turns with the character (so the turntable reads even from the front) */
+    function drawPlatform(W, H, th) {
+      if (o.platform === false) return; const cx = W / 2, cy = H * 0.935, rx = W * 0.34, ry = rx * 0.2;
+      ctx.save(); const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx); g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(0.6, 'rgba(255,255,255,.22)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(115,120,240,.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.86, ry * 0.86, 0, 0, Math.PI * 2); ctx.stroke();
+      const nx = cx + Math.sin(th) * rx * 0.86, ny = cy + Math.cos(th) * ry * 0.86; ctx.fillStyle = 'rgba(115,120,240,.75)'; ctx.beginPath(); ctx.arc(nx, ny, 5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     function drawSel(c) {
       const part = (c.parts || []).find((q) => q.id === st.selected); if (!part) return;
@@ -49,8 +66,8 @@
     }
     // gestures
     const ptr = new Map(); let g = null;
-    cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); const pts = [...ptr.values()];
-      g = pts.length === 2 ? { kind: 'pinch', d0: Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]), a0: Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]), part: snapshot() } : { kind: 'drag', x0: e.clientX, y0: e.clientY, moved: false, part: snapshot(), face0: st.face }; });
+    cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); st.omega = 0; ptr.set(e.pointerId, [e.clientX, e.clientY]); const pts = [...ptr.values()];
+      g = pts.length === 2 ? { kind: 'pinch', d0: Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]), a0: Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]), part: snapshot() } : { kind: 'drag', x0: e.clientX, y0: e.clientY, moved: false, part: snapshot(), face0: st.face, th0: st.theta }; });
     cv.addEventListener('pointermove', (e) => {
       if (!ptr.has(e.pointerId) || !g) return; ptr.set(e.pointerId, [e.clientX, e.clientY]);
       const r = cv.getBoundingClientRect(), k = cv.width / r.width / unit, c = getChar(), part = c && st.selected && c.parts.find((q) => q.id === st.selected);
@@ -58,15 +75,26 @@
       if (g.kind !== 'drag') return;
       const dx = e.clientX - g.x0, dy = e.clientY - g.y0; if (Math.hypot(dx, dy) > 6) g.moved = true;
       if (part) { part.x = Math.round((g.part.x + dx * k) * 10) / 10; part.y = Math.round((g.part.y + dy * k) * 10) / 10; o.onPart && o.onPart(part, true); }
-      else st.face = Math.max(-1, Math.min(1, g.face0 + dx / 120));
+      else { st.dragging = true; const now = performance.now(), nt = g.th0 + dx / 85; if (g.lastT) st.omega = (nt - st.theta) / Math.max(0.008, (now - g.lastT) / 1000) * 0.6 + st.omega * 0.4; g.lastT = now; st.theta = nt; }
     });
     const up = (e) => { ptr.delete(e.pointerId); if (!g) return; const c = getChar(), part = c && st.selected && c.parts.find((q) => q.id === st.selected);
-      if (g.kind === 'drag' && !g.moved && !part) react('happy', 1.1); if (part && (g.moved || g.kind === 'pinch')) o.onPart && o.onPart(part, false); if (!ptr.size) g = null; };
+      st.dragging = false; if (st.omega > 14) st.omega = 14; if (st.omega < -14) st.omega = -14;
+      if (g.kind === 'drag' && !g.moved && !part) tapZone(e); if (part && (g.moved || g.kind === 'pinch')) o.onPart && o.onPart(part, false); if (!ptr.size) g = null; };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('pointermove', (e) => { const r = cv.getBoundingClientRect(); st.look = { x: ((e.clientX - r.left) / r.width - 0.5) * 2.4, y: ((e.clientY - r.top) / r.height - 0.35) * 2, t: performance.now() }; });
+    /** which part of the character was tapped → a matching reaction (and the creator jumps to that part's options) */
+    function tapZone(e) {
+      const r = cv.getBoundingClientRect(), c = getChar(); if (!c) return;
+      const X = (e.clientX - r.left) / r.width * cv.width, Y = (e.clientY - r.top) / r.height * cv.height, ht = (c.appearance.mode === 'sprite' ? 62 : Rig().height(c.look) + 6) * unit;
+      const fr = (feetY - Y) / ht, dx = (X - cv.width / 2) / ht; let z = 'body';
+      if (fr > 0.9 && Math.abs(dx) > 0.14) z = 'ears'; else if (fr > 0.5) z = 'head'; else if (fr < 0.14) z = 'feet'; else if (Math.abs(dx) > 0.38) z = 'tail';
+      const R = { ears: ['ticklish', 1.0], head: ['giggle', 1.0], body: ['poked', 0.9], feet: ['stomp', 0.9], tail: ['startle', 0.9] }[z];
+      react(R[0], R[1]); OC.UI.haptic('tick'); OC.Sound && OC.Sound.play('poke'); o.onZone && o.onZone(z);
+    }
     function snapshot() { const c = getChar(), p = c && st.selected && c.parts.find((q) => q.id === st.selected); return p ? { x: p.x || 0, y: p.y || 0, scale: p.scale || 1, rot: p.rot || 0 } : null; }
     function react(action, dur = 1.2, extra) { st.react = { action, t0: performance.now(), until: performance.now() + dur * 1000, extra }; }
     st.raf = requestAnimationFrame(frame);
-    return { el, canvas: cv, react, set walk(v) { st.walk = v; }, get walk() { return st.walk; }, select(id) { st.selected = id; }, turn(f) { st.face = f; }, restart() { if (!st.raf) st.raf = requestAnimationFrame(frame); } };
+    return { el, canvas: cv, react, set walk(v) { st.walk = v; }, get walk() { return st.walk; }, select(id) { st.selected = id; }, turn(f) { st.theta = Math.asin(Math.max(-1, Math.min(1, f))); st.omega = 0; }, spin(turns = 1) { st.omega = 6.5 * turns; }, restart() { if (!st.raf) st.raf = requestAnimationFrame(frame); } };
   }
 
   // ============================== helpers ==============================

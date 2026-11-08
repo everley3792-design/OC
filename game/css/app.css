@@ -742,3 +742,14 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 /* ===================== 11.0 touch: high-five target ===================== */
 .hf-target { position: fixed; z-index: 62; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; background: var(--surface); box-shadow: 0 0 0 4px var(--accent), 0 4px 0 var(--accent-lip), var(--shadow-2); animation: hf-pop 1.7s var(--spring) both; }
 @keyframes hf-pop { 0% { transform: scale(.3) rotate(-20deg); opacity: 0; } 14% { transform: scale(1.15) rotate(8deg); opacity: 1; } 24% { transform: scale(1) rotate(0); } 85% { transform: scale(1.06); box-shadow: 0 0 0 10px transparent, 0 4px 0 var(--accent-lip), var(--shadow-2); } 100% { transform: scale(.6); opacity: 0; } }
+
+/* ===================== 11.0 creator stage ===================== */
+.section-title.flash { animation: sec-flash 1.4s var(--ease-out); }
+@keyframes sec-flash { 0%, 100% { background: transparent; } 20% { background: var(--accent-soft); box-shadow: 0 0 0 8px var(--accent-soft); border-radius: 12px; } }
+.onb.creator .portrait { background: radial-gradient(circle at 50% 88%, var(--sun-soft) 0 26%, transparent 27%), linear-gradient(180deg, var(--sky-mid), var(--surface) 90%); cursor: grab; }
+
+/* the opening ends with a star falling onto the plaza */
+.intro-star { position: absolute; left: 50%; top: -40px; width: 40px; margin-left: -20px; text-align: center; font-size: 34px; color: #FFE08A; text-shadow: 0 0 14px #FFD23F, 0 0 34px rgba(255, 210, 63, .8); animation: star-fall 2.4s cubic-bezier(.4, 0, .9, .6) forwards; }
+.intro-star.land { animation: star-land 1.6s var(--ease-out) forwards; top: 54%; }
+@keyframes star-fall { from { transform: translateY(0) rotate(0) scale(.7); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(54vh) rotate(540deg) scale(1.1); opacity: 1; } }
+@keyframes star-land { 0% { transform: scale(1.1); opacity: 1; } 30% { transform: scale(2.6); opacity: .9; text-shadow: 0 0 40px #fff, 0 0 90px #FFD23F; } 100% { transform: scale(5); opacity: 0; } }

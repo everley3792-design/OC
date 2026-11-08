@@ -47,8 +47,9 @@
     { at: 4.2, x: 290, y: 690, zoom: 1.55, yaw: 0.28, speed: 0.9, hour: 6.8, text: '島上有會亮起來的路燈、會結果的樹，' },
     { at: 8.4, x: 300, y: 420, zoom: 2.2, yaw: -0.12, speed: 0.9, hour: 8.2, text: '和一間一直等著住客的小屋。' },
     { at: 12.6, x: 300, y: 560, zoom: 1.25, yaw: 0, speed: 0.8, hour: 9.4, text: '住在這裡的，會是一位只屬於你的角色。' },
+    { at: 16.2, x: 300, y: 540, zoom: 1.7, yaw: 0.06, speed: 1.1, hour: 9.8, text: '今天，有一顆小星星落在廣場上——' },
   ];
-  const LENGTH = 16.5;
+  const LENGTH = 20.5;
 
   /** play the opening; the world must have an area loaded (the caller loads 晴日島 without a player when needed) */
   function opening(o = {}) {
@@ -69,7 +70,7 @@
           idx++; const s = SHOTS[idx];
           Wd.shot({ x: s.x, y: s.y, zoom: s.zoom, yaw: s.yaw, speed: reduce() ? 8 : s.speed || 1.4, instant: s.instant || reduce() });
           sub.classList.remove('show'); setTimeout(() => { sub.textContent = s.text; sub.classList.add('show'); }, idx ? 380 : 120);
-          if (idx === SHOTS.length - 1) setTimeout(() => snd('sparkle'), 900);
+          if (idx === SHOTS.length - 1) { setTimeout(() => snd('sparkle'), 900); if (!reduce()) { const star = h('div.intro-star', null, '✦'); el.append(star); setTimeout(() => { snd('chime'); star.classList.add('land'); }, 2400); setTimeout(() => star.remove(), 4200); } }
         }
         // light follows the film's clock: piecewise-linear dawn → morning between the shots
         { const i = Math.max(0, idx), a = SHOTS[i], b = SHOTS[Math.min(SHOTS.length - 1, i + 1)], q = b === a ? 1 : Math.min(1, (t - a.at) / (b.at - a.at)); hour = a.hour + (b.hour - a.hour) * q; }
@@ -123,6 +124,7 @@
     const t0 = performance.now();
     await new Promise((r) => { const step = () => { const q = Math.min(1, (performance.now() - t0) / 900); a.lift = 150 * (1 - q * q); if (q < 1) requestAnimationFrame(step); else { a.lift = 0; a.squashT = 0; snd('jump'); r(); } }; if (reduce()) r(); else requestAnimationFrame(step); });
     requestAnimationFrame(() => card.classList.add('on'));
+    Wd.setAction(a, 'aha', { dur: 1.0, priority: 9 }); await wait(reduce() ? 0 : 1000);
     const p = c.personality, act = p.energy > 65 ? 'cheer' : (OC.Chars.has(c, 'shy') || p.social < 35) ? 'shy' : 'greet';
     Wd.setAction(a, act, { dur: 2.2, priority: 9 });
     const line = (OC.Talk && OC.Talk.say('desk_out', c, null)) || null;

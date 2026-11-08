@@ -24,7 +24,13 @@
       Object.assign(el.style, { padding: 'calc(var(--sat) + 10px) 16px calc(var(--sab) + 16px)', gap: '6px' });
       document.getElementById('app').append(el);
       const layer = { scrim: false, dismissible: !o.first, close: () => (o.first ? null : close(null)) }; OC.UI.pushLayer(layer);
-      const stage = CE().stage(() => c, { size: 260, onPart: () => {} });
+      const stage = CE().stage(() => c, { size: 260, onPart: () => {}, onZone: (z) => focusSection(z) });
+      /** tapping a body part on the stage jumps to that part's options (ears → 耳朵, head → 眼睛, body → 上衣, tail → 尾巴, feet → 比例與體型) */
+      function focusSection(z) {
+        if (STEPS[step].id !== 'look') return;
+        const keys = { ears: ['耳朵'], head: ['眼睛', '嘴巴', '臉頰'], body: ['上衣', '顏色'], tail: ['尾巴'], feet: ['比例與體型', '顏色'] }[z] || [];
+        for (const k of keys) { const t = [...body.querySelectorAll('.section-title')].find((x) => x.textContent.includes(k)); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); return; } }
+      }
       stage.el.style.maxHeight = '30vh'; stage.canvas.style.maxHeight = '28vh'; stage.canvas.style.width = 'auto';
       const ctx = { get level() { return level; }, stage, selected: null, changed: (kind, reactAction) => { c.updated = Date.now(); if (reactAction && typeof reactAction === 'string') stage.react(reactAction, 1.3); }, rebuild: () => render(), full: false };
       const STEPS = [
@@ -82,7 +88,7 @@
         if (id === 'look') {
           const lv = seg([['simple', '簡易'], ['detailed', '詳細']], level, (v) => { level = v; render(); });
           if (c.appearance.mode === 'sprite') return [h('div.card', null, h('b', null, '外觀來自你的圖片'), h('p.muted', { style: { fontSize: 'var(--fs-s)' } }, '之後可以在動畫工作室為不同動作加入更多影格，或在「部件」加上飾品。')), S_.body(c, ctx), S_.parts(c, ctx)];
-          const out = [lv, S_.template(c, ctx), S_.earsTail(c, ctx), S_.colors(c, ctx), S_.face(c, ctx), S_.outfit(c, ctx)];
+          const out = [h('div.muted.center', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 6px' } }, '點點角色的耳朵、臉、身體、尾巴就能直接修改；左右拖曳可以轉一圈。'), lv, S_.template(c, ctx), S_.earsTail(c, ctx), S_.colors(c, ctx), S_.face(c, ctx), S_.outfit(c, ctx)];
           if (level === 'detailed') out.splice(2, 0, S_.body(c, ctx)), out.push(S_.parts(c, ctx));
           out.push(S_.expressions(c, ctx));
           return out;
@@ -106,11 +112,11 @@
       function debut() {
         const p = c.personality, b = Ch().behavior(c);
         const act = p.energy > 65 ? 'jump' : (c.personality.traits.includes('shy') || p.social < 35) ? 'shy' : p.expression > 65 ? 'surprised' : 'greet';
-        next.disabled = true; stage.react(act, 1.6); haptic();
+        next.disabled = true; stage.react('aha', 1.0); haptic('confirm'); OC.Sound && (OC.Sound.play('sparkle'), setTimeout(() => OC.Sound.play('fanfare'), 250)); stage.spin(1); setTimeout(() => stage.react(act, 1.6), 1000);
         const line = h('div.speech', { style: { position: 'absolute', left: '50%', top: '8px', transform: 'translateX(-50%)', animation: 'toast-in 300ms both' } }, Ch().speak(c, c.speech.catchphrase || (act === 'shy' ? '請、請多指教…' : '大家好！我是' + c.profile.name + '！')));
-        stage.el.append(line);
-        if (act === 'surprised') setTimeout(() => stage.react('happy', 1.2), 900);
-        setTimeout(() => { line.remove(); finish(); }, 1900 + (b.emoteScale > 1 ? 300 : 0));
+        setTimeout(() => stage.el.append(line), 1000);
+        if (act === 'surprised') setTimeout(() => stage.react('happy', 1.2), 1900);
+        setTimeout(() => { line.remove(); finish(); }, 2900 + (b.emoteScale > 1 ? 300 : 0));
       }
       function finish() {
         c.profile.name = c.profile.name.trim(); c.created = c.updated = Date.now();
