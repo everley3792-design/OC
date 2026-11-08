@@ -1,6 +1,423 @@
 {
- "at": "2026-11-08T15:33:01.238Z",
+ "at": "2026-11-08T15:41:57.829Z",
  "results": [
+  {
+   "name": "1a 全新安裝：開場期間沒有任何角色或居民（小島是空的）",
+   "ok": true,
+   "detail": {
+    "chars": 0,
+    "npcs": 0,
+    "yaw": 0.08276564947855483,
+    "sub": "和一間一直等著住客的小屋。"
+   }
+  },
+  {
+   "name": "2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播",
+   "ok": true,
+   "detail": {
+    "chars": 0,
+    "npcs": 0,
+    "yaw": 0.08276564947855483,
+    "sub": "和一間一直等著住客的小屋。"
+   }
+  },
+  {
+   "name": "2b 開場可以跳過（立刻到歡迎畫面），並記住看過了",
+   "ok": true,
+   "detail": 1243
+  },
+  {
+   "name": "2c 歡迎畫面可以重新觀看開場",
+   "ok": true
+  },
+  {
+   "name": "1b 「開始新遊戲」直接進入創角（玩家先建立自己的 OC）",
+   "ok": true
+  },
+  {
+   "name": "1c 創角後只有玩家自己的 OC，居民不會自動出現（設定可開啟）",
+   "ok": true,
+   "detail": {
+    "chars": [
+     "小苔"
+    ],
+    "npcs": 0,
+    "residents": false,
+    "v": 7
+   }
+  },
+  {
+   "name": "2d 角色登場後，由這位 OC 開始新手教學",
+   "ok": true,
+   "detail": {
+    "active": true,
+    "step": 0
+   }
+  },
+  {
+   "name": "2e 重開 App：不用重新創角，教學從上次的步驟繼續",
+   "ok": true,
+   "detail": {
+    "active": true,
+    "step": 1,
+    "saved": 1,
+    "chars": 1
+   }
+  },
+  {
+   "name": "2f 教學可以跳過並記住",
+   "ok": true
+  },
+  {
+   "name": "3a 自稱／稱呼你／禁用詞真的出現在台詞裡",
+   "ok": true,
+   "detail": {
+    "a": [
+     "俺超喜歡你送的禮物啦！",
+     "好耶 俺超喜歡你送的禮物啦！",
+     "俺超喜歡你送的禮物！"
+    ],
+    "b": [
+     "我喜歡您送的禮物。"
+    ]
+   }
+  },
+  {
+   "name": "3b 句尾口癖依頻率出現（不是每句都加）",
+   "ok": true,
+   "detail": 0.585
+  },
+  {
+   "name": "3c 特質改變行為：活潑走得快、跳得高；懶散內向較慢",
+   "ok": true,
+   "detail": {
+    "speed": [
+     70.10960000000001,
+     58.6024
+    ],
+    "bounce": [
+     2.9744000000000006,
+     2.4640000000000004
+    ]
+   }
+  },
+  {
+   "name": "3d 特質改變作息：早起型比夜貓子早醒",
+   "ok": true,
+   "detail": [
+    5.5,
+    9.5
+   ]
+  },
+  {
+   "name": "10a 相同情境下不同 OC 說的話不同（重複很少）",
+   "ok": true,
+   "detail": {
+    "overlap": 0,
+    "la": 10,
+    "lb": 9
+   }
+  },
+  {
+   "name": "4a 高解析透明 PNG：原圖完整保留（2400 px），遊戲用的工作圖 ≤ 2048 px",
+   "ok": true,
+   "detail": {
+    "orig": [
+     2400,
+     2400
+    ],
+    "work": [
+     2048,
+     2048
+    ],
+    "corner": 0,
+    "centre": 255,
+    "bbLow": 192,
+    "bbHigh": 384
+   }
+  },
+  {
+   "name": "4b 透明背景保留（角落透明、主體不透明）",
+   "ok": true,
+   "detail": {
+    "orig": [
+     2400,
+     2400
+    ],
+    "work": [
+     2048,
+     2048
+    ],
+    "corner": 0,
+    "centre": 255,
+    "bbLow": 192,
+    "bbHigh": 384
+   }
+  },
+  {
+   "name": "4c 場景中角色貼圖解析度跟著實際顯示大小調整（拉近變清晰）",
+   "ok": true,
+   "detail": {
+    "low": 192,
+    "high": 384
+   }
+  },
+  {
+   "name": "5a 四種鏡頭模式即時切換，切換當下畫面不會跳動",
+   "ok": true,
+   "detail": [
+    {
+     "m": "follow",
+     "jump": 1,
+     "mode": "follow"
+    },
+    {
+     "m": "focus",
+     "jump": 0,
+     "mode": "focus"
+    },
+    {
+     "m": "free",
+     "jump": 0,
+     "mode": "free"
+    },
+    {
+     "m": "classic",
+     "jump": 0,
+     "mode": "classic"
+    }
+   ]
+  },
+  {
+   "name": "5b 自由鏡頭可以旋轉視角（有角度限制），模式會記住",
+   "ok": true,
+   "detail": {
+    "out": [
+     {
+      "m": "follow",
+      "jump": 1,
+      "mode": "follow"
+     },
+     {
+      "m": "focus",
+      "jump": 0,
+      "mode": "focus"
+     },
+     {
+      "m": "free",
+      "jump": 0,
+      "mode": "free"
+     },
+     {
+      "m": "classic",
+      "jump": 0,
+      "mode": "classic"
+     }
+    ],
+    "yaw": 0.6529561410821751,
+    "saved": "free"
+   }
+  },
+  {
+   "name": "5c 旋轉後點角色仍然點得到（互動選單出現）",
+   "ok": true
+  },
+  {
+   "name": "6a 點 OC：環狀選單（摸摸、聊天、餵食、送禮、玩耍、檔案、更多…）",
+   "ok": true,
+   "detail": [
+    "摸摸",
+    "打招呼",
+    "餵食",
+    "送禮",
+    "玩耍",
+    "跟拍",
+    "檔案",
+    "更多"
+   ]
+  },
+  {
+   "name": "6b 選單項目真的執行（檔案頁打開）",
+   "ok": true
+  },
+  {
+   "name": "6c 家具與地面也有各自的情境選單",
+   "ok": true,
+   "detail": {
+    "furn": [
+     "使用",
+     "移動",
+     "收回",
+     "資訊"
+    ],
+    "ground": [
+     "走過去",
+     "大家過來",
+     "放家具",
+     "看這裡"
+    ],
+    "lg": {
+     "log": [
+      "down mouse id=1 primary=true n=0 g=null",
+      "up pointerup id=1 known=true n=1 g=long moved=false"
+     ],
+     "stack": 1,
+     "tab": "island",
+     "top": "DIV"
+    },
+    "G": {
+     "x": 196.5,
+     "y": 566.5999999999996
+    }
+   }
+  },
+  {
+   "name": "7a 在 OC 身上來回撫摸＝摸摸頭（好感增加，不會誤開選單）",
+   "ok": true,
+   "detail": {
+    "aff0": 0,
+    "pet": {
+     "aff": 1,
+     "menu": false
+    }
+   }
+  },
+  {
+   "name": "7b 拖曳＝抱起：懸空、像鐘擺擺動，角色被暫停自主行動",
+   "ok": true,
+   "detail": {
+    "lift": 24,
+    "swing": -0.01244877433569232,
+    "hold": [
+     "drag"
+    ],
+    "touch": true,
+    "stack": 0,
+    "top": ""
+   }
+  },
+  {
+   "name": "7c 甩出去：彈跳後落在可走的地面、恢復自主（不會卡在空中或掉出地圖）",
+   "ok": true,
+   "detail": {
+    "lift": 0,
+    "walk": true,
+    "flying": 0,
+    "hold": []
+   }
+  },
+  {
+   "name": "7d 手勢優先順序：手指落在角色上拖曳＝抱起角色，不會拖動鏡頭",
+   "ok": true,
+   "detail": {
+    "pan0": {
+     "panX": 0,
+     "panY": 0
+    },
+    "pan1": {
+     "panX": 0,
+     "panY": 0
+    }
+   }
+  },
+  {
+   "name": "8a 點右上角時間 → 選「深夜」：時間、天空光影（世界時鐘）與角色作息一起改變",
+   "ok": true,
+   "detail": {
+    "h": 23,
+    "phase": "night",
+    "wd": 23,
+    "sleepy": true
+   }
+  },
+  {
+   "name": "8b 遊戲循環可快轉：跳過的時間照常模擬（需求下降），不給獎勵",
+   "ok": true,
+   "detail": {
+    "skipped": 180,
+    "dh": 3,
+    "foodDown": true,
+    "coins": true
+   }
+  },
+  {
+   "name": "8c 可以暫停時間（遊戲時鐘不前進）",
+   "ok": true,
+   "detail": {
+    "gmA": 29902743.17986681,
+    "gmB": 29902743.17986681
+   }
+  },
+  {
+   "name": "9a 點左上角頭像：即時狀態卡（心情、9 種需求、可切換角色）",
+   "ok": true,
+   "detail": {
+    "open": true,
+    "bars": 9,
+    "name": "麻糬",
+    "picks": 3
+   }
+  },
+  {
+   "name": "9b 卡片就地更新，不會一直重建（不閃爍）",
+   "ok": true,
+   "detail": 0
+  },
+  {
+   "name": "9c 可以直接切換操控的角色，並進入完整檔案",
+   "ok": true,
+   "detail": {
+    "sw": "cmw7zxkyx5o7w",
+    "prof": true
+   }
+  },
+  {
+   "name": "11a 重要演出完整播放，結束後回到玩家原本的鏡頭模式、角色沒有卡住",
+   "ok": true,
+   "detail": {
+    "ms": 3236,
+    "mode": "follow",
+    "holds": []
+   }
+  },
+  {
+   "name": "12a 淺色／深色、360×640 小螢幕：主要頁面與 HUD 面板沒有超出畫面",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "12b 無錯誤",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "15a 反覆切換頁面、地點、鏡頭、選單：沒有殘留的選單元件，記憶體沒有持續大幅成長",
+   "ok": true,
+   "detail": {
+    "m0": 23100000,
+    "m1": 23100000,
+    "radials": 0,
+    "status": 0
+   }
+  },
+  {
+   "name": "16a 0.7 存檔升級到 v7：已經認識的居民保留、角色不重建、已玩過的玩家不再播教學",
+   "ok": true,
+   "detail": {
+    "v": 7,
+    "residents": true,
+    "intro": true,
+    "chars": 3,
+    "tut": true
+   }
+  },
+  {
+   "name": "16b 沒見過居民的舊存檔：居民改為不出現（資料保留，可在設定開啟）",
+   "ok": true,
+   "detail": {
+    "residents": false
+   }
+  },
   {
    "name": "17a 新增 15 個角色事件與短篇故事（惡作劇、和好、口味之爭、分點心、跌倒、看雲、深夜談心、講笑話、秘密基地三部曲…）",
    "ok": true,
@@ -43,7 +460,7 @@
   {
    "name": "17d 白天晴天時場景裡有蝴蝶等環境生物（效果開啟時）",
    "ok": true,
-   "detail": 5
+   "detail": 2
   },
   {
    "name": "17e 新發現只出現一張卡片（不再同時跳出提示＋卡片）",

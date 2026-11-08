@@ -22,7 +22,7 @@
     document.getElementById('app').append(el); requestAnimationFrame(() => el.classList.add('open'));
     const layer = { scrim: false, close: () => end('cancel') }; OC.UI.pushLayer(layer);
     cur = { el, cv, x: cv.getContext('2d'), hint: (t) => (hintEl.textContent = t), layer, raf: 0, down: false, t0: performance.now() };
-    cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); cur.down = true; cur.onDown && cur.onDown(e); });
+    cv.addEventListener('pointerdown', (e) => { if (!cur) return; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ } cur.down = true; cur.onDown && cur.onDown(e); });   // a tap while the game is closing
     const up = (e) => { if (!cur) return; cur.down = false; cur.onUp && cur.onUp(e); }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     cv.addEventListener('pointermove', (e) => cur && cur.onMove && cur.onMove(e));
     OC.Brain.hold(S().activeId, 'activity');
