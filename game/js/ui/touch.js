@@ -123,11 +123,15 @@
     if (raf) return;
     let last = performance.now();
     const step = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      if (t && t.lifted) { // pendulum while held (pivot at the hands; damped)
-        t.swingV += (-t.swing * 60 - t.swingV * 5) * dt; t.swing = Math.max(-0.75, Math.min(0.75, t.swing + t.swingV * dt)); t.a.swing = t.swing;
+      // real time in small sub-steps: a slow device must not throw in slow motion (or explode with big steps)
+      let left = Math.min(0.5, (now - last) / 1000); last = now;
+      while (left > 1e-4) {
+        const dt = Math.min(0.02, left); left -= dt;
+        if (t && t.lifted) { // pendulum while held (pivot at the hands; damped)
+          t.swingV += (-t.swing * 60 - t.swingV * 5) * dt; t.swing = Math.max(-0.75, Math.min(0.75, t.swing + t.swingV * dt)); t.a.swing = t.swing;
+        }
+        for (const [a, f] of [...flights]) if (stepFlight(a, f, dt)) land(a, f);
       }
-      for (const [a, f] of [...flights]) if (stepFlight(a, f, dt)) land(a, f);
       if (t || flights.size) raf = requestAnimationFrame(step); else raf = 0;
     };
     raf = requestAnimationFrame(step);

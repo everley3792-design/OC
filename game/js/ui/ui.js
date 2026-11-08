@@ -108,14 +108,14 @@
     const body = h('div.sheet-body');
     const el = h('div.sheet', { role: 'dialog', 'aria-label': title }, h('div.grab'), title ? h('div.hstack', null, h('h2', { style: { flex: 1 } }, title), h('button.icon-btn', { 'aria-label': '關閉', on: { click: () => api.close() } }, icon('close'))) : null, body);
     document.getElementById('app').append(el);
-    const api = { el, body, scrim: true, dismissible: opt.dismissible, close() { el.classList.remove('open'); popLayer(api); setTimeout(() => el.remove(), 400); opt.onClose && opt.onClose(); } };
+    const api = { el, body, scrim: true, dismissible: opt.dismissible, close() { api.closed = true; el.classList.remove('open'); popLayer(api); setTimeout(() => el.remove(), 400); opt.onClose && opt.onClose(); } };
     if (typeof content === 'function') content(body, api); else if (content) body.append(content);
     // swipe-down to close (on the grab area / header)
     let y0 = null; el.addEventListener('pointerdown', (e) => { if (e.target.closest('.sheet-body')) return; y0 = e.clientY; el.style.transition = 'none'; });
     el.addEventListener('pointermove', (e) => { if (y0 == null) return; const d = Math.max(0, e.clientY - y0); el.style.transform = `translateY(${d}px)`; });
     const end = (e) => { if (y0 == null) return; const d = e.clientY - y0; y0 = null; el.style.transition = ''; el.style.transform = ''; if (d > 90) api.close(); };
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-    pushLayer(api); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+    pushLayer(api); requestAnimationFrame(() => requestAnimationFrame(() => { if (!api.closed) el.classList.add('open'); }));
     return api;
   }
   function confirm(title, msg, okLabel = '確定', danger) {

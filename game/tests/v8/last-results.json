@@ -1,0 +1,20 @@
+{
+ "at": "2026-11-08T04:08:56.403Z",
+ "results": [
+  {
+   "name": "12a 淺色／深色、360×640 小螢幕：主要頁面與 HUD 面板沒有超出畫面",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "12b 無錯誤",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "全程沒有 JavaScript 錯誤",
+   "ok": true,
+   "detail": []
+  }
+ ]
+}

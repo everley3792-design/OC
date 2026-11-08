@@ -2,9 +2,15 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.7.0-alpha（第七階段：Android 系統懸浮桌寵）
+## 目前版本 0.8.0-alpha（8.0 全面重構）
 
-- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.7.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.7.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+，targetSdk 35，可直接覆蓋 0.6.0，存檔自動升級到 v6）
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.8.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.8.0-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋 0.7.0，存檔自動升級到 v7）
+- 8.0 紀錄（每個問題的原因、修正、檔案、驗證；需實機與未完成項目）：[`docs/v8-report.md`](docs/v8-report.md)；截圖：`deliverables/v8/`
+- 測試：`node game/tests/v8/run.js`（8.0 驗收）＋第四～七階段回歸；Kotlin：`cd android && gradle -PcoreOnly=true test`
+- ⚠️ 桌寵、小工具、觸覺等原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+
+## 0.7.0-alpha（第七階段：Android 系統懸浮桌寵）
+
 - ⚠️ 桌寵、通知、提醒、小工具等原生功能**尚未在實機上驗證**（開發環境沒有 Android 裝置）——測試計畫：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
 - 第七階段完成紀錄（已驗證／需實機／部分完成／未完成）：[`docs/phase7-report.md`](docs/phase7-report.md)；截圖：`deliverables/phase7/`
 - 第七階段規格：[Android 原生層與同步](docs/android-native.md) · [權限與隱私](docs/permissions.md) · [備份](docs/backup.md) · [效能](docs/performance.md) · [Android 建置](docs/android-build.md)

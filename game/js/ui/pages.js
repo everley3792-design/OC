@@ -31,11 +31,12 @@
       p.el.scrollTop = 0;
     }
     p.refresh && p.refresh(p, p.inner);
-    requestAnimationFrame(() => p.el.classList.add('open'));
+    p.wantOpen = true;
+    requestAnimationFrame(() => { if (p.wantOpen) p.el.classList.add('open'); });   // 8.0: a close in the same frame (fast tab switching on a slow phone) must win
     p.onShow && p.onShow(p);
     return p;
   }
-  function close(id) { const p = pages[id]; if (!p || !p.el) return; p.el.classList.remove('open'); if (p.layer) { OC.UI.popLayer(p.layer); p.layer = null; } p.onHide && p.onHide(p); }
+  function close(id) { const p = pages[id]; if (!p || !p.el) return; p.wantOpen = false; p.el.classList.remove('open'); if (p.layer) { OC.UI.popLayer(p.layer); p.layer = null; } p.onHide && p.onHide(p); }
   function refreshOpen() { for (const p of Object.values(pages)) if (p.el && p.el.classList.contains('open') && p.refresh) p.refresh(p, p.inner); }
 
   const card = (...k) => h('div.card', null, ...k);
