@@ -24,10 +24,10 @@
   function perfOf(mode) {
     const c = S().settings.custom;
     switch (mode) {
-      case 'high': return { ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, lights: true };
-      case 'saver': return { ratio: 1, shadows: 0, fx: false, grass: 0, fps: 30, bb: 192, lights: false };
-      case 'custom': return { ratio: Math.min(DPR, c.scale), shadows: c.shadows === 'off' ? 0 : c.shadows === 'high' ? 2048 : 1024, fx: c.fx, grass: c.grass ? 0.8 : 0, fps: c.fps, bb: c.scale >= 1.75 ? 320 : c.scale >= 1.25 ? 256 : 192, lights: c.shadows !== 'off' };
-      default: return { ratio: Math.min(DPR, 1.5), shadows: 1024, fx: true, grass: 0.6, fps: 60, bb: 256, lights: true };
+      case 'high': return { ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, bbMax: 768, lights: true };
+      case 'saver': return { ratio: 1, shadows: 0, fx: false, grass: 0, fps: 30, bb: 192, bbMax: 256, lights: false };
+      case 'custom': return { ratio: Math.min(DPR, c.scale), shadows: c.shadows === 'off' ? 0 : c.shadows === 'high' ? 2048 : 1024, fx: c.fx, grass: c.grass ? 0.8 : 0, fps: c.fps, bb: c.scale >= 1.75 ? 320 : c.scale >= 1.25 ? 256 : 192, bbMax: c.scale >= 1.75 ? 768 : c.scale >= 1.25 ? 512 : 256, lights: c.shadows !== 'off' };
+      default: return { ratio: Math.min(DPR, 1.5), shadows: 1024, fx: true, grass: 0.6, fps: 60, bb: 256, bbMax: 512, lights: true };
     }
   }
   let Q = null;

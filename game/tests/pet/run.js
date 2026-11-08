@@ -231,7 +231,7 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
         return { has: !!s.pet && !!s.pet.tools, m, back, bad, script: JSON.stringify(s).includes('<script') };
       }, A);
       check('10a 存檔含桌寵設定、工具、同步水位（備份完整）', r.has && r.back.todos >= 2 && r.back.seq > 0, r.back);
-      check('10b 舊存檔（v5，單一桌寵）自動遷移成多桌寵設定', r.m.v === 6 && r.m.on[0] === A && r.m.size === 1.3, r.m);
+      check('10b 舊存檔（v5，單一桌寵）自動遷移成多桌寵設定', r.m.v === 7 && r.m.on[0] === A && r.m.size === 1.3, r.m);
       check('10c 較新版本的存檔會被拒絕並說明原因', !!r.bad && r.bad.includes('較新版本'), r.bad);
     }
 
@@ -242,7 +242,7 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
       const mockState = await page.evaluate(() => JSON.stringify({ sprites: Object.keys(__mock.sprites) }));
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       const r = await page.evaluate((seq) => { __mock.emit(OC.Store.s.pet.on[0], 'pet', {}); __mock.events.unshift({ id: __mock.inst + '-' + seq, inst: __mock.inst, seq, oc: OC.Store.s.pet.on[0], type: 'feed', data: { item: 'apple' } }); const x = OC.PetSync.pull('reload'); return { v: OC.Store.s.v, seq: OC.Store.s.pet.applied.seq, on: OC.Store.s.pet.on.length, x }; }, before.seq);
-      check('11a 重開後：存檔 v6、桌寵設定還在、舊互動不會再套用', r.v === 6 && r.on === before.on && r.x.skipped === 1 && r.x.n === 1, { r, before, mockState });
+      check('11a 重開後：存檔 v7、桌寵設定還在、舊互動不會再套用', r.v === 7 && r.on === before.on && r.x.skipped === 1 && r.x.n === 1, { r, before, mockState });
     }
 
     // ================= 12. theme & screens =================

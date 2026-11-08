@@ -117,7 +117,7 @@
   function actor(o) {
     // o.char(): the character record (roster OC, or a preset for residents)
     const a = Object.assign({ x: 0, y: 0, lvl: 0, gy: 0, path: null, speed: 62, face: 0.3, back: 0, tFace: 0.3, tBack: 0, walk: 0, phase: 0, blinkT: 2 + Math.random() * 3, blink: 0, t: 0, lift: 0, squash: 1, key: '', dir: 'front', act: null, turnT: 0, lastMirror: false, sc: 1 }, o);
-    const res = quality.bb, c = OC.makeCanvas(res, res), tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+    const res = bbRes, c = OC.makeCanvas(res, res), tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
     const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false }));
     m.renderOrder = 2;
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeBlob(), transparent: true, depthWrite: false, fog: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
@@ -127,7 +127,14 @@
     a.gy = groundY(a.x, a.y);
     actors.push(a); return a;
   }
-  function resizeActorCanvas(a) { const r = quality.bb; if (a.c.width === r) return; a.c.width = a.c.height = r; a.key = ''; a.tex.dispose(); a.tex = new THREE.CanvasTexture(a.c); a.tex.colorSpace = THREE.SRGBColorSpace; a.tex.generateMipmaps = false; a.tex.minFilter = THREE.LinearFilter; a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; }
+  // 8.0: billboard texture resolution follows the character's real size on screen (zoom × pixel ratio), in steps with
+  // hysteresis, capped by the performance mode — no more 256 px textures stretched over a 500 px close-up
+  const BB_STEPS = [128, 192, 256, 384, 512, 768];
+  let bbRes = 256, bbWant = 256, bbWantT = 0;
+  function bbTarget() { const need = BB_H * zoom * (quality.ratio || 1) * 1.05, cap = quality.bbMax || Math.max(quality.bb, 256); return Math.min(cap, BB_STEPS.find((v) => v >= need) || 768); }
+  function resizeActorCanvas(a) { const r = bbRes; if (a.c.width === r) return; a.c.width = a.c.height = r; a.key = ''; a.tex.dispose(); a.tex = new THREE.CanvasTexture(a.c); a.tex.colorSpace = THREE.SRGBColorSpace; a.tex.generateMipmaps = false; a.tex.minFilter = THREE.LinearFilter; pixelFilter(a); a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; }
+  /** pixel-art characters keep hard edges (nearest filter); everyone else is smoothly filtered */
+  function pixelFilter(a) { const ch = a.char && a.char(), px = !!(ch && ch.appearance && ch.appearance.pixel); const f = px ? THREE.NearestFilter : THREE.LinearFilter; if (a.tex.magFilter !== f) { a.tex.magFilter = f; a.tex.minFilter = f; a.tex.needsUpdate = true; } a.pixel = px; }
 
   /** start an action on an actor. o = { dur (s), priority, once } — lower priority never interrupts higher */
   function setAction(a, action, o = {}) {
@@ -158,6 +165,8 @@
     if (key === a.key) return;
     a.key = key;
     const r = a.c.width, x = a.c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, r, r);
+    if (a.pixel === undefined) pixelFilter(a);
+    x.imageSmoothingEnabled = !a.pixel; x.imageSmoothingQuality = 'high';   // big player images are downsampled with a proper filter
     const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / 120, a.t);
     if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
     a.tex.needsUpdate = true;
@@ -451,7 +460,7 @@
     env.setQuality(q);
     if (grassMesh) grassMesh.count = Math.round(grassMax * q.grass);
     OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = q.lights !== false; });
-    if (bbChanged) actors.forEach(resizeActorCanvas);
+    if (bbChanged) { bbRes = bbTarget(); actors.forEach(resizeActorCanvas); }
   }
   let last = 0, envCur = null, camTarget = null;
   /** move actors without rendering (the world is covered by a page) — keeps the life simulation moving */
@@ -480,6 +489,7 @@
     if (zoomGoal != null) { zoom = lerp(zoom, zoomGoal, 1 - Math.exp(-dt * (reduce ? 20 : 3.2))); if (Math.abs(zoom - zoomGoal) < 0.005) { zoom = zoomGoal; zoomGoal = null; } }
     if (yawGoal != null) { let d = yawGoal - yaw; yaw += d * (1 - Math.exp(-dt * (reduce ? 20 : 3))); if (Math.abs(d) < 0.002) { yaw = yawGoal; yawGoal = null; } }
     const { cx, cy } = applyCam();
+    { const w = bbTarget(); if (w !== bbRes) { if (w !== bbWant) { bbWant = w; bbWantT = 0; } else if ((bbWantT += dt) > 0.35) { bbRes = w; actors.forEach(resizeActorCanvas); } } }
     if (envCur) bbTint.set(OC.mix(OC.mix('#FFFFFF', '#FFE3CC', clamp(1 - Math.abs(h - 18) / 1.6) * 0.8), '#A9B1E4', envCur.night * 0.85)).multiplyScalar(1 - envCur.rain * 0.12);
     for (const a of actors.slice()) updateActor(a, dt);
     for (const s of sways) s.o.rotation.z = Math.sin(time * 1.3 + s.seed) * s.amp * (envCur ? envCur.wind : 1) * (reduce ? 0.3 : 1);
@@ -521,7 +531,7 @@
     /** save / restore what the player was looking at (cinematic events return exactly there) */
     saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
     restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },
-    screenDelta, screenToDesign,
+    screenDelta, screenToDesign, get bbRes() { return bbRes; },
     get root() { return root; },
     ghostSnap(n) { ghostSn = n; },
     /** obstacles / interactables added after the scene was built (forage bushes, critters…) */

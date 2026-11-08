@@ -355,7 +355,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 }); await wait(page, 800);
       const after = await page.evaluate(() => { const S = OC.Store.s; return { coins: S.coins, inv: JSON.stringify(S.inv), rooms: Object.fromEntries(Object.entries(S.rooms).map(([k, v]) => [k, v.length])), ledger: OC.Tx.log.length, custom: Object.keys(S.custom.items || {}).length, locs: OC.Chars.all().map((c) => c.life.loc), area: OC.World.area.id, tastes: OC.Chars.all().map((c) => Object.keys(OC.Taste.prefs(c).tasted).length), garden: JSON.stringify(S.garden), visited: Object.keys(S.places.visited), v: S.v }; });
       for (const k of ['coins', 'inv', 'rooms', 'ledger', 'custom', 'area', 'tastes', 'garden', 'visited']) check(`11 重開後保留：${k}`, JSON.stringify(before[k]) === JSON.stringify(after[k]), k === 'inv' || k === 'garden' ? '' : `${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
-      check('11 存檔版本 v6（第七階段）', after.v === 6);
+      check('11 存檔版本 v7（8.0）', after.v === 7);
       await page.evaluate(() => { window.__R = OC.World.renderer; });
     }
 

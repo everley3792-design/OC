@@ -102,7 +102,9 @@
     },
     body(c, x) {
       const L = c.look, ch = (k) => (v, live) => { L[k] = v; x.changed('look', live ? null : 'idle'); };
-      return h('div', null, T('比例與體型'), num('頭部大小', L.headSize, 0.75, 1.3, 0.01, ch('headSize')), num('身體寬度', L.bodyW, 0.75, 1.4, 0.01, ch('bodyW')), num('身體長度', L.bodyH, 0.75, 1.4, 0.01, ch('bodyH')), num('腿長', L.legLen, 0.6, 1.7, 0.01, ch('legLen')),
+      const pix = c.appearance.mode === 'sprite' ? h('div', { style: { marginBottom: '8px' } }, h('div.hstack', null, h('span.grow', null, '像素風（保持銳利邊緣）'), toggle(!!c.appearance.pixel, (v) => { c.appearance.pixel = v; x.changed('look'); })),
+        h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, '點陣圖角色開啟後縮放不會變模糊；一般插畫保持關閉（平滑縮放）。原始圖片永遠保留，不會被壓縮覆蓋。')) : null;
+      return h('div', null, pix, T('比例與體型'), num('頭部大小', L.headSize, 0.75, 1.3, 0.01, ch('headSize')), num('身體寬度', L.bodyW, 0.75, 1.4, 0.01, ch('bodyW')), num('身體長度', L.bodyH, 0.75, 1.4, 0.01, ch('bodyH')), num('腿長', L.legLen, 0.6, 1.7, 0.01, ch('legLen')),
         num('耳朵大小', L.earSize, 0.6, 1.5, 0.01, ch('earSize')), num('尾巴大小', L.tailSize, 0.5, 1.6, 0.01, ch('tailSize')), num('整體身高', c.appearance.scale || 1, 0.8, 1.3, 0.01, (v, live) => { c.appearance.scale = v; x.changed('look', live ? null : 'idle'); }));
     },
     face(c, x) {
@@ -237,13 +239,45 @@
       return h('div', null, T('喜歡的東西'), OC.UI.tagList(P.likes, () => x.changed('profile'), '例如：雨天、甜點'), T('討厭的東西'), OC.UI.tagList(P.dislikes, () => x.changed('profile'), '例如：打雷'), T('興趣'), OC.UI.tagList(P.hobbies, () => x.changed('profile'), '例如：畫畫、看書'), T('習慣'), OC.UI.tagList(P.habits, () => x.changed('profile'), '例如：睡前喝牛奶'),
         T('物品喜好', '點一下＝喜歡，再點＝討厭，再點＝取消'), g);
     },
+    /** 8.0 speech: style, pronouns, how they call you, ending (with a rate), several catchphrases with conditions, pace,
+     *  mood colouring, banned words, names for other OCs — with a live preview of several situations */
     speech(c, x) {
-      const Sp = c.speech, sample = h('div.speech', { style: { position: 'static', transform: 'none', display: 'inline-block', animation: 'none', maxWidth: '100%' } });
-      const upd = () => { sample.textContent = Ch().speak(c, Sp.catchphrase || '今天也要一起玩喔！'); };
-      const cp = h('input', { value: Sp.catchphrase, maxLength: 20, placeholder: '口頭禪（可略過）', on: { input: (e) => { Sp.catchphrase = e.target.value; upd(); x.changed('speech'); } } });
-      const en = h('input', { value: Sp.ending, maxLength: 6, placeholder: '口癖、句尾（例如：喵、啦）', on: { input: (e) => { Sp.ending = e.target.value; upd(); x.changed('speech'); } } });
-      upd();
-      return h('div', null, T('說話方式'), seg(Ch().SPEECH, Sp.style, (v) => { Sp.style = v; upd(); x.changed('speech', 'greet'); }), h('div.field', { style: { marginTop: '10px' } }, cp), h('div.field', { style: { marginTop: '8px' } }, en), h('div.center', { style: { marginTop: '14px' } }, sample));
+      const Sp = c.speech; Sp.phrases = Sp.phrases || []; Sp.banned = Sp.banned || []; Sp.call = Sp.call || {};
+      if (!Sp.phrases.length && Sp.catchphrase) { Sp.phrases.push({ text: Sp.catchphrase, rate: 0.18, when: 'any', at: 'start' }); Sp.catchphrase = ''; }
+      const SAMPLES = [['你好！今天天氣真好。', 'happy', 'greet'], ['我有點餓了……', 'down', 'chat'], ['謝謝你送我的禮物！', 'excited', 'gift'], ['我們一起去散步吧？', 'calm', 'chat'], ['今天好累喔。', 'tired', 'chat']];
+      const prev = h('div.speech-prev');
+      const draw = () => prev.replaceChildren(...SAMPLES.map(([t, emo, cat]) => h('div.speech-line', null, h('small', null, { happy: '開心', down: '低落', excited: '興奮', calm: '平靜', tired: '疲倦' }[emo]), h('span', null, Ch().speak(c, t, { emo, cat, to: 'player' })))));
+      const chg = (k) => { draw(); x.changed('speech', k); };
+      const chips = (opts, cur, set) => h('div.chips', null, ...opts.map((v) => h('button.chip-btn' + (cur() === v ? '.on' : ''), { on: { click: (e) => { set(v); [...e.currentTarget.parentNode.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget)); chg(); } } }, v)));
+      const self = h('input', { value: ['我', '人家', '俺', '本小姐', '在下', '咱'].includes(Sp.self) ? '' : Sp.self, maxLength: 4, placeholder: '自訂', style: { width: '80px' }, on: { input: (e) => { Sp.self = e.target.value.trim() || '我'; chg(); } } });
+      const you = h('input', { value: ['你', '妳', '您'].includes(Sp.you) ? '' : Sp.you, maxLength: 4, placeholder: '自訂', style: { width: '80px' }, on: { input: (e) => { Sp.you = e.target.value.trim() || '你'; chg(); } } });
+      const pname = h('input', { value: Sp.playerName || '', maxLength: 10, placeholder: '叫你什麼（例如：主人、阿明）', on: { input: (e) => { Sp.playerName = e.target.value.trim(); chg(); } } });
+      const en = h('input', { value: Sp.ending, maxLength: 6, placeholder: '句尾口癖（例如：喵、啦、的說）', on: { input: (e) => { Sp.ending = e.target.value; chg(); } } });
+      const rate = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: Sp.endingRate == null ? 0.35 : Sp.endingRate, 'aria-label': '句尾出現頻率', style: { width: '100%' }, on: { input: (e) => { Sp.endingRate = +e.target.value; rateL.textContent = rateText(); chg(); } } });
+      const rateText = () => { const r = Sp.endingRate == null ? 0.35 : Sp.endingRate; return r <= 0.05 ? '幾乎不用' : r < 0.25 ? '偶爾' : r < 0.5 ? '大約三句一次' : r < 0.85 ? '常常' : '每句都用'; };
+      const rateL = h('small.muted', null, rateText());
+      const plist = h('div');
+      const drawPhrases = () => plist.replaceChildren(...Sp.phrases.map((p, i) => h('div.card.s', { style: { marginTop: '6px', padding: '10px' } },
+        h('div.hstack', null, h('input.grow', { value: p.text, maxLength: 20, 'aria-label': '口頭禪', on: { input: (e) => { p.text = e.target.value; chg(); } } }), h('button.icon-btn', { 'aria-label': '刪除口頭禪', on: { click: () => { Sp.phrases.splice(i, 1); drawPhrases(); chg(); } } }, icon('trash', 's'))),
+        h('div.hstack', { style: { marginTop: '6px', gap: '6px', flexWrap: 'wrap' } },
+          seg([['any', '任何時候'], ['happy', '開心時'], ['sad', '難過時'], ['greet', '打招呼']], p.when || 'any', (v) => { p.when = v; chg(); }),
+          seg([['start', '句首'], ['end', '句尾']], p.at || 'start', (v) => { p.at = v; chg(); })),
+        h('div.hstack', { style: { marginTop: '6px' } }, h('small.muted', null, '頻率'), h('input.grow', { type: 'range', min: 0.02, max: 0.6, step: 0.02, value: p.rate == null ? 0.18 : p.rate, 'aria-label': '口頭禪頻率', on: { input: (e) => { p.rate = +e.target.value; chg(); } } })))));
+      drawPhrases();
+      const banned = h('input', { value: Sp.banned.join('、'), placeholder: '不想讓他說的詞，用頓號分開', on: { change: (e) => { Sp.banned = e.target.value.split(/[、,，\s]+/).map((w) => w.trim()).filter(Boolean).slice(0, 20); chg(); } } });
+      const others = Ch().all().filter((o) => o.id !== c.id);
+      draw();
+      return h('div', null, T('說話風格'), seg(Ch().SPEECH, Sp.style, (v) => { Sp.style = v; chg('greet'); }),
+        T('預覽', '同一句話在不同心情下'), prev, h('button.btn.ghost.s', { style: { marginTop: '4px' }, on: { click: draw } }, icon('refresh', 's'), '再聽一次'),
+        T('自稱'), h('div.hstack', { style: { gap: '6px', flexWrap: 'wrap' } }, chips(['我', '人家', '俺', '本小姐', '在下', '咱'], () => Sp.self, (v) => { Sp.self = v; self.value = ''; }), self),
+        T('稱呼你'), h('div.hstack', { style: { gap: '6px', flexWrap: 'wrap' } }, chips(['你', '妳', '您'], () => Sp.you, (v) => { Sp.you = v; you.value = ''; }), you), h('div.field', { style: { marginTop: '8px' } }, pname),
+        T('句尾口癖', '不會每句都加'), h('div.field', null, en), h('div.hstack', { style: { marginTop: '6px' } }, h('span.grow', null, '出現頻率'), rateL), rate,
+        T('口頭禪', '可以有好幾個，各自設定時機與頻率'), plist, Sp.phrases.length < 5 ? h('button.btn.s', { style: { marginTop: '6px' }, on: { click: () => { Sp.phrases.push({ text: '', rate: 0.18, when: 'any', at: 'start' }); drawPhrases(); } } }, icon('plus', 's'), '新增口頭禪') : null,
+        T('說話節奏'), seg([['slow', '慢慢說…'], ['normal', '一般'], ['fast', '說話很快']], Sp.pace || 'normal', (v) => { Sp.pace = v; chg(); }),
+        h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '心情會影響語氣'), toggle(Sp.moods !== false, (v) => { Sp.moods = v; chg(); })),
+        T('禁用詞'), h('div.field', null, banned),
+        others.length ? T('對其他 OC 的專屬稱呼') : null,
+        ...others.map((o) => h('div.hstack', { style: { marginTop: '6px' } }, h('span.grow', null, Ch().name(o)), h('input', { value: Sp.call[o.id] || '', maxLength: 8, placeholder: '例如：小栗', style: { width: '120px' }, on: { input: (e) => { if (e.target.value.trim()) Sp.call[o.id] = e.target.value.trim(); else delete Sp.call[o.id]; x.changed('speech'); } } }))));
     },
     /** action → animation assignment (view + link to the studio) */
     anims(c, x) {

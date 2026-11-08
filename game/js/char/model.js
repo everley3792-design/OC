@@ -42,6 +42,18 @@
     { id: 'picky', zh: '挑食', g: '生活', d: '只有喜歡的食物才會開心', x: ['foodie'] },
     { id: 'nightowl', zh: '夜貓子', g: '生活', d: '晚上比較有精神' },
     { id: 'sleepy', zh: '愛睡', g: '生活', d: '休息時恢復更多精力' },
+    // 8.0 — every trait changes behaviour (OC.Chars.behavior / OC.Mind / OC.Brain), not just a label
+    { id: 'energetic', zh: '活潑', g: '情緒', d: '走得更快、跳得更高，動作幅度大；玩樂需求消耗較快', x: ['lazy'] },
+    { id: 'introvert', zh: '內向', g: '社交', d: '獨處就能充電：社交需求下降慢，聊太久會累', x: ['extrovert'] },
+    { id: 'extrovert', zh: '外向', g: '社交', d: '一個人太久會寂寞，社交需求下降快、常主動找人', x: ['introvert'] },
+    { id: 'humorous', zh: '幽默', g: '社交', d: '常常說笑話、大笑；聊天讓對方更開心' },
+    { id: 'romantic', zh: '浪漫', g: '情緒', d: '喜歡看夕陽與星空，收到禮物特別感動' },
+    { id: 'perfectionist', zh: '完美主義', g: '生活', d: '做事慢一點但更認真；作品完成時特別滿足' },
+    { id: 'earlybird', zh: '早起', g: '生活', d: '早睡早起，清晨精神最好', x: ['nightowl'] },
+    { id: 'animallover', zh: '喜歡動物', g: '興趣', d: '看到小生物會開心，觀察小生物時不容易嚇跑牠們' },
+    { id: 'brave', zh: '勇敢', g: '情緒', d: '被丟高高也不怕，敢去沒去過的地方' },
+    { id: 'clumsy', zh: '迷糊', g: '生活', d: '偶爾踉蹌一下、忘東忘西，但很可愛' },
+    { id: 'dreamy', zh: '愛幻想', g: '興趣', d: '常常發呆、望著遠方想事情' },
   ];
   const QUIRKS = {
     walk: { zh: '走路方式', opts: [['normal', '一般'], ['bouncy', '蹦蹦跳跳'], ['sway', '左搖右擺'], ['tiptoe', '踮腳尖'], ['stomp', '大步走']] },
@@ -108,7 +120,8 @@
       profile: { name: '', nickname: '', birthday: '', age: '', gender: '', pronoun: '', species: 'cat', height: 1, intro: '', backstory: '', hobbies: [], likes: [], dislikes: [], habits: [], relationPref: '', custom: [] },
       personality: { pace: 50, energy: 55, social: 50, expression: 55, thinking: 45, speech: 50, traits: [], customTraits: [] },
       quirks: { walk: 'normal', sit: 'neat', sleep: 'neat', eat: 'normal', greet: 'wave', habit: 'none', face: 'cat' },
-      speech: { style: 'casual', catchphrase: '', ending: '' },
+      // 8.0 speech: pronouns, endings with a rate (not on every line), several catchphrases with conditions, banned words, names for others
+      speech: { style: 'casual', catchphrase: '', ending: '', self: '我', you: '你', playerName: '', endingRate: 0.35, phrases: [], banned: [], call: {}, pace: 'normal', moods: true },
       tastes: { likeItems: [], dislikeItems: [], food: {}, flavor: {}, tasted: {} },   // food: id → { lv −2…2, src, locked } (OC.Taste)
       look: clone(LOOK_DEFAULT), parts: [],
       appearance: { mode: 'rig', scale: 1 },
@@ -132,7 +145,7 @@
     c.profile.name = p.name; c.profile.species = p.ears === 'bunny' ? 'bunny' : p.ears === 'bear' ? 'bear' : 'cat';
     const P = { mochi: [55, 60, 55, 60, 40, 45, ['cheerful', 'curious'], 'bouncy', 'wave', 'cute', '喵～'], kuri: [70, 80, 80, 85, 30, 75, ['outgoing', 'foodie'], 'bouncy', 'jump', 'energetic', '！'], sora: [30, 35, 25, 30, 70, 30, ['shy', 'bookworm'], 'tiptoe', 'shy', 'whisper', '…'] }[key] || [50, 50, 50, 50, 50, 50, [], 'normal', 'wave', 'casual', ''];
     Object.assign(c.personality, { pace: P[0], energy: P[1], social: P[2], expression: P[3], thinking: P[4], speech: P[5], traits: P[6] });
-    c.quirks.walk = P[7]; c.quirks.greet = P[8]; c.speech.style = P[9]; c.speech.ending = P[10];
+    c.quirks.walk = P[7]; c.quirks.greet = P[8]; c.speech.style = P[9]; c.speech.ending = P[10]; c.speech.endingRate = 0.3;
     return c;
   }
 
@@ -168,21 +181,22 @@
   const has = (c, t) => c.personality.traits.includes(t);
   function behavior(c) {
     const p = c.personality, q = c.quirks, k = (v) => (v - 50) / 50; // −1…1
-    let speed = 62 * (1 + 0.28 * k(p.pace)) * (has(c, 'diligent') ? 1.1 : 1) * (has(c, 'lazy') ? 0.85 : 1);
+    let speed = 62 * (1 + 0.28 * k(p.pace)) * (has(c, 'diligent') ? 1.1 : 1) * (has(c, 'lazy') ? 0.85 : 1) * (has(c, 'energetic') ? 1.1 : 1) * (has(c, 'perfectionist') ? 0.95 : 1);
     if (q.walk === 'tiptoe') speed *= 0.85; if (q.walk === 'stomp') speed *= 1.08;
     return {
       speed,
-      bounce: { normal: 1, bouncy: 2.2, sway: 0.8, tiptoe: 0.5, stomp: 1.4 }[q.walk] * (0.8 + 0.4 * (p.energy / 100)),
+      bounce: { normal: 1, bouncy: 2.2, sway: 0.8, tiptoe: 0.5, stomp: 1.4 }[q.walk] * (0.8 + 0.4 * (p.energy / 100)) * (has(c, 'energetic') ? 1.3 : 1),
       sway: q.walk === 'sway' ? 0.12 : q.walk === 'bouncy' ? 0.04 : 0.02,
       blinkEvery: 2.6 + 2.2 * (1 - p.energy / 100),
       fidgetEvery: 5 + 9 * (1 - p.energy / 100) + (has(c, 'lazy') ? 6 : 0),
-      emoteScale: 0.6 + 0.8 * (p.expression / 100),
-      lookAround: q.habit === 'lookaround' || has(c, 'curious'),
-      greet: q.greet, autoGreet: p.social > 65 || has(c, 'outgoing'), blushOnTalk: has(c, 'shy') || p.social < 30,
+      emoteScale: 0.6 + 0.8 * (p.expression / 100) + (has(c, 'energetic') ? 0.2 : 0) + (has(c, 'introvert') ? -0.1 : 0),
+      lookAround: q.habit === 'lookaround' || has(c, 'curious') || has(c, 'dreamy'),
+      clumsy: has(c, 'clumsy'), laughs: has(c, 'humorous'), dreamy: has(c, 'dreamy'),
+      greet: q.greet, autoGreet: p.social > 65 || has(c, 'outgoing') || has(c, 'extrovert'), blushOnTalk: has(c, 'shy') || has(c, 'romantic') || p.social < 30,
       sitChance: (has(c, 'lazy') ? 0.35 : 0.08) + (1 - p.energy / 100) * 0.1,
       chew: { normal: 1.6, nibble: 2.6, gobble: 0.9 }[q.eat],
       face: q.face, habit: q.habit, sleep: q.sleep, sit: q.sit,
-      jumpHeight: 10 + 8 * (p.energy / 100) + (q.greet === 'jump' ? 4 : 0),
+      jumpHeight: 10 + 8 * (p.energy / 100) + (q.greet === 'jump' ? 4 : 0) + (has(c, 'energetic') ? 4 : 0),
     };
   }
   /** a short original personality title derived from the sliders */
@@ -192,17 +206,49 @@
     const b = p.thinking > 60 ? (p.speech > 55 ? '分析家' : '思考家') : p.thinking < 40 ? (p.expression > 55 ? '夢想家' : '感受家') : (p.pace > 60 ? '行動派' : '生活家');
     return a + b;
   }
-  /** apply speech style to a line */
-  function speak(c, text) {
-    const s = c.speech, style = s.style;
-    let t = text;
+  /** 8.0: turn a neutral line into THIS character's voice.
+   *  o.to = 'player' | ocId (who is addressed) · o.emo = dominant emotion · o.cat = dialogue category · o.rnd = 0..1 (tests)
+   *  - pronouns (我 → 人家／俺／本小姐…, 你 → 妳／您… when talking to the player; special names for specific OCs)
+   *  - endings at the player's chosen rate (default about one line in three) instead of on every line; never doubled
+   *  - several catchphrases, each with a rate, a mood / situation condition and a position (start / end)
+   *  - style (polite / cute / cool / energetic / whisper), pace (slow adds pauses, fast trims them), mood colouring
+   *  - banned words are removed */
+  const SELF_PL = { 我: '我們', 俺: '俺們', 人家: '我們', 本小姐: '我們', 本大爺: '我們', 在下: '我們', 咱: '咱們', 偶: '偶們' };
+  const POS = ['happy', 'excited', 'calm', 'content', 'proud', 'love'], NEG = ['lonely', 'down', 'sad', 'tired', 'nervous', 'annoyed', 'bored'];
+  function speak(c, text, o = {}) {
+    const s = c.speech || {}, style = s.style;
+    // a seed from the caller (the life sim's RNG → reproducible) expands into independent draws; otherwise Math.random
+    let seed = o.rnd != null ? Math.floor(o.rnd * 2147483646) + 1 : 0; const rnd = seed ? () => (seed = (seed * 48271) % 2147483647) / 2147483647 : Math.random;
+    let t = String(text);
+    const emo = o.emo || (OC.Mind && c.life ? OC.Mind.dominant(c) : 'neutral'), pos = POS.includes(emo), neg = NEG.includes(emo);
+    // pronouns
+    if (s.self && s.self !== '我') { t = t.replace(/我們/g, '\u0001').replace(/我/g, s.self).replace(/\u0001/g, SELF_PL[s.self] || '我們'); }
+    const toOC = o.to && o.to !== 'player' ? o.to : null;
+    if (!toOC && s.you && s.you !== '你') t = t.replace(/你們/g, '\u0002').replace(/你/g, s.you).replace(/\u0002/g, s.you === '您' ? '您們' : '你們');
+    if (!toOC && s.playerName) t = t.replace(/\{player\}/g, s.playerName); else t = t.replace(/\{player\}/g, s.you || '你');
+    if (toOC && s.call && s.call[toOC]) { const other = OC.Chars.get(toOC); if (other) t = t.split(name(other)).join(s.call[toOC]); }
+    // style
     if (style === 'polite') t = t.replace(/！/g, '。').replace(/吧？/g, '嗎？');
-    if (style === 'cute') t = t.replace(/[。！]$/, '～');
+    if (style === 'cute' && rnd() < 0.5) t = t.replace(/[。！]$/, '～');
     if (style === 'cool') t = t.replace(/[！～]/g, '。').replace(/^哇/, '嗯');
-    if (style === 'energetic') t = t.replace(/[。～]$/, '！');
+    if (style === 'energetic' && !neg) t = t.replace(/[。～]$/, '！');
     if (style === 'whisper') t = '（小聲）' + t.replace(/！/g, '…');
-    if (s.ending) t = t.replace(/([。！？～…]?)$/, s.ending + '$1');
-    return t;
+    // mood colouring (only if the player allows it)
+    if (s.moods !== false) { if (neg && style !== 'cool') t = t.replace(/！$/, '…'); else if (emo === 'excited' && rnd() < 0.5) t = t.replace(/。$/, '！'); }
+    // pace
+    if (s.pace === 'slow' && rnd() < 0.5) t = t.replace(/，/, '……'); else if (s.pace === 'fast') t = t.replace(/……/g, '…');
+    // ending: at a rate, never doubled, softer when sad
+    const rate = s.endingRate != null ? s.endingRate : 0.35;
+    if (s.ending && !t.replace(/[。！？～…\s]+$/, '').endsWith(s.ending.replace(/[～~]+$/, '')) && rnd() < rate * (neg ? 0.5 : 1)) {
+      const core = t.replace(/[。！？～…\s]+$/, ''), punct = t.slice(core.length);
+      // an ending that carries its own tone (喵～) replaces the full stop; others keep the original punctuation (的說！)
+      t = /[～~！!？?…]$/.test(s.ending) ? core + s.ending + (punct.includes('？') ? '？' : '') : core + s.ending + (punct || '。');
+    }
+    // catchphrases (one at most per line)
+    const phrases = (s.phrases && s.phrases.length ? s.phrases : s.catchphrase ? [{ text: s.catchphrase, rate: 0.18, when: 'any', at: 'start' }] : []).filter((p) => p && p.text && (p.when === 'any' || !p.when || (p.when === 'happy' && pos) || (p.when === 'sad' && neg) || (p.when === o.cat) || (p.when === 'greet' && /greet|out|hello/.test(o.cat || ''))));
+    for (const p of phrases) { if (rnd() < (p.rate == null ? 0.18 : p.rate) && !t.includes(p.text)) { t = p.at === 'end' ? t.replace(/([。！？～…]*)$/, '，' + p.text + '$1') : p.text + ' ' + t; break; } }
+    for (const w of s.banned || []) if (w) t = t.split(w).join('');
+    return t.replace(/^\s+|\s+$/g, '') || String(text);
   }
 
   // ---------------- growth: discoveries need consent ----------------

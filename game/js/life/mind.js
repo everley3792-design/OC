@@ -32,8 +32,8 @@
       case 'food': m = (has(c, 'foodie') ? 1.15 : 1) * (sleeping ? 0.5 : 1); break;
       case 'energy': m = (has(c, 'lazy') ? 0.85 : 1) * (OC.Growth && OC.Growth.has(c, 'stamina') ? 0.85 : 1) * (n.sleep < 25 ? 1.6 : 1) * (n.food < 15 ? 1.3 : 1) * (ctx.sed ? 0.6 : 1) * (sleeping ? 0 : 1); break;
       case 'sleep': m = (has(c, 'nightowl') && phase() === 'night' ? 0.7 : 1) * (has(c, 'sleepy') ? 1.25 : 1) * (sleeping ? 0 : 1); break;
-      case 'fun': m = (has(c, 'curious') ? 1.1 : 1) * (has(c, 'lazy') ? 0.9 : 1) * (0.8 + 0.4 * p.energy / 100) * (sleeping ? 0.2 : 1); break;
-      case 'social': m = (has(c, 'shy') ? 0.6 : 1) * (has(c, 'outgoing') || has(c, 'social') ? 1.3 : 1) * (0.6 + 0.8 * p.social / 100) * (sleeping ? 0.3 : 1); break;
+      case 'fun': m = (has(c, 'curious') ? 1.1 : 1) * (has(c, 'lazy') ? 0.9 : 1) * (has(c, 'energetic') ? 1.15 : 1) * (0.8 + 0.4 * p.energy / 100) * (sleeping ? 0.2 : 1); break;
+      case 'social': m = (has(c, 'shy') || has(c, 'introvert') ? 0.6 : 1) * (has(c, 'outgoing') || has(c, 'social') || has(c, 'extrovert') ? 1.3 : 1) * (0.6 + 0.8 * p.social / 100) * (sleeping ? 0.3 : 1); break;
       case 'comfort': m = (wx() === 'rain' && !ctx.inside ? 2 : 1) * (ctx.sed ? 0.5 : 1) * (sleeping ? 0 : 1); break;
       case 'interest': m = (has(c, 'curious') ? 1.4 : 1) * (ctx.repeat ? 1.5 : 1) * (sleeping ? 0 : 1); break;
       case 'active': m = (ctx.sed ? 1.5 : 1) * (0.6 + 0.9 * p.energy / 100) * (sleeping ? 0 : 1); break;
@@ -230,7 +230,7 @@
   function routine(c) {
     const r = c.life.routine || {}, p = c.personality;
     let sleep = 23, wake = 7.5;
-    if (has(c, 'nightowl')) { sleep = 25.5; wake = 9.5; } else if (p.energy >= 65 || has(c, 'diligent')) { sleep = 22; wake = 6.5; }
+    if (has(c, 'nightowl')) { sleep = 25.5; wake = 9.5; } else if (has(c, 'earlybird')) { sleep = 21.5; wake = 5.5; } else if (p.energy >= 65 || has(c, 'diligent')) { sleep = 22; wake = 6.5; }
     if (has(c, 'lazy')) wake += 1; if (has(c, 'sleepy')) { sleep -= 0.5; wake += 0.5; }
     return { sleep: r.sleep != null ? r.sleep : sleep, wake: r.wake != null ? r.wake : wake, auto: r.sleep == null && r.wake == null, early: wake <= 6.6, late: sleep >= 25 };
   }

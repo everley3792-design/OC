@@ -34,7 +34,7 @@
   const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 
   // ---------- limits (phone-safe) ----------
-  const LIMITS = { maxSide: 1024, maxBytes: 8 * 1024 * 1024, maxFramesPerImport: 240, cachePixels: 64 * 1024 * 1024 / 4 };
+  const LIMITS = { maxSide: 2048, maxBytes: 16 * 1024 * 1024, maxOriginal: 32 * 1024 * 1024, maxFramesPerImport: 240, cachePixels: 64 * 1024 * 1024 / 4 };
   const meta = new Map();          // id → metadata (all loaded at boot; small)
   let ready = null;
   function init() {
@@ -76,12 +76,21 @@
   /** store an existing PNG/whatever blob as is (pack import) */
   async function putBlob(blob, m) {
     const img = await decodeBlob(blob);
-    return put(img, m);
+    const rec = await put(img, m);
+    // 8.0: never lose the player's original file. The working copy is ≤ 2048 px PNG (fast to draw everywhere); when that
+    // differs from what was imported (bigger, JPEG / WebP / GIF …) the untouched original is kept next to it.
+    const w = img.width || img.naturalWidth, hh = img.height || img.naturalHeight;
+    if (blob && blob.size <= LIMITS.maxOriginal && (w > LIMITS.maxSide || hh > LIMITS.maxSide || (blob.type && blob.type !== 'image/png'))) {
+      try { await tx(['blobs', 'meta'], 'readwrite', (t) => { t.objectStore('blobs').put(blob, rec.id + ':orig'); rec.orig = { w, h: hh, type: blob.type || '', size: blob.size }; t.objectStore('meta').put(rec); }); meta.set(rec.id, rec); } catch (e) { console.warn('[assets] original not kept', e); }
+    }
+    return rec;
   }
+  /** the untouched imported file (or the working copy when they are the same) */
+  const original = (id) => tx(['blobs'], 'readonly', (t) => req(t.objectStore('blobs').get(meta.get(id) && meta.get(id).orig ? id + ':orig' : id)));
   async function replace(id, src) { const old = meta.get(id); if (!old) throw new Error('asset missing'); return put(src, Object.assign({}, old, { id })); }
   async function update(id, patch) { const m = meta.get(id); if (!m) return; Object.assign(m, patch, { updated: Date.now() }); await tx(['meta'], 'readwrite', (t) => t.objectStore('meta').put(m)); OC.Store.emit('assets', { id }); }
   async function duplicate(id, patch = {}) { const img = await image(id); return put(img, Object.assign({}, meta.get(id), { id: undefined, name: (meta.get(id).name || '') + ' 複本' }, patch)); }
-  async function remove(id) { await tx(['blobs', 'thumbs', 'meta'], 'readwrite', (t) => { t.objectStore('blobs').delete(id); t.objectStore('thumbs').delete(id); t.objectStore('meta').delete(id); }); meta.delete(id); evict(id); OC.Store.emit('assets', { id, removed: true }); }
+  async function remove(id) { await tx(['blobs', 'thumbs', 'meta'], 'readwrite', (t) => { t.objectStore('blobs').delete(id); t.objectStore('blobs').delete(id + ':orig'); t.objectStore('thumbs').delete(id); t.objectStore('meta').delete(id); }); meta.delete(id); evict(id); OC.Store.emit('assets', { id, removed: true }); }
   const blob = (id) => tx(['blobs'], 'readonly', (t) => req(t.objectStore('blobs').get(id)));
   const thumbBlob = (id) => tx(['thumbs'], 'readonly', (t) => req(t.objectStore('thumbs').get(id)));
 
@@ -122,5 +131,5 @@
   function missing(ids) { return [...new Set(ids)].filter((id) => id && !meta.has(id)); }
   function usage() { let n = 0, bytes = 0; for (const m of meta.values()) { n++; bytes += m.size || 0; } return { n, bytes }; }
 
-  OC.Assets = { init, put, putBlob, replace, update, duplicate, remove, blob, image, peek, thumbURL, dataURL, decodeBlob, canvasToBlob, fitCanvas, list, has, missing, usage, draftPut, draftGet, draftDel, LIMITS, get meta() { return meta; }, uid };
+  OC.Assets = { init, put, putBlob, original, replace, update, duplicate, remove, blob, image, peek, thumbURL, dataURL, decodeBlob, canvasToBlob, fitCanvas, list, has, missing, usage, draftPut, draftGet, draftDel, LIMITS, get meta() { return meta; }, uid };
 })();

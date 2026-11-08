@@ -530,3 +530,6 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 .tut-ring { position: fixed; z-index: 54; border-radius: var(--r-l); box-shadow: 0 0 0 3px var(--accent), 0 0 0 9px var(--accent-soft); pointer-events: none; opacity: 0; transition: opacity 300ms; animation: tut-pulse 1.4s var(--ease-in-out) infinite; }
 .tut-ring.on { opacity: 1; }
 @keyframes tut-pulse { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 0 14px transparent; } }
+.speech-prev { display: grid; gap: 6px; margin-top: 4px; }
+.speech-line { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; border-radius: var(--r-m); background: var(--surface-2); font-size: var(--fs-s); }
+.speech-line small { flex: none; width: 34px; color: var(--ink-3); font-size: var(--fs-xs); }

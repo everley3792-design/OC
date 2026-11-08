@@ -129,8 +129,8 @@
   /** a styled line (speech style, ending, occasional catchphrase), or null */
   function say(cat, sp, ot, extra) {
     const r = pick(cat, sp, ot, extra); if (!r) return null;
-    let t = OC.Chars.speak(sp, r.text);
-    if ((cat === 'greet' || cat === 'chat_player') && sp.speech.catchphrase && Sim().rnd() < 0.25) t = sp.speech.catchphrase + ' ' + t;
+    // 8.0: catchphrases / endings / pronouns are applied by OC.Chars.speak with their own rates and conditions
+    const t = OC.Chars.speak(sp, r.text, { to: ot && ot.id ? ot.id : 'player', cat, rnd: Sim().rnd() });
     return { text: t, line: r.line, reply: r.line.reply || null };
   }
 

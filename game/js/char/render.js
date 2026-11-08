@@ -152,6 +152,7 @@
       const breath = 1 + (p.breath || 0) * 0.008, sq = p.squash || 1;
       ctx.save(); ctx.translate(x + (doc.offset.x || 0) * k, y - (p.lift || 0) * unitPx + (doc.offset.y || 0) * k);
       ctx.rotate(p.lean || 0); ctx.scale((sp.mirror ? -1 : 1) * k / Math.sqrt(sq), k * sq * breath);
+      ctx.imageSmoothingEnabled = !c.appearance.pixel; ctx.imageSmoothingQuality = 'high';   // 8.0: crisp pixel art / well-filtered downscales
       ctx.drawImage(img, -a.x, -a.y);
       // overlay (blink) — suppressed in states that already have closed eyes
       if ((p.blink || 0) > 0.5) {
