@@ -21,9 +21,9 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
     if (want(1) || want(2)) {
       await page.goto(H.URL); await page.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('oc-assets'); }); await page.goto(H.URL);
       await page.waitForSelector('.intro-logo', { timeout: 20000 }); await shot(page, '1-logo');
-      await page.waitForSelector('.intro-film', { timeout: 20000 }); await wait(page, 3000); await shot(page, '2-opening');
+      await page.waitForSelector('.intro-film', { timeout: 20000 }); await wait(page, 1500); await shot(page, '2-opening');
       // the film runs on real time (16.5 s): sample while it plays (a slow screenshot must not make the test miss it)
-      const yaws = [], subs = []; for (let i = 0; i < 6; i++) { const r = await page.evaluate(() => { const s = document.querySelector('.intro-subtitle'); return [OC.World.yaw, s ? s.textContent : '']; }); yaws.push(r[0]); subs.push(r[1]); await wait(page, 700); }
+      const yaws = [], subs = []; for (let i = 0; i < 5; i++) { const r = await page.evaluate(() => { const s = document.querySelector('.intro-subtitle'); return [OC.World.yaw, s ? s.textContent : '']; }); yaws.push(r[0]); subs.push(r[1]); await wait(page, 500); }
       const mid = await page.evaluate(([y, ss]) => ({ chars: OC.Chars.all().length, npcs: Object.keys(OC.App.npcs || {}).length, yaw: Math.max(...y) - Math.min(...y), sub: ss.reduce((a, b) => (b.length > a.length ? b : a), '') }), [yaws, subs]);
       check('1a 全新安裝：開場期間沒有任何角色或居民（小島是空的）', mid.chars === 0 && mid.npcs === 0, mid);
       check('2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播', mid.yaw > 0.05 && mid.sub.length > 4, mid);

@@ -1,10 +1,30 @@
 {
- "at": "2026-11-08T05:09:33.990Z",
+ "at": "2026-11-08T05:14:33.786Z",
  "results": [
+  {
+   "name": "1a 全新安裝：開場期間沒有任何角色或居民（小島是空的）",
+   "ok": true,
+   "detail": {
+    "chars": 0,
+    "npcs": 0,
+    "yaw": 0.10119566174444868,
+    "sub": "住在這裡的，會是一位只屬於你的角色。"
+   }
+  },
+  {
+   "name": "2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播",
+   "ok": true,
+   "detail": {
+    "chars": 0,
+    "npcs": 0,
+    "yaw": 0.10119566174444868,
+    "sub": "住在這裡的，會是一位只屬於你的角色。"
+   }
+  },
   {
    "name": "執行中斷",
    "ok": false,
-   "detail": "page.evaluate: TypeError: Cannot read properties of null (reading 'textContent')\n    at eval (eval at evaluate (:311:30), <anonymous>:1:170)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /home/user/OC/game/tests/v8/run.js:26:30"
+   "detail": "page.tap: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.intro-skip')\u001b[22m\n\u001b[2m    - locator resolved to <button aria-label=\"跳過開場\" class=\"intro-skip\">跳過 ›</button>\u001b[22m\n\u001b[2m  - attempting tap action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing tap action\u001b[22m\n\u001b[2m    - <div class=\"intro-welcome\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m  - retrying tap action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying tap action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m  - element was detached from the DOM, retrying\u001b[22m\n\n    at /home/user/OC/game/tests/v8/run.js:30:41"
   }
  ]
 }

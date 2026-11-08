@@ -317,6 +317,12 @@
         let off = Math.hypot(a.x - s.ax, a.y - s.ay) > 1 && clearPoint(s.ax, s.ay, b.id, 12) ? { x: s.ax, y: s.ay } : null;
         for (const [dx, dy] of [[-16, 10], [16, 10], [0, 18], [-22, 0], [22, 0], [0, 28]]) { if (off) break; const q = Wd().nearestWalkable(s.ax + dx, s.ay + dy, 10); if (q && clearPoint(q.x, q.y, b.id, 12)) off = q; }
         if (off) { a.path = [{ x: off.x, y: off.y }]; a.onArrive = null; }
+      } else if (s && s.inside) {
+        // coming out of the house: the door slots are only 5 px apart, so step out in front onto a free spot
+        // (several OCs waking at the same time must not reappear on top of each other)
+        let off = null;
+        for (const [dx, dy] of [[0, 18], [-16, 16], [16, 16], [-28, 24], [28, 24], [0, 34], [-40, 30], [40, 30]]) { const q = Wd().nearestWalkable(s.ax + dx, s.ay + dy, 10); if (q && clearPoint(q.x, q.y, b.id, 12)) { off = q; break; } }
+        if (off) { a.path = [{ x: off.x, y: off.y }]; a.onArrive = null; }
       }
     }
   }

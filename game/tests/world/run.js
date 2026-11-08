@@ -182,7 +182,7 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.evaluate((id) => { const c = OC.Chars.get(id); c.life.loc = 'isle'; c.life.trip = null; c.life.cur = null; OC.App.syncPresence(); }, k); await wait(page, 600);
       await page.evaluate((id) => { const c = OC.Chars.get(id); c.needs.fun = 10; c.needs.energy = 90; c.needs.food = 80; c.needs.sleep = 80; OC.Brain.get(id).holds.clear(); OC.Brain.command(id, 'play'); }, k);
       const used = await until(page, ([id, uid]) => { const b = OC.Brain.get(id); return b && b.slot && String(b.slot.k).includes(uid); }, [k, r.uid], 40000, 300);
-      check('5b OC 走過去使用新家具（預約位子後玩鞦韆）', used, await page.evaluate((id) => { const b = OC.Brain.get(id); return b ? `${b.st}/${b.act}/${b.slot && b.slot.k}` : ''; }, k));
+      check('5b OC 走過去使用新家具（預約位子後玩鞦韆）', used, await page.evaluate((id) => { const b = OC.Brain.get(id); return b ? `${b.st}/${b.act}/${b.slot && b.slot.k} holds:${[...b.holds]} log:` + OC.Brain.log.filter((l) => l.who === id).slice(0, 6).map((l) => l.text).join(' | ') : ''; }, k));
       await wait(page, 1200); await shot(page, '5-swing');
     }
 
