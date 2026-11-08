@@ -332,7 +332,7 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       // a dream that was finished before the restart may be followed by a new one (life goes on) — compare what existed
       { const b = JSON.parse(before.asp), a2 = JSON.parse(after.asp); const ok = b.every((x, i) => JSON.stringify(x.done) === JSON.stringify(a2[i].done) && (!x.id || (x.id === a2[i].id && x.step <= a2[i].step))); before.asp = after.asp = ok ? 'ok' : JSON.stringify({ b, a2 }); }
       for (const k of ['coins', 'q', 'chal', 'req', 'ach', 'achC', 'titles', 'skills', 'asp', 'fav', 'sound']) check(`14 重開後保留：${k}`, before[k] === after[k], k === 'coins' ? `${before.coins} → ${after.coins}` : '');
-      check('14 存檔版本 v5', after.v === 5);
+      check('14 存檔版本 v6（第七階段）', after.v === 6);
       const dup = await page.evaluate(() => { const c0 = OC.Store.s.coins; const a = OC.Quests.list().filter((x) => x.claimed).map((x) => OC.Quests.claim(x.key).ok); const b = OC.Achieve.list().filter((x) => x.claimed).map((x) => OC.Achieve.claim(x.id).ok); return { ok: a.concat(b).filter(Boolean).length, coins: OC.Store.s.coins - c0 }; });
       check('14 重開後再領已領過的任務／成就：全部被拒絕，星幣不變', dup.ok === 0 && dup.coins === 0, JSON.stringify(dup));
     }

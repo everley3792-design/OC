@@ -18,12 +18,12 @@ import org.json.JSONObject
 class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     val brain = PetBrain(seed)
     val talk = PetTalk(seed + 1)
-    val view = PetView(svc)
-    private val wm = svc.getSystemService(android.content.Context.WINDOW_SERVICE) as WindowManager
+    val view = PetView(svc.uiCtx)
+    private val wm = svc.wm
     private val lp = overlayParams(1, 1, 0).apply { title = "OC Shimeji pet" }
     private val gestures: Gestures
-    private val bubble = Bubble(svc, wm)
-    private val menu = PetMenu(svc, wm)
+    private val bubble = Bubble(svc.uiCtx, wm)
+    private val menu = PetMenu(svc.uiCtx, wm)
     var name = ""; private set
     var sizePx = 0; private set
     var attached = false; private set

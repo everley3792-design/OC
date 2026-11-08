@@ -14,7 +14,7 @@
 
   function fresh() {
     return {
-      v: 5, created: Date.now(), onboarded: false,
+      v: 6, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
@@ -34,6 +34,15 @@
       // Phase 6: quests (q), character requests (req), claimed achievements, titles, tallies for achievements,
       // special events seen, collection favourites / spotted items, journal favourites
       play: { v: 1, q: { day: '', week: '', list: [], hidden: {}, hprog: {}, chal: {}, n: {} }, req: { list: [], cd: {}, nextAt: 0, n: 0, seq: 0 }, ach: {}, titles: {}, tally: {}, sets: {}, events: {}, spotted: {}, collFav: {}, memFav: {} },
+      // Phase 7: desktop pets (js/pet/petsync.js). The native overlay never simulates needs; it only reads a snapshot
+      // and sends interactions back (applied once: applied.seq watermark + OC.Tx keys pet:<event id>)
+      pet: {
+        v: 1, on: [], per: {}, custom: {}, exported: {},
+        global: { fps: 30, quality: 'mid', maxPets: 3, pauseScreenOff: true, cacheMB: 24, passthrough: false, bubbles: true, haptics: true },
+        app: { enabled: false, useSystem: true, rules: {}, exclude: [], hide: false },
+        applied: { seq: 0, day: '', n: {}, log: [] }, syncLog: [],
+        tools: { todos: [], notes: [], alarms: [], pomo: { work: 25, brk: 5, auto: true, exact: false, today: 0, day: '', total: 0, active: null }, rest: { on: false, every: 60 } },
+      },
       seen: { apple: Date.now(), flower: Date.now() },   // collection: item id → first obtained timestamp (starter items)
       goal: null,                    // life goal id
       world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {} },
@@ -74,7 +83,8 @@
     if (data && data.v === 2) data = migrateV2(data);             // Phase 3 → Phase 4: add life state (additive, nothing removed)
     if (data && data.v === 3) data = migrateV3(data);             // Phase 4 → Phase 5: furniture per place, ledger, workshop products
     if (data && data.v === 4) data = migrateV4(data);             // Phase 5 → Phase 6: quests / requests / achievements (additive)
-    S = data && data.v === 5 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 5) data = migrateV5(data);             // Phase 6 → Phase 7: desktop pets (additive)
+    S = data && data.v === 6 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
   }
@@ -91,6 +101,12 @@
   }
   /** v4 → v5: play state is added by fresh(); the old daily quest block stays (unused) so nothing is lost */
   function migrateV4(d) { d.v = 5; d.migratedV4 = Date.now(); return d; }
+  /** v5 → v6: the single desktop pet (petId + petScale) becomes the first pet of the multi-pet config; the rest comes from fresh() */
+  function migrateV5(d) {
+    d.v = 6; d.migratedV5 = Date.now();
+    if (!d.pet && d.petId) d.pet = { on: [d.petId], per: { [d.petId]: { size: (d.settings && d.settings.petScale) || 1 } } };
+    return d;
+  }
   function persist() {
     dirty = false; clearTimeout(saveTimer);
     const json = JSON.stringify(S);
@@ -127,11 +143,12 @@
 
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5].includes(d.v)) throw new Error(d && d.v > 5 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5, 6].includes(d.v)) throw new Error(d && d.v > 6 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
     if (d.v === 2) d = migrateV2(d);
     if (d.v === 3) d = migrateV3(d);
     if (d.v === 4) d = migrateV4(d);
+    if (d.v === 5) d = migrateV5(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }

@@ -103,6 +103,9 @@
       case 'browse': s.lookX = Math.sin(at * 0.8) > 0 ? 1 : -1; s.mouth = 'o'; s.eyes = s.eyes || 'round'; break;
       case 'pet': s.eyes = 'happy'; s.blush = 0.8; s.tail = Math.sin(at * 8) * 0.4; s.ear = 0.3; s.headDy = 0.6; break;
       case 'drag': s.eyes = 'wide'; s.mouth = 'o'; s.armL = s.armR = -1.3; s.ear = 0.3; break;
+      case 'fall': s.eyes = 'wide'; s.mouth = 'o'; s.armL = -2.1 + Math.sin(at * 9) * 0.25; s.armR = -2.1 - Math.sin(at * 9) * 0.25; s.ear = -0.32; s.tail = Math.sin(at * 12) * 0.3; s.squash = 1.04; break;
+      case 'hang': s.armL = s.armR = -2.7; s.lean = Math.sin(at * 2.2) * 0.07; s.lift = 4; s.eyes = (T % 4) < 0.25 ? 'line' : 'round'; s.mouth = 'cat'; s.tail = Math.sin(at * 2.2 + 1) * 0.3; s.ear = 0.1; break;
+      case 'peek': s.lean = 0.16 * Math.sign(s.face || 1); s.lookX = 0.8 * Math.sign(s.face || 1); s.blush = 0.5; s.armL = s.armR = -0.5; s.eyes = (T % 3) < 0.2 ? 'line' : 'round'; s.mouth = 'cat'; s.headDy = 0.4; break;
       case 'climb': s.walk = 1; s.armL = -1.6 + Math.sin(at * 8) * 0.4; s.armR = -1.6 - Math.sin(at * 8) * 0.4; break;
       case 'jump': { const crouch = arc(T, 0, 0.12), air = seg(T, 0.12, 0.5), land = arc(T, 0.5, 0.62); s.lift = Math.sin(Math.PI * air) * b.jumpHeight * A; s.squash = 1 - crouch * 0.12 + (air > 0 && air < 1 ? 0.06 * (1 - air) : 0) - land * 0.08; s.armL = s.armR = air > 0 && air < 1 ? -1.6 : 0.3 * crouch; s.ear = air > 0 && air < 1 ? 0.3 * Math.sin(Math.PI * air) : -0.1 * land; break; }
       default: break;

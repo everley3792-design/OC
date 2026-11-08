@@ -2,12 +2,14 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.6.0-alpha（第六階段：任務、請求、成長、收藏、成就、動畫與音效）
+## 目前版本 0.7.0-alpha（第七階段：Android 系統懸浮桌寵）
 
-- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.6.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.6.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+，可直接覆蓋 0.5.0，存檔自動升級到 v5）
-- 第六階段完成紀錄、測試結果與未完成項目：[`docs/phase6-report.md`](docs/phase6-report.md)；截圖：`deliverables/phase6/`
-- 第六階段規格：[任務與請求](docs/quests.md) · [技能／目標／成就／圖鑑／日誌](docs/growth.md) · [動畫、演出與音效](docs/animation-performance.md)
-- 自動化測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/play/run.js`（第六階段）、`node game/tests/world/run.js`（第五階段）、`node game/tests/life/run.js`（第四階段）
+- **可安裝 APK**：[`deliverables/apk/oc-shimeji-0.7.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.7.0-alpha-debug.apk)（`adb install -r …`，Android 8.0+，targetSdk 35，可直接覆蓋 0.6.0，存檔自動升級到 v6）
+- ⚠️ 桌寵、通知、提醒、小工具等原生功能**尚未在實機上驗證**（開發環境沒有 Android 裝置）——測試計畫：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+- 第七階段完成紀錄（已驗證／需實機／部分完成／未完成）：[`docs/phase7-report.md`](docs/phase7-report.md)；截圖：`deliverables/phase7/`
+- 第七階段規格：[Android 原生層與同步](docs/android-native.md) · [權限與隱私](docs/permissions.md) · [備份](docs/backup.md) · [效能](docs/performance.md) · [Android 建置](docs/android-build.md)
+- 自動化測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/pet/run.js`（第七階段）、`node game/tests/play/run.js`（第六）、`node game/tests/world/run.js`（第五）、`node game/tests/life/run.js`（第四）；Kotlin：`cd android && gradle -PcoreOnly=true test`
+- 第六階段：[`docs/phase6-report.md`](docs/phase6-report.md) · [任務與請求](docs/quests.md) · [技能／目標／成就／圖鑑／日誌](docs/growth.md) · [動畫、演出與音效](docs/animation-performance.md)
 - 第五階段：[`docs/phase5-report.md`](docs/phase5-report.md) · [世界地圖與地點](docs/world-map.md) · [物品系統](docs/items.md) · [商店與經濟](docs/economy.md)
 - 第四階段：[`docs/phase4-report.md`](docs/phase4-report.md) · [行為引擎](docs/behavior-engine.md) · [生活資料格式](docs/life-format.md) · [事件規則](docs/event-rules.md) · [情緒與回憶](docs/memory-model.md)
 - **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）

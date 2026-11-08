@@ -574,29 +574,11 @@
   function travel(id) { OC.WorldUI.travel(id); }
 
   // =============================== desktop pet export ===============================
-  /** render the chosen OC's real actions (frames or rig) into the overlay pet's sprite sets */
+  /** render every desktop OC's real actions (frames or rig) for the overlay pets (Phase 7: OC.PetSync) */
   async function exportPet() {
-    if (!NATIVE) return false;
-    const c = OC.Chars.get(S().petId) || me(); if (!c) return false;
-    for (const id of Object.values(c.actions || {}).flatMap((m) => Object.values(m))) { const d = OC.Anim.get(id); if (d) await OC.Anim.preload(d); }
-    const px = 192, out = { fps: {}, frames: {} };
-    const sample = (action, n, fps, extra) => {
-      const r = OC.Anim.resolve(c, action, 'right'); const frames = [];
-      const count = r && r.doc && c.actions[r.action] ? Math.min(12, OC.Anim.count(r.doc)) : n;
-      const rate = r && r.doc && c.actions[r.action] ? r.doc.fps : fps;
-      for (let i = 0; i < count; i++) {
-        const k = OC.makeCanvas(px, px), x = k.getContext('2d');
-        const at = r && r.doc && c.actions[r.action] ? (i / rate) + 0.001 : i / fps;
-        OC.CharRender.draw(x, c, Object.assign({ action, at, dir: 'right', face: 0.6, noShadow: true }, extra ? extra(i, count) : {}), px / 2, px * 0.94, px / 74, at);
-        frames.push(k.toDataURL('image/png'));
-      }
-      out.frames[action === 'greet' ? 'happy' : action] = frames; out.fps[action === 'greet' ? 'happy' : action] = rate;
-    };
-    sample('idle', 4, 4, (i) => ({ breath: Math.sin((i / 4) * Math.PI * 2), blink: i === 3 ? 1 : 0 }));
-    sample('walk', 8, 8, (i) => ({ walk: 1, phase: i / 4 }));
-    sample('drag', 2, 6); sample('sit', 2, 3); sample('sleep', 2, 2); sample('happy', 4, 8);
-    out.life = OC.LifeUI.petState();   // ignored by older shells (only frames/fps are read)
-    try { return !!NATIVE.savePetSprites(JSON.stringify(out)); } catch (e) { console.error(e); return false; }
+    if (!NATIVE || !OC.PetSync.native()) return false;
+    let ok = true; for (const id of OC.PetSync.on()) ok = (await OC.PetSync.exportSprites(id, true)) && ok;
+    OC.PetSync.push('export'); return ok;
   }
 
   // =============================== save export ===============================
@@ -635,7 +617,7 @@
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
     OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
     if (now - presT > 1000) { presT = now; syncPresence(); }
-    OC.Stage.tick(dt); OC.Sound.tick(dt); if (curTab === 'island') OC.Requests.frame();
+    OC.Stage.tick(dt); OC.Sound.tick(dt); OC.PetSync.tick(dt); if (curTab === 'island') OC.Requests.frame();
     if (now - reqT > 2000) { reqT = now; OC.Requests.tick(); OC.Quests.refresh(); }
     if (now - aspT > 20000) { aspT = now; OC.Growth.tick(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
@@ -667,11 +649,19 @@
   window.OCApp = {
     setInsets(t, r, b, l) { const s = document.documentElement.style; s.setProperty('--sat', t + 'px'); s.setProperty('--sar', r + 'px'); s.setProperty('--sab', b + 'px'); s.setProperty('--sal', l + 'px'); },
     onSystemTheme(dark) { nativeSysDark = !!dark; applyTheme(); },
-    lifecycle(state) { if (state === 'pause') { if (paused) return; paused = true; S().life.lastReal = Date.now(); saveMatePos(); St.persist(); } else { if (!paused) return; paused = false; OC.Sim.catchUp('resume'); syncTreeFruit(); last = lastSim = performance.now(); } },
+    lifecycle(state) {
+      if (state === 'pause') { if (paused) return; paused = true; S().life.lastReal = Date.now(); saveMatePos(); OC.PetSync.onPause(); St.persist(); }
+      // resume: offline catch-up FIRST (no events / rewards), then the desktop pets' interactions are applied once
+      else { if (!paused) return; paused = false; OC.Sim.catchUp('resume'); OC.PetSync.onResume(); syncTreeFruit(); last = lastSim = performance.now(); window.OCApp.onPermission('resume', 'ok'); }   // permissions may have changed in system settings
+    },
     /** pet sync (future App-context dialogue): current mood + a line for the pet OC, as JSON */
     petContext(app) { try { return JSON.stringify(OC.LifeUI.petState(app)); } catch (e) { return '{}'; } },
     back() { if (OC.UI.back()) return true; if (curTab !== 'island') { tab('island'); return true; } return false; },
-    onPetState() { if (OC.Pages.pages.pet && OC.Pages.pages.pet.el && OC.Pages.pages.pet.el.classList.contains('open')) OC.Pages.pages.pet.refresh(OC.Pages.pages.pet); },
+    onPetState() { const pg = OC.Pages.pages.petcenter; if (pg && pg.el && pg.el.classList.contains('open')) { pg._sig = ''; pg.refresh(pg); } },
+    /** runtime permission answer (notifications) → refresh the pet pages */
+    onPermission(kind, result) { if (result === 'unavailable') toast('這支手機沒有這個設定頁面', 'info'); for (const k of ['petcenter', 'pettools', 'petapps']) { const pg = OC.Pages.pages[k]; if (pg && pg.el && pg.el.classList.contains('open')) { pg._sig = ''; pg.refresh(pg); } } },
+    /** notification / widget / pet double-tap → a page */
+    openPage(id) { if (!OC.Pages.pages[id]) return false; if (curTab !== 'island' && curTab !== 'more') tab('more'); OC.Pages.open(id); return true; },
   };
   document.addEventListener('visibilitychange', () => window.OCApp.lifecycle(document.hidden ? 'pause' : 'resume'));
   window.addEventListener('resize', () => Wd.resize());

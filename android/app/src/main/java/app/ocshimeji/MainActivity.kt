@@ -260,8 +260,9 @@ class MainActivity : Activity() {
     /** notification / widget / pet double-tap → open a page in the game */
     private fun routeIntent(i: Intent?) {
         val page = i?.getStringExtra(EXTRA_PAGE) ?: return
-        if (i.getBooleanExtra(EXTRA_START_PET, false)) startPet()
         js("window.OCApp&&OCApp.openPage&&OCApp.openPage('${page.replace(Regex("[^a-z0-9_]"), "")}')")
+        // widget "放出桌寵": the game exports the current look first, then starts the service (same path as the button)
+        if (i.getBooleanExtra(EXTRA_START_PET, false)) { i.removeExtra(EXTRA_START_PET); js("window.OCApp&&OCApp.startPets&&OCApp.startPets()") }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); routeIntent(intent) }
 

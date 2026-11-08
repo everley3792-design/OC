@@ -50,7 +50,7 @@
       b.append(h('div.list', null,
         S().activeId !== c.id ? row('hand', '設為目前操控角色', '在小島上操控這位 OC', null, () => { Ch().setActive(c.id); done(`現在操控：${Ch().name(c)}`, 'person'); }) : null,
         S().activeId !== c.id ? row('island', c.status.onIsland ? '離開小島' : '加入小島', c.status.onIsland ? '回家休息，不會出現在島上' : '會在島上散步、和你打招呼', null, () => { c.status.onIsland = !c.status.onIsland; Ch().save(c); done(c.status.onIsland ? '加入小島了' : '回家休息了', 'island'); }) : null,
-        St.NATIVE ? row('paw', S().petId === c.id ? '取消桌寵' : '設為桌寵角色', '系統懸浮桌寵會使用這位 OC 的外觀與動畫', null, () => { S().petId = S().petId === c.id ? null : c.id; St.touch('chars'); done(S().petId ? '已設為桌寵角色（到「工坊 → 桌寵」更新）' : '已取消', 'paw'); }) : lockedRow('paw', '設為桌寵角色', '需要 Android App'),
+        row('paw', '桌寵設定', OC.PetSync.on().includes(c.id) ? '在桌面上的成員・外觀、動作、對話' : '大小、自主行動、動畫、對話', null, () => { api.close && api.close(); Pg().open('petone', { id: c.id }); }),
         row('edit', '編輯角色', null, null, () => { api.close(); Pg().open('charedit', { id: c.id }); }),
         row('film', '動畫配置', null, null, () => { api.close(); Pg().open('charedit', { id: c.id, tab: 'anims' }); }),
         row('copy', '複製角色', '外觀、個性、動畫設定都會複製', null, () => { const d = Ch().duplicate(c.id); done(`已複製為「${Ch().name(d)}」`, 'copy'); }),
@@ -161,7 +161,7 @@
           row('download', '匯入角色／動作包', '.ocpack', null, async () => { await OC.Library.importPackFile(); p.refresh(p); }),
           row('layers', '匯出備份', '選擇要匯出的角色、動作與遊戲進度', null, () => backupSheet()),
           row('cart', '工坊商品', '把畫好或匯入的圖片做成食物、家具、服飾、玩具…上架到商店', null, () => Pg().open('products')),
-          row('paw', '桌寵', '讓 OC 出現在手機桌面上', null, () => Pg().open('pet'))),
+          row('paw', '桌寵', '讓 OC 出現在手機桌面上', null, () => Pg().open('petcenter'))),
         T('動畫作品'), p.anims);
     },
     refresh(p) {
@@ -184,23 +184,7 @@
     });
   }
 
-  // ============================== pet ==============================
-  Pg().define('pet', '桌寵', {
-    sub: true,
-    build(p, el) { p.cv = h('canvas', { width: 260, height: 260 }); p.state = h('div'); p.body = h('div'); el.append(h('div.portrait', null, p.cv), p.state, p.body); OC.App.live(p.cv, () => ({ char: Ch().get(S().petId) || Ch().active(), pose: { face: 0.3, eyes: 'happy' } })); },
-    refresh(p) {
-      const N = St.NATIVE, c = Ch().get(S().petId) || Ch().active();
-      const pick = h('div.list', { style: { marginTop: '12px' } }, ...Ch().all().map((x) => row(null, Ch().name(x), x.id === c.id ? '桌寵角色' : Ch().typeTitle(x), x.id === c.id ? icon('check') : null, () => { S().petId = x.id; St.touch('chars'); p.refresh(p); })));
-      if (!N) { p.state.replaceChildren(h('div.card', null, h('div.lock-note', null, icon('lock', 's'), '桌寵需要 Android App（系統懸浮視窗）。在瀏覽器中無法顯示在其他 App 上方。'))); p.body.replaceChildren(T('桌寵角色'), pick, h('div.list', { style: { marginTop: '12px' } }, lockedRow('paw', '啟動桌寵', '請安裝 Android 版'))); return; }
-      const run = !!N.isPetRunning(), can = !!N.canDrawOverlays();
-      p.state.replaceChildren(h('div.card', null, h('div.hstack', null, icon(run ? 'check' : 'paw'), h('div.grow', null, h('b', null, run ? `${Ch().name(c)}正在桌面上` : '桌寵未啟動'), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, can ? '已取得「顯示在其他應用程式上層」權限' : '第一次啟動會帶你到系統設定開啟權限')))));
-      p.body.replaceChildren(
-        h('button.btn.primary.block', { style: { marginTop: '14px' }, on: { click: async () => { if (run) N.stopPet(); else { toast('正在準備桌寵圖像…', 'paw'); const ok = await OC.App.exportPet(); if (!ok) { toast('桌寵圖像輸出失敗', 'info'); return; } N.startPet(); } setTimeout(() => p.refresh(p), 600); } } }, icon(run ? 'close' : 'paw', 's'), run ? '收起桌寵' : '啟動桌寵'),
-        T('桌寵角色', '使用這位 OC 的外觀與動畫'), pick,
-        T('大小'), h('div.card', null, h('input', { type: 'range', min: 0.7, max: 1.5, step: 0.1, value: S().settings.petScale, 'aria-label': '桌寵大小', on: { change: (e) => { S().settings.petScale = +e.target.value; St.touch(); N.setPetScale(+e.target.value); toast('下次啟動桌寵時套用', 'info'); } } })),
-        h('button.btn.block', { style: { marginTop: '12px' }, on: { click: async () => { const ok = await OC.App.exportPet(); toast(ok ? '已更新桌寵外觀與動畫' : '更新失敗', ok ? 'check' : 'info'); } } }, icon('refresh', 's'), '用目前外觀更新桌寵'));
-    },
-  });
+  // the desktop-pet page moved to js/pet/petpages.js (petcenter / petone)
 
   OC.CharPages = { exportChars, menu };
 })();

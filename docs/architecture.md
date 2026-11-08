@@ -91,6 +91,20 @@ Brain（擴充）────────── travelCands / startTravel / depa
 - 頁面：「日常」中心（任務、請求、成就、圖鑑＋其他入口）；角色檔案集中技能、人生目標、稱號、日誌與回憶。所有頁面只在資料改變時重建。
 - 桌寵：`petState()` 多了 `title`、`dream`、`request`、`action`（與遊戲同一套動作名稱），供第七階段使用。
 
+### 第七階段：Android 原生桌寵層（0.7.0-alpha）
+```
+game  OC.PetSync ──config.json（設定＋快照＋台詞池＋背包＋關係）──► OverlayPetService（specialUse 前景服務）
+               ──oc/<id>/manifest.json + PNG（21 個動作，玩家影格逐格）──►   ├ PetWindow×≤3（PetBrain Shimeji、Gestures、AnimClip、PetTalk）
+               ◄─events.jsonl（pet/feed/gift/meet/tool/setting，seq＋inst）──   ├ PetSocial（依關係碰面）、AppContext（UsageStats 套件名稱）
+      pull()：OC.Sim.catchUp() 之後、OC.Tx 固定 key、先存檔再 ack            └ 通知（暫停／穿透／收起）、Choreographer（60/30/15/停止）
+      Tools ──reminderSet──► Reminders（AlarmManager）──► ReminderReceiver（通知＋桌寵說話＋tool 事件；開機重新登記）
+      widget ──widgetData──► PetWidget（頭像、心情、待辦、下一個提醒）
+```
+- 遊戲是唯一的生活模擬；原生不改需求 → 不會雙重衰減。桌面互動只透過事件佇列，套用一次。
+- 存檔 v6：`S.pet`（在桌面上的 OC、每隻設定、自訂台詞、效能、App 規則、套用水位、工具）；`migrateV5`。
+- 詳細：[`android-native.md`](android-native.md)、[`permissions.md`](permissions.md)、[`backup.md`](backup.md)、[`performance.md`](performance.md)、[`compat-test-plan.md`](compat-test-plan.md)。
+- **實機驗證尚未進行**（下方第一階段的驗證清單已由 `compat-test-plan.md` 的情境 1–17 取代）。
+
 ## 第一階段規劃（歷史紀錄）
 
 
@@ -162,7 +176,7 @@ Brain（擴充）────────── travelCands / startTravel / depa
 | 高畫質 | 60 | 400 | 開 | 完整 | 高解析 atlas |
 | 平衡（預設） | 60 | 150 | 開 | 完整 | |
 | 省電 | 30 | 40 | 關（樹/水靜止） | 簡化（只有色調） | 世界以半解析度渲染後放大 |
-懸浮桌寵：活動時 30fps、休息/睡覺時 10fps、螢幕關閉時暫停。
+懸浮桌寵（第七階段）：上限 60 或 30fps、大家都在休息時 15fps、暫停 10fps、螢幕關閉時停止繪製（`docs/performance.md`）。
 
 ## 懸浮桌寵（Android 系統級）
 - `OverlayPetService`：前景服務（`specialUse`）、`SYSTEM_ALERT_WINDOW` 權限（引導至系統設定授權）。

@@ -75,6 +75,8 @@
     ['cheer', '歡呼', 'loop', ['happy', 'jump', 'idle']], ['proud', '得意', 'loop', ['happy', 'idle']], ['nod', '點頭', 'once', ['talk', 'idle']],
     ['shake', '搖頭', 'once', ['sad', 'idle']], ['receive', '收下', 'once', ['happy', 'idle']], ['sing', '唱歌', 'loop', ['talk', 'happy', 'idle']],
     ['sketch', '畫素描', 'loop', ['read', 'sit', 'idle']], ['yawn', '打哈欠', 'once', ['stretch', 'idle']],
+    // Phase 7 desktop-pet moves (Shimeji): procedural poses in render.js; frames drawn for a wall / ceiling are used as-is
+    ['fall', '掉落', 'loop', ['drag', 'surprised', 'idle']], ['hang', '吊掛', 'loop', ['climb', 'drag', 'idle']], ['peek', '偷看', 'loop', ['shy', 'idle']],
   ];
   const ACTION_ZH = Object.fromEntries(ACTIONS.map((a) => [a[0], a[1]]));
   const SPECIES = [['cat', '貓'], ['bunny', '兔'], ['bear', '熊'], ['dog', '狗'], ['fox', '狐'], ['sprite', '小精靈'], ['other', '其他']];

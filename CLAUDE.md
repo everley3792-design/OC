@@ -11,6 +11,7 @@
 - **第四階段完成（0.4.0-alpha）**：深度生活模擬——9 種需求、情緒、Utility AI 活動流程、作息、後天習慣（需同意）、願望／技能、多 OC 自主社交與共同活動、有方向的關係、資料驅動對話（可匯入匯出）、回憶、事件引擎、玩家互動、自主程度、分層／離線模擬、開發者診斷。完成紀錄、測試與未完成項目：`docs/phase4-report.md`。規格：`docs/behavior-engine.md`、`docs/life-format.md`、`docs/event-rules.md`、`docs/memory-model.md`。
 - **第五階段完成（0.5.0-alpha）**：世界地圖與 7 個可進入的地點（晴日島、我的家、商店街、咖啡館、圖書館、苔光森林、星砂海灘；風車丘、遊樂園標示未開放）、跨地點 OC 自主生活與跟隨、統一互動設施、每個地點各自的佈置（復原／重做／旋轉／縮放／掛牆／收回）、釣魚／料理／採集／種田／小生物小遊戲、統一物品系統、雙模式背包與拖曳使用、每個 OC 的飲食喜好、工坊商品上架、7 間商店、星幣經濟與交易帳本、地點事件與回憶、圖鑑與探索進度。完成紀錄、測試與未完成項目：`docs/phase5-report.md`。規格：`docs/world-map.md`、`docs/items.md`、`docs/economy.md`。
 - **第六階段完成（0.6.0-alpha）**：統一進度事件、任務（每日／每週／地點／限時／隱藏／長期挑戰）、角色請求（依個性、可接受／稍後／婉拒、後續發展）、人生目標、技能解鎖（每級都有實際效果）、稱號、37 個成就（玩家領取）、統一圖鑑（物品＋地點＋活動＋事件，四種狀態）、生活日誌與回憶卡片、動畫全面提升（分段姿勢、次級動態、個性差異、新動作）、可重用的特殊演出（跳過／×2）、即時合成的原創音效與環境音、「日常」中心。完成紀錄、測試與未完成項目：`docs/phase6-report.md`。規格：`docs/quests.md`、`docs/growth.md`、`docs/animation-performance.md`。
+- **第七階段（0.7.0-alpha，程式完成、未經實機驗證）**：真正的 Android 系統懸浮桌寵——多隻（≤3）、每隻獨立小視窗、Shimeji 行為（走／跑／跳／坐／睡／爬牆／倒吊／掉落／偷看）、觸控（點、雙擊、長按選單、撫摸、拖曳丟出、觸控穿透）、玩家逐格動畫完整輸出到桌面、依個性／情緒／回憶的台詞、桌寵之間依關係互動、與遊戲的事件同步（不重複衰減、不重複獎勵）、App 情境對話（使用情況存取，只知道套件名稱）、番茄鐘／休息提醒／鬧鐘／待辦／筆記、主畫面小工具、桌寵管理中心與診斷；targetSdk 35、前景服務類型 specialUse。完成紀錄（已驗證／需實機／部分／未完成）：`docs/phase7-report.md`。規格：`docs/android-native.md`、`docs/permissions.md`、`docs/backup.md`、`docs/performance.md`、`docs/compat-test-plan.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -33,15 +34,18 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
                       lifeui.js（OC 互動選單、通知、檔案「生活/關係/回憶」、生活設定、對話編輯、開發者診斷）
                       p5pages.js（世界地圖、背包、商店、工坊商品、交易紀錄、OC.Use 使用物品、飲食喜好）worldui.js（OC.WorldUI 移動、抵達、設施點擊）minigames.js（OC.Mini 釣魚、料理、小生物）
                       p6pages.js（「日常」中心、成就、統一圖鑑、角色檔案「成長」「日誌」、聲音設定、請求橫幅、遊玩系統診斷）
+  js/pet/             petsync.js（OC.PetSync：桌寵設定／快照／台詞池／影格輸出／桌面互動套用／工具）petpages.js（桌寵管理、單隻設定、App 情境、番茄鐘與提醒、診斷）
   js/play/            content.js（OC.PlayData：任務、挑戰、請求、技能解鎖、人生目標、稱號、成就、紀念品、新台詞）progress.js（OC.Progress 唯一進度事件）
                       quests.js（OC.Quests）achieve.js（OC.Achieve）growth.js（OC.Growth 技能解鎖／人生目標／稱號）requests.js（OC.Requests 角色請求）
                       stage.js（OC.Stage 特殊演出＋回饋卡片）sound.js（OC.Sound 即時合成音效與環境音）
   tests/life/         run.js + harness.js：第四階段情境測試 1–13（Playwright；不打包進 APK）
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
+  tests/pet/          run.js + mock-native.js：第七階段（桌寵的遊戲端：狀態、權限、影格輸出、多隻、同步、台詞、App 情境、工具、備份、重開、瀏覽器版）
   tests/fixtures/     匯入測試素材（PNG 序列、GIF、APNG、WebP、Sprite Sheet、ZIP、損壞檔；不打包進 APK）
   js/app.js           外殼：開機、主題、效能模式、HUD、導覽、快速背包、互動、對話、佈置、桌寵輸出、OCApp 原生掛鉤
-android/              Gradle 專案。app（WebView 外殼 + bridge + overlay 桌寵）；core:*（純 Kotlin，含 PetBrain）
+android/              Gradle 專案。app（WebView 外殼 + bridge + overlay/ 多隻桌寵 + tools/ 提醒 + widget/ 小工具）；core:*（純 Kotlin；core:pet = PetBrain、Gestures、AnimClip、PetTalk、AppContext、PetSocial）
+  tools/framework-extras/  離線 aapt 用的框架屬性包（只有 foregroundServiceType；不打包進 APK）
 prototype/            第一階段原型（凍結）
 docs/                 phase2-report、roadmap、design-system、ui-components、art-guidelines、android-build、architecture …
 deliverables/         apk/（Debug APK + sha256）phase2/（截圖）videos/ overviews/（第一階段）
@@ -53,9 +57,10 @@ cd game && python3 -m http.server 8765        # 開 http://localhost:8765/index.
 node game/tests/life/run.js [1 2 …]           # 第四階段情境測試（先開上面的 http.server；約 15 分鐘；截圖存 deliverables/phase4/）
 node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約 15–20 分鐘；截圖存 deliverables/phase5/）
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（18 個）
+node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（38 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.6.0-alpha-debug.apk（複製一份到 deliverables/apk/）
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.7.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -69,7 +74,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 天氣/時間變化用指數趨近（τ≈1.6s），不可閃光、不可晃鏡頭；霧永遠開著（晴天推遠），切天氣不重新編譯著色器。
 - 效能模式（高/平衡/省電/自訂）必須真的改變：像素比、陰影、特效、草、fps 上限、看板解析度、點光源。
 - 3D 模型：倒角/車床柔邊、登記碰撞（`ctx.block`）、共用幾何與材質快取；整島 ≲ 250 draw calls。
-- 存檔 schema `v:5`（`store.js` 的 `fresh()`；角色欄位由 `OC.Chars.normalize()` 補預設值）。v1–v4 存檔會自動遷移，**不可移除 `migrateV1` / `migrateV2` / `migrateV3` / `migrateV4` / `migrateLegacyAnims`**。
+- 存檔 schema `v:6`（`store.js` 的 `fresh()`；角色欄位由 `OC.Chars.normalize()` 補預設值）。v1–v5 存檔會自動遷移，**不可移除 `migrateV1` / `migrateV2` / `migrateV3` / `migrateV4` / `migrateV5` / `migrateLegacyAnims`**。
 - **物品只有一個登記表 `OC.Style.ITEMS`**（`OC.Items` 擴充）；庫存只有 `save.inv`。**星幣與物品數量只能經 `OC.Tx.run(key, {pay, get}, reason)` 改變**（驗證、原子、防重複 key、帳本）；不要直接呼叫 `Store.add/take/coins`。會重複發生的獎勵一定要用固定 key（例如 `forage:<地點>:<點>:<日>`）。
 - 生活模擬模式的背包**不能新增或修改物品**；工坊商品只登記並上架，**不產生庫存**。
 - 使用物品走 `OC.Use`：吃／喝要等動畫完成、沒被打斷才扣；失敗或取消不扣。家具按「放這裡」才扣。
@@ -108,7 +113,13 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **不要在 `setContentView` 之前呼叫 `window.insetsController`**（Android 11+ 框架內部 NPE，0.2.0/0.2.1 實機閃退原因）；用 `window.decorView.windowInsetsController`。純外觀的視窗設定一律 `runCatching`。
 - 診斷：App 失敗時要顯示原因（`Diagnostics.kt`、`index.html` 開機防護），不可靜默失敗；改動開機流程後用 `?safe=1`、無 WebGL、舊 WebView 情境測試。
 - 改動生活系統後跑 `node game/tests/life/run.js`（至少相關的情境）；新功能要補測試。
-- **懸浮桌寵與實機行為尚未驗證**（無模擬器）。在實機跑完 `docs/architecture.md` 驗證清單前不可宣稱完成。
+- **懸浮桌寵與實機行為尚未驗證**（無模擬器）。在實機跑完 `docs/compat-test-plan.md` 前不可宣稱完成。
+- **桌寵（第七階段）**：遊戲是唯一的生活模擬——原生只讀快照（`config.json`）、**絕不改需求**；桌面互動只經 `events.jsonl`（seq＋安裝 id）回到遊戲，由 `OC.PetSync.pull()` 在 `OC.Sim.catchUp()` 之後套用一次（物品走 `OC.Tx` key `pet:<事件 id>`、先存檔再 ack）。自動發生的事（桌寵碰面）不計入任務／成就。
+- 桌寵視窗只能有寵物（或泡泡／選單）那麼大，**不得**加全螢幕透明層；觸控穿透必須 `FLAG_NOT_TOUCHABLE` 且不透明度 ≤ 0.8（Android 12 規定）；所有視窗 `FLAG_NOT_FOCUSABLE`。
+- 前景服務類型只能是 `specialUse`（含 `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`）；不得改用其他類型規避限制；`START_NOT_STICKY`、不使用 wake lock、只從前景啟動。Android 15：先加 overlay 視窗再 `startForeground`。
+- 權限只在玩家使用功能時請求（`OCNative.requestPermission`）；**不得**使用無障礙服務、`QUERY_ALL_PACKAGES`、讀取其他 App 內容；App 情境只用 `UsageStatsManager` 的套件名稱，且預設關閉。
+- 桌面台詞內容只能由遊戲的對話引擎產生（`LifeData.LINES` 的 `desk_*` 等分類）；原生只決定時機。新增桌面動作：`PetBrain.ANIMS` ＋ `OC.PetSync.ANIMS` ＋ `OC.Chars.ACTIONS` 備用鏈 ＋ `rigState` 姿勢。
+- 離線 aapt 不認得的新框架屬性：加到 `android/tools/framework-extras/`（需以 javap 確認真正的公開 id），值用資源參照。
 - 金鑰：release keystore 只能經環境變數 `OC_RELEASE_*` 提供，絕不提交。
 - 所有美術為原創；字體皆為開放授權（`game/fonts/LICENSES.md`），新增前先確認授權。
 

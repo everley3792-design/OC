@@ -51,6 +51,9 @@ import java.util.Calendar
  */
 class OverlayPetService : Service() {
     lateinit var wm: WindowManager; private set
+    /** context for overlay views: a WindowContext of type TYPE_APPLICATION_OVERLAY on Android 11+ (the supported way to
+     *  add windows from a Service; it also gives the views the display's real configuration), the service itself before */
+    lateinit var uiCtx: Context; private set
     private val pets = LinkedHashMap<String, PetWindow>()
     private val social = PetSocial()
     private val app = AppContext()
@@ -80,7 +83,11 @@ class OverlayPetService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        uiCtx = if (Build.VERSION.SDK_INT >= 30) runCatching {
+            val dm = getSystemService(android.hardware.display.DisplayManager::class.java)!!
+            createDisplayContext(dm.getDisplay(android.view.Display.DEFAULT_DISPLAY)).createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
+        }.getOrElse { this } else this
+        wm = uiCtx.getSystemService(WINDOW_SERVICE) as WindowManager
         instance = this
     }
 

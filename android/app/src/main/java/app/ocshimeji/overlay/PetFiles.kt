@@ -37,7 +37,9 @@ object PetFiles {
         runCatching {
             val sp = ctx.getSharedPreferences("oc_pet", Context.MODE_PRIVATE)
             val seq = sp.getLong("evSeq", 0L) + 1; sp.edit().putLong("evSeq", seq).apply()
-            val o = JSONObject().put("id", "n$seq").put("seq", seq).put("t", System.currentTimeMillis()).put("oc", oc).put("type", type).put("data", data)
+            // install id: seq restarts after a reinstall / data clear, so the game keeps its watermark per install
+            val inst = sp.getString("inst", null) ?: java.util.UUID.randomUUID().toString().take(8).also { sp.edit().putString("inst", it).apply() }
+            val o = JSONObject().put("id", "$inst-$seq").put("inst", inst).put("seq", seq).put("t", System.currentTimeMillis()).put("oc", oc).put("type", type).put("data", data)
             val f = File(root(ctx), "events.jsonl")
             f.appendText(o.toString() + "\n")
             // bounded: drop the oldest beyond the cap (the game reads them every time it opens)

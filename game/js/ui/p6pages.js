@@ -94,6 +94,8 @@
         row('cart', '工坊商品', `${Object.keys((S().custom || {}).items || {}).length} 件`, null, () => Pg().open('products')),
         row('coin', '交易紀錄', `${S().coins.toLocaleString()} 星幣`, null, () => Pg().open('ledger')),
         row('target', '小島目標', (Gm.GOALS.find((g) => g.id === S().goal) || { zh: '尚未選擇' }).zh, null, () => Pg().open('goals')),
+        row('paw', '桌寵管理', OC.PetSync.native() ? '手機桌面上的 OC' : '需要 Android App', null, () => Pg().open('petcenter')),
+        row('clock', '番茄鐘・提醒・待辦', `${S().pet.tools.todos.filter((t) => !t.done).length} 件待辦`, null, () => Pg().open('pettools')),
         row('gear', '設定', '主題、效能、聲音、時間天氣、操作、資料', null, () => Pg().open('settings')),
         row('info', '關於', null, null, () => Pg().open('about'))));
     },

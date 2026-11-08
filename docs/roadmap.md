@@ -29,17 +29,21 @@
 統一圖鑑（物品、地點、活動、事件）；生活日誌與回憶卡片；分段姿勢與次級動態、個性化動作；可重用的特殊演出（跳過／×2）；即時合成的原創音效與環境音；
 「日常」中心。詳見 `docs/phase6-report.md`、`docs/quests.md`、`docs/growth.md`、`docs/animation-performance.md`。
 
-## 第七階段（建議下一步）
-**先做：實機驗證**（雲端容器無法完成）——第三～六階段在手機上的效能、觸控、音效（WebView 音訊）、懸浮桌寵驗證清單。
+## ✅ 第七階段（0.7.0-alpha）— Android 系統懸浮桌寵（程式完成，**未經實機驗證**）
+多隻（≤3）Shimeji 桌寵（走、跑、跳、坐、睡、爬牆、倒吊、掉落、偷看）、獨立小視窗與觸控（點、雙擊、長按選單、撫摸、拖曳丟出、觸控穿透）、
+玩家逐格動畫完整輸出、依個性／情緒／回憶的台詞、依關係的桌寵互動、與遊戲的事件同步（不重複衰減／獎勵）、App 情境對話（選用）、
+番茄鐘／提醒／鬧鐘／待辦／筆記、主畫面小工具、桌寵管理中心與診斷、targetSdk 35 與 specialUse 前景服務。
+詳見 `docs/phase7-report.md`、`docs/android-native.md`、`docs/permissions.md`。
 
-**Android 桌寵（第七階段）**：使用本階段的動作名稱（`OC.Chars.ACTIONS`）、情緒與 `petState()`（稱號、夢想、請求、目前動作）——格式已經共用，不需要另外一套。
+## 第八階段（建議下一步）
+**先做：實機驗證**（雲端容器無法完成）——依 `docs/compat-test-plan.md` 在 Android 12–16 跑情境 1–17，修正實機問題；量測耗電與記憶體。
+
+**發佈**
+- AAB（需要 AGP / bundletool）、Play Console 的 specialUse 前景服務聲明與示範影片、隱私說明（遊戲完全離線，不蒐集資料）、上架素材。
+- CI：在有 Google Maven 的環境跑 AGP 建置、instrumented tests（UiAutomator 測 overlay 觸控）。
+- targetSdk 36（Android 16）：預測返回手勢（`OnBackInvokedCallback`）、大螢幕方向。
 
 **內容**
 - 未開放地點：風車丘、彩虹遊樂園、其他島嶼／旅行（地點登記已預留，`locked`）。
-- 更多請求類型、後續劇情、季節活動、人生目標與食譜。
-- 音樂（目前只有音效與環境音）。
-- 居民（栗子、小空）接上同一套生活引擎與地點系統。
-
-**發佈**
-- AAB、targetSdk 34+、Play 上架素材、隱私說明（遊戲完全離線，不蒐集資料）。
-- CI：在有 Google Maven 的環境跑 AGP 建置與 instrumented tests。
+- 桌寵：更多桌面動作（坐在視窗邊緣、互相追逐）、季節裝扮、桌面上的小遊戲；雲端備份（需要另外設計隱私）。
+- 更多請求類型、後續劇情、季節活動、人生目標與食譜；音樂。
