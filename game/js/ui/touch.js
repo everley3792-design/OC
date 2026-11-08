@@ -83,7 +83,7 @@
     if (zi.inside && dist > 0.5) {
       // a stroke: slow-to-medium speed is petting, a fast flick is just a swipe
       const q = speed < 30 ? 0 : speed > 1500 ? 0 : clamp(speed / 260, 0, 1) * (speed > 900 ? 0.4 : 1);
-      t.sp = Math.max(t.sp * 0.6, q); t.pend += q * Math.min(0.08, dtm / 1000); t.segLen += dist;   // pend = "stroke-seconds" since the last frame (frame-rate independent)
+      t.sp = Math.max(t.sp * 0.6, q); t.pend += q * Math.min(0.2, dtm / 1000); t.segLen += dist;   // pend = "stroke-seconds" since the last frame (frame-rate independent; one event counts at most 0.2 s, so a 5 fps device still strokes, a pause never pays out)
        t.strokeLen = (t.strokeLen || 0) + dist * (q > 0 ? 1 : 0);
       if (!t.engaged && t.strokeLen > 34) engage();
       if (t.engaged) strokeFeedback(p, dist, q);

@@ -1,13 +1,73 @@
 {
- "at": "2026-11-08T17:37:19.096Z",
+ "at": "2026-11-08T18:10:23.084Z",
  "results": [
+  {
+   "name": "5a 四種鏡頭模式即時切換，切換當下畫面不會跳動",
+   "ok": true,
+   "detail": [
+    {
+     "m": "follow",
+     "jump": 4,
+     "mode": "follow"
+    },
+    {
+     "m": "focus",
+     "jump": 2,
+     "mode": "focus"
+    },
+    {
+     "m": "free",
+     "jump": 0,
+     "mode": "free"
+    },
+    {
+     "m": "classic",
+     "jump": 0,
+     "mode": "classic"
+    }
+   ]
+  },
+  {
+   "name": "5b 自由鏡頭可以旋轉視角（有角度限制），模式會記住",
+   "ok": true,
+   "detail": {
+    "out": [
+     {
+      "m": "follow",
+      "jump": 4,
+      "mode": "follow"
+     },
+     {
+      "m": "focus",
+      "jump": 2,
+      "mode": "focus"
+     },
+     {
+      "m": "free",
+      "jump": 0,
+      "mode": "free"
+     },
+     {
+      "m": "classic",
+      "jump": 0,
+      "mode": "classic"
+     }
+    ],
+    "yaw": 0.6818080291429196,
+    "saved": "free"
+   }
+  },
+  {
+   "name": "5c 旋轉後點角色仍然點得到（互動選單出現）",
+   "ok": true
+  },
   {
    "name": "7a 在 OC 身上來回撫摸＝摸摸頭（好感增加，不會誤開選單）",
    "ok": true,
    "detail": {
     "aff0": 0,
     "pet": {
-     "aff": 1,
+     "aff": 1.6,
      "menu": false
     }
    }
@@ -17,7 +77,7 @@
    "ok": true,
    "detail": {
     "lift": 24,
-    "swing": -0.08861263698300939,
+    "swing": 0.2943198624225767,
     "hold": [
      "drag"
     ],

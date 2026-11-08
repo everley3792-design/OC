@@ -114,7 +114,7 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       const r = await page.evaluate(async () => {
         const out = [], P = () => { const a = OC.App.player; return OC.World.project(a.x, a.y, a.lvl || 0, 20); };
         for (const m of ['follow', 'focus', 'free', 'classic']) { const p0 = P(); OC.App.setCamMode(m); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const p1 = P(); out.push({ m, jump: Math.round(Math.hypot(p1.x - p0.x, p1.y - p0.y)), mode: OC.World.mode }); await new Promise((r) => setTimeout(r, 900)); }
-        OC.App.setCamMode('free'); OC.World.rotateTo(0.7); await new Promise((r) => setTimeout(r, 2200)); const yaw = OC.World.yaw;
+        OC.App.setCamMode('free'); OC.World.rotateTo(0.7); for (let i = 0; i < 40 && Math.abs(OC.World.yaw - 0.7) > 0.02; i++) await new Promise((r) => setTimeout(r, 300)); const yaw = OC.World.yaw;   // wait for the glide to finish (slow software frames stretch it)
         return { out, yaw, saved: OC.Store.s.view.mode };
       });
       check('5a 四種鏡頭模式即時切換，切換當下畫面不會跳動', r.out.every((x) => x.mode === x.m && x.jump < 40), r.out);
@@ -150,14 +150,14 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       await wait(page, 1500);
       const aff0 = await page.evaluate(() => OC.Chars.active().life.player.aff || 0);
       await page.evaluate(() => { const c = OC.Chars.active(); OC.Touch.known(c).taste = { likes: 'belly', dislikes: 'tail', ticklish: false, shy: false }; });
-      let P = await body(page); await page.mouse.move(P.x, P.y); await page.mouse.down(); { const t0 = Date.now(); let k = 0; while (Date.now() - t0 < 3500) { await page.mouse.move(P.x + (k % 2 ? -14 : 14), P.y + 1); await wait(page, 32); k++; } } await page.mouse.up(); await wait(page, 500);   // 11.0: stroking takes a moment (a 0.1 s scrub is not petting)
+      let P = await body(page); await page.mouse.move(P.x, P.y); await page.mouse.down(); { const t0 = Date.now(); let k = 0; while (Date.now() - t0 < 3500 || k < 12) { await page.mouse.move(P.x + (k % 2 ? -20 : 20), P.y + 1); await wait(page, 32); k++; } } await page.mouse.up(); await wait(page, 500);   // 11.0: stroking takes a moment (a 0.1 s scrub is not petting)
       const pet = await page.evaluate(() => ({ aff: OC.Chars.active().life.player.aff || 0, menu: !!document.querySelector('.radial.on') }));
       await wait(page, 2700); P = await body(page);
       await page.evaluate(() => OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close())); P = await body(page);
-      const pan0 = await page.evaluate(() => { const v = OC.World.saveView(); return { panX: v.panX, panY: v.panY }; });
+      const pan0 = await page.evaluate(() => { window.__swMax = 0; clearInterval(window.__swT); window.__swT = setInterval(() => { const a = OC.App.player; window.__swMax = Math.max(window.__swMax, Math.abs(a.swing || 0)); }, 25); const v = OC.World.saveView(); return { panX: v.panX, panY: v.panY }; });
       await page.mouse.move(P.x, P.y); await page.mouse.down(); await page.mouse.move(P.x, P.y - 70, { steps: 6 }); await page.mouse.move(P.x + 60, P.y - 70, { steps: 4 }); await wait(page, 120);
       const pan1 = await page.evaluate(() => { const v = OC.World.saveView(); return { panX: v.panX, panY: v.panY }; });
-      const held = await page.evaluate(() => ({ lift: OC.App.player.lift, swing: OC.App.player.swing || 0, hold: [...OC.Brain.get(OC.Store.s.activeId).holds], touch: OC.Touch.active, stack: OC.UI.stack.length, top: document.elementFromPoint(innerWidth / 2, innerHeight / 2).className }));
+      const held = await page.evaluate(() => ({ lift: OC.App.player.lift, swing: Math.max(window.__swMax || 0, Math.abs(OC.App.player.swing || 0)), hold: [...OC.Brain.get(OC.Store.s.activeId).holds], touch: OC.Touch.active, stack: OC.UI.stack.length, top: document.elementFromPoint(innerWidth / 2, innerHeight / 2).className }));
       await shot(page, '7-held');
       await page.mouse.move(P.x + 240, P.y - 120, { steps: 2 }); await page.mouse.up();
       for (let i = 0; i < 40; i++) { if (await page.evaluate(() => !OC.Touch.flying && !OC.Brain.get(OC.Store.s.activeId).holds.has('drag'))) break; await wait(page, 250); }
