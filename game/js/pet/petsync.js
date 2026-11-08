@@ -28,6 +28,11 @@
     talk: { zh: '說話', n: 4, fps: 8 }, greet: { zh: '打招呼', n: 6, fps: 8, loop: 'once' }, sad: { zh: '難過', n: 2, fps: 2 },
     yawn: { zh: '打哈欠', n: 6, fps: 6, loop: 'once' }, shy: { zh: '害羞', n: 2, fps: 3 }, cheer: { zh: '歡呼', n: 6, fps: 10 },
   };
+  // 11.0: richer little moments for the desktop pet, taken from the game's action library (OC.Anim11) — the clip length decides the frame count
+  for (const [k, zh] of [['wave', '揮手'], ['clap', '拍手'], ['giggle', '咯咯笑'], ['sigh', '嘆氣'], ['sneeze', '打噴嚏'], ['hiccup', '打嗝'], ['aha', '靈光一閃'], ['bow', '鞠躬'], ['spin', '轉圈圈'], ['wiggle', '扭一扭']]) {
+    const d = OC.Anim11 && OC.Anim11.LIB && OC.Anim11.LIB[k], dur = d && d.dur ? d.dur : 1.2, n = Math.max(4, Math.min(10, Math.round(dur * 7)));
+    ANIMS[k] = { zh, n, fps: Math.round((n / dur) * 10) / 10, loop: 'once' };
+  }
   /** desktop line categories → game dialogue categories (LifeData.LINES, variables & conditions apply) */
   const LINE_CATS = {
     greet: ['desk_out'], tap: ['desk_tap'], double: ['chat_player'], wake: ['desk_wake'], pet: ['pet'], drag: ['desk_drag'], drop: ['desk_drop'],
@@ -154,7 +159,7 @@
   }
   function sig(c) {
     const docs = Object.values(c.actions || {}).flatMap((m) => Object.values(m)).map((id) => { const d = OC.Anim.get(id); return d ? d.id + ':' + d.updated : ''; });
-    return [c.updated, JSON.stringify(c.look), JSON.stringify(one(c.id).map), P().global.quality, docs.join(',')].join('|');
+    return [c.updated, JSON.stringify(c.look), JSON.stringify(one(c.id).map), P().global.quality, docs.join(','), Object.keys(ANIMS).join(',')].join('|');
   }
   /** render one OC's desktop animations to PNG frames (same box & foot point for every frame) */
   async function renderSprites(c) {

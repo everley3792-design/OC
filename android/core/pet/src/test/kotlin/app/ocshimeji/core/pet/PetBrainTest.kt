@@ -111,6 +111,21 @@ class PetBrainTest {
         assertTrue(b.y <= b.floorY + 0.01f)
     }
 
+    @Test fun fidgetsFollowMoodAndCharacter() {
+        fun seen(mood: PetBrain.Mood, tr: PetBrain.Traits): Set<String> {
+            val out = HashSet<String>()
+            for (seed in 1..6) { val b = brain(seed).apply { this.mood = mood; traits = tr; allow = PetBrain.Allow(level = 1) }; repeat(60 * 1200) { b.update(1f / 60f); if (b.state == PetBrain.State.REACT) out.add(b.anim) } }
+            return out
+        }
+        val happy = seen(PetBrain.Mood(emotion = "happy"), PetBrain.Traits(energy = 0.9f, social = 0.9f))
+        val sad = seen(PetBrain.Mood(emotion = "sad"), PetBrain.Traits(social = 0.9f))
+        val shy = seen(PetBrain.Mood(emotion = "neutral"), PetBrain.Traits(shy = 0.9f, social = 0.9f))
+        assertTrue(happy.intersect(setOf("giggle", "wiggle", "spin", "clap", "wave", "cheer")).size >= 3, "happy fidgets: $happy")
+        assertTrue(sad.containsAll(setOf("sad", "sigh")) && "cheer" !in sad && "giggle" !in sad, "sad fidgets: $sad")
+        assertTrue("bow" in shy || "shy" in shy, "shy fidgets: $shy")
+        assertTrue(PetBrain.ANIMS.containsAll(listOf("wave", "clap", "giggle", "sigh", "sneeze", "hiccup", "aha", "bow", "spin", "wiggle")))
+    }
+
     @Test fun everyAnimIsKnown() {
         for (seed in 1..4) {
             val b = brain(seed).apply { allow = PetBrain.Allow(level = 2) }

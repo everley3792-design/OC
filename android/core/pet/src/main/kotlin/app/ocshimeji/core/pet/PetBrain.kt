@@ -261,6 +261,22 @@ class PetBrain(seed: Int = 7) {
     }
 
     /** autonomous choice on the floor — weights from personality, needs snapshot, hour and autonomy */
+    /** 11.0: a little moment on its own, chosen by mood, time of day and character (the game exports a frame set for each) */
+    private fun fidget(night: Boolean, tired: Float): String {
+        fun pick(vararg a: String) = a[rnd.nextInt(a.size)]
+        return when {
+            night && tired > 0.8f -> pick("yawn", "yawn", "sigh")
+            mood.emotion in SAD -> pick("sad", "sigh", "sad")
+            mood.emotion == "surprised" -> pick("aha", "surprised")
+            mood.emotion in HAPPY && traits.energy > 0.55f -> pick("cheer", "giggle", "wiggle", "spin", "clap", "wave")
+            mood.emotion in HAPPY -> pick("giggle", "wave", "happy", "clap")
+            traits.shy > 0.6f -> pick("shy", "shy", "bow", "sigh")
+            traits.curious > 0.6f && rnd.nextFloat() < 0.5f -> pick("aha", "wave")
+            rnd.nextFloat() < 0.08f -> pick("sneeze", "hiccup")
+            else -> pick("greet", "wave", "bow", "wiggle")
+        }
+    }
+
     private fun decide() {
         if (allow.level < 0) { set(State.SIT, 30f); return }
         val night = hour >= 23 || hour < 7
@@ -287,7 +303,7 @@ class PetBrain(seed: Int = 7) {
             State.JUMP -> jump(if (rnd.nextBoolean()) 0f else facing)
             State.CLIMB -> { facing = if (x < (minX + maxX) / 2) -1f else 1f; walkTo = if (facing < 0) minX else maxX; set(State.WALK, 30f) }  // walk to the nearest edge; the edge decides climb/peek/turn
             State.PEEK -> { facing = if (x < (minX + maxX) / 2) -1f else 1f; walkTo = Float.NaN; set(State.WALK, 30f) }
-            State.REACT -> react(when { night && tired > 0.8f -> "yawn"; mood.emotion in HAPPY && rnd.nextFloat() < 0.5f -> "cheer"; traits.shy > 0.6f -> "shy"; mood.emotion in SAD -> "sad"; else -> "greet" }, 1.6f)
+            State.REACT -> react(fidget(night, tired), 1.6f)
             else -> set(pick)
         }
     }
@@ -316,7 +332,9 @@ class PetBrain(seed: Int = 7) {
 
     companion object {
         /** every animation key the brain can request (game action names; the game exports a frame set for each) */
-        val ANIMS = listOf("idle", "walk", "run", "sit", "sleep", "jump", "fall", "climb", "hang", "peek", "drag", "happy", "pet", "eat", "surprised", "talk", "greet", "sad", "yawn", "shy", "cheer")
+        val ANIMS = listOf("idle", "walk", "run", "sit", "sleep", "jump", "fall", "climb", "hang", "peek", "drag", "happy", "pet", "eat", "surprised", "talk", "greet", "sad", "yawn", "shy", "cheer",
+            // 11.0: richer little moments (the game exports these from its action library)
+            "wave", "clap", "giggle", "sigh", "sneeze", "hiccup", "aha", "bow", "spin", "wiggle")
         private val HAPPY = setOf("happy", "excited", "calm", "proud", "content", "love")
         private val SAD = setOf("lonely", "down", "sad")
     }

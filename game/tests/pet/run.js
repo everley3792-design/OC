@@ -63,9 +63,11 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
         // average colour of the opaque pixels of every exported walk frame (order check)
         const colOf = (url) => new Promise((res) => { const im = new Image(); im.onload = () => { const k = OC.makeCanvas(im.width, im.height), x = k.getContext('2d'); x.drawImage(im, 0, 0); const D = x.getImageData(0, 0, im.width, im.height).data; let r = 0, g = 0, b = 0, n = 0; for (let i = 0; i < D.length; i += 4) if (D[i + 3] > 200) { r += D[i]; g += D[i + 1]; b += D[i + 2]; n++; } res(n ? [r / n, g / n, b / n].map((v) => v > 128 ? 1 : 0).join('') : 'empty'); }; im.src = url; });
         const order = []; for (const f of m.anims.walk.frames) order.push(await colOf(S.files[f]));
-        return { anims: Object.keys(m.anims), walk: m.anims.walk, run: m.anims.run, climb: m.anims.climb, hang: m.anims.hang, fall: m.anims.fall, idle: m.anims.idle, order, px: m.px, foot: m.foot };
+        const news = ['wave', 'clap', 'giggle', 'sigh', 'sneeze', 'hiccup', 'aha', 'bow', 'spin', 'wiggle'].map((k) => { const a = m.anims[k]; return { k, n: a && a.frames.length, loop: a && a.loop, src: a && a.src, differs: !!a && S.files[a.frames[0]] !== S.files[a.frames[Math.floor(a.frames.length / 2)]] }; });
+        return { news, anims: Object.keys(m.anims), walk: m.anims.walk, run: m.anims.run, climb: m.anims.climb, hang: m.anims.hang, fall: m.anims.fall, idle: m.anims.idle, order, px: m.px, foot: m.foot };
       }, A);
-      check('2a 每個桌面動作都有影格組（21 個，含爬牆／吊掛／偷看／掉落）', r.anims.length === 21 && ['climb', 'hang', 'peek', 'fall', 'run', 'jump'].every((k) => r.anims.includes(k)), r.anims.join(','));
+      check('2a 每個桌面動作都有影格組（31 個：21 個基本＋10 個 11.0 小動作，含爬牆／吊掛／偷看／掉落）', r.anims.length === 31 && ['climb', 'hang', 'peek', 'fall', 'run', 'jump'].every((k) => r.anims.includes(k)), r.anims.join(','));
+      check('2a2 11.0 新增的 10 個小動作（揮手、拍手、咯咯笑、嘆氣、打噴嚏、打嗝、靈光一閃、鞠躬、轉圈、扭一扭）都輸出：4 格以上、播一次、畫面真的在變', r.news.every((x) => x.n >= 4 && x.loop === 'once' && x.src === 'rig' && x.differs), r.news);
       check('2b 玩家影格：順序（紅綠藍黃）與每格時長原樣保留', r.order.join(',') === '100,010,001,110' && r.walk.durs.join() === '300,100,100,100' && r.walk.src === 'player', `${r.order} ${r.walk.durs}`);
       check('2c 循環模式、事件、優先級也帶到桌面', r.walk.loop === 'pingpong' && r.walk.events.length === 1 && r.walk.events[0].data === '一二！' && r.walk.priority === 6, r.walk);
       check('2d 沒畫的動作沿用備用鏈：跑步 → 玩家的走路影格', r.run.src === 'player' && r.run.frames.length === 4, r.run.src);
