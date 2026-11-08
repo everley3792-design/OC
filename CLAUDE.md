@@ -15,6 +15,7 @@
 - **8.0（0.8.0-alpha）全面重構**：居民改為選用（新遊戲只有玩家自己的 OC）、Logo＋真 3D 開場＋歡迎＋登場＋OC 帶的教學、說話系統（自稱、稱呼、句尾頻率、多口頭禪、禁用詞、專屬稱呼）、11 種新特質、匯入原圖保留與依顯示大小的角色貼圖、四種鏡頭模式與旋轉、環狀情境選單、直接撫摸／抱起／甩動角色、狀態卡、時間面板、分級觸覺、原創即時生成音樂、台詞改寫、響應式主畫面小工具。紀錄（問題→原因→修正→驗證）：`docs/v8-report.md`。
 - **0.9.0-alpha（打磨）**：15 個新的角色事件（含三段跨天小故事「秘密基地」，以旗標串接）、創角的 5 題性格問答與隨機性格、3D 環境生物（蝴蝶、鳥群、跳魚）、事件選項改寫共用定義的錯誤、重複圖鑑通知、設定的時間區塊改用時間面板。紀錄：`docs/v9-report.md`。
 - **10.0（0.10.0-alpha）美術與體驗重構**：「晴空玩具」Design System（白瓷玩具表面、長春花紫強調、珊瑚紅點、星空深色主題、計算出的彈簧動態）、原創貼紙圖示（`OC.UI.sticker`）、依參考圖重排的 HUD（頭像名牌、天氣膠囊、系統鍵、右側工具列、任務卡、互動鈕、白色大導覽列）、頁首雲邊天空、分類貼紙鈕、世界調色（暖主光／冷天光、金色午後、光暈、景深）、角色玩具光影、跳躍預備／回彈。規格：`docs/design-system.md`；紀錄：`docs/v10-report.md`。
+- **10.1（0.10.1-alpha）**：修正「互動後角色卡住」（遺失的放開手勢、被取代的對話、沒回答的事件提問，加上保留的安全網）、環狀選單改成連續動作、多面體植物、逐頁打磨。驗收：`node game/tests/v10/run.js`。紀錄：`docs/v10-report.md` 後半。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -65,10 +66,12 @@ node game/tests/life/run.js [1 2 …]           # 第四階段情境測試（先
 node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約 15–20 分鐘；截圖存 deliverables/phase5/）
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
+node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（38 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.10.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.10.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -111,7 +114,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、最多 8 小時、不觸發事件、不給獎勵、摘要回憶有 key）。
 - 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。
 - 事件每次播放都複製自己的步驟（`cur.steps`），選項只能改這份複本，不可改 `ev.steps`。
-- 暫停 OC 用 `Brain.hold(id, reason)` / `unhold`，不要直接改 `brain.st`。事件只能經 `OC.Events`（一次一個、間隔、冷卻、once 鍵）；重大關係變化只能產生通知、玩家同意才套用。
+- 暫停 OC 用 `Brain.hold(id, reason)` / `unhold`，不要直接改 `brain.st`。每個 hold 都要有保證會執行的 unhold（關閉回呼、計時器）；app 的 `holdWatchdog` 會放開沒有擁有者的 drag/dialogue/menu，並限制 call/pet/play/feed 的最長時間——新的互動保留要加進去。事件只能經 `OC.Events`（一次一個、間隔、冷卻、once 鍵）；重大關係變化只能產生通知、玩家同意才套用。
 - 永久改變（特質、習慣、興趣、戀人）一律 `OC.Mind.suggest` → 玩家 `resolve`（accept/reject/later/lock/mute）；拒絕有 5 天冷卻。玩家設定的關係（`fixed`）與背景故事不可被自動改寫。
 - 戀愛預設關閉，只有玩家標示為成年的角色才可能參與。
 - 對話新增內容放 `LifeData.LINES`（分類＋條件＋變數），不要在程式裡寫死台詞；不同 OC 要靠 voice/trait/情緒條件產生不同說法。
