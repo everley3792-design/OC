@@ -1,69 +1,10 @@
 {
- "at": "2026-11-08T05:07:33.715Z",
+ "at": "2026-11-08T05:09:33.990Z",
  "results": [
   {
-   "name": "17a 新增 15 個角色事件與短篇故事（惡作劇、和好、口味之爭、分點心、跌倒、看雲、深夜談心、講笑話、秘密基地三部曲…）",
-   "ok": true,
-   "detail": {
-    "eligible": true,
-    "why": [],
-    "count": 15,
-    "started": "jokeForYou",
-    "after": true,
-    "mem": true
-   }
-  },
-  {
-   "name": "17b 有選項的事件跑完後，事件定義不會被改動（修正：回應被插進共用資料）",
-   "ok": true,
-   "detail": {
-    "eligible": true,
-    "why": [],
-    "count": 15,
-    "started": "jokeForYou",
-    "after": true,
-    "mem": true
-   }
-  },
-  {
-   "name": "17c 創角的性格問答：5 題改變滑桿並建議特質",
-   "ok": true,
-   "detail": {
-    "changed": true,
-    "traits": [
-     "energetic",
-     "outgoing",
-     "tidy",
-     "earlybird"
-    ],
-    "energy": 78,
-    "txt": "完成！元氣滿滿的行動派。建議的特質：活潑、外向、愛乾淨、早起加上這些特質只保留滑桿"
-   }
-  },
-  {
-   "name": "17d 白天晴天時場景裡有蝴蝶等環境生物（效果開啟時）",
-   "ok": true,
-   "detail": 5
-  },
-  {
-   "name": "17e 新發現只出現一張卡片（不再同時跳出提示＋卡片）",
-   "ok": true,
-   "detail": {
-    "toasts": 0
-   }
-  },
-  {
-   "name": "17f 設定頁的時間與時間面板一致（顯示目前模式，按鈕開啟同一個面板）",
-   "ok": true,
-   "detail": {
-    "set": "目前：遊戲循環 ×10・天氣 晴",
-    "tp": true
-   }
-  },
-  {
-   "name": "全程沒有 JavaScript 錯誤",
-   "ok": true,
-   "detail": []
+   "name": "執行中斷",
+   "ok": false,
+   "detail": "page.evaluate: TypeError: Cannot read properties of null (reading 'textContent')\n    at eval (eval at evaluate (:311:30), <anonymous>:1:170)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /home/user/OC/game/tests/v8/run.js:26:30"
   }
  ]
 }
