@@ -66,8 +66,8 @@
 
   // =============================== HUD (10.0 layout) ===============================
   // top-left: avatar + name plate (coins, mood) → status card · under it: weather / time pill → time panel
-  // top-right: bell (only with notices) + settings · right rail: quick bag, camera, decorate
-  // bottom-left: "interact" (ring menu of your OC) · bottom-right: today's quest card → 日常 · bottom: tab bar
+  // top-right: bell (only with notices) · right rail: quick bag, camera, decorate
+  // bottom-right: today's quest card → 日常 · bottom: tab bar
   // The HUD calms down (fades back) while you look around the island and returns when you stop (hudCalm).
   let hud = {}, fpsEl, calmT = 0;
   const stk = (n, c) => OC.UI.sticker(n, c);
@@ -84,14 +84,14 @@
     hud.timeBtn = h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => { haptic('tick'); timePanel(); } } }, hud.wxIc, h('div', null, h('b', null, hud.wx), hud.time));
     hud.badge = h('span.badge.num');
     hud.bell = h('button.hud-sq.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => { haptic('tick'); OC.LifeUI.notices(); } } }, stk('bell'), hud.badge);
-    hud.gear = h('button.hud-sq', { 'aria-label': '設定', on: { click: () => { haptic('tick'); OC.Pages.open('settings'); } } }, stk('gear'));
     hud.cam = h('button.rail-btn', { 'aria-label': '鏡頭模式', on: { click: () => { haptic('tick'); camSheet(); } } }, stk('camera'), h('small', null, '鏡頭'));
     hud.deco = h('button.rail-btn', { 'aria-label': '佈置模式', on: { click: () => { haptic('tick'); setDecorate(!decorate); } } }, stk('sofa'), h('small', null, '佈置'));
     hud.rail = h('div.hud-rail', null, hud.cam, hud.deco);
     hud.questT = h('b.ellipsis'); hud.questS = h('small.ellipsis'); hud.questIc = h('span.hud-qic');
     hud.quest = h('button.hud-quest', { 'aria-label': '今天的任務', hidden: true, on: { click: () => { haptic('tick'); tab('more'); } } }, hud.questIc, h('div.grow', null, hud.questT, hud.questS), icon('chev', 's'));
-    hud.act = h('button.hud-act', { 'aria-label': '和你的 OC 互動', on: { click: () => { haptic('tick'); if (player) menuFor({ type: 'self', id: S().activeId }, screenOf(player)); } } }, stk('hand', 'l'));
-    el.append(hud.me, hud.timeBtn, h('div.hud-sys', null, hud.bell, hud.gear), hud.rail, hud.quest, hud.act);
+    // ≤ 6 permanent controls (name plate, weather, 3 tools, quest card); the bell only appears with notices.
+    // Settings live in 日常 › 設定 and tapping your OC opens its ring menu — no duplicate buttons on the island.
+    el.append(hud.me, hud.timeBtn, h('div.hud-sys', null, hud.bell), hud.rail, hud.quest);
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();

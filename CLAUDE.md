@@ -79,7 +79,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
 - **10.0 Design System**（`docs/design-system.md`）：表面一律「白瓷＋模具邊」（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（長春花紫）＝可按／已選取，`--alert`＝紅點／新東西，`--sun`＝星幣／獎勵；按下用 `--t-press` 下沉、放開用 `--spring` 彈回，大面積（頁面、表單）用 `--spring-soft`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`（原創、48 格、左上光源），小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。
 - 世界調色（`html.grade`、`html.dof`、`--glow-*`）由效能模式決定：高＝調色＋景深、平衡＝調色、省電＝都關；景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
-- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個群組（名牌、天氣時間、系統鍵、右側工具列、任務卡＋互動、導覽列），不要在 HUD 重複導覽列已有的入口。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
+- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個操作元件（名牌、天氣時間、右側工具列 3 個、任務卡；通知鈴只在有通知時出現；導覽列另計），不要在 HUD 重複已有的入口（設定在「日常」、互動＝點你的 OC）。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
 - **新遊戲不得自動加入玩家沒選的角色**：居民（`world.residents`）預設關閉；角色只由玩家建立、匯入或明確加入。
 - 開場／教學：自動化測試設 `localStorage['oc.skipIntro']='1'`（harness 預設）；`OC.Intro`、`OC.Tutorial` 的進度存在 `S.intro`。教學步驟必須由真實事件完成（`St.emit('menu:open' | 'touch:pet' | 'touch:land' | 'status:open' | 'time:panel' | 'cam:*')`）。
 - 角色觸碰走 `OC.Touch`（World 的 claim 掛鉤）：手指落在角色上就屬於角色，不移動鏡頭；放開後一定落在可走地面；資料變化只經既有 API（`LifeUI.pet`、`Brain.hold`、`Mind.feel`）。
