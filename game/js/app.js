@@ -55,12 +55,13 @@
   function buildHUD() {
     const el = $('#hud');
     hud.av = h('canvas', { width: 96, height: 96 }); hud.name = h('div.name'); hud.mood = h('div.mood');
-    hud.me = h('button.hud-me', { 'aria-label': '我的角色', on: { click: () => tab('char') } }, h('div.avatar', null, hud.av), h('div', null, hud.name, hud.mood));
+    hud.me = h('button.hud-me', { 'aria-label': '角色狀態', 'aria-expanded': 'false', on: { click: () => toggleStatus() } }, h('div.avatar', null, hud.av), h('div', null, hud.name, hud.mood));
+    hud.cam = h('button.icon-btn', { 'aria-label': '鏡頭模式', on: { click: () => camSheet() } }, icon('island'));
     hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span');
     hud.coins = h('span.num');
     hud.deco = h('button.icon-btn', { 'aria-label': '佈置模式', on: { click: () => setDecorate(!decorate) } }, icon('sofa'));
     hud.badge = h('span.badge.num'); hud.bell = h('button.icon-btn.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => OC.LifeUI.notices() } }, icon('bell'), hud.badge);
-    el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timeSheet() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '星幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.bell, hud.deco)));
+    el.append(hud.me, h('div.hud-right', null, h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => timePanel() } }, hud.wxIc, hud.time, h('span.faint', null, '・'), hud.wx), h('div.hstack', { style: { gap: '6px' } }, h('div.chip', { 'aria-label': '星幣' }, h('span', { style: { color: 'var(--sun)', display: 'grid' } }, icon('coin', 's')), hud.coins), hud.bell, hud.cam, hud.deco)));
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     hud.mood.classList.add('ellipsis');
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
@@ -76,9 +77,75 @@
     hud.time.textContent = `${L.date} ${L.time}`; hud.wx.textContent = L.wxZh; hud.wxIc.replaceChildren(icon(L.phase === 'night' ? 'moon' : L.wxIcon, 's'));
     hud.coins.textContent = S().coins.toLocaleString();
   }
-  function timeSheet() {
-    const L = OC.Clock.label();
-    sheet('時間與天氣', (b) => b.append(h('div.list', null, OC.UI.row(L.phase === 'night' ? 'moon' : 'sun', `${L.date}（${L.week}）${L.time}`, S().settings.time === 'real' ? '跟隨手機的真實時間' : S().settings.time === 'cycle' ? `自動循環・速度 ×${OC.Sim.speed()}（一天約 ${Math.round(24 / OC.Sim.speed())} 分鐘）` : `固定為${L.phaseZh}（設定中可改回現實）`), OC.UI.row(L.wxIcon, `天氣：${L.wxZh}`, S().settings.weather === 'auto' ? '每 6 小時依日期自動變化' : '固定天氣（設定中可改回自動）')), h('button.btn.block', { style: { marginTop: '12px' }, on: { click: () => { OC.UI.back(); OC.Pages.open('settings'); } } }, icon('gear', 's'), '在設定中調整')));
+  // =============================== 8.0 time & weather panel ===============================
+  const TIME_PRESETS = [['凌晨', 3], ['清晨', 5.5], ['早晨', 7.5], ['上午', 10], ['中午', 12.5], ['下午', 15], ['黃昏', 17.75], ['晚上', 20], ['深夜', 23]];
+  const fmtH = (x) => `${String(Math.floor(x) % 24).padStart(2, '0')}:${String(Math.round((x % 1) * 60) % 60).padStart(2, '0')}`;
+  function timePanel() {
+    sheet('時間與天氣', (b, api) => {
+      const st = S().settings, big = h('div.time-big.num'), sub = h('div.muted'), chips = h('div.time-chips');
+      const modeSeg = OC.UI.seg([['real', '真實時間'], ['cycle', '遊戲循環'], ['fixed', '固定時刻']], st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed', (v) => {
+        if (v === 'fixed') { st.fixedHour = OC.Clock.hour(); st.time = 'fixed'; St.touch('settings'); } else OC.Sim.setMode(v);
+        St.emit('time:set', { mode: v }); draw();
+      });
+      const speed = OC.UI.seg(OC.Sim.SPEEDS.map((v) => [String(v), `×${v}`]), String(st.timeSpeed || 1), (v) => { OC.Sim.setSpeed(+v); draw(); });
+      const pause = OC.UI.toggle(!!st.timePaused, (v) => { st.timePaused = v; St.touch('settings'); draw(); });
+      const slider = h('input', { type: 'range', min: 0, max: 23.75, step: 0.25, 'aria-label': '時刻', style: { width: '100%' }, on: { input: (e) => { st.time = 'fixed'; st.fixedHour = +e.target.value; St.touch('settings'); St.emit('time:set', { hour: st.fixedHour }); draw(true); } } });
+      const wx = OC.UI.seg([['auto', '自動'], ['clear', '晴'], ['cloudy', '多雲'], ['rain', '雨'], ['fog', '霧']], st.weather, (v) => { st.weather = v; St.touch('settings', { k: 'weather', v }); St.emit('time:weather', v); });
+      const cycleBox = h('div', null, h('div.hstack', { style: { marginTop: '12px' } }, h('span.grow', null, '倍速'), speed), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '暫停時間（需求也一起暫停）'), pause));
+      function pick(hh) {
+        if (st.time === 'cycle') { const gm = OC.Sim.skipTo(hh); toast(gm ? `快轉了 ${Math.round(gm / 60 * 10) / 10} 小時（大家照常生活，不會給額外獎勵）` : '已經是這個時間', 'clock'); }
+        else { st.time = 'fixed'; st.fixedHour = hh; St.touch('settings'); }
+        haptic('tick'); St.emit('time:set', { hour: hh }); draw();
+      }
+      function draw(fromSlider) {
+        const L = OC.Clock.label(), hh = OC.Clock.hour();
+        big.textContent = fmtH(hh); sub.textContent = `${L.date}（${L.week}）・${OC.Clock.PHASE_ZH[OC.Clock.phase(hh)]}・${{ real: '跟隨手機時間', cycle: st.timePaused ? '遊戲循環（暫停中）' : `遊戲循環 ×${st.timeSpeed || 1}・一天約 ${Math.round(24 / (st.timeSpeed || 1))} 分鐘`, fixed: '固定在這個時刻' }[st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed']}`;
+        modeSeg.set(st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed'); cycleBox.hidden = st.time !== 'cycle';
+        if (!fromSlider) slider.value = String(Math.round(hh * 4) / 4);
+        chips.replaceChildren(...TIME_PRESETS.map(([zh, v]) => h('button.chip-btn' + (Math.abs(hh - v) < 0.5 ? '.on' : ''), { on: { click: () => pick(v) } }, zh, h('small', null, ' ' + fmtH(v)))));
+      }
+      b.append(h('div.center', null, big, sub), h('div', { style: { marginTop: '10px' } }, modeSeg), chips, h('div.muted', { style: { marginTop: '10px', fontSize: 'var(--fs-s)' } }, '拖曳設定時刻（固定時刻模式）'), slider, cycleBox,
+        h('div.section-title', null, '天氣'), wx, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '天空、光影、燈光、角色作息與事件都會跟著時間改變；遊戲循環快轉時，跳過的時間會照常模擬（像離開 App 一樣，不給獎勵）。'));
+      draw(); const iv = setInterval(() => { if (!b.isConnected) { clearInterval(iv); return; } draw(document.activeElement === slider); }, 1000);
+      St.emit('time:panel');
+    });
+  }
+
+  // =============================== 8.0 status card (top-left) ===============================
+  let statusEl = null, statusT = 0;
+  function toggleStatus(force) {
+    const open = force != null ? force : !statusEl;
+    if (!open) { if (statusEl) { const el = statusEl; statusEl = null; el.classList.remove('on'); OC.UI.popLayer(el._layer); setTimeout(() => el.remove(), 220); hud.me.setAttribute('aria-expanded', 'false'); } return; }
+    if (statusEl) return;
+    const el = h('div.status-card', { role: 'dialog', 'aria-label': '角色狀態' });
+    el._layer = { scrim: false, close: () => toggleStatus(false) }; OC.UI.pushLayer(el._layer);
+    const cv = h('canvas', { width: 128, height: 128 }); cv.className = 'sc-av';
+    live(cv, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
+    el._f = { name: h('b'), title: h('small.sc-title'), mood: h('div.sc-mood'), doing: h('div.sc-doing'), wish: h('div.sc-wish'), bars: {} };
+    const grid = h('div.sc-needs', null, ...OC.LifeData.NEEDS.map((n) => { const i = h('i', { style: { '--c': n.c } }); el._f.bars[n.id] = i; return h('div.sc-need', { title: n.how }, icon(n.ic, 's'), h('span', null, n.zh), h('div.bar', null, i)); }));
+    el._f.who = h('div.sc-who');
+    el.append(h('div.sc-head', null, cv, h('div.grow', null, el._f.name, el._f.title, el._f.mood, el._f.doing)), grid, el._f.wish, el._f.who,
+      h('div.sc-actions', null,
+        h('button.btn.s', { on: { click: () => { toggleStatus(false); OC.LifeUI.pet(S().activeId); } } }, icon('paw', 's'), '摸摸'),
+        h('button.btn.s', { on: { click: () => { toggleStatus(false); setCamMode('focus', player); } } }, icon('eye', 's'), '特寫'),
+        h('button.btn.s.primary', { on: { click: () => { toggleStatus(false); OC.Pages.open('profile', { id: S().activeId }); } } }, icon('person', 's'), '完整檔案')));
+    $('#hud').append(el); statusEl = el; hud.me.setAttribute('aria-expanded', 'true');
+    el._sig = ''; updateStatus(true); requestAnimationFrame(() => el.classList.add('on'));
+    document.addEventListener('pointerdown', function off(e) { if (!statusEl || statusEl !== el) { document.removeEventListener('pointerdown', off, true); return; } if (!el.contains(e.target) && !hud.me.contains(e.target)) { document.removeEventListener('pointerdown', off, true); toggleStatus(false); } }, true);
+    St.emit('status:open');
+  }
+  /** in-place update (text + bar widths only; the roster row is rebuilt only when the roster changes) */
+  function updateStatus(force) {
+    const el = statusEl; if (!el) return; const now = performance.now(); if (!force && now - statusT < 400) return; statusT = now;
+    const c = me(), f = el._f, b = OC.Brain.get(c.id), wish = OC.Mind.activeWishes(c)[0];
+    const set = (n, t) => { if (n.textContent !== t) n.textContent = t; };
+    set(f.name, OC.Chars.name(c)); set(f.title, (OC.Growth && OC.Growth.titleOf(c)) || OC.Chars.typeTitle(c));
+    set(f.mood, `${OC.Mind.label(c)}`); set(f.doing, [OC.LifeUI.doingText(c), (OC.Places.get(c.life.loc || Wd.area.id) || {}).zh].filter(Boolean).join('・') || '自由活動中');
+    set(f.wish, wish ? `想要：${wish.text || ''}` : (OC.Requests && OC.Requests.ofOC(c.id) ? `有事想拜託你：${OC.Requests.ofOC(c.id).text}` : '')); f.wish.hidden = !f.wish.textContent;
+    for (const [k, i] of Object.entries(f.bars)) { const w = Math.round(Math.max(0, Math.min(100, c.needs[k]))) + '%'; if (i.style.width !== w) i.style.width = w; i.classList.toggle('low', c.needs[k] < 25); }
+    const sig = OC.Chars.all().map((x) => x.id + x.updated).join() + S().activeId;
+    if (el._sig !== sig) { el._sig = sig; const all = OC.Chars.all(); f.who.hidden = all.length < 2;
+      f.who.replaceChildren(h('small.muted', null, '切換操控'), ...all.map((x) => { const cv2 = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv2, x, { pose: { mouth: 'smile' } }); return h('button.sc-pick' + (x.id === S().activeId ? '.on' : ''), { 'aria-label': '操控' + OC.Chars.name(x), on: { click: () => { if (x.id !== S().activeId) { OC.Chars.setActive(x.id); toast(`現在操控：${OC.Chars.name(x)}`, 'person'); } updateStatus(true); } } }, cv2); })); }
   }
 
   // =============================== tab bar ===============================
@@ -299,8 +366,7 @@
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
     haptic();
     switch (it.type) {
-      case 'self': OC.LifeUI.interact(S().activeId); break;
-      case 'mate': OC.LifeUI.interact(it.id); break;
+      case 'self': case 'mate': menuFor(it, screenOf(it.type === 'self' ? player : mates[it.id])); break;
       case 'npc': approachNpc(it.id); break;
       case 'drop': goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)); break;
       case 'tree': goThen(it.at.x, it.at.y, () => shakeTree(it)); break;
@@ -312,7 +378,7 @@
         goThen(it.at.x, it.at.y, () => { face(player, 0, 1); const n = npcs[it.npc]; toast(`${it.label}${n && Math.hypot(n.x - player.x, n.y - player.y) < 140 ? `・${Gm.NPCS[it.npc].zh}就在附近` : '・現在不在家'}`, 'home'); }); break;
       case 'travel': goThen(it.at.x, it.at.y, () => tab('explore')); break;
       case 'travelHome': goThen(it.at.x, it.at.y, () => travel('isle')); break;
-      case 'furn': if (!decorate && OC.WorldUI.tap(it)) break; furnInteract(it); break;
+      case 'furn': if (decorate) { furnInteract(it); break; } menuFor(it, Wd.project(it.x, it.y, Wd.levelAt(it.x, it.y), 30)); break;
       default: OC.WorldUI.tap(it);
     }
   }
@@ -320,7 +386,7 @@
     haptic();
     const it = r.it;
     if (it && (it.type === 'mate' || it.type === 'self') && !placing && !dlgOpen) return startCarry(it.type === 'self' ? S().activeId : it.id);
-    if (!it) { const lv = Wd.levelAt(r.p.x, r.p.y); toast(Wd.walkable(r.p.x, r.p.y) ? (lv > 0.99 ? '高台' : lv > 0 ? '石階' : '地面') + '・可以走' : '走不過去的地方', 'info'); return; }
+    if (!it) { menuFor({ type: 'ground', p: r.p }, Wd.project(r.p.x, r.p.y, Wd.levelAt(r.p.x, r.p.y), 0)); return; }
     if (it.type === 'tree') { const left = treeReadyIn(it); toast(left <= 0 ? `${it.label}・果實成熟了，點一下就能搖` : `${it.label}・還要約 ${Math.ceil(left)} 分鐘長出果實`, 'leaf'); return; }
     if (it.type === 'npc') { const n = Gm.npc(it.id); toast(`${Gm.NPCS[it.id].zh}・${n.met ? Gm.LEVEL_ZH[Gm.friendLevel(n.fr)] : '還沒見過面'}`, 'heart'); return; }
     if (it.type === 'furn') { toast(`${Sty.ITEMS[it.id].zh}・開啟佈置模式即可移動`, 'sofa'); return; }
@@ -391,6 +457,65 @@
     if (it.id === 'lamp') { const L = S().world.lamps; L[it.uid] = L[it.uid] === false; St.touch(); toast(L[it.uid] === false ? '關掉了檯燈' : '打開了檯燈（晚上會亮）', 'sun'); return; }
     toast(`${def.zh}・長按或開啟佈置模式可以移動`, 'sofa');
   }
+  // =============================== 8.0 context ring ===============================
+  /** screen point above an actor's head */
+  function screenOf(a) { if (!a) return { x: innerWidth / 2, y: innerHeight / 2 }; return Wd.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * Wd.HY + 70); }
+  function menuFor(it, pt) {
+    if (!it || !pt) return;
+    const L = OC.LifeUI, Pg = OC.Pages;
+    if (it.type === 'self' || it.type === 'mate') {
+      const id = it.type === 'self' ? S().activeId : it.id, c = OC.Chars.get(id), a = actorOf(id), self = id === S().activeId; if (!c || !a) return;
+      const b = OC.Brain.get(id), asleep = b && b.act === 'sleep' && b.st === 'do', sl = asleep ? '正在睡覺' : null, busy = b && b.holds.has('event') ? '正在特別的事情中' : null;
+      OC.Radial.open({ x: pt.x, y: pt.y, title: OC.Chars.name(c), sub: `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, target: id, items: [
+        { ic: 'paw', label: '摸摸', main: true, run: () => L.pet(id) },
+        { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
+        { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
+        { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
+        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => L.play(id) },
+        self ? { ic: 'eye', label: '跟拍', run: () => setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L.call(id) },
+        { ic: 'person', label: '檔案', run: () => Pg.open('profile', { id }) },
+        { ic: 'more', label: '更多', run: () => L.interact(id) },
+      ] });
+      St.emit('menu:open', { kind: 'oc', id });
+      return;
+    }
+    if (it.type === 'furn') {
+      const def = Sty.ITEMS[it.id] || { zh: '家具' };
+      OC.Radial.open({ x: pt.x, y: pt.y, title: def.zh, sub: '家具', items: [
+        { ic: 'hand', label: '使用', main: true, run: () => { if (!OC.WorldUI.tap(it)) furnInteract(it); } },
+        { ic: 'move', label: '移動', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => startPlacement({ uid: it.uid }) },
+        { ic: 'bag', label: '收回', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => { startPlacement({ uid: it.uid }); storeFurniture(); } },
+        { ic: 'info', label: '資訊', run: () => OC.Pages.itemSheet ? OC.Pages.itemSheet(it.id) : toast(def.zh, 'info') },
+      ] });
+      St.emit('menu:open', { kind: 'furn' });
+      return;
+    }
+    if (it.type === 'ground') {
+      const q = it.p, ok = Wd.walkable(q.x, q.y), others = Object.keys(mates);
+      OC.Radial.open({ x: pt.x, y: pt.y + 40, title: ok ? '這裡' : '走不過去的地方', items: [
+        { ic: 'walk', label: '走過去', main: true, off: ok ? null : '走不過去', run: () => { const t = Wd.nearestWalkable(q.x, q.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); } },
+        { ic: 'hand', label: '大家過來', off: others.length ? null : '這裡沒有其他 OC', run: () => others.forEach((id, i) => setTimeout(() => OC.LifeUI.call(id), i * 250)) },
+        { ic: 'sofa', label: '放家具', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => setDecorate(true) },
+        { ic: 'eye', label: '看這裡', run: () => { setCamMode('free'); Wd.shot({ x: q.x, y: q.y, speed: 3 }); setTimeout(() => Wd.shot(null), 900); } },
+      ] });
+      St.emit('menu:open', { kind: 'ground' });
+    }
+  }
+  // =============================== 8.0 camera modes ===============================
+  const CAM_ZH = { classic: ['經典 2.5D', 'island'], follow: ['跟隨角色', 'walk'], focus: ['角色特寫', 'eye'], free: ['自由鏡頭', 'compass'] };
+  function setCamMode(m, subj) {
+    if (!CAM_ZH[m]) return; S().view.mode = m; St.touch('view');
+    Wd.setMode(m, { subject: subj || (m === 'classic' ? null : player) });
+    if (hud.cam) hud.cam.replaceChildren(icon(CAM_ZH[m][1]));
+    St.emit('cam:mode', m);
+  }
+  function camSheet() {
+    sheet('鏡頭', (b, api) => {
+      b.append(h('div.list', null, ...Object.entries(CAM_ZH).map(([k, [zh, ic]]) => OC.UI.row(ic, zh, { classic: '固定斜俯視角，跟著操控中的 OC（佈置與探索最方便）', follow: '平滑跟著選定的 OC，可以兩指旋轉視角', focus: '拉近到選定的 OC，看表情與換裝', free: '不自動跟隨：單指拖曳移動、兩指縮放與旋轉' }[k], S().view.mode === k ? icon('check') : null, () => { api.close(); setCamMode(k); }))),
+        h('div.hstack', { style: { gap: '8px', marginTop: '12px' } }, h('button.btn.grow', { on: { click: () => { Wd.rotateTo(0); S().view.yaw = 0; } } }, icon('rotate', 's'), '轉回正面'), h('button.btn.grow', { on: { click: () => { Wd.recenter(); } } }, icon('person', 's'), '回到角色')),
+        h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '特殊事件會暫時用電影鏡頭，結束後回到你原本的鏡頭。'));
+    });
+  }
   function reactEat() { if (!player) return; const b = OC.Chars.behavior(me()); Wd.setAction(player, 'eat', { dur: b.chew, priority: 4 }); emote(player, '♥'); }
   function moodPose() { const m = Gm.moodFace(); return { eyes: m.eyes === 'round' ? undefined : m.eyes, mouth: m.mouth === 'cat' ? undefined : m.mouth, blush: m.blush ? 0.8 : 0 }; }
   // speech bubble above an actor
@@ -413,10 +538,16 @@
     carry = { id, a, c, wasSleeping }; OC.Mind.feel(c, 'surprised', 0.6, '被抱起來'); return { drag: true };
   }
   function dragMove(p) { if (!carry) return; const q = Wd.nearestWalkable(p.x, p.y + 14, 30); if (q) { carry.a.x = q.x; carry.a.y = q.y; } carry.a.lift = 9; }
-  function dragEnd() {
-    if (!carry) return; const { id, a, c, wasSleeping } = carry; carry = null; a.lift = 0; Wd.setAction(a, 'idle'); Wd.jump(a);
+  /** put an OC down. info.fling: 0 = set down, 1 = tossed (bounced), 2 = thrown hard — reactions follow personality */
+  function dragEnd(p, info = {}) {
+    if (!carry) return; const { id, a, c, wasSleeping } = carry; carry = null; a.lift = 0; a.swing = 0; const fl = info.fling || 0;
     const b = OC.Chars.behavior(c); let cat = 'call';
+    const brave = c.personality.energy > 60 || OC.Chars.has(c, 'energetic') || OC.Chars.has(c, 'brave');
+    if (fl >= 2) { Wd.setAction(a, brave ? 'cheer' : 'hurt', { dur: 1.6, priority: 8 }); emote(a, brave ? '★' : '@'); }
+    else if (fl === 1) { Wd.setAction(a, brave ? 'happy' : 'surprised', { dur: 1.1, priority: 8 }); }
+    else { Wd.setAction(a, 'idle'); Wd.jump(a); }
     if (wasSleeping) { OC.Mind.feel(c, 'annoyed', 0.45, '睡覺被吵醒'); cat = 'prank_bad'; }
+    else if (fl >= 2) { if (brave) { OC.Mind.feel(c, 'excited', 0.5, '被你丟得高高的'); cat = 'prank_ok'; } else { OC.Mind.feel(c, 'nervous', 0.5, '被丟出去了'); cat = 'prank_bad'; } }
     else if (OC.Chars.has(c, 'shy')) OC.Mind.feel(c, 'shy', 0.5, '被抱起來');
     else if (b.emoteScale > 1) OC.Mind.feel(c, 'excited', 0.35, '被抱起來');
     OC.Mind.player(c, { fam: 1 }); const ln = OC.Talk.say(cat, c, null); if (ln) bubble(a, ln.text, OC.Chars.name(c));
@@ -634,6 +765,7 @@
     }
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
     if (hud.name) updateHUD();
+    if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
   let world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
@@ -714,7 +846,7 @@
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
-    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, ghostMoved: () => syncPlace(), ghostDone: () => placing && placing.commit && placing.commit(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
+    Wd.init($('#world'), { hooks: { tap: onTap, longPress: onLongPress, dragMove, dragEnd, claimDown: (r, p) => !decorate && OC.Touch.down(r, p), claimMove: (d, p) => OC.Touch.move(d, p), claimUp: (d, p) => OC.Touch.up(d, p), claimCancel: () => OC.Touch.cancel(), panned: () => St.emit('cam:pan'), rotated: (y) => { S().view.yaw = y; St.emit('cam:rotate', y); }, ghostMoved: () => syncPlace(), ghostDone: () => placing && placing.commit && placing.commit(), lampOn: (uid) => S().world.lamps[uid] !== false, contextLost: () => { toast('畫面需要重新整理', 'refresh'); setTimeout(() => { if (Wd.renderer.getContext().isContextLost() && !document.hidden && window.__ocFail) window.__ocFail('3D 畫面中斷了', '顯示晶片的繪圖環境遺失且沒有恢復。請試試「用省電模式重新開啟」。', 'webglcontextlost'); }, 5000); }, panned: () => {} } });
     Wd.hourFn = () => OC.Clock.hour(); Wd.weatherFn = () => OC.Clock.weather();
     requestAnimationFrame(loop);
     window.__ocBooted = true;
@@ -784,6 +916,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { menuFor, screenOf, setCamMode, camSheet, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

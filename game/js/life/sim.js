@@ -58,9 +58,21 @@
     // a long gap while the app was "running" is a stall (slow frame), not an absence — app pause/resume handles absences.
     // real/preset clocks re-sync from the device clock; the cycle clock simulates the stall (max 30 s) step by step
     if (realDt > 3 && mode() !== 'cycle') { catchUp('gap'); return; }
+    if (mode() === 'cycle' && S().settings.timePaused) { acc = 0; return; }   // 8.0: the player paused the island clock (needs freeze too)
     acc += Math.min(30, Math.max(0, realDt)); let n = 0;
     while (acc >= STEP && n++ < 160) { acc -= STEP; step(rate() * STEP); }
     if (acc > STEP * 160) acc = 0;     // never spiral
+  }
+  /** 8.0 time panel: in the game cycle, jump FORWARD to an hour of the day. The skipped minutes are simulated abstractly
+   *  (needs, sleep, activities — like an absence: no events, no rewards), then the clock moves; day hooks fire normally. */
+  function skipTo(hour) {
+    if (mode() !== 'cycle') return 0;
+    const c = L().clock, h = hourOf(c.gm); let dh = ((hour - h) % 24 + 24) % 24; if (dh < 1 / 60) return 0;
+    const gm = dh * 60, chunks = Math.ceil(gm / 10), g = gm / chunks, start = c.gm;
+    catching = true;
+    try { for (let i = 0; i < chunks; i++) for (const f of abstracts) { try { f(g, { offline: true, reason: 'skip', at: start + i * g }); } catch (e) { console.error('[sim skip]', e); } } } finally { catching = false; }
+    c.gm += gm; OC.Store.touch('life', { skip: gm }); OC.Store.emit('life:skip', { min: Math.round(gm) });
+    return gm;
   }
   /** run N full steps headlessly (tests / diagnostics). gm = game minutes to simulate */
   function advance(gm) { const per = rate() * STEP; let left = gm; while (left > 1e-9) { const g = Math.min(per, left); step(g); left -= g; } }
@@ -81,7 +93,7 @@
   }
 
   OC.Sim = {
-    STEP, OFFLINE_CAP, SPEEDS, update, advance, catchUp, step, onStep, onDay, onAbstract,
+    STEP, OFFLINE_CAP, SPEEDS, update, advance, catchUp, step, onStep, onDay, onAbstract, skipTo,
     now, day, hourOf, rate, mode, speed, setMode, setSpeed, realGm,
     get catching() { return catching; }, rnd, pick, wpick, seed(v) { seed = v >>> 0; }, get steps() { return stepN; },
   };

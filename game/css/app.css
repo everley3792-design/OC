@@ -482,3 +482,40 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 .debut-card.on { opacity: 1; transform: translate(-50%, 0); }
 .debut-card small { color: var(--accent); font-weight: 700; letter-spacing: .1em; } .debut-card b { font-size: var(--fs-xl); } .debut-card span { color: var(--ink-3); font-size: var(--fs-s); }
 @media (prefers-reduced-motion: reduce) { .intro-mark, .intro-word span > span, .intro-word b > span { animation: none !important; } }
+
+/* ===================== 8.0 radial context menu ===================== */
+.radial { position: fixed; inset: 0; z-index: 60; background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), transparent 0, rgba(18,20,28,.10) 60%); opacity: 0; transition: opacity 180ms var(--ease-out); }
+.radial.on { opacity: 1; }
+.radial-ring { position: absolute; width: 0; height: 0; }
+.radial-hub { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; padding: 6px 12px; border-radius: var(--r-pill); background: var(--glass, var(--surface)); box-shadow: var(--shadow-1); white-space: nowrap; pointer-events: none; }
+.radial-hub b { font-size: var(--fs-s); } .radial-hub small { font-size: var(--fs-xs); color: var(--ink-3); }
+.radial-btn { position: absolute; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border: 0; border-radius: 50%; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-2); display: grid; place-items: center; font: inherit;
+  transform: translate(0, 0) scale(0.3); opacity: 0; transition: transform 300ms var(--ease-pop) var(--d), opacity 200ms var(--ease-out) var(--d); }
+.radial.on .radial-btn { transform: translate(var(--x), var(--y)) scale(1); opacity: 1; }
+.radial-btn svg { width: 24px; height: 24px; }
+.radial-btn span { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--fs-xs); font-weight: 600; color: var(--ink); background: var(--surface); padding: 1px 7px; border-radius: var(--r-pill); box-shadow: var(--shadow-1); }
+.radial-btn.main { background: var(--accent); color: var(--on-accent); }
+.radial-btn.off { color: var(--ink-3); background: var(--surface-2); box-shadow: none; }
+.radial-btn:active { transform: translate(var(--x), var(--y)) scale(0.92); }
+@media (prefers-reduced-motion: reduce) { .radial-btn { transition: opacity 120ms; } }
+
+/* ===================== 8.0 HUD: status card · time panel ===================== */
+.status-card { position: absolute; left: 12px; top: calc(var(--sat) + 64px); width: min(330px, calc(100vw - 24px)); z-index: 30; padding: 14px; border-radius: var(--r-l); background: var(--surface); box-shadow: var(--shadow-2); pointer-events: auto;
+  transform-origin: 30px 0; transform: translateY(-8px) scale(0.96); opacity: 0; transition: transform 260ms var(--ease-pop), opacity 180ms var(--ease-out); }
+.status-card.on { transform: none; opacity: 1; }
+.sc-head { display: flex; gap: 12px; align-items: center; }
+.sc-av { width: 64px; height: 64px; border-radius: 18px; background: var(--surface-2); flex: none; }
+.sc-head b { display: block; font-size: var(--fs-l); } .sc-title { display: block; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
+.sc-mood { font-size: var(--fs-s); } .sc-doing { font-size: var(--fs-xs); color: var(--ink-3); }
+.sc-needs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 12px; }
+.sc-need { display: grid; grid-template-columns: 16px 34px 1fr; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--ink-2); }
+.sc-need .bar { height: 6px; } .sc-need .bar i { display: block; height: 100%; border-radius: inherit; background: var(--c); transition: width 600ms var(--ease-out); }
+.sc-need .bar i.low { background: var(--danger); }
+.sc-wish { margin-top: 10px; font-size: var(--fs-s); padding: 6px 10px; border-radius: var(--r-m); background: var(--sun-soft); }
+.sc-who { display: flex; align-items: center; gap: 6px; margin-top: 10px; overflow-x: auto; }
+.sc-pick { width: 40px; height: 40px; padding: 0; border-radius: 12px; border: 2px solid transparent; background: var(--surface-2); flex: none; }
+.sc-pick canvas { width: 100%; height: 100%; } .sc-pick.on { border-color: var(--accent); }
+.sc-actions { display: flex; gap: 6px; margin-top: 12px; } .sc-actions .btn { flex: 1; min-height: 44px; }
+.time-big { font-size: 44px; font-weight: 700; letter-spacing: .02em; }
+.time-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.time-chips .chip-btn small { color: var(--ink-3); font-size: var(--fs-xs); }

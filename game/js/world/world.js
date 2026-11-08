@@ -208,6 +208,8 @@
     const sx = turn * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
     a.m.scale.set(sx / Math.sqrt(a.squash), sy, 1);
     a.m.rotation.order = 'YXZ'; a.m.rotation.y = yaw;
+    // held by the player: swing around the hands (pivot ≈ 55 % of the billboard height), not around the feet
+    if (a.swing) { const hh = BB_H * 0.55, sx = Math.sin(a.swing) * hh; a.m.position.x += sx * Math.cos(yaw); a.m.position.z -= sx * Math.sin(yaw); a.m.position.y += hh * (1 - Math.cos(a.swing)); }
     a.m.rotation.z = (a.isSprite ? a.walk * Math.sin(a.phase * Math.PI) * (beh ? beh.sway : 0.04) : 0) + (a.swing || 0);
     if (a.sil) { a.sil.position.copy(a.m.position); a.sil.scale.copy(a.m.scale); a.sil.rotation.copy(a.m.rotation); }
     const lift = a.lift / 30; a.sh.position.set(a.x, a.gy + 0.25, z + 1.5); a.sh.scale.set(26 * (a.sc || 1) * (1 - lift * 0.4), 14 * (a.sc || 1) * (1 - lift * 0.4), 1);
@@ -249,12 +251,14 @@
 
   // ====================== picking ======================
   function pick(sx, sy) {
-    const p = screenToDesign(sx, sy);
+    const p = screenToDesign(sx, sy), cx = camX + panX, cy = camY + panY;
     let best = null, bestD = 1e9;
+    // hit boxes stand upright on the SCREEN (w wide, h tall above the base, d below), so they stay right when the view is rotated
     const consider = (it) => {
       if (it.hidden) return; const h = it.hit || { w: 24, h: 30 };
-      const sy0 = it.y - (it.lvl || 0) * 0 - h.h, inX = Math.abs(p.x - it.x) <= h.w / 2, inY = p.y >= sy0 && p.y <= it.y + (h.d || 8);
-      if (inX && inY) { const d = Math.abs(p.x - it.x) + Math.abs(p.y - (it.y - h.h / 2)) * 0.5 - (it.prio || 0) * 100; if (d < bestD) { bestD = d; best = it; } }
+      const sd = designToScreenDir(it.x - cx, it.y - cy), bx = W / 2 + sd.x * zoom, by = H / 2 + sd.y * zoom;
+      const qx = (sx - bx) / zoom, qy = (sy - by) / zoom, inX = Math.abs(qx) <= h.w / 2, inY = qy >= -h.h && qy <= (h.d || 8);
+      if (inX && inY) { const d = Math.abs(qx) + Math.abs(qy + h.h / 2) * 0.5 - (it.prio || 0) * 100; if (d < bestD) { bestD = d; best = it; } }
     };
     actors.forEach((a) => { if (a.interact) consider(Object.assign(a.interact, { x: a.x, y: a.y, lvl: a.lvl })); });
     drops.forEach((d) => consider(d.it)); interacts.forEach(consider); furn.forEach((f) => f.it && consider(f.it));

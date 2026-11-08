@@ -17,6 +17,7 @@
   function hour() {
     const s = OC.Store.s.settings;
     if (s.time === 'cycle' && OC.Sim) return OC.Sim.hourOf();          // Phase 4 auto day cycle (game clock)
+    if (s.time === 'fixed') return s.fixedHour == null ? 12 : s.fixedHour;   // 8.0: any hour the player picked
     if (s.time !== 'real' && PRESET_HOUR[s.time] != null) return PRESET_HOUR[s.time];
     const d = new Date(); return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   }

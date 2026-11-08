@@ -155,4 +155,16 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun bootFailed(title: String, message: String, detail: String) = act.runOnUiThread { act.failWeb(title, message, detail) }
 
     @JavascriptInterface fun haptic() = act.runOnUiThread { act.web.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP) }
+    /** graded haptics (8.0): the system's own feedback constants, so the user's system touch-feedback setting still applies */
+    @JavascriptInterface fun hapticKind(kind: String) = act.runOnUiThread {
+        val H = android.view.HapticFeedbackConstants
+        val c = when (kind) {
+            "tick" -> H.CLOCK_TICK
+            "confirm" -> if (android.os.Build.VERSION.SDK_INT >= 30) H.CONFIRM else H.VIRTUAL_KEY
+            "error" -> if (android.os.Build.VERSION.SDK_INT >= 30) H.REJECT else H.LONG_PRESS
+            "long", "heavy" -> H.LONG_PRESS
+            else -> H.KEYBOARD_TAP
+        }
+        runCatching { act.web.performHapticFeedback(c) }
+    }
 }

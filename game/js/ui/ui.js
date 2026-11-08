@@ -77,7 +77,13 @@
   function icon(name, cls = '') { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ic ' + cls); s.setAttribute('aria-hidden', 'true'); s.innerHTML = IC[name] || IC.info; return s; }
 
   // ---- haptics ----
-  function haptic() { const s = OC.Store.s; if (!s || !s.settings.haptics) return; try { if (OC.Store.NATIVE) OC.Store.NATIVE.haptic(); else if (navigator.vibrate) navigator.vibrate(8); } catch (e) { /* ignore */ } }
+  /** graded, gentle haptics (Settings › 觸覺回饋 turns all of it off). kind: tick | light (default) | confirm | long | heavy | error
+   *  Android: HapticFeedbackConstants through the bridge (respects the system's own touch-feedback setting); web: short vibrate patterns */
+  const VIB = { tick: 5, light: 8, confirm: [8, 40, 10], long: 18, heavy: 26, error: [18, 50, 18] };
+  function haptic(kind) {
+    const s = OC.Store.s; if (!s || !s.settings.haptics) return; kind = typeof kind === 'string' && VIB[kind] ? kind : 'light';
+    try { const N = OC.Store.NATIVE; if (N) { if (N.hapticKind) N.hapticKind(kind); else N.haptic(); } else if (navigator.vibrate) navigator.vibrate(VIB[kind]); } catch (e) { /* devices without a vibrator */ }
+  }
 
   // ---- toasts ----
   let toastWrap = null;
