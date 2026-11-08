@@ -142,7 +142,7 @@
       OC.World.setAction(a, 'hugme', { dur: 1.0, priority: 8 }); const l1 = OC.Talk.say('hug_start', c, null); if (l1) A().bubble(a, l1.text, name(c), 1.6);
       setTimeout(() => {
         OC.World.setAction(a, 'hug', { dur: 2.6, priority: 8 }); if (pl && pl !== a) OC.World.setAction(pl, 'hug', { dur: 2.6, priority: 8 });
-        haptic('confirm'); OC.Sound && OC.Sound.play('hug'); setTimeout(() => haptic('light'), 700); setTimeout(() => haptic('light'), 1300);
+        haptic('confirm'); OC.Sound && OC.Sound.play('hug'); setTimeout(() => haptic('heartbeat'), 600); setTimeout(() => haptic('heartbeat'), 1500);
         const now = Sim().now(); M().feel(c, Ch().has(c, 'shy') ? 'shy' : 'content', 0.5, '被你抱抱'); M().needs(c, { social: 10, comfort: 8 });
         if (!P.hugAt || now - P.hugAt > 30) { M().player(c, { aff: 1.5, fam: 1 }); P.hugAt = now; M().remember(c, { type: 'player', imp: 0.5, text: '被你抱了一下', key: 'hug:' + Math.floor(now / 120) }); }
         if (OC.Progress) OC.Progress.emit('hug', { oc: id });

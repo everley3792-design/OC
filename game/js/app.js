@@ -598,6 +598,8 @@
   function bubble(a, text, name, dur, o = {}) {
     const d = dur || Math.max(1.8, Math.min(5.2, 1.3 + text.length * 0.11)) * (o.thought ? 0.9 : 1);
     if (curTab !== 'island') return d;
+    // 11.0: every spoken line has a voice (thoughts are silent): a babble shaped by who it is and how they feel
+    if (!o.thought && text && OC.Sound && OC.Sound.speak) { try { const c = a.char && a.char(), at = OC.Sound.placement(a); if (c && at) OC.Sound.speak(c, text, { emo: o.emo || (OC.Mind && c.life ? OC.Mind.dominant(c) : 'neutral'), pan: at.pan, vol: at.vol }); } catch (e) { /* silent */ } }
     for (let i = floats.length - 1; i >= 0; i--) if (floats[i].a === a && floats[i].keep) { floats[i].el.remove(); floats.splice(i, 1); }
     const el = h('div.speech' + (o.thought ? '.thought' : ''), null, name ? h('b.who', null, name) : null, h('span', null, text));
     overlays().append(el); floats.push({ el, a, up: 52, t: 0, dur: d, keep: true }); return d;
@@ -831,7 +833,12 @@
     if (now - aspT > 20000) { aspT = now; OC.Growth.tick(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
     const night = OC.Clock.phase(OC.Clock.hour()) === 'night'; if (Wd.area && (night !== lastNight || wx !== lastAmbWx)) { lastNight = night; lastAmbWx = wx; OC.Sound.ambient({ area: Wd.area.id, wx, night }); }
-    if (Wd.area && player) { const ph = OC.Clock.phase(OC.Clock.hour()), mk = `${Wd.area.id}|${wx}|${ph}`; if (mk !== lastMusicKey) { lastMusicKey = mk; OC.Sound.music(OC.Sound.musicFor({ area: Wd.area.id, wx, phase: ph })); } }
+    if (Wd.area && player) {
+      const ph = OC.Clock.phase(OC.Clock.hour()), mini = !!(OC.Mini && OC.Mini.active), mk = `${Wd.area.id}|${wx}|${ph}|${mini ? 1 : 0}`;
+      if (mk !== lastMusicKey) { lastMusicKey = mk; OC.Sound.music(OC.Sound.musicFor({ area: Wd.area.id, wx, phase: ph, mini })); }
+      // 11.0: the music follows the mood — lively when the OC is happy / excited or something is going on, calm otherwise
+      if (!intT || performance.now() - intT > 1500) { intT = performance.now(); const c = OC.Chars.active(), dom = c && c.life && OC.Mind ? OC.Mind.dominant(c) : 'neutral'; OC.Sound.setIntensity(mini ? 1 : OC.Stage && OC.Stage.busy ? 2 : dom === 'excited' ? 2 : dom === 'happy' || dom === 'proud' ? 1 : 0); }
+    }
     if (now - holdT > 400) { holdT = now; syncEditorHolds(); }   // real time (dt is capped per frame)
     drawLives(now);
     if (player) {
@@ -849,7 +856,7 @@
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
-  let lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
+  let intT = 0, lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }
   /** OCs open in the editor / workshop are "dressing": they pause their life until the page closes */
   function syncEditorHolds() {

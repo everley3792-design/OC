@@ -139,6 +139,7 @@
   /** start an action on an actor. o = { dur (s), priority, once } — lower priority never interrupts higher */
   function setAction(a, action, o = {}) {
     if (a.act && a.act.priority > (o.priority || 0) && (a.act.until == null || a.t < a.act.until) && action !== 'idle') return false;
+    if (action !== 'idle' && !(a.act && a.act.action === action) && window.OC && OC.Sound && OC.Sound.action && !o.mute) OC.Sound.action(a, action);   // 11.0: a new action makes its little sound
     a.act = action === 'idle' ? null : { action, t0: a.t, until: o.dur != null ? a.t + o.dur : null, priority: o.priority || 0, once: !!o.once, keepMoving: !!o.keepMoving };
     a.key = ''; return true;
   }
@@ -213,7 +214,7 @@
         a.tFace = clamp((sjx / m) * 1.1, -1, 1); a.tBack = sjy < -0.45 * m ? 1 : 0; moving = true; a.dist = (a.dist || 0) + sp;
       }
     }
-    a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) a.phase += dt * (a.speed / 15);
+    a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) { const ph0 = Math.floor(a.phase); a.phase += dt * (a.speed / 15); if (Math.floor(a.phase) !== ph0 && a.walk > 0.6 && OC.Sound && OC.Sound.foot) OC.Sound.foot(a); }   // 11.0: a footstep per stride
     // smooth turning for the rig; 4 directions (with hysteresis) for frame animations
     a.face = lerp(a.face, a.tFace, 1 - Math.exp(-dt * 7)); a.back = lerp(a.back, a.tBack, 1 - Math.exp(-dt * 6));
     const want = a.tBack > 0.5 ? 'back' : a.tFace < -0.55 ? 'left' : a.tFace > 0.55 ? 'right' : a.dir === 'back' || (Math.abs(a.tFace) < 0.35) ? 'front' : a.dir;

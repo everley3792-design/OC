@@ -109,6 +109,9 @@
     t.hapT += dist; if (t.hapT > 38 && now - (t.hapLast || 0) > 85 && q > 0) { t.hapT = 0; t.hapLast = now; OC.UI.haptic(lv > 0.6 ? 'light' : 'tick'); }
     // rustle / purr
     if (OC.Sound && now - (t.sndLast || 0) > (lv > 0.55 ? 520 : 240) && q > 0.15) { t.sndLast = now; OC.Sound.play(lv > 0.55 ? 'purr' : 'stroke', { lv }); }
+    // 11.0: a purr you can feel — a soft rhythm once the OC is really enjoying it; ticklish spots make it giggle
+    if (lv > 0.55 && now - (t.purrHap || 0) > 700) { t.purrHap = now; OC.UI.haptic('purr'); }
+    if (t.ticklishNow && lv > 0.25 && now - (t.gigHap || 0) > 900) { t.gigHap = now; OC.UI.haptic('giggle'); OC.Sound && OC.Sound.play('giggle'); }
     // hearts follow the finger once it feels good
     if (lv > 0.3 && now - t.heartT > (lv > 0.7 ? 150 : 260) && !document.documentElement.classList.contains('lite')) { t.heartT = now; heartAt(p.x, p.y - 18, lv); }
   }
@@ -243,12 +246,13 @@
     s.peakLv = Math.max(s.peakLv, s.lv);
     // pose layer: smooth the lean toward the side the finger is on
     s.dirS2 = (s.dirS2 || 0) + ((s.dirTarget || 0) - (s.dirS2 || 0)) * Math.min(1, dt * 8);
+    s.ticklishNow = ticklish;
     a.touch = { lv: s.asleep ? Math.min(s.lv, 0.4) : s.lv, zone: z === 'feet' ? 'belly' : z, dir: s.dirS2, ticklish, annoyed: s.ann > 0.5 };
     // stage events: first purr, the OC speaks, melting
     const stage = s.lv > 0.85 ? 3 : s.lv > 0.55 ? 2 : s.lv > 0.25 ? 1 : 0;
     if (stage > s.stage) {
       s.stage = stage;
-      OC.UI.haptic(stage === 3 ? 'confirm' : 'light');
+      OC.UI.haptic(stage === 3 ? 'melt' : 'light');
       if (stage === 1) OC.Store.emit('touch:pet', { id: s.id, peak: s.lv });
       if (stage === 2 && !s.asleep) { const ln = OC.Talk.say({ ears: 'pet_ears', cheek: 'pet_cheek', belly: ticklish ? 'pet_tickle' : 'pet_belly' }[z] || 'pet', s.c, null); if (ln) A().bubble(a, ln.text, OC.Chars.name(s.c), 2.2); }
       if (stage === 3 && !s.asleep) { a.run = false; OC.World.setAction(a, 'melt', { dur: 30, priority: 7 }); A().floatText(a, '♡', 'var(--heart)'); }

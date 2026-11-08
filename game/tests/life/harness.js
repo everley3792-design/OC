@@ -5,7 +5,7 @@
  */
 const { chromium } = require('playwright');
 const URL = process.env.OC_URL || 'http://localhost:8765/index.html';
-const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'];
 
 async function launch(o = {}) {
   const browser = await chromium.launch({ args: ARGS });

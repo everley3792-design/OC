@@ -2,6 +2,7 @@
  *   1 stroking: a slide over the body is petting (continuous level, body parts, taste, annoyance), not a pick-up or a menu
  *   2 closeness ring + gestures (hug · high-five · poke · hand-hold) release their OC and change real data once
  *   3 animation library: every action renders (no NaN), has a fallback chain, touch layer for every zone
+ *   6 audio: every sound is audible and never clips, character voices differ and follow the mood, stereo placement, music layers, ducking, action/footstep hooks, haptic rhythms, settings
  */
 const path = require('path');
 const H = require('../life/harness.js');
@@ -147,6 +148,101 @@ const { check, wait } = H;
       check('5b 兩個角色都會做出配對的動作（例如擁抱：張開手臂＋抱緊；搔癢：搔的人＋怕癢的人）', !perf.length, perf.map((r) => r.kind + ' A:' + r.a + ' B:' + r.b));
       const nogain = res.filter((r) => r.d.aff === 0 && r.d.fam === 0 && r.d.intim === 0);
       check('5c 每種互動都會改變關係（好感／熟悉度／親密度，或有負面結果的互動是衝突）', nogain.length === 0, nogain.map((r) => r.kind));
+    }
+    if (want(6)) {
+      // 6: audio (a recorder runs on the audio thread: peak, energy, zero-crossing rate ≈ brightness, left/right peaks)
+      await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); }); await wait(page, 500);
+      await page.evaluate(async () => {
+        OC.Sound.unlock(); const sc = OC.Store.s.settings.sound = Object.assign({}, OC.Sound.cfg(), { music: 0, amb: 0 }); OC.Sound.apply(); /* the recorder should hear only what each check plays */ const g = OC.Sound._tap(); if (!g) return;
+        const code = `class R extends AudioWorkletProcessor { constructor(){ super(); this.r(); this.port.onmessage=(e)=>{ if(e.data==='read'){ this.port.postMessage({pl:this.pl,pr:this.pr,e:this.s/sampleRate,hf:this.d/sampleRate,zcr:this.z/Math.max(1,this.na)*sampleRate/2,n:this.n}); this.r(); } }; } r(){ this.pl=0;this.pr=0;this.s=0;this.n=0;this.na=0;this.z=0;this.prev=0;this.d=0;this.pv=0; } process(inp){ const c0=inp[0]&&inp[0][0], c1=inp[0]&&(inp[0][1]||inp[0][0]); if(c0){ for(let i=0;i<c0.length;i++){ const v=c0[i], w=c1[i]; if(Math.abs(v)>this.pl)this.pl=Math.abs(v); if(Math.abs(w)>this.pr)this.pr=Math.abs(w); this.d+=(v-this.pv)*(v-this.pv); this.pv=v; this.s+=(v*v+w*w)/2; this.n++; if(Math.abs(v)>0.0004){ this.na++; if((v>0)!==(this.prev>0))this.z++; this.prev=v; } } } return true; } } registerProcessor('rec', R);`;
+        await g.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+        const node = new AudioWorkletNode(g.ctx, 'rec', { channelCount: 2, channelCountMode: 'explicit' }); g.master.connect(node); const z = g.ctx.createGain(); z.gain.value = 0; node.connect(z); z.connect(g.ctx.destination);
+        window.__rec = () => new Promise((res) => { node.port.onmessage = (e) => res(e.data); node.port.postMessage('read'); });
+        window.__measure = async (fn, ms) => { await window.__rec(); const ret = fn(); await new Promise((r) => setTimeout(r, ms)); const m = await window.__rec(); m.ret = ret; return m; };
+      });
+      const state = await page.evaluate(() => ({ ready: OC.Sound.ready, st: OC.Sound.state, rec: typeof window.__rec }));
+      check('6a 聲音引擎在第一次觸碰後啟動（AudioContext 運行中），錄音節點接上', state.ready && state.st === 'running' && state.rec === 'function', state);
+
+      // 6b every sound in the library: audible, never clipping, and no voices left hanging
+      const lib = await page.evaluate(async () => {
+        const bad = [], quiet = [], names = Object.keys(OC.Sound.LIB); let maxPeak = 0;
+        for (const n of names) {
+          await new Promise((r) => setTimeout(r, 40));
+          const m = await window.__measure(() => OC.Sound.play(n, { lv: 0.7 }), 650);
+          if (!m.ret) { bad.push(n + ':not-played'); continue; }
+          maxPeak = Math.max(maxPeak, m.pl, m.pr);
+          if (m.pl > 0.9) bad.push(n + ':clips ' + m.pl.toFixed(2)); if (m.pl < 0.0008 && m.pr < 0.0008) quiet.push(n);
+        }
+        await new Promise((r) => setTimeout(r, 2500));
+        return { count: names.length, bad, quiet, maxPeak: +maxPeak.toFixed(3), voices: OC.Sound.voices };
+      });
+      check('6b 資料庫裡每個音效都真的發出聲音、不爆音、結束後沒有殘留的發聲體', lib.count >= 60 && !lib.bad.length && !lib.quiet.length && lib.voices <= 2, lib);
+
+      // 6c voices: distinct per OC, the mood shapes speed and brightness, quiet when the slider is 0
+      const vo = await page.evaluate(async () => {
+        const cs = OC.Chars.all().slice(0, 3), f0 = cs.map((c) => Math.round(OC.Sound.voiceOf(c).f0));
+        const tall = JSON.parse(JSON.stringify(cs[0])); tall.profile.height = 1.5; const small = JSON.parse(JSON.stringify(cs[0])); small.profile.height = 0.7;
+        const line = '今天天氣真好，一起去散步吧！';
+        const run = async (emo) => { await new Promise((r) => setTimeout(r, 260)); return window.__measure(() => OC.Sound.speak(cs[0], line, { emo }), 1900); };
+        const ex = await run('excited'), dn = await run('down'), tr = await run('tired');
+        const q = await window.__measure(() => OC.Sound.speak(cs[1], '你好嗎？', { emo: 'neutral' }), 1500);
+        const cfg = OC.Store.s.settings.sound = Object.assign({}, OC.Sound.cfg()); cfg.voice = 0; OC.Sound.apply(); await new Promise((r) => setTimeout(r, 300));
+        const off = OC.Sound.speak(cs[0], line, { emo: 'happy' }); cfg.voice = 0.6; OC.Sound.apply();
+        return { f0, tallF: Math.round(OC.Sound.voiceOf(tall).f0), smallF: Math.round(OC.Sound.voiceOf(small).f0), exDur: +ex.ret.toFixed(2), dnDur: +dn.ret.toFixed(2), trDur: +tr.ret.toFixed(2), exPow: +(ex.e / ex.ret * 1e3).toFixed(3), dnPow: +(dn.e / dn.ret * 1e3).toFixed(3), trPow: +(tr.e / tr.ret * 1e3).toFixed(3), exPeak: +ex.pl.toFixed(2), qPeak: +q.pl.toFixed(2), qE: +q.e.toFixed(4), off };
+      });
+      check('6c 每個 OC 有自己的聲線（音高不同、高個子比較低沉）', new Set(vo.f0).size === 3 && vo.tallF < vo.smallF, vo);
+      check('6d 心情會改變說話：興奮比低落／疲倦快、而且比較大聲；說話有聲音但不爆音；滑桿 0 就靜音', vo.exDur < vo.dnDur && vo.dnDur < vo.trDur + 0.01 && vo.exPow > vo.dnPow * 1.5 && vo.exPow > vo.trPow * 1.5 && vo.exPeak > 0.002 && vo.exPeak < 0.9 && vo.qE > 0 && vo.off === 0, vo);
+
+      // 6e placement: left of the screen is panned left, right is panned right, off-screen is silent; real stereo output
+      const pn = await page.evaluate(async () => {
+        const W = OC.World, py0 = () => OC.App.player.y, mk = (sx) => { let best = null; const py = OC.App.player.y; for (let x = -300; x < 1000; x += 8) { const p = W.project(x, py, 0, 20); if (!best || Math.abs(p.x - sx) < Math.abs(best.p.x - sx)) best = { a: { x, y: py, lvl: 0 }, p }; } return best.a; };
+        const L = OC.Sound.placement(mk(40)), R = OC.Sound.placement(mk(350)), off = OC.Sound.placement({ x: -2000, y: py0(), lvl: 0 });
+        const ml = await window.__measure(() => OC.Sound.play('clap', { pan: -0.8 }), 500), mr = await window.__measure(() => OC.Sound.play('knock', { pan: 0.8 }), 700);
+        return { L: L && +L.pan.toFixed(2), R: R && +R.pan.toFixed(2), off, leftOut: [+ml.pl.toFixed(3), +ml.pr.toFixed(3)], rightOut: [+mr.pl.toFixed(3), +mr.pr.toFixed(3)] };
+      });
+      check('6e 聲音依畫面位置左右定位（左邊的在左聲道、右邊的在右聲道，畫面外不發聲）', pn.L < -0.1 && pn.R > 0.1 && pn.off === null && pn.leftOut[0] > pn.leftOut[1] * 1.8 && pn.rightOut[1] > pn.rightOut[0] * 1.8, pn);
+
+      // 6f music: mood follows the place, the intensity layer adds a shaker/kick, voices duck the music (checked on the automation calls) and it comes back
+      const mu = await page.evaluate(async () => {
+        const f = OC.Sound.musicFor; const kinds = { mini: f({ area: 'isle', mini: true }), cozy: f({ area: 'home', phase: 'night' }), indoor: f({ area: 'cafe', phase: 'day' }), day: f({ area: 'isle', phase: 'day' }), rain: f({ area: 'isle', wx: 'rain', phase: 'day' }) };
+        const sc = OC.Store.s.settings.sound; sc.music = 0.45; OC.Sound.apply();
+        OC.Sound.music('day'); await new Promise((r) => setTimeout(r, 2600));
+        OC.Sound.setIntensity(0, 9000); await new Promise((r) => setTimeout(r, 400)); const calm = await window.__measure(() => 0, 5000);
+        OC.Sound.setIntensity(2, 9000); await new Promise((r) => setTimeout(r, 400)); const busy = await window.__measure(() => 0, 5000);
+        OC.Sound.setIntensity(0, 1);
+        const g = OC.Sound._tap(), base = OC.Sound.cfg().music, calls = [], o = g.bus.music.gain.setTargetAtTime.bind(g.bus.music.gain); g.bus.music.gain.setTargetAtTime = (v, t, k) => { calls.push({ v: +v.toFixed(3), t: +t.toFixed(2) }); return o(v, t, k); };
+        OC.Sound.speak(OC.Chars.active(), '嗨，早安呀！', { emo: 'happy' }); await new Promise((r) => setTimeout(r, 200)); g.bus.music.gain.setTargetAtTime = o;
+        sc.music = 0; OC.Sound.apply();
+        return { kinds, mood: OC.Sound.mood, calmZ: Math.round(calm.zcr), busyZ: Math.round(busy.zcr), calmHF: +calm.hf.toExponential(3), busyHF: +busy.hf.toExponential(3), base, calls };
+      });
+      const dk = mu.calls;
+      check('6f 音樂依場合選曲（小遊戲、夜晚的家、室內、白天、雨天）', mu.kinds.mini === 'minigame' && mu.kinds.cozy === 'cozy' && mu.kinds.indoor === 'indoor' && mu.kinds.day === 'day' && mu.kinds.rain === 'rain' && mu.mood === 'day', mu.kinds);
+      check('6g 音樂強度層真的改變聲音（強度 2 比 0 的高頻更多、更亮）；有人說話時音樂先讓位（降到 ~55%）、說完才回來', mu.busyHF > mu.calmHF * 1.15 && mu.busyZ > mu.calmZ && dk.length >= 2 && dk[0].v < mu.base * 0.7 && dk[dk.length - 1].v === mu.base && dk[dk.length - 1].t > dk[0].t + 0.5, mu);
+
+      // 6h hooks: a new action makes its sound once, spoken bubbles are voiced (thoughts are not), footsteps by ground, haptic rhythms
+      const hk = await page.evaluate(async () => {
+        const A = OC.Sound.action, calls = []; OC.Sound.action = (a, n) => { calls.push(n); return A.call(OC.Sound, a, n); };
+        const pl = OC.App.player; OC.World.setAction(pl, 'clap', { dur: 1, priority: 6 }); OC.World.setAction(pl, 'clap', { dur: 1, priority: 6 }); OC.World.setAction(pl, 'wave', { dur: 1, priority: 2 });   // wave is blocked by the higher priority
+        OC.Sound.action = A;
+        const S0 = OC.Sound.speak, say = []; OC.Sound.speak = (c, t, o) => { say.push(o.emo); return S0.call(OC.Sound, c, t, o); };
+        OC.App.bubble(pl, '你好呀！', 'x', 1.5, { emo: 'happy' }); OC.App.bubble(pl, '（想想看……）', 'x', 1.5, { thought: true }); OC.Sound.speak = S0;
+        const played = []; for (let i = 0; i < 12 && !played[0]; i++) { played[0] = OC.Sound.foot(pl); if (!played[0]) await new Promise((r) => setTimeout(r, 140)); }   // the player may be taking real steps right now (rate limit)
+        const vib = []; const nv = navigator.vibrate; navigator.vibrate = (p) => { vib.push(p); return true; }; const S = OC.Store.s; S.settings.haptics = true;
+        OC.UI.haptic('purr'); OC.UI.haptic('heartbeat'); OC.UI.haptic('giggle'); OC.UI.haptic('melt'); S.settings.haptics = false; OC.UI.haptic('purr'); S.settings.haptics = true; navigator.vibrate = nv;
+        return { calls, say, foot: played, vib, area: OC.World.area.id };
+      });
+      check('6h 新動作只發一次自己的聲音（被高優先權擋下的不發）；說出的話有聲、心裡想的沒聲；腳步依地面', JSON.stringify(hk.calls) === '["clap"]' && hk.say.length === 1 && hk.say[0] === 'happy' && hk.foot.includes('foot_grass'), hk);
+      check('6i 觸覺有節奏（呼嚕、心跳、咯咯笑、融化各有圖案），關閉觸覺就完全不震動', hk.vib.length === 4 && hk.vib.every((p) => Array.isArray(p) && p.length >= 3) && new Set(hk.vib.map((p) => p.join())).size === 4, hk.vib);
+
+      // 6j a real stroke on a liked spot: the purr rhythm is felt while it melts
+      const ps = await page.evaluate(() => { const c = OC.Chars.active(); OC.Touch.known(c).taste = { likes: 'belly', dislikes: 'tail', ticklish: false, shy: false }; window.__vib = []; navigator.vibrate = (p) => { window.__vib.push(Array.isArray(p) ? p.join() : String(p)); return true; }; OC.Store.s.settings.haptics = true; return true; });
+      let g0 = await geo(); await page.mouse.move(g0.cx, g0.feet - g0.h * 0.5); await page.mouse.down(); { const t0 = Date.now(); let k = 0; while (Date.now() - t0 < 6500 || k < 16) { await page.mouse.move(g0.cx + (k % 2 ? -22 : 22), g0.feet - g0.h * 0.5); await wait(page, 32); k++; } } await page.mouse.up(); await wait(page, 500);
+      const sv = await page.evaluate(() => ({ vib: window.__vib, purr: window.__vib.filter((x) => x === '5,90,5,90,5,90,5').length, melt: window.__vib.filter((x) => x === '10,110,10,120,5,125,5').length }));
+      check('6j 真的撫摸喜歡的地方：感覺得到呼嚕的節奏（滿足時觸覺）', ps && sv.purr + sv.melt >= 1, sv);
+
+      // 6k the settings page has the voice slider
+      const sl = await page.evaluate(async () => { OC.Pages.open('settings'); await new Promise((r) => setTimeout(r, 700)); const el = document.querySelector('input[aria-label="角色說話聲"]'); const r = !!el; OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); return r; });
+      check('6k 設定的聲音區有「角色說話聲」滑桿', sl);
     }
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.message)); }

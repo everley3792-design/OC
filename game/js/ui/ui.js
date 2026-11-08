@@ -80,9 +80,19 @@
   /** graded, gentle haptics (Settings › 觸覺回饋 turns all of it off). kind: tick | light (default) | confirm | long | heavy | error
    *  Android: HapticFeedbackConstants through the bridge (respects the system's own touch-feedback setting); web: short vibrate patterns */
   const VIB = { tick: 5, light: 8, confirm: [8, 40, 10], long: 18, heavy: 26, error: [18, 50, 18] };
+  // 11.0 rhythms: a pattern is a short run of the single kinds (on Android each beat goes through the system's own feedback constants,
+  // so the user's touch-feedback setting still applies); on the web it is one vibrate pattern
+  const PAT = {
+    purr: { native: [[0, 'tick'], [95, 'tick'], [190, 'tick'], [285, 'tick']], web: [5, 90, 5, 90, 5, 90, 5] },
+    heartbeat: { native: [[0, 'light'], [130, 'tick']], web: [12, 118, 8] },
+    giggle: { native: [[0, 'tick'], [75, 'tick'], [150, 'tick'], [225, 'tick']], web: [5, 70, 5, 70, 5, 70, 5] },
+    melt: { native: [[0, 'light'], [120, 'light'], [250, 'tick'], [380, 'tick']], web: [10, 110, 10, 120, 5, 125, 5] },
+  };
+  function hapticOne(kind) { try { const N = OC.Store.NATIVE; if (N) { if (N.hapticKind) N.hapticKind(kind); else N.haptic(); } else if (navigator.vibrate) navigator.vibrate(VIB[kind]); } catch (e) { /* devices without a vibrator */ } }
   function haptic(kind) {
-    const s = OC.Store.s; if (!s || !s.settings.haptics) return; kind = typeof kind === 'string' && VIB[kind] ? kind : 'light';
-    try { const N = OC.Store.NATIVE; if (N) { if (N.hapticKind) N.hapticKind(kind); else N.haptic(); } else if (navigator.vibrate) navigator.vibrate(VIB[kind]); } catch (e) { /* devices without a vibrator */ }
+    const s = OC.Store.s; if (!s || !s.settings.haptics) return;
+    if (typeof kind === 'string' && PAT[kind]) { if (OC.Store.NATIVE) PAT[kind].native.forEach(([d, k]) => setTimeout(() => hapticOne(k), d)); else { try { navigator.vibrate && navigator.vibrate(PAT[kind].web); } catch (e) { /* no vibrator */ } } return; }
+    hapticOne(typeof kind === 'string' && VIB[kind] ? kind : 'light');
   }
 
   // ---- toasts ----
@@ -107,7 +117,7 @@
   function sheet(title, content, opt = {}) {
     const body = h('div.sheet-body');
     const el = h('div.sheet', { role: 'dialog', 'aria-label': title }, h('div.grab'), title ? h('div.hstack', null, h('h2', { style: { flex: 1 } }, title), h('button.icon-btn', { 'aria-label': '關閉', on: { click: () => api.close() } }, icon('close'))) : null, body);
-    document.getElementById('app').append(el);
+    document.getElementById('app').append(el); setTimeout(() => OC.Sound && OC.Sound.play('open'), 40);
     const api = { el, body, scrim: true, dismissible: opt.dismissible, close() { api.closed = true; el.classList.remove('open'); popLayer(api); setTimeout(() => el.remove(), 400); opt.onClose && opt.onClose(); } };
     if (typeof content === 'function') content(body, api); else if (content) body.append(content);
     // swipe-down to close (on the grab area / header)
@@ -134,7 +144,7 @@
     options.forEach(([v, label, ic]) => el.append(h('button', { role: 'radio', 'data-v': v, on: { click: () => { haptic(); set(v); onChange(v); } } }, ic ? icon(ic, 's') : null, ic ? ' ' : null, label)));
     set(value); el.set = set; return el;
   }
-  function toggle(value, onChange) { const el = h('button.switch', { role: 'switch', 'aria-checked': !!value }); el.classList.toggle('on', !!value); el.addEventListener('click', () => { const v = !el.classList.contains('on'); el.classList.toggle('on', v); el.setAttribute('aria-checked', v); haptic(); onChange(v); }); return el; }
+  function toggle(value, onChange) { const el = h('button.switch', { role: 'switch', 'aria-checked': !!value }); el.classList.toggle('on', !!value); el.addEventListener('click', () => { const v = !el.classList.contains('on'); el.classList.toggle('on', v); el.setAttribute('aria-checked', v); haptic(); OC.Sound && OC.Sound.play(v ? 'on' : 'off'); onChange(v); }); return el; }
   function row(ic, title, sub, right, onClick) {
     const el = h('div.row' + (onClick ? '.tap' : ''), onClick ? { role: 'button', tabindex: 0, on: { click: onClick } } : null, ic ? (typeof ic === 'string' ? icon(ic) : ic) : null, h('div.grow', null, h('div.title', null, title), sub ? h('div.sub', null, sub) : null), right || (onClick ? icon('chev', 'chev') : null));
     return el;
