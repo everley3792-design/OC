@@ -19,6 +19,11 @@
 
   let R, canvas, scene, cam, env, area = null, root = null;
   let area0Room = false, outdoorZoom = 1.9, W = 360, H = 640, zoom = 1.9, camX = 300, camY = 470, panX = 0, panY = 0, follow = true;
+  // 8.0 camera: yaw (rotation around the vertical axis, limited), modes, scripted shots
+  //   classic = fixed 2.5D (yaw 0, follows the played OC) · follow = follows the selected OC (rotation allowed)
+  //   focus = close-up on the selected OC · free = no auto-follow, pan / pinch / twist · cine = scripted (opening, events)
+  let yaw = 0, yawGoal = null, mode = 'classic', subject = null, shot = null;
+  const YAW_MAX = 0.9;
   let quality = { ratio: 1.5, shadows: 1024, fx: true, grass: 1, fps: 60, bb: 256 };
   let grid = null, actors = [], interacts = [], ticks = [], sways = [], drops = [], furn = [];
   let hooks = {};
@@ -170,16 +175,18 @@
       const p = a.path[0], dx = p.x - a.x, dy = p.y - a.y, d = Math.hypot(dx, dy), step = a.speed * dt;
       if (d <= step) { a.x = p.x; a.y = p.y; a.path.shift(); if (!a.path.length) { a.path = null; a.onArrive && (a.onArrive(a), (a.onArrive = null)); } }
       else { a.x += (dx / d) * step; a.y += (dy / d) * step; }
-      if (d > 0.01) { a.tFace = clamp((dx / d) * 1.1, -1, 1); a.tBack = dy < -0.45 * d ? 1 : 0; }
+      if (d > 0.01) { const sd = designToScreenDir(dx, dy), sm = Math.hypot(sd.x, sd.y) || 1; a.tFace = clamp((sd.x / sm) * 1.1, -1, 1); a.tBack = sd.y < -0.45 * sm ? 1 : 0; }
       moving = true; a.dist = (a.dist || 0) + Math.min(d, step);
     } else if (a.joy && !busy) {
-      const { jx, jy } = a.joy, m = Math.hypot(jx, jy);
+      const { jx: sjx, jy: sjy } = a.joy, m = Math.hypot(sjx, sjy);
+      // the stick is in screen space → turn it into a design direction for the current yaw
+      const jd = screenDelta(sjx, sjy), jm = Math.hypot(jd.x, jd.y) || 1, jx = (jd.x / jm) * m, jy = (jd.y / jm) * m;
       if (m > 0.15) {
         const sp = a.speed * Math.min(1, m) * dt, nx = a.x + (jx / m) * sp, ny = a.y + (jy / m) * sp;
         const l0 = levelAt(a.x, a.y);
         const tryMove = (tx, ty) => walkable(tx, ty) && Math.abs(levelAt(tx, ty) - l0) < 0.3;
         if (tryMove(nx, ny)) { a.x = nx; a.y = ny; } else if (tryMove(nx, a.y)) a.x = nx; else if (tryMove(a.x, ny)) a.y = ny;
-        a.tFace = clamp((jx / m) * 1.1, -1, 1); a.tBack = jy < -0.45 * m ? 1 : 0; moving = true; a.dist = (a.dist || 0) + sp;
+        a.tFace = clamp((sjx / m) * 1.1, -1, 1); a.tBack = sjy < -0.45 * m ? 1 : 0; moving = true; a.dist = (a.dist || 0) + sp;
       }
     }
     a.walk = lerp(a.walk, moving ? 1 : 0, 1 - Math.exp(-dt * 12)); if (moving) a.phase += dt * (a.speed / 15);
@@ -200,7 +207,8 @@
     const turn = a.turnT > 0 ? Math.max(0.08, Math.abs(1 - 2 * (1 - a.turnT / 0.16))) : 1;
     const sx = turn * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
     a.m.scale.set(sx / Math.sqrt(a.squash), sy, 1);
-    a.m.rotation.z = a.isSprite ? a.walk * Math.sin(a.phase * Math.PI) * (beh ? beh.sway : 0.04) : 0;
+    a.m.rotation.order = 'YXZ'; a.m.rotation.y = yaw;
+    a.m.rotation.z = (a.isSprite ? a.walk * Math.sin(a.phase * Math.PI) * (beh ? beh.sway : 0.04) : 0) + (a.swing || 0);
     if (a.sil) { a.sil.position.copy(a.m.position); a.sil.scale.copy(a.m.scale); a.sil.rotation.copy(a.m.rotation); }
     const lift = a.lift / 30; a.sh.position.set(a.x, a.gy + 0.25, z + 1.5); a.sh.scale.set(26 * (a.sc || 1) * (1 - lift * 0.4), 14 * (a.sc || 1) * (1 - lift * 0.4), 1);
     a.m.material.color.copy(bbTint);
@@ -223,16 +231,20 @@
     cy = vh >= b.y1 - b.y0 ? (b.y0 + b.y1) / 2 : clamp(cy, b.y0 + vh / 2 - 40, b.y1 - vh / 2 + 40);
     panX = cx - camX; panY = cy - camY;
     cam.left = -W / 2 / zoom; cam.right = W / 2 / zoom; cam.top = H / 2 / zoom; cam.bottom = -H / 2 / zoom; cam.updateProjectionMatrix();
-    const tgt = new THREE.Vector3(cx, 0, Zof(cy)); cam.position.copy(tgt).add(new THREE.Vector3(0, SIN * 1200, COS * 1200)); cam.lookAt(tgt);
+    const tgt = new THREE.Vector3(cx, 0, Zof(cy)); cam.position.copy(tgt).add(new THREE.Vector3(Math.sin(yaw) * COS * 1200, SIN * 1200, Math.cos(yaw) * COS * 1200)); cam.lookAt(tgt);
     return { cx, cy };
   }
-  function screenToDesign(sx, sy) { const cx = camX + panX, cy = camY + panY; return { x: cx + (sx - W / 2) / zoom, y: cy + (sy - H / 2) / zoom }; }
+  /** screen offset (CSS px) → design offset, for the current zoom and yaw (exact inverse of the orthographic camera on the ground plane) */
+  function screenDelta(dx, dy) { const u = dx / zoom, v = dy / zoom / SIN, c = Math.cos(yaw), sn = Math.sin(yaw); return { x: u * c + v * sn, y: (-u * sn + v * c) * SIN }; }
+  /** design offset → screen direction (for facing / joystick) */
+  function designToScreenDir(dx, dy) { const dz = dy / SIN, c = Math.cos(yaw), sn = Math.sin(yaw); return { x: dx * c - dz * sn, y: (dx * sn + dz * c) * SIN }; }
+  function screenToDesign(sx, sy) { const cx = camX + panX, cy = camY + panY, d = screenDelta(sx - W / 2, sy - H / 2); return { x: cx + d.x, y: cy + d.y }; }
   /** design point (+height in world units) → CSS px on screen */
   function project(x, y, lvl = 0, up = 0) { tmpV.copy(V3(x, y, lvl, up)).project(cam); return { x: (tmpV.x * 0.5 + 0.5) * W, y: (-tmpV.y * 0.5 + 0.5) * H }; }
   function setZoom(z, ax, ay) {
     zoomGoal = null;
     const nz = clamp(z, 1.15, 3.2); if (ax != null) { const before = screenToDesign(ax, ay); zoom = nz; const after = screenToDesign(ax, ay); panX += before.x - after.x; panY += before.y - after.y; } else zoom = nz;
-    follow = false;
+    if (mode !== 'focus') follow = false;
   }
 
   // ====================== picking ======================
@@ -339,7 +351,8 @@
     grid = null; buildGrid();
     (opts.furniture || []).forEach(addFurniture);
     const sp = opts.pos && walkable(opts.pos.x, opts.pos.y) ? opts.pos : area.spawn;
-    camX = sp.x; camY = sp.y; panX = panY = 0; follow = true; zoomGoal = null; camTarget = null;
+    camX = sp.x; camY = sp.y; panX = panY = 0; follow = true; zoomGoal = null; camTarget = null; shot = null;
+    if (def.room) { yaw = 0; yawGoal = null; }   // rooms are built for the front view
     // rooms fit the screen width; outdoor places keep the player's own zoom
     if (def.room) { if (!area0Room) outdoorZoom = zoom; zoom = clamp(W / (def.room.x1 - def.room.x0 + 40), 1.1, 2.4); area0Room = true; } else { if (area0Room) zoom = outdoorZoom; area0Room = false; }
     return ctx;
@@ -355,13 +368,16 @@
     if (ptrs.size === 1) {
       const p = ptrs.get(e.pointerId); const g = { kind: 'press', id: e.pointerId, moved: false };
       if (ghost) { const d = screenToDesign(e.clientX, e.clientY); if (Math.abs(d.x - ghost.f.x) < 26 && Math.abs(d.y - ghost.f.y) < 26) g.kind = 'ghost'; }
+      // 8.0: a finger that lands on a character belongs to the character (pet / pick up / menu), never to the camera
+      if (g.kind === 'press' && hooks.claimDown) { const r0 = pick(e.clientX, e.clientY); if (hooks.claimDown(r0, p, e)) { g.kind = 'claim'; gesture = g; clearTimeout(pressTimer); return; } }
       gesture = g;
       clearTimeout(pressTimer);
       // long press: the timer can fire late after a long frame while the pointerup is still queued → confirm on the next frame (queued input is dispatched first)
       pressTimer = setTimeout(() => requestAnimationFrame(() => { if (gesture === g && !g.moved && g.kind === 'press' && ptrs.has(g.id)) { g.kind = 'long'; const r = hooks.longPress && hooks.longPress(pick(p.x, p.y)); if (r && r.drag) g.kind = 'drag'; } }), 480);
     } else if (ptrs.size === 2) {
       clearTimeout(pressTimer);
-      const [a, b] = [...ptrs.values()]; gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), z0: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+      const [a, b] = [...ptrs.values()]; gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), z0: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, ang: Math.atan2(b.y - a.y, b.x - a.x), yaw0: yaw };
+      if (hooks.claimCancel) hooks.claimCancel();
     }
   }
   function onMove(e) {
@@ -371,18 +387,22 @@
     if (gesture.kind === 'pinch' && ptrs.size === 2) {
       const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
       setZoom(gesture.z0 * d / gesture.d0, mx, my);
-      panX -= (mx - gesture.mx) / zoom; panY -= (my - gesture.my) / zoom; gesture.mx = mx; gesture.my = my; follow = false;
+      // two-finger twist rotates the view (not in the classic 2.5D mode; a small dead zone keeps pinches from turning it)
+      if (mode !== 'classic' && mode !== 'cine') { let da = Math.atan2(b.y - a.y, b.x - a.x) - gesture.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) > 0.12 || gesture.twisting) { gesture.twisting = true; yawGoal = null; yaw = clamp(gesture.yaw0 + da, -YAW_MAX, YAW_MAX); hooks.rotated && hooks.rotated(yaw); } }
+      const pd = screenDelta(mx - gesture.mx, my - gesture.my); panX -= pd.x; panY -= pd.y; gesture.mx = mx; gesture.my = my; if (mode !== 'focus') follow = false;
       return;
     }
     if (gesture.kind === 'drag') { hooks.dragMove && hooks.dragMove(screenToDesign(p.x, p.y)); return; }
     if (Math.hypot(p.x - p.x0, p.y - p.y0) > 9) gesture.moved = true;
     if (gesture.kind === 'ghost' && gesture.moved) { const d = screenToDesign(p.x, p.y); moveGhost(d.x, d.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); return; }
-    if ((gesture.kind === 'press' || gesture.kind === 'pan') && gesture.moved) { gesture.kind = 'pan'; clearTimeout(pressTimer); panX -= dx / zoom; panY -= dy / zoom; follow = false; hooks.panned && hooks.panned(); }
+    if (gesture.kind === 'claim') { hooks.claimMove && hooks.claimMove(screenToDesign(p.x, p.y), p, e); return; }
+    if ((gesture.kind === 'press' || gesture.kind === 'pan') && gesture.moved) { gesture.kind = 'pan'; clearTimeout(pressTimer); const pd = screenDelta(dx, dy); panX -= pd.x; panY -= pd.y; follow = false; hooks.panned && hooks.panned(); }
   }
   function onUp(e) {
     const p = ptrs.get(e.pointerId); if (window.__ocInputLog) window.__ocInputLog.push(`up ${e.type} id=${e.pointerId} known=${!!p} n=${ptrs.size} g=${gesture && gesture.kind} moved=${gesture && gesture.moved}`); ptrs.delete(e.pointerId); clearTimeout(pressTimer);
     if (!gesture) return;
     if (gesture.kind === 'pinch') { if (ptrs.size === 0) gesture = null; return; }
+    if (gesture.kind === 'claim') { hooks.claimUp && hooks.claimUp(p ? screenToDesign(p.x, p.y) : null, p, e); gesture = null; return; }
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
     if (gesture.kind === 'ghost' && gesture.moved) hooks.ghostDone && hooks.ghostDone();
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
@@ -442,12 +462,19 @@
     time += dt;
     const h = hourFn(), wx = weatherFn();
     // camera follows the player gently; manual pan decays back when the player moves
-    const pl = (camTarget && actors.includes(camTarget) && camTarget) || actors.find((a) => a.player);
-    if (pl) {
-      const k = 1 - Math.exp(-dt * 5); camX = lerp(camX, pl.x, k); camY = lerp(camY, pl.y - 14, k);
-      if ((pl.path || (pl.joy && Math.hypot(pl.joy.jx, pl.joy.jy) > 0.15)) && !follow) { panX = lerp(panX, 0, 1 - Math.exp(-dt * 2.2)); panY = lerp(panY, 0, 1 - Math.exp(-dt * 2.2)); if (Math.abs(panX) + Math.abs(panY) < 1) follow = true; }
+    const subj = (camTarget && actors.includes(camTarget) && camTarget) || (mode !== 'classic' && subject && actors.includes(subject) && subject) || actors.find((a) => a.player);
+    const pl = mode === 'free' && !camTarget ? null : subj;
+    if (shot) {   // scripted shot (opening / tutorial): ease to a design point
+      const k = 1 - Math.exp(-dt * (shot.speed || 1.6)); camX = lerp(camX, shot.x, k); camY = lerp(camY, shot.y, k); panX = lerp(panX, 0, k); panY = lerp(panY, 0, k);
+    } else if (pl) {
+      const k = 1 - Math.exp(-dt * 5), lead = mode === 'follow' && pl.path && pl.path.length ? 0.35 : 0;
+      const tx = pl.x + (lead && pl.path[0] ? (pl.path[0].x - pl.x) * lead : 0), ty = pl.y - 14 + (lead && pl.path[0] ? (pl.path[0].y - pl.y) * lead : 0);
+      camX = lerp(camX, tx, k); camY = lerp(camY, ty, k);
+      const recentre = mode === 'focus' ? 4 : 2.2;
+      if (((pl.path || (pl.joy && Math.hypot(pl.joy.jx, pl.joy.jy) > 0.15)) || mode === 'focus') && !follow) { panX = lerp(panX, 0, 1 - Math.exp(-dt * recentre)); panY = lerp(panY, 0, 1 - Math.exp(-dt * recentre)); if (Math.abs(panX) + Math.abs(panY) < 1) follow = true; }
     }
     if (zoomGoal != null) { zoom = lerp(zoom, zoomGoal, 1 - Math.exp(-dt * (reduce ? 20 : 3.2))); if (Math.abs(zoom - zoomGoal) < 0.005) { zoom = zoomGoal; zoomGoal = null; } }
+    if (yawGoal != null) { let d = yawGoal - yaw; yaw += d * (1 - Math.exp(-dt * (reduce ? 20 : 3))); if (Math.abs(d) < 0.002) { yaw = yawGoal; yawGoal = null; } }
     const { cx, cy } = applyCam();
     if (envCur) bbTint.set(OC.mix(OC.mix('#FFFFFF', '#FFE3CC', clamp(1 - Math.abs(h - 18) / 1.6) * 0.8), '#A9B1E4', envCur.night * 0.85)).multiplyScalar(1 - envCur.rain * 0.12);
     for (const a of actors.slice()) updateActor(a, dt);
@@ -473,8 +500,24 @@
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
     get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
-    set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
+    set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, get hourFn() { return hourFn; }, get weatherFn() { return weatherFn; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
     recenter() { panX = 0; panY = 0; follow = true; },
+    /** camera modes: classic | follow | focus | free (cine is entered by shot()) */
+    setMode(m, o = {}) {
+      mode = m; if (o.subject !== undefined) subject = o.subject;
+      if (m === 'classic' || (area && area.room)) { yawGoal = 0; zoomGoal = clamp(o.zoom || (area && area.room ? zoom : 1.9), 1.15, 3.2); panX = panY = 0; follow = true; }
+      else if (m === 'focus') { zoomGoal = clamp(o.zoom || 2.8, 1.15, 3.2); panX = panY = 0; follow = true; }
+      else if (m === 'follow') { panX = panY = 0; follow = true; if (o.zoom) zoomGoal = clamp(o.zoom, 1.15, 3.2); }
+      else if (m === 'free') { follow = false; }
+    },
+    get mode() { return mode; }, get yaw() { return yaw; }, set yaw(v) { yaw = clamp(v, -YAW_MAX, YAW_MAX); },
+    rotateTo(v) { if (area && area.room) return; yawGoal = clamp(v, -YAW_MAX, YAW_MAX); },
+    /** scripted shot: ease the camera to a design point / zoom / yaw (null = end, back to the current mode) */
+    shot(o) { if (!o) { shot = null; panX = panY = 0; return; } shot = Object.assign({ speed: 1.6 }, o); if (o.zoom) zoomGoal = clamp(o.zoom, 1.0, 3.2); if (o.yaw != null) yawGoal = clamp(o.yaw, -YAW_MAX, YAW_MAX); if (o.instant) { camX = o.x; camY = o.y; panX = panY = 0; if (o.zoom) { zoom = clamp(o.zoom, 1.0, 3.2); zoomGoal = null; } if (o.yaw != null) { yaw = o.yaw; yawGoal = null; } } },
+    /** save / restore what the player was looking at (cinematic events return exactly there) */
+    saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
+    restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },
+    screenDelta, screenToDesign,
     get root() { return root; },
     ghostSnap(n) { ghostSn = n; },
     /** obstacles / interactables added after the scene was built (forage bushes, critters…) */

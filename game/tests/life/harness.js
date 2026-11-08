@@ -20,7 +20,7 @@ async function launch(o = {}) {
 async function boot(page, o = {}) {
   const q = o.query || '';
   if (!page.url().startsWith('http')) await page.goto(URL + q);
-  await page.evaluate(() => { if (window.OC && OC.Store) OC.Store.persist = () => {}; window.OCApp && (window.OCApp.lifecycle = () => {}); localStorage.clear(); indexedDB.deleteDatabase('oc-assets'); });
+  await page.evaluate((o) => { if (window.OC && OC.Store) OC.Store.persist = () => {}; window.OCApp && (window.OCApp.lifecycle = () => {}); localStorage.clear(); if (!o.intro) localStorage.setItem('oc.skipIntro', '1'); indexedDB.deleteDatabase('oc-assets'); }, o);
   await page.goto(URL + q);
   await page.waitForSelector('.creator .card', { timeout: 30000 });
   await page.click('.creator .card >> nth=0');

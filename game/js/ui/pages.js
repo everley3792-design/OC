@@ -230,7 +230,9 @@
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
         title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
-        title('世界'), card(h('div.muted', null, '時間'), p.time, p.speedBox, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx),
+        title('世界'), card(h('div.muted', null, '時間'), p.time, p.speedBox, h('div.muted', { style: { marginTop: '10px' } }, '天氣'), p.wx,
+          h('div.hstack', { style: { marginTop: '12px' } }, h('span.grow', null, '小島居民（栗子、小空）'), toggle(S().world.residents, (v) => { S().world.residents = v; St.touch('world'); app().loadArea(OC.World.area.id, { x: app().player.x, y: app().player.y }); })),
+          h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, '預設不出現：小島上只有你自己的 OC。打開後兩位居民會住進空屋，可以聊天、送禮；關掉時好感度與回憶都會保留。')),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); }))),
         // 聲音：Phase 6 adds the real sound settings at the end of this page (js/ui/p6pages.js)

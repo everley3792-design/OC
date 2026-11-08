@@ -214,7 +214,8 @@
   }
   function makeNPCs() {
     npcs = {}; mates = {};
-    for (const [id, cfg] of Object.entries(Wd.area.NPC || {})) {
+    // 8.0: residents are opt-in (Settings › 世界 › 小島居民); a new game only has the player's own OCs
+    for (const [id, cfg] of Object.entries(S().world.residents ? Wd.area.NPC || {} : {})) {
       const d = Gm.NPCS[id], c = OC.CharRender.presetChar(d.preset);
       const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 28, h: 40, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
       a.home = cfg.home; a.r = cfg.r; a.wait = 1 + Math.random() * 3;
@@ -307,7 +308,8 @@
       case 'bench': goThen(it.at.x, it.at.y, () => sit(it.seat)); break;
       case 'home': goThen(it.at.x, it.at.y, () => travel('home')); break;
       case 'shop': if (OC.WorldUI.tap(it)) break; goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); break;
-      case 'npcHome': goThen(it.at.x, it.at.y, () => { face(player, 0, 1); const n = npcs[it.npc]; toast(`${it.label}${n && Math.hypot(n.x - player.x, n.y - player.y) < 140 ? `・${Gm.NPCS[it.npc].zh}就在附近` : '・現在不在家'}`, 'home'); }); break;
+      case 'npcHome': if (!S().world.residents) { goThen(it.at.x, it.at.y, () => { face(player, 0, 1); toast('一間空著的小屋（設定 › 世界 可以邀請居民栗子、小空搬來）', 'home'); }); break; }
+        goThen(it.at.x, it.at.y, () => { face(player, 0, 1); const n = npcs[it.npc]; toast(`${it.label}${n && Math.hypot(n.x - player.x, n.y - player.y) < 140 ? `・${Gm.NPCS[it.npc].zh}就在附近` : '・現在不在家'}`, 'home'); }); break;
       case 'travel': goThen(it.at.x, it.at.y, () => tab('explore')); break;
       case 'travelHome': goThen(it.at.x, it.at.y, () => travel('isle')); break;
       case 'furn': if (!decorate && OC.WorldUI.tap(it)) break; furnInteract(it); break;
@@ -717,16 +719,37 @@
     requestAnimationFrame(loop);
     window.__ocBooted = true;
     $('#boot').classList.add('done'); setTimeout(() => { const b = $('#boot'); if (b && b.classList.contains('done')) b.remove(); }, 500);
-    if (!S().onboarded || !OC.Chars.all().length) await OC.Creator.start({ first: true });
+    // 8.0 first impression: logo → (first run) opening flight over the island → welcome → creator; returning players: logo → welcome
+    const firstRun = !S().onboarded || !OC.Chars.all().length;
+    await OC.Intro.logo();
+    if (firstRun) {
+      Wd.loadArea(OC.Areas.isle, { furniture: OC.Places.room('isle') });   // the island without anyone on it yet
+      if (!S().intro.seen) await OC.Intro.opening({ keepShot: true });
+      await OC.Intro.welcome({ returning: false });
+      await OC.Creator.start({ first: true });
+      Wd.shot(null);
+    }
     if (S().legacyAnims && S().legacyAnims.length) OC.Chars.migrateLegacyAnims().then((n) => n && toast(`已把 ${n} 段舊作品搬到新的素材庫`, 'film')).catch((e) => console.error('[migrate]', e));
     if (!S().activeId || !OC.Chars.get(S().activeId)) S().activeId = S().roster[0];
     buildHUD(); buildTabbar(); buildBag(); buildDialogue(); buildJoystick();
     if (/[?&]dev=1/.test(location.search)) { S().settings.dev = true; }
     const pos = S().pos || {}; loadArea(OC.Areas[pos.area] ? pos.area : 'isle', pos.area ? pos : null);
     applyPerf(); applyControl(); syncTreeFruit(); tab('island'); updateHUD(); Gm.todayQuests(); Gm.checkAch();
-    if (!S().stats.tutorial) { S().stats.tutorial = 1; St.touch(); setTimeout(() => toast('點地面移動・拖曳畫面看看四周・兩指縮放', 'hand'), 900); setTimeout(() => toast('點果樹搖一搖、點居民聊天、右下角是快速背包', 'info'), 4200); }
+    Wd.setMode(S().view.mode || 'classic', { subject: player }); if (S().view.mode !== 'classic' && S().view.yaw) Wd.yaw = S().view.yaw;
+    if (firstRun) { last = lastSim = performance.now(); window.__ocReady = true; await OC.Intro.debut(player, me()); OC.Tutorial && OC.Tutorial.start(); }
+    else {
+      if (OC.Tutorial && !S().intro.tutorial.done && !S().intro.tutorial.skipped && S().intro.tutorial.step > 0) setTimeout(() => OC.Tutorial.start(), 1200);   // resume an unfinished tutorial
+      OC.Intro.welcome({ returning: true, name: OC.Chars.name(me()) }).then(async (v) => { if (v === 'new') newGame(); });
+    }
     last = lastSim = performance.now();   // boot time is not simulated time
     window.__ocReady = true;
+  }
+  /** welcome › 新遊戲 on an existing save: never silent — offer a backup first, then reset (settings kept) */
+  function newGame() {
+    sheet('開始新遊戲？', (b, api) => b.append(h('p.muted', null, '目前的角色與進度會被新的存檔取代（設定會保留）。建議先匯出存檔，之後可以在設定 › 資料匯入還原。'),
+      h('button.btn.block', { style: { marginTop: '8px' }, on: { click: () => exportSave() } }, icon('download', 's'), '先匯出存檔備份'),
+      h('button.btn.block', { style: { marginTop: '8px', background: 'var(--danger)', color: '#fff' }, on: { click: () => { api.close(); St.reset(); location.reload(); } } }, '開始新遊戲'),
+      h('button.btn.ghost.block', { style: { marginTop: '8px' }, on: { click: () => api.close() } }, '取消')));
   }
 
   // roster changes (new OC, switch, join/leave island) → refresh actors without reloading the area

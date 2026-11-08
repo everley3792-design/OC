@@ -14,7 +14,7 @@
 
   function fresh() {
     return {
-      v: 6, created: Date.now(), onboarded: false,
+      v: 7, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
@@ -45,7 +45,11 @@
       },
       seen: { apple: Date.now(), flower: Date.now() },   // collection: item id → first obtained timestamp (starter items)
       goal: null,                    // life goal id
-      world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {} },
+      // 8.0: the island's resident NPCs (栗子・小空 from 0.2) are opt-in — a new game starts with only the player's own OCs
+      world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {}, residents: false },
+      // 8.0: first-run & tutorial progress (skip / replay / resume), camera mode
+      intro: { seen: false, tutorial: { step: 0, done: false, skipped: false } },
+      view: { mode: 'classic', yaw: 0 },
       pos: { area: 'isle', x: 300, y: 470 },
       imports: [],
       // Phase 4: shared life state (js/life/*). Per-OC parts live in chars[id].life
@@ -84,7 +88,8 @@
     if (data && data.v === 3) data = migrateV3(data);             // Phase 4 → Phase 5: furniture per place, ledger, workshop products
     if (data && data.v === 4) data = migrateV4(data);             // Phase 5 → Phase 6: quests / requests / achievements (additive)
     if (data && data.v === 5) data = migrateV5(data);             // Phase 6 → Phase 7: desktop pets (additive)
-    S = data && data.v === 6 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 6) data = migrateV6(data);             // 7 → 8.0: residents opt-in (kept for saves that met them), intro done
+    S = data && data.v === 7 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
   }
@@ -105,6 +110,15 @@
   function migrateV5(d) {
     d.v = 6; d.migratedV5 = Date.now();
     if (!d.pet && d.petId) d.pet = { on: [d.petId], per: { [d.petId]: { size: (d.settings && d.settings.petScale) || 1 } } };
+    return d;
+  }
+  /** v6 → v7: residents become opt-in. A save that already met / befriended them keeps them (nothing is deleted either way:
+   *  their friendship data stays in S.npcs and the player can turn them on / off in Settings). Existing players skip the intro. */
+  function migrateV6(d) {
+    d.v = 7; d.migratedV6 = Date.now();
+    const met = Object.values(d.npcs || {}).some((n) => n && (n.met || n.fr > 0));
+    d.world = d.world || {}; if (d.world.residents == null) d.world.residents = met;
+    d.intro = d.intro || { seen: !!d.onboarded, tutorial: { step: 99, done: !!d.onboarded, skipped: false } };
     return d;
   }
   function persist() {
@@ -143,12 +157,13 @@
 
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5, 6].includes(d.v)) throw new Error(d && d.v > 6 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5, 6, 7].includes(d.v)) throw new Error(d && d.v > 7 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
     if (d.v === 2) d = migrateV2(d);
     if (d.v === 3) d = migrateV3(d);
     if (d.v === 4) d = migrateV4(d);
     if (d.v === 5) d = migrateV5(d);
+    if (d.v === 6) d = migrateV6(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }
