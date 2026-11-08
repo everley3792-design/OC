@@ -16,6 +16,8 @@ const { check, wait } = H;
     await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 10; S.life.settings.autonomy = 'restricted'; if (OC.Events.current) OC.Events.end('t'); });
     await wait(page, 800);
     const geo = () => page.evaluate(() => { const a = OC.App.player, W = OC.World, lv = a.lvl || 0, gy = a.gy - lv * W.HY, f = W.project(a.x, a.y, lv, gy), h = W.project(a.x, a.y, lv, gy + 62); return { cx: f.x, feet: f.y, h: f.y - h.y }; });
+    /** no random life event may take the OCs over in the middle of a check (an event holds them with 'event') */
+    const quiet = () => page.evaluate(() => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const c of OC.Chars.all()) { const b = OC.Brain.get(c.id); if (b) b.holds.delete('event'); } });
     const taste = () => page.evaluate(() => OC.Touch.taste(OC.Chars.active()));
     const st = () => page.evaluate(() => ({ touch: OC.App.player.touch && { lv: OC.App.player.touch.lv, zone: OC.App.player.touch.zone, annoyed: OC.App.player.touch.annoyed }, petting: !!OC.Touch.petting, holds: [...OC.Brain.get(OC.Store.s.activeId).holds], menu: !!document.querySelector('.radial'), lift: OC.App.player.lift, aff: OC.Chars.active().life.player.aff || 0 }));
     /** rub back and forth at a height (fraction of the body) with a given side offset for `ms` */
@@ -54,6 +56,7 @@ const { check, wait } = H;
       check('1g 點一下角色＝環狀選單（有「親近」）', menu.includes('親近') && (menu.includes('聊天') || menu.includes('打招呼')), menu); await page.evaluate(() => OC.Radial.close(true)); await settle();
     }
     if (want(2)) {
+      await quiet();
       const ids = await page.evaluate(() => ({ self: OC.Store.s.activeId, mate: Object.keys(OC.App.mates)[0] }));
       const holds = (id) => page.evaluate((id) => [...OC.Brain.get(id).holds], id);
       // the sub ring
@@ -80,7 +83,7 @@ const { check, wait } = H;
       const ph = await holds(ids.mate);
       check('2e 連戳四下：角色會賭氣，之後放開', !ph.includes('gesture'), ph);
       // hand-hold: follows the player, releases
-      await page.evaluate((id) => { OC.LifeUI.handhold(id); }, ids.mate); await wait(page, 800); const hh2 = await holds(ids.mate);
+      await quiet(); await page.evaluate((id) => { OC.LifeUI.handhold(id); }, ids.mate); await wait(page, 800); const hh2 = await holds(ids.mate);
       await page.evaluate(() => OC.LifeUI.endHand()); await wait(page, 400); const hh3 = await holds(ids.mate);
       check('2f 牽手：角色跟在身邊；結束後放開', hh2.includes('gesture') && !hh3.includes('gesture'), { hh2, hh3 });
     }
@@ -98,6 +101,7 @@ const { check, wait } = H;
       check('3a 動畫庫的每個動作都能畫（沒有 NaN／例外），也有備用鏈', r.count >= 100 && !r.bad.length && !r.noFb.length, { count: r.count, drawn: r.n, bad: r.bad.slice(0, 5), noFb: r.noFb });
     }
     if (want(4)) {
+      await quiet();
       // 4: planning, goals, knowing each other, the "想法" sheet
       const mate = await page.evaluate(() => Object.keys(OC.App.mates)[0]);
       await page.evaluate((id) => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 14; S.settings.weather = 'rain'; S.life.settings.autonomy = 'full'; S.life.settings.travel = false; const c = OC.Chars.get(id); c.personality.traits = ['bookworm']; for (const k of Object.keys(c.needs)) c.needs[k] = 75; const b = OC.Brain.get(id); b.holds.clear(); b.queued = null; if (b.st === 'do' || b.st === 'go') OC.Brain.abort(b, 't'); b.st = 'think'; b.thinkAt = 0; b.plan = null; OC.Mind11.st(c).lastPlanAt = -1e9; OC.Mind11.st(c).planStats = {}; }, mate);
@@ -106,6 +110,7 @@ const { check, wait } = H;
       const ex = await page.evaluate((id) => OC.Mind11.explain(OC.Chars.get(id)), mate);
       check('4b 「想法」資料：目前的原因、計畫步驟、今天的小目標、備選項都有', ex.reason && ex.plan && ex.plan.steps.length >= 2 && ex.goals.length >= 1 && ex.cands.length >= 2, { reason: ex.reason, plan: ex.plan && ex.plan.zh, goals: ex.goals.length, cands: ex.cands.length });
       // the plan advances while the OC lives (simulation minutes)
+      await quiet();
       const prog = await page.evaluate(async (id) => { const b = OC.Brain.get(id); let i0 = b.plan ? b.plan.i : -1, maxI = i0; for (let k = 0; k < 40 && b.plan; k++) { OC.Sim.advance(10); await new Promise((r) => setTimeout(r, 120)); if (b.plan) maxI = Math.max(maxI, b.plan.i); } return { i0, maxI, ended: !b.plan, done: OC.Mind11.st(OC.Chars.get(id)).done }; }, mate);
       check('4c 計畫會一步一步做下去（做完一個活動就換下一步，最後完成或合理放棄）', prog.maxI > prog.i0 || prog.ended, prog);
       // urgent need drops a plan
@@ -120,6 +125,7 @@ const { check, wait } = H;
       check('4g 每天結束時會把「昨天做了什麼」寫成一則日記回憶', !!dia, dia);
     }
     if (want(5)) {
+      await quiet();
       // 5: every paired interaction runs end to end: both characters perform complementary actions, data changes, nobody stays held
       const ids = await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 15; S.settings.weather = 'clear'; S.life.settings.autonomy = 'full'; S.life.settings.travel = false; const all = OC.Chars.all().filter((c) => OC.Brain.get(c.id) && OC.Brain.get(c.id).a); return all.slice(0, 2).map((c) => c.id); });
       const [A, Bc] = ids; const kinds = await page.evaluate(() => Object.keys(OC.Social11.KINDS));
