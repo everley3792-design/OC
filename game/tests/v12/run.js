@@ -7,6 +7,7 @@
  *   6 control modes: every character has its own mode (default semi); manual stays put, semi / auto live on their own; status card, HUD long-press sheet, settings
  *   7 minimal HUD: one tools handle, the mood row moved to the status card, a slim quest chip, icon-only bar (label on the active tab), dims when idle
  *   8 voice & look: the grown-up tone is the default (the engine prefers the new lines, the childish ones become rare, 活潑 restores them), refined style is the default and switchable
+ *   9 arcs: mood contagion (cool-down, distance), cold war → thaw → make up / drift apart (apology, friend mediation, player), gatherings of three or more (circle, meal, photo, mediation) always release everybody
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -208,6 +209,116 @@ const { check, wait } = H;
       check('8a 預設是沉穩語氣：新台詞（約 300 句、30 多個分類）占大多數，幼稚的用語（～、疊驚嘆號、語助詞）變得很少；切到「活潑」才回到舊的比例', t.newLines >= 280 && t.cats >= 30 && t.mature.mature >= 0.6 && t.mature.childish <= 0.1 && t.playful.childish > t.mature.childish * 2 && t.childishNew === 0 && t.defaults === 'mature', t);
       const st = await page.evaluate(() => { const r = document.documentElement; const refined = r.dataset.style; const rm = getComputedStyle(r).getPropertyValue('--r-m').trim(), font = getComputedStyle(r).getPropertyValue('--font-ui').trim().slice(0, 12); OC.App.setStyle('toy'); const toy = { style: r.dataset.style, rm: getComputedStyle(r).getPropertyValue('--r-m').trim() }; OC.App.setStyle('refined'); const names = OC.Chars.all().map((c) => [c.speech.style, c.speech.ending]); return { refined, rm, font, toy, names, saved: OC.Store.s.settings.style }; });
       check('8b 介面風格預設「雅緻」（小圓角、系統字體），可切到「玩具」再切回；預設範本的口癖不再是「喵～」', st.refined === 'refined' && st.rm === '12px' && st.toy.style === 'toy' && st.toy.rm === '18px' && st.saved === 'refined' && !st.names.some(([s2, e]) => s2 === 'cute' || /～/.test(e || '')), st);
+    }
+
+    // ================= 9. arcs: contagion, cold war → thaw → make up / drift, gatherings of three or more =================
+    if (want(9)) {
+      await closeAll(); await quiet();
+      const ids = await page.evaluate(() => { OC.Arcs.abort(); OC.Store.s.life.arcs = null; for (const c of OC.Chars.all()) { c.life.control = 'semi'; c.personality.traits = []; } return OC.Chars.all().map((c) => c.id); });
+      const [A, B, C] = ids;
+      const idle = () => page.evaluate((ids) => { for (const id of ids) { const b = OC.Brain.get(id); if (!b) continue; b.holds.clear(); b.queued = null; b.invited = null; b.leaving = null; if (b.st === 'do' || b.st === 'go' || b.st === 'social' || b.st === 'held' || b.st === 'event') OC.Brain.abort(b, 't'); b.thinkAt = performance.now() / 1000 + 600; } }, ids);   // nobody decides anything by itself while a scripted check runs
+      // ---- 9a contagion
+      await idle();
+      const con = await page.evaluate(([a, b, c]) => {
+        const Ch = OC.Chars, A = Ch.get(a), B = Ch.get(b), C_ = Ch.get(c), ba = OC.Brain.get(a), bb = OC.Brain.get(b), bc = OC.Brain.get(c);
+        bb.a.x = ba.a.x + 30; bb.a.y = ba.a.y; bc.a.x = ba.a.x + 700; bc.a.y = ba.a.y + 700;   // C is far away
+        for (const x of [A, B, C_]) { x.life.emo.list = []; x.life.emo.dom = 'neutral'; }
+        A.personality.traits = []; B.personality.traits = ['sensitive']; C_.personality.traits = ['sensitive'];
+        OC.Mind.feel(A, 'happy', 0.95, '測試'); A.life.emo.dom = 'happy'; const before = OC.Mind.intensity(B, 'happy'), farBefore = OC.Mind.intensity(C_, 'happy');
+        OC.Arcs.contagion(13); const near = OC.Mind.intensity(B, 'happy'), far = OC.Mind.intensity(C_, 'happy'), n1 = OC.Arcs.state.n.contagion;
+        OC.Arcs.contagion(13); const again = OC.Mind.intensity(B, 'happy'), n2 = OC.Arcs.state.n.contagion;   // cool-down: the same mood does not stack every 12 minutes
+        // a sensitive one catches more than a stubborn one
+        const D2 = OC.Chars.fromPreset('kuri'); D2.personality.traits = ['stubborn', 'cool']; const S2 = OC.Chars.fromPreset('sora'); S2.personality.traits = ['sensitive', 'gentle'];
+        return { before, near, far, farBefore, n1, again, n2, hyp: [OC.Arcs.explain(A).length] };
+      }, ids);
+      check('9a 心情會感染：身邊的人被好心情帶動、離得遠的不受影響、同一種心情有冷卻不會疊加', con.near > con.before + 0.04 && con.far <= con.farBefore + 0.001 && con.n1 >= 1 && con.n2 === con.n1 && con.again <= con.near + 0.001, con);
+      // ---- 9b rift: start → cold → apology cracks the ice → thaw → make up
+      await idle();
+      const rf = await page.evaluate(([a, b, c]) => {
+        const Ch = OC.Chars, A = Ch.get(a), B = Ch.get(b), S = OC.Store.s.life; S.settings.autonomy = 'restricted'; S.settings.lockRel = false;
+        for (const [x, y] of [[a, b], [b, a]]) { const r = OC.Mind.rel(x, y); Object.assign(r, { fam: 40, aff: 45, trust: 40, conflict: 10, type: 'friend', fixed: false }); }
+        OC.Arcs.step(31); const none = OC.Arcs.riftOf(a, b);           // calm: no quarrel
+        for (const [x, y] of [[a, b], [b, a]]) OC.Mind.rel(x, y).conflict = 55;
+        OC.Arcs.step(31); const r = OC.Arcs.riftOf(a, b), stage0 = r && r.stage, notices = OC.Arcs.state.n.rifts;
+        const ba = OC.Brain.get(a), bb = OC.Brain.get(b);
+        const ans = OC.Brain.Social.respond(bb, ba, 'chat'), ans2 = OC.Brain.Social.respond(bb, ba, 'apologize');
+        const list = [{ kind: 'social', social: 'chat', other: b, s: 1, why: [] }, { kind: 'social', social: 'chat', other: c, s: 1, why: [] }, { kind: 'social', social: 'apologize', other: b, s: 0.9, why: [] }, { kind: 'act', act: 'rest', s: 0.5, why: [] }];
+        OC.Arcs.shape(A, ba, list); const sc = { chatB: list.find((x) => x.social === 'chat' && x.other === b).s, chatC: list.find((x) => x.social === 'chat' && x.other === c).s, sorry: list.find((x) => x.social === 'apologize').s };
+        // an awkward meeting when they pass each other
+        ba.a.x = bb.a.x + 20; ba.a.y = bb.a.y; r.lastEnc = 0; OC.Arcs.shape(A, ba, [{ kind: 'act', act: 'rest', s: 0.5, why: [] }]); const enc = r.lastEnc > 0;
+        const until0 = r.until; OC.Arcs.onSocial(A, B, 'apologize'); const cracked = r.until < until0 && r.stage === 'cold';   // an apology in the cold stage only cracks the ice
+        r.until = OC.Sim.now() - 1; OC.Arcs.step(31); const stage1 = r.stage;                   // time is up: thaw
+        const c0 = OC.Mind.rel(a, b).conflict, t0 = OC.Mind.rel(a, b).trust;
+        OC.Arcs.onSocial(A, B, 'apologize'); const stage2 = r.stage, c1 = OC.Mind.rel(a, b).conflict, t1 = OC.Mind.rel(a, b).trust;
+        const mem = A.life.mem.recent.concat(A.life.mem.long).some((m) => /和好了/.test(m.text));
+        return { none: !!none, stage0, notices, ans: ans.ans, ans2: ans2.ans, sc, enc, cracked, stage1, stage2, c0, c1, t0, t1, mem, rec: OC.Arcs.state.n.reconciled, ex: OC.Arcs.explain(A).length };
+      }, [A, B, C]);
+      check('9b 冷戰：衝突很深才會開始（平靜時不會）；冷戰中邀請被拒、不主動找對方、碰面會尷尬；道歉先敲開一點冰、解凍後再道歉就和好了（衝突大降、信任上升、有回憶）',
+        !rf.none && rf.stage0 === 'cold' && rf.notices === 1 && rf.ans === 'no' && rf.sc.chatB < 0.2 && rf.sc.chatC >= 1 && rf.sc.sorry >= 0.8 && rf.enc && rf.cracked && rf.stage1 === 'thaw' && rf.stage2 === 'reconciled' && rf.c1 < rf.c0 - 20 && rf.t1 > rf.t0 + 5 && rf.mem && rf.rec === 1 && rf.ex === 0, rf);
+      // ---- 9c rift: a mutual friend steps in; a failure; drifting apart; the player lets them talk; fixed pairs are left alone
+      await idle();
+      const rf2 = await page.evaluate(([a, b, c]) => {
+        const real = OC.Sim.rnd, out = {}; try {
+          const mk = () => { delete OC.Store.s.life.arcs.rifts[[a, b].sort().join('|')]; for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x, y), { fam: 40, aff: 45, trust: 40, conflict: 55, type: 'friend', fixed: false }); OC.Store.s.life.arcs.rifts = {}; OC.Arcs.step(31); return OC.Arcs.riftOf(a, b); };
+          // drift: no luck three times in a row after the thaw
+          let r = mk(); r.stage = 'thaw'; r.thawAt = OC.Sim.now() - 2000; r.tries = 2; const aff0 = OC.Mind.rel(a, b).aff; OC.Sim.rnd = () => 0.99; OC.Arcs.step(31); out.drift = { stage: r.stage, affDown: OC.Mind.rel(a, b).aff < aff0, n: OC.Arcs.state.n.drifted };
+          // player mediation: with a lucky roll it ends, with a bad one it takes longer
+          r = mk(); OC.Sim.rnd = () => 0.99; const u0 = r.until; const bad = OC.Arcs.mediate(a, b); out.mediateBad = { bad, later: r.until > u0, stage: r.stage }; out.cool = OC.Arcs.mediate(a, b) === false && r.stage === 'cold'; r.medAt = -1e9; OC.Sim.rnd = () => 0.01; out.mediateOk = { ok: OC.Arcs.mediate(a, b), stage: r.stage };
+          // fixed pairs never start a rift
+          delete OC.Store.s.life.arcs.rifts[[a, b].sort().join('|')]; for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x, y), { conflict: 55, fixed: true }); OC.Store.s.life.arcs.rifts = {}; OC.Arcs.step(31); out.fixed = !OC.Arcs.riftOf(a, b);
+          for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x, y), { fixed: false, conflict: 10 }); OC.Mind.relPair(a, b, {}, '');
+          // rival / lover pairs are left alone too
+        } finally { OC.Sim.rnd = real; } return out;
+      }, ids);
+      check('9c 冷戰的其他走向：連續沒和好會慢慢疏遠（好感下降）、玩家讓牠們談談（運氣好和好、不好則拖更久；連按有冷卻）、玩家固定的關係不會被捲入冷戰', rf2.drift.stage === 'drifted' && rf2.drift.affDown && rf2.drift.n === 1 && rf2.mediateBad.bad === false && rf2.mediateBad.later && rf2.mediateBad.stage === 'cold' && rf2.cool && rf2.mediateOk.ok === true && rf2.mediateOk.stage === 'reconciled' && rf2.fixed, rf2);
+      // ---- 9d gatherings: each kind runs to the end and lets everybody go
+      for (const kind of ['circle', 'meal', 'photo']) {
+        await idle(); await quiet();
+        const started = await page.evaluate(([ids, kind]) => { OC.Store.s.life.settings.autonomy = 'restricted'; const n0 = OC.Arcs.state.n.gathered; window.__g0 = { n0, fam: OC.Mind.rel(ids[0], ids[1]).fam, bub: 0 }; const orig = OC.App.bubble; window.__bub = []; const ok = OC.Arcs.gather(kind, ids); return { ok, running: OC.Arcs.running && OC.Arcs.running.kind, holds: ids.map((i) => [...OC.Brain.get(i).holds]) }; }, [ids, kind]);
+        check(`9d-${kind} 三個角色開始${{ circle: '圍坐聊天', meal: '一起用餐', photo: '合照' }[kind]}（都被「團體」保留）`, started.ok && started.running === kind && started.holds.every((h) => h.length === 1 && h[0] === 'group'), started);
+        const done = await page.waitForFunction(() => !OC.Arcs.running, null, { timeout: 150000 }).then(() => true).catch(() => false);
+        const end = await page.evaluate(([ids, kind]) => ({ holds: ids.map((i) => [...OC.Brain.get(i).holds]), st: ids.map((i) => OC.Brain.get(i).st), n: OC.Arcs.state.n.gathered, n0: window.__g0.n0, fam: OC.Mind.rel(ids[0], ids[1]).fam, fam0: window.__g0.fam, mem: OC.Chars.get(ids[1]).life.mem.recent.some((m) => m.key && m.key.startsWith('group:' + kind)) }), [ids, kind]);
+        check(`9d-${kind} 結束：全部放開、熟悉度上升、留下回憶、次數加一`, done && end.holds.every((h) => !h.length) && end.st.every((s) => s !== 'held') && end.n === end.n0 + 1 && end.fam > end.fam0 && end.mem, end);
+      }
+      // ---- 9e a friend mediates (everyone released, the quarrel ends when it works), cut-offs release everybody
+      await idle(); await quiet();
+      const med = await page.evaluate(([a, b, c]) => {
+        const real = OC.Sim.rnd; OC.Sim.rnd = () => 0.01;
+        OC.Store.s.life.arcs.rifts = {}; for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x, y), { fam: 40, aff: 45, trust: 40, conflict: 55, type: 'friend', fixed: false }); for (const x of [a, b]) for (const m of [c]) { OC.Mind.rel(m, x).aff = 50; OC.Mind.rel(x, m).aff = 50; }
+        OC.Arcs.step(31); const r = OC.Arcs.riftOf(a, b); r.stage = 'thaw'; r.thawAt = OC.Sim.now();
+        const ok = OC.Arcs.gather('mediation', [c, a, b], { rift: r }); OC.Sim.rnd = real; return { ok, stage: r.stage, running: !!OC.Arcs.running };
+      }, ids);
+      const mdone = await page.waitForFunction(() => !OC.Arcs.running, null, { timeout: 150000 }).then(() => true).catch(() => false);
+      const mend = await page.evaluate(([a, b, c]) => ({ stage: OC.Arcs.riftOf(a, b).stage, how: OC.Arcs.riftOf(a, b).how, holds: [a, b, c].map((i) => [...OC.Brain.get(i).holds]) }), ids);
+      check('9e 共同的朋友出面調解：一起坐下來談，談得攏就和好（記錄是朋友調解的），所有人都放開', med.ok && med.running && mdone && ['reconciled', 'thaw'].includes(mend.stage) && mend.holds.every((h) => !h.length), { med, mend, mdone });
+      await idle(); await quiet();
+      const cut = await page.evaluate(([ids]) => {
+        const ok = OC.Arcs.gather('circle', ids); const hidden = OC.Brain.get(ids[2]); hidden.a.hidden = true; return new Promise((res) => setTimeout(() => { hidden.a.hidden = false; res({ ok, running: !!OC.Arcs.running, holds: ids.map((i) => [...OC.Brain.get(i).holds]) }); }, 1500));
+      }, [ids]);
+      check('9f 有人離開畫面（被隱藏／帶走）就取消團體活動，其他人立刻被放開（不會卡住）', cut.ok && !cut.running && cut.holds.every((h) => !h.length), cut);
+      // ---- 9g by itself: a cold war keeps a pair out of an invitation; everyone else can still gather
+      await idle(); await quiet();
+      const auto = await page.evaluate(([a, b, c]) => {
+        const real = OC.Sim.rnd; OC.Sim.rnd = () => 0.01; const S = OC.Store.s.life; S.settings.autonomy = 'full'; S.arcs.gcd = 0; OC.Arcs.abort();
+        for (const x of [a, b, c]) for (const y of [a, b, c]) if (x !== y) { const r = OC.Mind.rel(x, y); Object.assign(r, { aff: 40, fam: 40, conflict: 0, trust: 40, type: 'friend', fixed: false }); }
+        for (const id of [a, b, c]) { const ch = OC.Chars.get(id); ch.needs.social = 30; }
+        S.arcs.rifts = { [[a, b].sort().join('|')]: { a, b, stage: 'cold', since: 0, startedAt: OC.Sim.now(), until: OC.Sim.now() + 5000, tries: 0, lastEnc: 0 } };
+        OC.Arcs.step(21); const withWar = OC.Arcs.running;
+        S.arcs.rifts = {}; S.arcs.gcd = 0; OC.Arcs.step(21); const without = OC.Arcs.running; OC.Arcs.abort(); S.settings.autonomy = 'restricted'; OC.Sim.rnd = real;
+        return { withWar: !!withWar, without: without && without.ids.length };
+      }, ids);
+      check('9g 自己組起來的聚會：冷戰中的兩人不會同時被邀請（人數不夠就不辦）；沒有冷戰時三個人會自己聚起來', !auto.withWar && auto.without === 3, auto);
+      // ---- 9h the player sees the cold war and can step in from the profile
+      const ui = await page.evaluate(([a, b]) => {
+        const real = OC.Sim.rnd; OC.Sim.rnd = () => 0.01; const S = OC.Store.s.life, c = OC.Chars.get(a);
+        S.arcs.rifts = { [[a, b].sort().join('|')]: { a, b, stage: 'cold', since: 0, startedAt: OC.Sim.now(), until: OC.Sim.now() + 2880, tries: 0, lastEnc: 0 } };
+        const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:361px;z-index:9999;background:#fff'; document.body.append(host); host.append(OC.LifeUI.relSection(c, () => {}));
+        const tag = [...host.querySelectorAll('.tag')].map((t) => t.textContent).filter((t) => /冷戰|緩和/.test(t)), btn = [...host.querySelectorAll('button')].find((x) => x.textContent === '讓牠們談談');
+        const stage0 = OC.Arcs.riftOf(a, b).stage; btn && btn.click(); const stage1 = OC.Arcs.riftOf(a, b).stage; host.remove(); OC.Sim.rnd = real; OC.Store.s.life.arcs.rifts = {};
+        return { tag, hasBtn: !!btn, stage0, stage1 };
+      }, [A, B]);
+      check('9h 個人檔案的「關係」頁看得到「冷戰中」，並有「讓牠們談談」；按下去牠們會當面談（這次運氣好，和好了）', ui.tag.length === 1 && ui.hasBtn && ui.stage0 === 'cold' && ui.stage1 === 'reconciled', ui);
+      await idle();
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

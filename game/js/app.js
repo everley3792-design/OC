@@ -41,7 +41,7 @@
   }
   /** 10.0 safety net: an interaction hold whose owner is gone (nothing carried, no dialogue, no ring menu) is released after 2 s,
    *  so an OC can never stay frozen because some UI path forgot to let go */
-  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000, gesture: 45000 };
+  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000, gesture: 45000, group: 120000 };
   function holdWatchdog() {
     const now = performance.now(); if (now - wdT < 1000) return; wdT = now;   // real time: slow frames must not stretch the guarantee
     for (const k of Object.keys(heldSince)) { const [id, r] = k.split(':'); const b = OC.Brain.brains[id]; if (!b || !b.holds.has(r)) delete heldSince[k]; }   // released normally
@@ -846,6 +846,7 @@
     holdWatchdog();
     OC.LifeUI.tick(dt);
     if (OC.Mind11) OC.Mind11.update(dt);
+    if (OC.Arcs) OC.Arcs.update(dt);
     if (statusEl) updateStatus();
     fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
   }
@@ -926,7 +927,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks);
+    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

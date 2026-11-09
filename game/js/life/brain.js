@@ -258,6 +258,7 @@
     if (b.resumeTrip) { const L = b.resumeTrip; b.resumeTrip = null; if (OC.Places.open(L.to) && settings().travel !== false) { dlog(b, `繼續前往${OC.Places.get(L.to).zh}`); startTravel(b, L.to, L.act); return; } }
     let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
     if (OC.Mind11) list = OC.Mind11.shape(c, b, list);                                     // 11.0: plans · goals · knowledge
+    if (OC.Arcs) list = OC.Arcs.shape(c, b, list);                                         // 12.0: a cold war keeps two OCs apart
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
@@ -548,13 +549,15 @@
       const c = charOf(bb), o = charOf(ba), r = M().rel(c.id, o.id), emo = M().dominant(c);
       if (bb.st === 'do' && D().ACTS[bb.act] && D().ACTS[bb.act].lock) return { ans: 'no', why: '正在' + D().ACTS[bb.act].zh, busy: true };
       if (bb.holds.size) return { ans: 'no', why: '在忙' };
+      const rift = OC.Arcs && OC.Arcs.riftOf(c.id, o.id);   // 12.0: a cold war — only an apology has a chance, and a small one
+      if (rift && rift.stage === 'cold' && kind !== 'apologize') return { ans: 'no', why: '還在冷戰', cold: true };
       const urg = M().urgent(c); if (urg && urg !== 'social' && !(kind === 'food' && urg === 'food') && !(D().SOCIAL[kind].joint === 'rest' && (urg === 'energy'))) return { ans: 'no', why: { food: '肚子太餓', sleep: '太睏了', energy: '太累了', fun: '提不起勁', comfort: '不太舒服' }[urg] || '不太方便', need: true };
       let p = 0.55 + r.aff / 140 - r.conflict / 90 + (c.personality.social - 50) / 160 + (c.needs.social < 40 ? 0.2 : 0) + (OC.Growth && OC.Growth.has(o, 'charm') ? 0.1 : 0);
       if (emo === 'annoyed') p -= 0.35; if (emo === 'down') p -= 0.1; if (emo === 'happy' || emo === 'excited') p += 0.15;
       if (has(c, 'shy') && r.type === 'stranger') p -= 0.2;
       const joint = D().SOCIAL[kind].joint;
       if (joint === 'play' && c.needs.energy < 30) p -= 0.4; if (joint === 'rest' && c.needs.energy > 85) p -= 0.25;
-      if (kind === 'apologize') p = 0.45 + r.aff / 120 + r.trust / 200 - (has(c, 'stubborn') ? 0.3 : 0) - (emo === 'annoyed' ? 0.3 : 0) + (has(c, 'gentle') ? 0.25 : 0);
+      if (kind === 'apologize') p = 0.45 + r.aff / 120 + r.trust / 200 - (has(c, 'stubborn') ? 0.3 : 0) - (emo === 'annoyed' ? 0.3 : 0) + (has(c, 'gentle') ? 0.25 : 0) - (rift && rift.stage === 'cold' ? 0.3 : 0);
       if (bb.st === 'do' && !joint && kind !== 'apologize') p -= 0.1;
       const roll = Sim().rnd();
       if (roll < p) return { ans: 'yes' };
@@ -692,6 +695,7 @@
         if (OC.Progress) OC.Progress.emit('social', { oc: A.id, other: B.id, ocs: [A.id, B.id], kind, place: OC.World.area && OC.World.area.id });
         for (const [x, y] of [[A, B], [B, A]]) { const r = M().rel(x.id, y.id); M().wishEvent(x, { type: 'rel', other: y.id, to: r.type }); }
         if (OC.Mind11 && kind !== 'greet') OC.Mind11.onSocial(A, B, kind, true);
+        if (OC.Arcs) OC.Arcs.onSocial(A, B, kind);
       }
       Social.end(conv, early ? 'urgent' : 'done');
     },

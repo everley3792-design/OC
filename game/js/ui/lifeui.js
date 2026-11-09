@@ -358,9 +358,19 @@
         return card(h('div.hstack', null, h('b.grow', null, name(o)), h('span.tag.' + (r.fixed ? 'accent' : 'teal'), null, M().relLabel(r) + (r.fixed ? '・你設定的' : '')), h('button.btn.ghost.s', { on: { click: () => setRel(c, o, refresh) } }, '設定')),
           metric('fam', '熟悉', r.fam, 'var(--teal)'), metric('aff', '好感', r.aff, 'var(--need-mood)'), metric('trust', '信任', r.trust, 'var(--need-social)'), metric('intim', '親密', r.intim, 'var(--need-fun)'), r.conflict > 1 ? metric('conflict', '衝突', r.conflict, 'var(--danger)') : null,
           small([days != null && days >= 0 ? `認識 ${days} 天` : '還沒說過話', r.shared.length ? `共同興趣：${r.shared.join('、')}` : null, `共同回憶 ${r.mems} 個`, back ? `${name(o)}覺得牠是「${M().relLabel(back)}」` : null].filter(Boolean).join('・')),
-          M().romanceOK(c.id, o.id) ? small('（雙方都已允許戀愛相關事件）') : null);
+          M().romanceOK(c.id, o.id) ? small('（雙方都已允許戀愛相關事件）') : null,
+          riftRow(c, o, refresh));
       })) : h('div.empty', null, '島上只有牠一個 OC；建立更多角色，牠們就會互相認識。'),
       small('關係是有方向的：牠怎麼看對方，不一定等於對方怎麼看牠。你設定的關係不會被自動改變。'));
+  }
+  /** 12.0: a cold war between two OCs, with the one thing the player can do about it (let them talk it out; never forced, never certain) */
+  function riftRow(c, o, refresh) {
+    const r = OC.Arcs && OC.Arcs.riftOf(c.id, o.id); if (!r || !['cold', 'thaw'].includes(r.stage)) return null;
+    const left = Math.max(0, r.until - Sim().now()), days = Math.ceil(left / 1440);
+    return h('div.hstack', { style: { marginTop: '8px', gap: '8px', flexWrap: 'wrap' } },
+      h('span.tag.accent', null, r.stage === 'cold' ? '冷戰中' : '氣氛緩和了'),
+      h('span.grow.faint', { style: { fontSize: 'var(--fs-xs)' } }, r.stage === 'cold' ? `互相避開、不接受邀請${left > 0 ? `（大約還有 ${days} 天）` : ''}。` : '偶爾會開口，等一個台階。'),
+      h('button.btn.s', { on: { click: () => { OC.Arcs.mediate(c.id, o.id); refresh && refresh(); } } }, '讓牠們談談'));
   }
   function setRel(c, o, refresh) {
     sheet(`${name(c)} 和 ${name(o)} 的關係`, (b, api) => {
