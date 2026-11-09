@@ -64,7 +64,15 @@
   function distSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, t = clamp(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)); return Math.hypot(px - ax - t * dx, py - ay - t * dy); }
   function distPoly(px, py, pts) { let d = 1e9; for (let i = 0; i < pts.length - 1; i++) d = Math.min(d, distSeg(px, py, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])); return d; }
   const inRect = (r, x, y) => Math.abs(x - r.x) <= r.w / 2 && Math.abs(y - r.y) <= r.h / 2;
-  function place(ctx, obj, x, y, lvl = 0, up = 0) { obj.position.copy(ctx.V3(x, y, lvl, up)); ctx.root.add(obj); return obj; }
+  function place(ctx, obj, x, y, lvl = 0, up = 0) {
+    obj.position.copy(ctx.V3(x, y, lvl, up)); ctx.root.add(obj);
+    // 12.0: a soft contact shadow under everything that stands on the ground (not lifted lamps, not flat rugs); tall narrow things (trees, posts) get a smaller one
+    if (ctx.contact && up < 24 && !obj.userData.noContact) {
+      const b = new THREE.Box3().setFromObject(obj), sx = b.max.x - b.min.x, sz = b.max.z - b.min.z, sh = b.max.y - b.min.y;
+      if (sh > 4 && sx > 4 && sz > 2) { const tall = sh > Math.max(sx, sz) * 1.25, k = tall ? 0.95 : 1.3; ctx.contact(x, y, lvl, up, clamp(sx * k + 6, 12, 190), clamp(sz * k * 1.15 + 6, 10, 130)); }
+    }
+    return obj;
+  }
   function frontEdge(b, x) { let y = b.cy; while (inBlob(b, x, y + 1) && y < b.cy + b.ry * 1.2) y += 1; return y; }
 
   // =========================================================================================

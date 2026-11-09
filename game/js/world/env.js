@@ -110,7 +110,8 @@
     fx.petals = sparkPoints(26, '#FFC4D6', 9, false);
 
     let fxOn = true;
-    function setQuality(q) { fxOn = q.fx; fx.clouds.visible = q.fx; }
+    let indoor = false;
+    function setQuality(q) { fxOn = q.fx; fx.clouds.visible = q.fx && !indoor; }
     function setShadows(size) {
       if (!size) { sun.castShadow = false; return; }
       sun.castShadow = true;
@@ -148,7 +149,7 @@
       U.uWind.value = o.reduce ? 0.3 : cur.wind;
       // FX
       const fxk = fxOn && !o.reduce;
-      fx.clouds.visible = fxOn && cur.clouds > 0.01; fx.clouds.material.opacity = cur.clouds; const cm = fx.clouds.material.alphaMap; cm.offset.x = (o.t * 0.004 * cur.wind) % 1; cm.offset.y = (o.t * 0.0025) % 1;
+      fx.clouds.visible = fxOn && cur.clouds > 0.01 && !indoor;   // 12.0: no drifting cloud shadows on the floor of a room fx.clouds.material.opacity = cur.clouds; const cm = fx.clouds.material.alphaMap; cm.offset.x = (o.t * 0.004 * cur.wind) % 1; cm.offset.y = (o.t * 0.0025) % 1;
       fx.clouds.position.x = F.x; fx.clouds.position.z = F.z;
       fx.rain.visible = fxk && cur.rain > 0.02; fx.rain.material.uniforms.uAlpha.value = cur.rain * 0.75; fx.rain.material.uniforms.uCenter.value.set(F.x, F.y || 0, F.z); fx.rain.material.uniforms.uSize.value = o.pxScale * 14;
       fx.ripples.forEach((r) => {
@@ -162,7 +163,7 @@
       fx.petals.visible = fxk && cur.night < 0.5 && cur.rain < 0.2 && o.weather !== 'fog'; const pu = fx.petals.material.uniforms; pu.uAlpha.value = 0.85 * (1 - cur.night * 2); pu.uCenter.value.set(F.x, F.y || 0, F.z); pu.uSize.value = o.pxScale * 4.5;
       return cur;
     }
-    return { U, sun, hemi, cur, fx, update, setQuality, setShadows, windMaterial: (c, amp) => windMaterial(c, U, amp), texture };
+    return { U, sun, hemi, cur, fx, update, setQuality, setShadows, setIndoor(v) { indoor = !!v; fx.clouds.visible = fxOn && !indoor; }, windMaterial: (c, amp) => windMaterial(c, U, amp), texture };
   }
 
   OC.Env = { create, keyAt, nightness, texture, KEYS, WX };

@@ -24,6 +24,7 @@
       build(ctx) {
         ctx.bounds = area.bounds;
         const sh = Mo.room({ w: R.x1 - R.x0, d: R.y1 - R.y0, h: o.wallH || 48, floor: o.floor, tile: o.tile, wall: o.wall, stripe: o.stripe, trim: o.trim, curtain: o.curtain, windows: o.windows || [], door: 0, mat: o.mat });
+        sh.userData.noContact = true;   // the room shell is not an object standing on the ground
         place(ctx, sh, D.x, (R.y0 + R.y1) / 2, 0, 0);
         // dark surroundings so the cut-away room reads as an interior
         const out = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), Mo.mat(o.bg || '#3A2E2A')); out.rotation.x = -Math.PI / 2; out.position.set(D.x, -4, ctx.Zof(D.y)); ctx.root.add(out);
@@ -31,6 +32,7 @@
         // warm interior lights (only in quality modes with point lights)
         if (ctx.quality.lights !== false) for (const [lx, ly] of o.lights || [[D.x, (R.y0 + R.y1) / 2]]) { const L = new THREE.PointLight('#FFD7A0', 0, 260, 1.6); L.position.copy(ctx.V3(lx, ly, 0, 60)); ctx.root.add(L); ctx.tick((t, dt, env) => { if (env) L.intensity = 2200 * (0.35 + env.night * 0.9); }); }
         o.build && o.build(ctx, area);
+        OC.Dress && OC.Dress.room(ctx, area);   // 12.0: prints, rugs, window light, fairy lights
       },
     };
     return area;
@@ -92,6 +94,7 @@
       ctx.interact({ type: 'exit', to: 'cafe', x: 140, y: 794, hit: { w: 80, h: 100, d: 8 }, at: { x: 140, y: 810 }, label: '雲朵咖啡館' });
       const libB = Mo.shopFront({ title: '葉影圖書館', roof: '#556080', accent: '#556080', wall: '#F3EEE4', goods: ['#F26B5B', '#5BC0EB', '#FFC93C'] }); place(ctx, libB, 460, 770, 0, 1.2); ctx.block(460, 770, 84, 44);
       ctx.interact({ type: 'exit', to: 'library', x: 460, y: 794, hit: { w: 80, h: 100, d: 8 }, at: { x: 460, y: 810 }, label: '葉影圖書館' });
+      OC.Dress && OC.Dress.street(ctx, SHOPS);   // 12.0: planters and crates in front of the shops
       // market square with two stalls (daily market)
       for (const [x, y, flip] of [[245, 640, 0], [355, 640, 1]]) { const m = Mo.stall(); m.scale.set(0.75, 0.75, 0.75); place(ctx, m, x, y, 0, 1.2); ctx.block(x, y, 50, 16); ctx.interact({ type: 'shop', shop: 'market', x, y: y + 6, hit: { w: 52, h: 50, d: 8 }, at: { x, y: y + 22 }, label: '每日市場' }); void flip; }
       // trees, lamps, benches, planters along the avenue

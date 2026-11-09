@@ -9,6 +9,7 @@
  *   8 voice & look: the grown-up tone is the default (the engine prefers the new lines, the childish ones become rare, 活潑 restores them), refined style is the default and switchable
  *   9 arcs: mood contagion (cool-down, distance), cold war → thaw → make up / drift apart (apology, friend mediation, player), gatherings of three or more (circle, meal, photo, mediation) always release everybody
  *  10 stingers: the short musical phrases are tied to real moments (skill level-up, new collection entry, closer friends, making up, claiming a reward), one cool-down, silent when sound is off
+ *  11 3D: contact shadows (one instanced draw), rooms dressed (prints, rugs, window light, fairy lights), remodelled furniture, no cloud shadows indoors, shop street planters
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -350,6 +351,37 @@ const { check, wait } = H;
       });
       check('10a 小段旋律（stinger）接到真實的事件：技能升級、圖鑑新增、兩個 OC 更親近、冷戰和解、領取獎勵各會響一次；表裡只有 win／warm／wonder', r.skill === 1 && r.discover === 1 && r.relUp === 1 && r.reconcile === 1 && r.claim === 1 && r.table.every(([, k]) => ['win', 'warm', 'wonder'].includes(k)) && r.table.length >= 9, r);
       check('10b 三秒內只會響一次（不會疊在一起）；音效關閉或名稱不存在時不響；實際響過的旋律種類被記錄', r.stack === false && r.off === false && r.unknown === false && Object.keys(r.phrases).length >= 2, { stack: r.stack, off: r.off, unknown: r.unknown, phrases: r.phrases });
+    }
+
+    // ================= 11. 3D: contact shadows, rooms dressed, furniture remodelled, no cloud shadows indoors =================
+    if (want(11)) {
+      await closeAll(); await quiet();
+      const go = async (id) => { await page.evaluate((id) => OC.WorldUI.travel(id, { instant: true }), id); await page.waitForFunction((id) => OC.World.area && OC.World.area.id === id, id, { timeout: 40000 }); await wait(page, 1200); };
+      await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 13; S.settings.weather = 'clear'; S.settings.perf = 'high'; OC.App.applyPerf && OC.App.applyPerf(); for (const c of OC.Chars.all()) OC.Brain.hold(c.id, 'test'); });
+      await go('isle');
+      const isle = await page.evaluate(() => ({ blobs: OC.World.contacts, clouds: OC.World.cloudsVisible, inst: (() => { let n = 0; OC.World.root.traverse((o) => { if (o.userData && o.userData.contact && o.isInstancedMesh) n++; }); return n; })() }));
+      check('11a 島上每個放在地面的東西（建築、長椅、燈柱、花圃、灌木…）都有柔和的接觸陰影，全部合成一次繪製；島上有雲影', isle.blobs >= 25 && isle.inst === 1 && isle.clouds, isle);
+      await go('home');
+      const home = await page.evaluate(() => { const names = []; OC.World.root.traverse((o) => { if (o.material && o.material.blending === THREE.AdditiveBlending) names.push('light'); }); return { blobs: OC.World.contacts, clouds: OC.World.cloudsVisible, lights: names.length, op: (() => { let m = null; OC.World.root.traverse((o) => { if (!m && o.material && o.material.blending === THREE.AdditiveBlending) m = o.material; }); return m ? +m.opacity.toFixed(3) : null; })() }; });
+      check('11b 房間裡沒有飄過地板的雲影；窗戶下有兩塊柔和的光（白天亮）；家具有接觸陰影（但房間本體沒有一大片）', !home.clouds && home.lights === 2 && home.op > 0.08 && home.blobs >= 3 && home.blobs <= 14, home);
+      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 23; }); await wait(page, 5000);
+      const dark = await page.evaluate(() => { let m = null; OC.World.root.traverse((o) => { if (!m && o.material && o.material.blending === THREE.AdditiveBlending) m = o.material; }); return +m.opacity.toFixed(3); });
+      check('11c 到了夜裡，窗戶的光線退去（不會半夜還有太陽照進來）', dark < 0.06, { dark });
+      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 13; });
+      const fur = await page.evaluate(() => {
+        const out = []; for (const id of ['bed', 'table', 'bookshelf', 'stove', 'sofa', 'desk', 'plant', 'bigpot']) {
+          const g = OC.Models.FURN[id](), b = new THREE.Box3().setFromObject(g), it = OC.Style.ITEMS[id] || { fp: [1, 1] }, fp = it.fp || [1, 1]; let meshes = 0; g.traverse((o) => { if (o.isMesh) meshes++; });
+          const sx = b.max.x - b.min.x, sz = b.max.z - b.min.z, sy = b.max.y - b.min.y;
+          out.push({ id, sx: +sx.toFixed(1), sz: +sz.toFixed(1), sy: +sy.toFixed(1), fp, meshes, ok: [sx, sz, sy].every(Number.isFinite) && b.min.y > -1 && sy > 8 && sy < 72, base: +b.min.y.toFixed(1) });
+        } return { out, remodel: OC.Models.furniture12 === true };
+      });
+      check('11d 重新建模的家具（床、桌、書櫃、爐子、沙發、書桌、盆栽）：站在地上、尺寸合理、不是空的；書櫃的書合併成每種顏色一次繪製（不到 30 個網格）', fur.remodel && fur.out.every((k) => k.ok && k.meshes >= 6) && fur.out.find((k) => k.id === 'bookshelf').meshes < 30 && fur.out.every((k) => k.meshes < 80), fur.out);
+      await go('cafe'); const cafe = await page.evaluate(() => ({ clouds: OC.World.cloudsVisible, blobs: OC.World.contacts }));
+      await go('isle'); const back = await page.evaluate(() => OC.World.cloudsVisible);
+      check('11e 離開房間回到島上，雲影又回來（不是永久關掉）', !cafe.clouds && back === true, { cafe, back });
+      await go('street'); const st = await page.evaluate(() => { const shops = OC.World.interacts.filter((i) => i.type === 'shop'), ex = OC.World.interacts.filter((i) => i.type === 'exit'); const reach = (i) => { const p = OC.World.findPath(300, 900, i.at.x, i.at.y); return !!(p && p.length); }; return { blobs: OC.World.contacts, obstacles: OC.World.area.obstacles.length, shops: shops.length, shopsReach: shops.filter(reach).length, exits: ex.length, exitsReach: ex.filter(reach).length }; });
+      check('11f 商店街：花圃與木箱登記了碰撞、各有接觸陰影；通道沒被擋住——從入口走得到每一個店家與攤位、咖啡館、圖書館的門', st.blobs >= 20 && st.obstacles >= 20 && st.shops >= 4 && st.shopsReach === st.shops && st.exits >= 2 && st.exitsReach === st.exits, st);
+      await go('isle');
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

@@ -375,6 +375,8 @@
   function addFurniture(f) {
     const g = OC.Models.furniture(f.id); g.position.copy(V3(f.x, f.y, levelAt(f.x, f.y), area.ground(f.x, f.y, levelAt(f.x, f.y)))); g.rotation.y = -(f.rot || 0) * Math.PI / 2; if (f.sc && f.sc !== 1) g.scale.setScalar(f.sc);
     root.add(g); const def = OC.Style.ITEMS[f.id] || { zh: '?', fp: [1, 1] };
+    if (def.walk !== true && !(g.userData.noContact)) { const b = new THREE.Box3().setFromObject(g), sc = f.sc || 1, w = (b.max.x - b.min.x) / sc, d = (b.max.z - b.min.z) / sc, h = (b.max.y - b.min.y) / sc;
+      if (h > 4 && w > 4) { const [bg, bm] = blobAssets(), bl = new THREE.Mesh(bg, bm), k = h > Math.max(w, d) * 1.25 ? 0.8 : 1; bl.scale.set(Math.min(150, w * k * 1.3 + 5), 1, Math.min(110, d * k * 1.45 + 5)); bl.position.y = 0.45; bl.renderOrder = 1; bl.userData.contact = true; g.add(bl); } }
     if (g.userData.tick) ticks.push((t) => g.userData.tick(t));
     const it = { type: 'furn', uid: f.uid, id: f.id, x: f.x, y: f.y, hit: { w: 26, h: def.walk ? 10 : 24, d: 8 } };
     const rec = Object.assign({}, f, { g, it }); furn.push(rec);
@@ -435,10 +437,31 @@
     actors = []; interacts = []; ticks = []; sways = []; drops = []; furn = []; grassMesh = null; ghost = null; leaves = []; puffs = []; if (leafMesh) { leafMesh.count = 0; puffMesh.count = 0; }
     OC.Models.night.windows.length = 0; OC.Models.night.lamps.length = 0;
   }
+  // ---- 12.0 contact shadows: a soft dark blob under every placed object (buildings, trees, benches, stalls…) so nothing floats.
+  // All the blobs of an area are ONE instanced draw; player furniture gets one shared mesh each. Shared geometry / material / texture.
+  let blobGeo = null, blobMat = null;
+  function blobAssets() {
+    if (!blobGeo) {
+      blobGeo = new THREE.PlaneGeometry(1, 1); blobGeo.rotateX(-Math.PI / 2); blobGeo.userData.cached = true;
+      const t = OC.Env.texture(64, 64, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(40,26,58,0.5)'); g.addColorStop(0.55, 'rgba(40,26,58,0.42)'); g.addColorStop(0.8, 'rgba(40,26,58,0.16)'); g.addColorStop(1, 'rgba(40,26,58,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+      t.userData.cached = true; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.repeat.set(1, 1);
+      blobMat = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); blobMat.userData.cached = true;
+    }
+    return [blobGeo, blobMat];
+  }
+  /** one instanced mesh for a list of [x, y, level, up, sizeX, sizeZ] (sizes are world units, full width) */
+  function flushContacts(list) {
+    if (!list.length) return null;
+    const [g, m] = blobAssets(), im = new THREE.InstancedMesh(g, m, list.length), M4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    list.forEach(([x, y, l, up, sx, sz], i) => { M4.compose(V3(x, y, l, up + 0.45), q, new THREE.Vector3(sx, 1, sz)); im.setMatrixAt(i, M4); });
+    im.instanceMatrix.needsUpdate = true; im.renderOrder = 1; im.castShadow = false; im.receiveShadow = false; im.frustumCulled = false; im.userData.contact = true; root.add(im); return im;
+  }
   function loadArea(def, opts = {}) {
     clearArea(); area = def; root = new THREE.Group(); scene.add(root);
+    const contacts = [];
     const ctx = {
       root, V3, Zof, SIN, COS, HY, env, quality,
+      contact: (x, y, lvl, up, sx, sz) => contacts.push([x, y, lvl, up, sx, sz]),
       block: (x, y, w, h) => area.obstacles.push({ x, y, w, h }),
       interact: (it) => { interacts.push(it); return it; },
       sway: (o, seed, amp) => sways.push({ o, seed, amp }),
@@ -446,7 +469,9 @@
       grass: (mesh, max) => { grassMesh = mesh; grassMax = max; mesh.count = Math.round(max * quality.grass); },
     };
     area.obstacles = [];
+    if (env.setIndoor) env.setIndoor(!!def.interior);   // no cloud shadows indoors
     area.build(ctx);
+    flushContacts(contacts);
     grid = null; buildGrid();
     (opts.furniture || []).forEach(addFurniture);
     const sp = opts.pos && walkable(opts.pos.x, opts.pos.y) ? opts.pos : area.spawn;
@@ -603,6 +628,9 @@
   }
 
   OC.World = {
+    get _blob() { return blobMat; },
+    get cloudsVisible() { return !!(env && env.fx && env.fx.clouds && env.fx.clouds.visible); },
+    get contacts() { let n = 0; if (root) root.traverse((o) => { if (o.userData && o.userData.contact) n += o.isInstancedMesh ? o.count : 1; }); return n; },
     init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H, dx: x.c.x, dy: x.c.z * SIN }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
