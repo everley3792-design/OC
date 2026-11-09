@@ -79,7 +79,7 @@
   // ======================= brains =======================
   function attach(a, c, o = {}) {
     let b = brains[c.id];
-    if (!b) b = brains[c.id] = { id: c.id, st: 'think', act: null, slot: null, last: [], holds: new Set(), thinkAt: nowR() + 0.5 + Math.random() * 2, dbg: { cands: [], reason: '' }, cmdAt: 0, queued: null };
+    if (!b) b = brains[c.id] = { id: c.id, st: 'think', act: null, slot: null, last: [], holds: new Set(), thinkAt: nowR() + 0.5 + Math.random() * 2, dbg: { cands: [], reason: '' }, cmdAt: -1e9, queued: null };
     b.a = a; b.manual = !!o.manual; b.st = b.st === 'social' || b.st === 'event' ? 'think' : b.st; b.thinkAt = nowR() + 0.4 + Math.random() * 1.5;
     a.brain = b; b.lastXY = { x: a.x, y: a.y };
     // resume an activity that was running (reload / coming back from another area)
@@ -381,7 +381,7 @@
     b.queued = act; if (b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) { dlog(b, '玩家安排（做完手上的事再去）：' + D().ACTS[act].zh); if (b.manual) b.manualOverride = nowR() + 600; return 'later'; }
     if (b.st === 'do' && b.act !== act) finish(b, '玩家安排'); else if (b.st === 'go') abort(b, '玩家安排');
     if (b.st === 'social') endConvOf(b, 'interrupted');
-    b.thinkAt = 0; b.cmdAt = b.manual ? 0 : b.cmdAt; if (b.manual) b.manualOverride = nowR() + 120; return true;
+    b.thinkAt = 0; b.cmdAt = b.manual ? -1e9 : b.cmdAt; if (b.manual) b.manualOverride = nowR() + 120; return true;
   }
   /** the player moved the played OC → abort its own activity */
   function playerAct(id) { const b = brains[id]; if (!b) return; b.cmdAt = nowR(); b.manualOverride = 0; b.queued = null; if (b.st === 'do' || b.st === 'go') { if (b.st === 'do') finish(b, '玩家操作'); else abort(b, '玩家操作'); } if (b.st === 'social') endConvOf(b, 'interrupted'); }

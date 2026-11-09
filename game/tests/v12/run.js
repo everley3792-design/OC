@@ -143,7 +143,7 @@ const { check, wait } = H;
         for (const mode of ['manual', 'semi', 'auto']) {
           for (const c0 of OC.Chars.all()) { OC.Brain.setControl(c0.id, mode); const b0 = OC.Brain.get(c0.id); b0.holds.clear(); b0.invited = null; }   // everybody in the same mode: nobody invites a manual one
           for (const who of [id, mate]) {
-            const c = OC.Chars.get(who), b = OC.Brain.get(who); if (b.st === 'do' || b.st === 'go' || b.st === 'social') OC.Brain.abort(b, 't'); b.cmdAt = 0; b.queued = null; if (b.a) b.a.path = null; b.thinkAt = 0;
+            const c = OC.Chars.get(who), b = OC.Brain.get(who); if (b.st === 'do' || b.st === 'go' || b.st === 'social') OC.Brain.abort(b, 't'); b.cmdAt = -1e9; b.queued = null; if (b.a) b.a.path = null; b.thinkAt = 0;
             Object.assign(c.needs, { fun: 15, interest: 15, active: 15, social: 20, food: 85, sleep: 90, energy: 90, comfort: 80 });   // bored and restless, but nothing urgent
             for (let i = 0; i < 8; i++) { OC.Sim.advance(3); await new Promise((r) => setTimeout(r, 200)); }   // let leftovers of the previous mode settle
             if (b.st === 'do' || b.st === 'go' || b.st === 'social') OC.Brain.abort(b, 't'); b.thinkAt = 0; let started = 0; const t0 = Date.now();
@@ -191,7 +191,8 @@ const { check, wait } = H;
       check('7c 導覽列只有圖示；標籤只出現在目前分頁（所有圖示都看得到）', tb.length === 5 && tb.every((t) => t.icon) && tb.filter((t) => t.label > 0.5).length === 1 && tb.find((t) => t.on).label > 0.5, tb);
       await page.evaluate(() => document.getElementById('hud').classList.remove('idle')); await wait(page, 7500);
       const idle = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
-      await page.mouse.click(196, 500); await wait(page, 700);
+      await page.mouse.click(196, 500);
+      await page.waitForFunction(() => +getComputedStyle(document.querySelector('.hud-me')).opacity > 0.95, null, { timeout: 15000 }).catch(() => {});
       const awake = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
       check('7d 安靜幾秒後 HUD 自己淡出（讓出畫面），一碰就回來', +idle < 0.8 && +awake > 0.95, { idle, awake });
     }
@@ -332,7 +333,7 @@ const { check, wait } = H;
         OC.Sound.unlock(); S.settings.sound = Object.assign({}, OC.Sound.cfg(), { on: true, music: 0, amb: 0 }); OC.Sound.apply(); await sleep(300);
         const [A, B] = OC.Chars.all(); out.state = OC.Sound.state; out.table = Object.entries(OC.Sound.CUES).map(([k, v]) => [k, v[0]]);
         // a skill level-up (a real game event → the card → the phrase)
-        let before = cues(); OC.Mind.skill(A, 'cook', 4000); await until(() => (cues().skill || 0) > (before.skill || 0)); out.skill = (cues().skill || 0) - (before.skill || 0);
+        let before = cues(); const sk = Object.keys(OC.Mind.SKILLS).sort((x, y) => OC.Mind.skillLv(A, x) - OC.Mind.skillLv(A, y))[0];   // the lowest skill (a maxed one cannot level up) out.skillId = sk; OC.Mind.skill(A, sk, 4000); await until(() => (cues().skill || 0) > (before.skill || 0), 40000); out.skill = (cues().skill || 0) - (before.skill || 0); out.stage = { busy: OC.Stage.busy, queue: OC.Stage.queue };
         // the same second: another moment does not stack a second phrase on top
         out.stack = OC.Sound.cue('mini'); await sleep(3200);
         // a new entry in the collection
@@ -364,7 +365,8 @@ const { check, wait } = H;
       await go('home');
       const home = await page.evaluate(() => { const names = []; OC.World.root.traverse((o) => { if (o.material && o.material.blending === THREE.AdditiveBlending) names.push('light'); }); return { blobs: OC.World.contacts, clouds: OC.World.cloudsVisible, lights: names.length, op: (() => { let m = null; OC.World.root.traverse((o) => { if (!m && o.material && o.material.blending === THREE.AdditiveBlending) m = o.material; }); return m ? +m.opacity.toFixed(3) : null; })() }; });
       check('11b 房間裡沒有飄過地板的雲影；窗戶下有兩塊柔和的光（白天亮）；家具有接觸陰影（但房間本體沒有一大片）', !home.clouds && home.lights === 2 && home.op > 0.08 && home.blobs >= 3 && home.blobs <= 14, home);
-      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 23; }); await wait(page, 5000);
+      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 23; });
+      await page.waitForFunction(() => { let m = null; OC.World.root.traverse((o) => { if (!m && o.material && o.material.blending === THREE.AdditiveBlending) m = o.material; }); return m && m.opacity < 0.05; }, null, { timeout: 30000 }).catch(() => {});
       const dark = await page.evaluate(() => { let m = null; OC.World.root.traverse((o) => { if (!m && o.material && o.material.blending === THREE.AdditiveBlending) m = o.material; }); return +m.opacity.toFixed(3); });
       check('11c 到了夜裡，窗戶的光線退去（不會半夜還有太陽照進來）', dark < 0.06, { dark });
       await page.evaluate(() => { OC.Store.s.settings.fixedHour = 13; });

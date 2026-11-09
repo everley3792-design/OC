@@ -1,5 +1,5 @@
 {
- "at": "2026-11-09T06:59:58.870Z",
+ "at": "2026-11-09T09:33:57.155Z",
  "results": [
   {
    "name": "1a 全新安裝：開場期間沒有任何角色（小島是空的）",
@@ -7,8 +7,8 @@
    "detail": {
     "chars": 0,
     "mates": 0,
-    "yaw": 0.07020575093279495,
-    "sub": "和一間一直等著住客的小屋。"
+    "yaw": 0.12509577870054017,
+    "sub": "島上有會亮起來的路燈、會結果的樹，"
    }
   },
   {
@@ -17,14 +17,14 @@
    "detail": {
     "chars": 0,
     "mates": 0,
-    "yaw": 0.07020575093279495,
-    "sub": "和一間一直等著住客的小屋。"
+    "yaw": 0.12509577870054017,
+    "sub": "島上有會亮起來的路燈、會結果的樹，"
    }
   },
   {
    "name": "2b 開場可以跳過（立刻到歡迎畫面），並記住看過了",
    "ok": true,
-   "detail": 1931
+   "detail": 1657
   },
   {
    "name": "2c 歡迎畫面可以重新觀看開場",
@@ -70,9 +70,163 @@
    "ok": true
   },
   {
-   "name": "全程沒有 JavaScript 錯誤",
+   "name": "3a 自稱／稱呼你／禁用詞真的出現在台詞裡",
    "ok": true,
-   "detail": []
+   "detail": {
+    "a": [
+     "俺超喜歡你送的禮物啦！",
+     "好耶 俺超喜歡你送的禮物啦！",
+     "好耶 俺超喜歡你送的禮物！"
+    ],
+    "b": [
+     "我喜歡您送的禮物。"
+    ]
+   }
+  },
+  {
+   "name": "3b 句尾口癖依頻率出現（不是每句都加）",
+   "ok": true,
+   "detail": 0.61
+  },
+  {
+   "name": "3c 特質改變行為：活潑走得快、跳得高；懶散內向較慢",
+   "ok": true,
+   "detail": {
+    "speed": [
+     70.10960000000001,
+     58.6024
+    ],
+    "bounce": [
+     2.9744000000000006,
+     2.4640000000000004
+    ]
+   }
+  },
+  {
+   "name": "3d 特質改變作息：早起型比夜貓子早醒",
+   "ok": true,
+   "detail": [
+    5.5,
+    9.5
+   ]
+  },
+  {
+   "name": "10a 相同情境下不同 OC 說的話不同（重複很少）",
+   "ok": true,
+   "detail": {
+    "overlap": 0,
+    "la": 13,
+    "lb": 12
+   }
+  },
+  {
+   "name": "4a 高解析透明 PNG：原圖完整保留（2400 px），遊戲用的工作圖 ≤ 2048 px",
+   "ok": true,
+   "detail": {
+    "orig": [
+     2400,
+     2400
+    ],
+    "work": [
+     2048,
+     2048
+    ],
+    "corner": 0,
+    "centre": 255,
+    "bbLow": 192,
+    "bbHigh": 384
+   }
+  },
+  {
+   "name": "4b 透明背景保留（角落透明、主體不透明）",
+   "ok": true,
+   "detail": {
+    "orig": [
+     2400,
+     2400
+    ],
+    "work": [
+     2048,
+     2048
+    ],
+    "corner": 0,
+    "centre": 255,
+    "bbLow": 192,
+    "bbHigh": 384
+   }
+  },
+  {
+   "name": "4c 場景中角色貼圖解析度跟著實際顯示大小調整（拉近變清晰）",
+   "ok": true,
+   "detail": {
+    "low": 192,
+    "high": 384
+   }
+  },
+  {
+   "name": "5a 四種鏡頭模式即時切換，切換當下畫面不會跳動",
+   "ok": true,
+   "detail": [
+    {
+     "m": "follow",
+     "jump": 1,
+     "mode": "follow"
+    },
+    {
+     "m": "focus",
+     "jump": 0,
+     "mode": "focus"
+    },
+    {
+     "m": "free",
+     "jump": 0,
+     "mode": "free"
+    },
+    {
+     "m": "classic",
+     "jump": 0,
+     "mode": "classic"
+    }
+   ]
+  },
+  {
+   "name": "5b 自由鏡頭可以旋轉視角（有角度限制），模式會記住",
+   "ok": true,
+   "detail": {
+    "out": [
+     {
+      "m": "follow",
+      "jump": 1,
+      "mode": "follow"
+     },
+     {
+      "m": "focus",
+      "jump": 0,
+      "mode": "focus"
+     },
+     {
+      "m": "free",
+      "jump": 0,
+      "mode": "free"
+     },
+     {
+      "m": "classic",
+      "jump": 0,
+      "mode": "classic"
+     }
+    ],
+    "yaw": 0.6835375779007943,
+    "saved": "free"
+   }
+  },
+  {
+   "name": "5c 旋轉後點角色仍然點得到（互動選單出現）",
+   "ok": true
+  },
+  {
+   "name": "執行中斷",
+   "ok": false,
+   "detail": "page.evaluate: Target page, context or browser has been closed\n    at /home/user/OC/game/tests/v8/run.js:137:28"
   }
  ]
 }
