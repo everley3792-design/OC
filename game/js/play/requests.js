@@ -83,8 +83,8 @@
         why ? h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, why) : null,
         r.state === 'active' ? h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '6px' } }, howText(r)) : null));
       const btns = h('div.vstack', { style: { gap: '8px', marginTop: '12px' } });
-      if (r.state === 'offer') btns.append(h('button.btn.primary.block', { on: { click: () => { api.close(); answer(r.id, 'accept'); } } }, icon('heart', 's'), '好啊，交給我！'),
-        h('div.hstack', null, h('button.btn.block', { on: { click: () => { api.close(); answer(r.id, 'later'); } } }, '等一下'), h('button.btn.ghost.block', { on: { click: () => { api.close(); answer(r.id, 'decline'); } } }, '這次不行')));
+      if (r.state === 'offer') btns.append(h('button.btn.primary.block', { on: { click: () => { api.close(); answer(r.id, 'accept'); } } }, icon('heart', 's'), '答應牠'),
+        h('div.hstack', null, h('button.btn.block', { on: { click: () => { api.close(); answer(r.id, 'later'); } } }, '晚點再說'), h('button.btn.ghost.block', { on: { click: () => { api.close(); answer(r.id, 'decline'); } } }, '這次不行')));
       else if (r.state === 'active') {
         const hb = helpButton(r, api); if (hb) btns.append(hb);
         btns.append(h('button.btn.ghost.block', { on: { click: async () => { const ok = await OC.UI.confirm('取消這個請求？', `${name(c)}已經答應了這件事。取消之後不會有獎勵，${OC.Chars.has(c, 'sensitive') ? '而且牠可能會有點失落。' : '牠大概會理解，但會記得。'}`, '取消請求', true); if (ok) { api.close(); cancel(r.id); } } } }, '取消這個請求'));

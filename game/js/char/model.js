@@ -144,7 +144,7 @@
     const p = PRESET_LOOKS()[key], c = blank('preset');
     Object.assign(c.look, clone(p)); delete c.look.name;
     c.profile.name = p.name; c.profile.species = p.ears === 'bunny' ? 'bunny' : p.ears === 'bear' ? 'bear' : 'cat';
-    const P = { mochi: [55, 60, 55, 60, 40, 45, ['cheerful', 'curious'], 'bouncy', 'wave', 'cute', '喵～'], kuri: [70, 80, 80, 85, 30, 75, ['outgoing', 'foodie'], 'bouncy', 'jump', 'energetic', '！'], sora: [30, 35, 25, 30, 70, 30, ['shy', 'bookworm'], 'tiptoe', 'shy', 'whisper', '…'] }[key] || [50, 50, 50, 50, 50, 50, [], 'normal', 'wave', 'casual', ''];
+    const P = { mochi: [55, 60, 55, 60, 40, 45, ['cheerful', 'curious'], 'bouncy', 'wave', 'casual', ''], kuri: [70, 80, 80, 85, 30, 75, ['outgoing', 'foodie'], 'bouncy', 'jump', 'casual', ''], sora: [30, 35, 25, 30, 70, 30, ['shy', 'bookworm'], 'tiptoe', 'shy', 'polite', '']   /* 12.0: calmer default voices (the old 喵～ / ！ / … endings stay one tap away in the creator) */ }[key] || [50, 50, 50, 50, 50, 50, [], 'normal', 'wave', 'casual', ''];
     Object.assign(c.personality, { pace: P[0], energy: P[1], social: P[2], expression: P[3], thinking: P[4], speech: P[5], traits: P[6] });
     c.quirks.walk = P[7]; c.quirks.greet = P[8]; c.speech.style = P[9]; c.speech.ending = P[10]; c.speech.endingRate = 0.3;
     return c;

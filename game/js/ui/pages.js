@@ -201,6 +201,7 @@
     build(p, el) {
       const s = () => S().settings, set = (k, v) => { s()[k] = v; St.touch('settings', { k, v }); };
       p.theme = seg([['light', '淺色', 'sun'], ['dark', '深色', 'moon'], ['system', '跟隨系統', 'phone']], s().theme, (v) => app().setTheme(v));
+      p.style = seg([['refined', '雅緻'], ['toy', '玩具']], s().style === 'toy' ? 'toy' : 'refined', (v) => app().setStyle(v));
       p.perf = seg([['high', '高'], ['balanced', '平衡'], ['saver', '省電'], ['custom', '自訂']], s().perf, (v) => { set('perf', v); app().applyPerf(); p.refresh(p); });
       p.custom = h('div.vstack', { style: { marginTop: '10px' } });
       const c = () => s().custom, setC = (k, v) => { c()[k] = v; St.touch('settings'); app().applyPerf(); };
@@ -214,6 +215,7 @@
       const fileIn = h('input', { type: 'file', accept: 'application/json,.json', style: { display: 'none' }, on: { change: async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const txt = await f.text(); if (await confirm('匯入存檔', '目前的進度會被覆蓋，確定嗎？', '匯入', true)) { St.importJSON(txt); location.reload(); } } catch (err) { toast('匯入失敗：' + err.message, 'info'); } } } });
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
+        title('介面風格'), card(p.style, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '雅緻：低飽和、細線、小圓角（預設）。玩具：較圓潤、色彩鮮明、動態有彈性。')),
         title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
         title('世界'), card(h('button.btn.block', { on: { click: () => app().timePanel() } }, icon('clock', 's'), '時間與天氣…'), h('div.faint', { 'data-time-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } })),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),

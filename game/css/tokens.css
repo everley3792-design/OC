@@ -114,3 +114,38 @@
 @supports not (transition-timing-function: linear(0, 1)) {
   :root { --spring: cubic-bezier(.34, 1.4, .64, 1); --spring-soft: cubic-bezier(.22, 1.08, .36, 1); }
 }
+
+/* ================= 12.0 "雅緻" (refined) style — the default =================
+ * The same components, a calmer voice: desaturated palette, deep-indigo accent, small radii, hairlines instead of the moulded toy lip,
+ * a quieter shadow, system CJK type, no overshoot in the motion. "玩具" (the 10.0 look) stays available in Settings › 介面風格. */
+html[data-style="refined"] {
+  --font-ui: system-ui, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-num: system-ui, "Noto Sans TC", sans-serif;
+  --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-xl: 20px;
+  --lip: transparent; --lip-strong: transparent; --hl: inset 0 0 0 0 transparent; --accent-lip: transparent; --teal-lip: transparent; --sun-lip: transparent;
+  --toy: 0 0 0 1px var(--line), var(--shadow-1); --toy-2: 0 0 0 1px var(--line), var(--shadow-2);
+  --spring: var(--ease-out); --spring-soft: var(--ease-out); --ease-pop: var(--ease-out); --t-spring: 340ms;
+}
+html[data-style="refined"]:root:not([data-theme="dark"]) {
+  --bg: #F3F3F6; --surface: #FFFFFF; --surface-2: #EFEFF3; --surface-3: #E2E2E9; --glass: rgba(255, 255, 255, .88); --hud-glass: rgba(255, 255, 255, .86);
+  --ink: #25252E; --ink-2: #63637A; --ink-3: #A2A2B3; --line: rgba(30, 30, 55, .09); --line-strong: rgba(30, 30, 55, .18);
+  --shadow-1: 0 1px 2px rgba(25, 25, 50, .06), 0 4px 14px rgba(25, 25, 50, .06); --shadow-2: 0 6px 20px rgba(25, 25, 50, .12), 0 1px 3px rgba(25, 25, 50, .08); --shadow-3: 0 18px 48px rgba(25, 25, 50, .2);
+  --accent: #565BC4; --accent-soft: #E8E9F7; --alert: #E5545A; --coral: #E58A78; --coral-soft: #F8E7E3;
+  --teal: #2E9F86; --teal-soft: #DCF1EB; --sun: #D9A93A; --on-sun: #4F3B10; --sun-soft: #F6ECD3; --green: #6AB653; --blue: #5AA6D6; --purple: #8C78D8; --pink: #E08AA8; --heart: #D9667F;
+  --need-food: #E58A70; --need-energy: #E4AE4A; --need-mood: #E08AA8; --need-social: #5AA6D6; --need-clean: #5CB88C; --need-sleep: #8C78D8; --need-fun: #E69A55; --need-comfort: #C79E78; --need-interest: #2E9F86; --need-active: #6AB653;
+  --sky-top: #D4D7EA; --sky-mid: #E5E6F1; --sky-low: #F1EAEE; --cloud: #FBFBFD;
+}
+html[data-style="refined"][data-theme="dark"] {
+  --bg: #15161D; --surface: #20222C; --surface-2: #272A36; --surface-3: #323644; --glass: rgba(32, 34, 44, .9); --hud-glass: rgba(28, 30, 40, .86);
+  --ink: #ECECF3; --ink-2: #A9ABC0; --ink-3: #6F7289; --line: rgba(230, 230, 255, .09); --line-strong: rgba(230, 230, 255, .18);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .28); --shadow-2: 0 6px 18px rgba(0, 0, 0, .46);
+  --accent: #8E93E8; --accent-soft: #2D3052; --sun: #D9B04D; --sun-soft: #3E3A2C; --teal: #4DBEA3; --teal-soft: #1F3F3C; --heart: #E5809A; --coral-soft: #44303A;
+  --sky-top: #232638; --sky-mid: #1E2030; --sky-low: #262232; --cloud: #2C2F44;
+}
+/* a few hard-coded round shapes follow the style too */
+html[data-style="refined"] .tabbar { border-radius: 20px; } html[data-style="refined"] .tab, html[data-style="refined"] .tab-ink { border-radius: 14px; }
+html[data-style="refined"] .btn, html[data-style="refined"] .input, html[data-style="refined"] select.input { border-radius: var(--r-m); }
+html[data-style="refined"] .hud-plate { border-radius: 14px; } html[data-style="refined"] .hud-av { border-radius: 14px; }
+html[data-style="refined"] .rail-btn, html[data-style="refined"] .hud-rail .bag-fab, html[data-style="refined"] .hud-sq { border-radius: 14px; }
+html[data-style="refined"] .hud-time, html[data-style="refined"] .hud-quest { border-radius: 12px; }
+html[data-style="refined"] .sheet { border-radius: 20px 20px 0 0; }

@@ -428,6 +428,7 @@
       const auto = seg([['full', '完整'], ['lessSocial', '少社交'], ['fewerEvents', '少事件'], ['restricted', '限制'], ['paused', '暫停']], st.autonomy, (v) => { set('autonomy', v); p.refresh(p); });
       const R = st.romance, chars = Ch().all();
       el.replaceChildren(
+        T('對話語氣'), card(seg([['mature', '沉穩'], ['playful', '活潑']], st.tone === 'playful' ? 'playful' : 'mature', (v) => { set('tone', v); p.refresh(p); }), small(st.tone === 'playful' ? '角色們說話比較誇張、愛用語助詞。' : '角色們說話比較克制、具體，少用驚嘆號與語助詞（預設）。')),
         T('自主程度'), card(auto, small({ full: 'OC 會自己生活、社交、遇到事件。', lessSocial: '比較少主動找人聊天。', fewerEvents: '事件間隔拉長很多。', restricted: '只做吃飯、休息、睡覺等基本的事。', paused: '大家停下自主行動（需求仍會變化，你安排的活動仍會執行）。' }[st.autonomy])),
         T('細節'), card(
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),

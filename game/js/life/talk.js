@@ -110,6 +110,10 @@
     return D().LINES.filter((l) => !off.has(l.id)).concat((L.custom || []).filter((l) => !l.disabled));
   }
   const saidOf = (c) => (S().life.said[c.id] = S().life.said[c.id] || {});
+  /** 12.0 tone: with "沉穩" (default) the grown-up lines (flagged m) are preferred and the older exuberant ones (tildes, stacked
+   *  exclamations, baby particles) come up only now and then; "活潑" restores the old balance. Player-made lines are never touched. */
+  const CHILDISH = /[～〜♪♡♥耶啦囉嘿嘿嗚欸]|！{2,}|——！|好好(?:吃|玩|聽|看)|超(?:喜歡|可愛|好玩|開心)|(?:好|太)(?:開心|可愛)了|唷|喲/;
+  const toneW = (l) => (S().life.settings.tone === 'playful' || l.custom ? 1 : l.m ? 3 : CHILDISH.test(l.text) ? 0.18 : 1);
   /** choose a line of a category for speaker (→ listener). → { line, text } | null */
   function pick(cat, sp, ot, extra = {}) {
     const X = ctx(sp, ot, extra), gm = Sim().now(), said = saidOf(sp);
@@ -119,7 +123,7 @@
     if (fresh.length) pool = fresh; else pool = pool.slice().sort((a, b) => (said[a.id] || 0) - (said[b.id] || 0)).slice(0, 2);
     const vo = voice(sp), spec = (l) => 1 + 0.35 * (l.c ? Object.keys(l.c).filter((k) => k !== 'voice').length : 0) + (l.c && l.c.voice && [].concat(l.c.voice).includes(vo) ? 1.2 : 0);
     for (let tries = 0; tries < 4 && pool.length; tries++) {
-      const l = Sim().wpick(pool, (x) => (x.w || 1) * spec(x) * (x.char ? 4 : 1) * (x.prio || 1));
+      const l = Sim().wpick(pool, (x) => (x.w || 1) * spec(x) * (x.char ? 4 : 1) * (x.prio || 1) * toneW(x));
       const t = fill(l.text, X);
       if (t != null) { said[l.id] = gm; if (l.set) S().life.flags[l.set] = gm; if (l.unset) delete S().life.flags[l.unset]; return { line: l, text: t, X }; }
       pool = pool.filter((x) => x !== l);

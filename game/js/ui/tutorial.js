@@ -8,18 +8,19 @@
   const { h, icon } = OC.UI;
   const S = () => OC.Store.s, St = OC.Store, A = () => OC.App;
   const STEPS = [
-    { id: 'hello', say: '這裡就是我們的小島！我來教你怎麼跟我一起生活。', next: true },
-    { id: 'walk', say: '點一下地面，我就會走過去。', hint: '點地面', done: (e) => e === 'walk' },
-    { id: 'look', say: '用一根手指拖曳空地看看四周，兩根手指可以縮放。', hint: '拖曳或兩指縮放', done: (e) => e === 'cam:pan' || e === 'cam:zoom' || e === 'cam:rotate' },
+    { id: 'hello', say: '這裡是我們的島。我先帶你認識幾個基本操作。', next: true },
+    { id: 'walk', say: '點一下地面，我會走過去。', hint: '點地面', done: (e) => e === 'walk' },
+    { id: 'look', say: '用一根手指拖曳空地可以看看四周，兩指能縮放。', hint: '拖曳或兩指縮放', done: (e) => e === 'cam:pan' || e === 'cam:zoom' || e === 'cam:rotate' },
     { id: 'ring', say: '點我一下，會出現可以對我做的事。', hint: '點你的 OC', done: (e) => e === 'menu:open' },
-    { id: 'pet', say: '在我身上來回摸摸，我會很開心的。', hint: '在 OC 身上左右來回滑', done: (e) => e === 'touch:pet' },
-    { id: 'lift', say: '按住我拖一下，可以把我抱起來……輕一點喔！', hint: '按住 OC 拖曳，再放開', done: (e) => e === 'touch:land' },
-    { id: 'status', say: '點左上角我的頭像，可以看我現在的心情和需求。', hint: '左上角', target: '.hud-me', done: (e) => e === 'status:open' },
-    { id: 'time', say: '右上角是時間。你可以讓時間跟著現實走，或自己調。', hint: '右上角', target: '.hud-time', done: (e) => e === 'time:panel' },
-    { id: 'bag', say: '右下角是背包。把食物拖到我身上就能餵我。', target: '.bag-fab', next: true },
-    { id: 'tabs', say: '下面的分頁有角色、工坊、探索和日常。想認識更多朋友，也可以自己創造新的 OC。', target: '.tabbar', next: true },
-    { id: 'desk', say: '對了，在「日常 › 桌寵管理」，我還可以跑到你的手機桌面上陪你！', next: true, extra: ['去看看', () => OC.Pages.open('petcenter')] },
-    { id: 'bye', say: '就這樣！接下來我們就自由地過日子吧。', next: true, last: true },
+    { id: 'pet', say: '在我身上來回滑動，就是在摸我。力道和位置，我都感覺得到。', hint: '在 OC 身上左右來回滑', done: (e) => e === 'touch:pet' },
+    { id: 'lift', say: '按住我並拖曳，可以把我抱起來。放開時，請輕一點。', hint: '按住 OC 拖曳，再放開', done: (e) => e === 'touch:land' },
+    { id: 'status', say: '點左上角我的頭像，能看到我現在的狀態與需求。長按頭像，可以調整我的操控模式。', hint: '左上角', target: '.hud-me', done: (e) => e === 'status:open' },
+    { id: 'time', say: '頭像下方是時間。點開後，可以讓它跟著現實走，或自己調整。', hint: '右上角', target: '.hud-time', done: (e) => e === 'time:panel' },
+    { id: 'bag', say: '右上角的把手會展開背包、鏡頭與佈置。把食物拖到我身上，就能餵我。', target: '.rail-toggle', next: true },
+    { id: 'control', say: '預設我會自己生活，你下指令的時候，我會先聽你的。想讓我完全聽你的，或完全自己來，都可以隨時改。', next: true },
+    { id: 'tabs', say: '下方的分頁是角色、工坊、探索和日常。想認識更多人，可以自己創造新的 OC。', target: '.tabbar', next: true },
+    { id: 'desk', say: '另外，在「日常 › 桌寵管理」，我可以到你的手機桌面上待著。', next: true, extra: ['去看看', () => OC.Pages.open('petcenter')] },
+    { id: 'bye', say: '先到這裡。接下來，我們各自過日子吧。需要我的時候，叫我一聲。', next: true, last: true },
   ];
   let ui = null, off = [], cur = -1, pollT = 0;
 

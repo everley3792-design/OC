@@ -6,6 +6,7 @@
  *   5 no NPCs: no resident system, page, setting, drop target or daily quest is left; old saves drop the data and keep every character
  *   6 control modes: every character has its own mode (default semi); manual stays put, semi / auto live on their own; status card, HUD long-press sheet, settings
  *   7 minimal HUD: one tools handle, the mood row moved to the status card, a slim quest chip, icon-only bar (label on the active tab), dims when idle
+ *   8 voice & look: the grown-up tone is the default (the engine prefers the new lines, the childish ones become rare, 活潑 restores them), refined style is the default and switchable
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -190,6 +191,23 @@ const { check, wait } = H;
       await page.mouse.click(196, 500); await wait(page, 700);
       const awake = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
       check('7d 安靜幾秒後 HUD 自己淡出（讓出畫面），一碰就回來', +idle < 0.8 && +awake > 0.95, { idle, awake });
+    }
+
+    // ================= 8. voice and look =================
+    if (want(8)) {
+      await closeAll(); await quiet();
+      const t = await page.evaluate(() => {
+        const S = OC.Store.s, a = OC.Chars.all()[0], b = OC.Chars.all()[1], CH = /[～〜♪♡♥耶啦囉嘿嘿嗚欸]|！{2,}|——！|好好(?:吃|玩|聽|看)|超(?:喜歡|可愛|好玩|開心)|(?:好|太)(?:開心|可愛)了|唷|喲/;
+        const sample = (tone) => { S.life.settings.tone = tone; let m = 0, ch = 0, n = 0; const cats = ['greet', 'talk', 'share', 'compliment', 'comfort', 'invite', 'bye', 'chat_player', 'pet', 'call', 'solo_read', 'solo_rest'];
+          for (let i = 0; i < 400; i++) { S.life.said = {}; const r = OC.Talk.pick(cats[i % cats.length], a, i % 3 ? b : null); if (!r) continue; n++; if (r.line.m) m++; if (CH.test(r.text)) ch++; } return { n, mature: +(m / n).toFixed(2), childish: +(ch / n).toFixed(2) }; };
+        const mature = sample('mature'), playful = sample('playful'); S.life.settings.tone = 'mature';
+        const lines = OC.LifeData.LINES.filter((l) => l.m), cats = new Set(lines.map((l) => l.cat));
+        const tut = (OC.Tutorial && OC.Tutorial.STEPS ? OC.Tutorial.STEPS : []).map((x) => x.say || '');
+        return { mature, playful, newLines: lines.length, cats: cats.size, childishNew: lines.filter((l) => /～|！{2,}/.test(l.text)).length, defaults: S.life.settings.tone, tutBang: tut.filter((x) => /！/.test(x)).length };
+      });
+      check('8a 預設是沉穩語氣：新台詞（約 300 句、30 多個分類）占大多數，幼稚的用語（～、疊驚嘆號、語助詞）變得很少；切到「活潑」才回到舊的比例', t.newLines >= 280 && t.cats >= 30 && t.mature.mature >= 0.6 && t.mature.childish <= 0.1 && t.playful.childish > t.mature.childish * 2 && t.childishNew === 0 && t.defaults === 'mature', t);
+      const st = await page.evaluate(() => { const r = document.documentElement; const refined = r.dataset.style; const rm = getComputedStyle(r).getPropertyValue('--r-m').trim(), font = getComputedStyle(r).getPropertyValue('--font-ui').trim().slice(0, 12); OC.App.setStyle('toy'); const toy = { style: r.dataset.style, rm: getComputedStyle(r).getPropertyValue('--r-m').trim() }; OC.App.setStyle('refined'); const names = OC.Chars.all().map((c) => [c.speech.style, c.speech.ending]); return { refined, rm, font, toy, names, saved: OC.Store.s.settings.style }; });
+      check('8b 介面風格預設「雅緻」（小圓角、系統字體），可切到「玩具」再切回；預設範本的口癖不再是「喵～」', st.refined === 'refined' && st.rm === '12px' && st.toy.style === 'toy' && st.toy.rm === '18px' && st.saved === 'refined' && !st.names.some(([s2, e]) => s2 === 'cute' || /～/.test(e || '')), st);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

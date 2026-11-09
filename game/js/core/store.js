@@ -58,10 +58,10 @@
         ev: { last: {}, once: {}, lastAny: 0, log: [] },   // event engine bookkeeping (no repeats / duplicates)
         dlg: { custom: [], off: [], events: [] },          // player-made dialogue lines / events; disabled built-ins
         notices: [], log: [],
-        settings: { autonomy: 'full', travel: true, aspAuto: true, requests: true, playerAuto: false, deny: [], lockRel: false, growth: true, bubbles: true, romance: { enabled: false, adult: {}, forbid: [], fixed: {} } },
+        settings: { autonomy: 'full', tone: 'mature', travel: true, aspAuto: true, requests: true, playerAuto: false, deny: [], lockRel: false, growth: true, bubbles: true, romance: { enabled: false, adult: {}, forbid: [], fixed: {} } },
       },                   // import log {at, kind, name, n, ok, msg}
       settings: {
-        theme: 'system', perf: 'balanced', custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
+        theme: 'system', style: 'refined', perf: 'balanced', custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
         time: 'real', timeSpeed: 1, weather: 'auto', control: 'tap', haptics: true, showFps: false, reduceMotion: false, petScale: 1,
         sound: { on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8 },
       },

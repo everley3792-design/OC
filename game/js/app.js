@@ -15,7 +15,10 @@
   const mq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
   let nativeSysDark = null;
   function sysDark() { if (nativeSysDark != null) return nativeSysDark; try { if (NATIVE) return NATIVE.isSystemDark(); } catch (e) { /* */ } return mq ? mq.matches : false; }
-  function applyTheme() { const m = S().settings.theme, dark = m === 'dark' || (m === 'system' && sysDark()); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }
+  /** 12.0 interface style: 'refined' (default) or 'toy' (the 10.0 look) */
+  function applyStyle() { document.documentElement.dataset.style = S().settings.style === 'toy' ? 'toy' : 'refined'; }
+  function setStyle(v) { S().settings.style = v === 'toy' ? 'toy' : 'refined'; St.touch('settings'); applyStyle(); }
+  function applyTheme() { const m = S().settings.theme, dark = m === 'dark' || (m === 'system' && sysDark()); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; applyStyle(); }
   function setTheme(mode) { S().settings.theme = mode; St.touch('settings'); applyTheme(); if (NATIVE) try { NATIVE.setThemeMode(mode); } catch (e) { /* */ } }
   if (mq && mq.addEventListener) mq.addEventListener('change', applyTheme);
 
@@ -128,7 +131,7 @@
   }
   /** the HUD also dims after a few quiet seconds (never while a card or menu is open) */
   let idleT = 0;
-  function hudAwake() { const el = $('#hud'); if (!el) return; el.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if (!statusEl && !OC.UI.stack.length && !hud.rail.classList.contains('open')) el.classList.add('idle'); else hudAwake(); }, 6000); }
+  function hudAwake() { const el = $('#hud'); if (!el) return; el.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if (hud.rail && !statusEl && !OC.UI.stack.length && !hud.rail.classList.contains('open')) el.classList.add('idle'); else hudAwake(); }, 6000); }
   document.addEventListener('pointerdown', () => hudAwake(), true);
   /** while the player pans / zooms the island the HUD steps back (more of the world, less chrome) */
   function hudCalm() { const el = $('#hud'); if (!el) return; el.classList.add('calm'); clearTimeout(calmT); calmT = setTimeout(() => el.classList.remove('calm'), 1100); }
@@ -1001,6 +1004,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { rail, setStyle, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();
