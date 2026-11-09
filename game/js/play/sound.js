@@ -17,6 +17,10 @@
   // a slow frame must not leave the counter stuck at the cap
   const hold = (end) => { liveEnds.push(end); if (liveEnds.length > 48) liveEnds = liveEnds.filter((e) => e > ctx.currentTime); };
   const nv = () => { if (!ctx) return 0; const n = ctx.currentTime; if (liveEnds.length) liveEnds = liveEnds.filter((e) => e > n); return liveEnds.length; };
+  // the music has its own pool: a busy arrangement must never use up the voices that characters and effects need (speech is dropped otherwise)
+  let musicEnds = [];
+  const holdM = (end) => { musicEnds.push(end); if (musicEnds.length > 48) musicEnds = musicEnds.filter((e) => e > ctx.currentTime); };
+  const nvM = () => { if (!ctx) return 0; const n = ctx.currentTime; if (musicEnds.length) musicEnds = musicEnds.filter((e) => e > n); return musicEnds.length; };
   const last = {};
   const cfg = () => Object.assign({ on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8, music: 0.45, voice: 0.6 }, S().settings.sound || {});
 
@@ -308,14 +312,14 @@
     indoor: { bpm: 88, root: 60, scale: [0, 2, 4, 5, 7, 9, 11], chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [2, 5, 9, 12], [-5, -1, 2, 5]], lead: 'piano', pad: 0.035, density: 0.5 },
   };
   function voice(kind, f, t, d, v) {
-    if (!ctx || nv() > 22) return;
+    if (!ctx || nvM() > 26) return;
     const g = ctx.createGain(), o = ctx.createOscillator(); g.connect(mfade);
     if (kind === 'pad') { o.type = 'triangle'; const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 1.004; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; o.connect(lp); o2.connect(lp); lp.connect(g); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + d * 0.35); g.gain.linearRampToValueAtTime(0.0001, t + d); o2.start(t); o2.stop(t + d + 0.05); }
     else { o.type = kind === 'bell' || kind === 'box' ? 'sine' : kind === 'piano' ? 'triangle' : 'sine'; o.connect(g);
       const h2 = ctx.createOscillator(), g2 = ctx.createGain(); h2.type = 'sine'; h2.frequency.value = f * (kind === 'bell' ? 2.76 : kind === 'box' ? 4 : 2); g2.gain.value = kind === 'pluck' ? 0.25 : 0.18; h2.connect(g2); g2.connect(g); h2.start(t); h2.stop(t + d + 0.05);
       const dec = kind === 'bell' || kind === 'box' ? d * 1.6 : kind === 'piano' ? d * 1.2 : d * 0.8;
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); }
-    o.frequency.value = f; o.start(t); o.stop(t + d * 1.7 + 0.1); hold(t + d * 1.7 + 0.1);
+    o.frequency.value = f; o.start(t); o.stop(t + d * 1.7 + 0.1); holdM(t + d * 1.7 + 0.1);
   }
   function makeMotif(m) { const out = []; let deg = Math.floor(Math.random() * m.scale.length); for (let i = 0; i < 16; i++) { if (Math.random() > m.density) { out.push(null); continue; } deg = Math.max(0, Math.min(m.scale.length * 2 - 1, deg + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)])); out.push(deg); } if (out.every((x) => x == null)) out[0] = 0; return out; }
   function degNote(m, deg) { const n = m.scale.length; return m.root + 12 + m.scale[deg % n] + 12 * Math.floor(deg / n); }
@@ -344,8 +348,8 @@
   let intLock = 0;
   /** `holdMs` keeps this level against the app's own mood-based updates for that long (a performance, a party) */
   function setIntensity(i, holdMs) { const now = performance.now(); if (!holdMs && now < intLock) return; if (holdMs) intLock = now + holdMs; intensity = Math.max(0, Math.min(2, i | 0)); }
-  function perc(t, v) { if (!ctx || nv() > 22) return; stats.perc++; const s2 = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); s2.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.05); s2.connect(hp); hp.connect(g); g.connect(mfade); s2.start(t, Math.random()); s2.stop(t + 0.07); hold(t + 0.07); }
-  function kick(t) { if (!ctx || nv() > 22) return; stats.kick++; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.16); o.connect(g); g.connect(mfade); o.start(t); o.stop(t + 0.18); hold(t + 0.18); }
+  function perc(t, v) { if (!ctx || nvM() > 26) return; stats.perc++; const s2 = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); s2.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.05); s2.connect(hp); hp.connect(g); g.connect(mfade); s2.start(t, Math.random()); s2.stop(t + 0.07); holdM(t + 0.07); }
+  function kick(t) { if (!ctx || nvM() > 26) return; stats.kick++; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.16); o.connect(g); g.connect(mfade); o.start(t); o.stop(t + 0.18); holdM(t + 0.18); }
   /** a short phrase in the key of the current music: 'win' (up), 'warm' (settles), 'wonder' (sparkle) */
   function stinger(kind) {
     if (!ctx || !unlocked || !cfg().on || document.hidden) return;
@@ -375,5 +379,5 @@
     document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('button, .row.tap, .tile, .chip-btn, [role="tab"]'); if (t && !t.disabled) play(t.closest('.tabbar') ? 'tab' : 'tap'); }, true);
     OC.Store.on('coins', (e) => { if (e && e.d > 0) play('coin'); });
   }
-  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, ACT_SND, get intensity() { return intensity; }, get stats() { return stats; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
+  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, ACT_SND, get intensity() { return intensity; }, get stats() { return stats; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get musicVoices() { return nvM(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
 })();

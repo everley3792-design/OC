@@ -77,7 +77,10 @@
     if (t.lifted) { t.lx = p.x; t.ly = p.y; hold(dp, p, now); return; }
     const dtm = Math.max(8, now - (t.lastSample || now - 16)); t.lastSample = now;
     const speed = dist / (dtm / 1000);                        // px/s
-    const zi = zoneAt(t.a, p); t.inBox = zi.inside; t.zone = zi.z;
+    // the body part is told from the finger's recent centre (≈160 ms smoothing), not from each raw sample: rubbing back and
+    // forth across a boundary (the character is only ~1 cm tall on a phone) keeps the part you are mostly on
+    const zi = zoneAt(t.a, p); t.inBox = zi.inside;
+    { const k = 1 - Math.exp(-dtm / 160); t.sx = t.sx == null ? p.x : t.sx + (p.x - t.sx) * k; t.sy = t.sy == null ? p.y : t.sy + (p.y - t.sy) * k; t.zone = zi.inside ? zoneAt(t.a, { x: t.sx, y: t.sy }).z : zi.z; }
     if (Math.abs(dxs) > 4) { const s = Math.sign(dxs); if (t.dirS && s !== t.dirS) t.rev++; t.dirS = s; }
     t.dirTarget = clamp(zi.dx * 2.2, -1, 1);                    // which side of the body the finger is on → the OC leans toward it
     if (zi.inside && dist > 0.5) {

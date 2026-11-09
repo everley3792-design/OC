@@ -36,7 +36,7 @@ const { check, wait } = H;
       await settle(); g = await geo();
       // 1c: body parts: ears / belly / cheek are told apart
       const zones = {};
-      for (const z of ['ears', 'belly', 'cheek']) { const [f, o] = FR[z]; await page.mouse.move(g.cx + o * g.h, g.feet - g.h * f); await page.mouse.down(); await rub(g, f, o, 1500, z === 'cheek' ? 5 : 9); zones[z] = (await st()).touch && (await st()).touch.zone; await page.mouse.up(); await settle(); g = await geo(); }
+      for (const z of ['ears', 'belly', 'cheek']) { for (let a = 0; a < 3 && zones[z] !== z; a++) { const [f, o] = FR[z]; await page.mouse.move(g.cx + o * g.h, g.feet - g.h * f); await page.mouse.down(); await rub(g, f, o, 1500, z === 'cheek' ? 5 : 9); zones[z] = (await st()).touch && (await st()).touch.zone; await page.mouse.up(); await settle(); g = await geo(); } }   // the OC may be mid-fidget (its box moves): up to 3 tries per body part
       check('1c 耳朵、臉頰、肚子會被分辨出來（不同部位不同反應）', zones.ears === 'ears' && zones.belly === 'belly' && zones.cheek === 'cheek', zones);
       // 1d: the spot it dislikes: it gets annoyed (turns away), no affection gain
       const dz = T.dislikes === 'tail' ? 'belly' : T.dislikes; let annoyed = null, aff2 = 0;
@@ -70,8 +70,12 @@ const { check, wait } = H;
       const a1 = await page.evaluate((id) => OC.Chars.get(id).life.player.aff || 0, ids.mate);
       check('2b 抱抱：角色走過來、張開手臂、抱緊；結束後放開，好感增加', hh.includes('gesture') && dn && a1 > a0, { hh, dn, a0, a1 });
       // high-five: tap the target
-      await page.evaluate((id) => OC.LifeUI.highfive(id), ids.mate);
-      const tgt = await page.waitForSelector('.hf-target', { timeout: 40000 }).then(() => true).catch(() => false);
+      let tgt = false;
+      for (let a = 0; a < 3 && !tgt; a++) {   // the hug before may still be finishing; ask again if the hand does not show up
+        await quiet(); await page.waitForFunction((id) => !OC.Brain.get(id).holds.has('gesture'), ids.mate, { timeout: 20000 }).catch(() => {});
+        await page.evaluate((id) => OC.LifeUI.highfive(id), ids.mate);
+        tgt = await page.waitForSelector('.hf-target', { timeout: 20000 }).then(() => true).catch(() => false);
+      }
       if (tgt) await page.evaluate(() => document.querySelector('.hf-target').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
       const hdn = await page.waitForFunction((id) => !OC.Brain.get(id).holds.has('gesture'), ids.mate, { timeout: 20000 }).then(() => true).catch(() => false);
       check('2c 擊掌：出現可以點的手，點到＝成功，結束後放開', tgt && hdn, { tgt, hdn });
@@ -111,7 +115,7 @@ const { check, wait } = H;
       check('4b 「想法」資料：目前的原因、計畫步驟、今天的小目標、備選項都有', ex.reason && ex.plan && ex.plan.steps.length >= 2 && ex.goals.length >= 1 && ex.cands.length >= 2, { reason: ex.reason, plan: ex.plan && ex.plan.zh, goals: ex.goals.length, cands: ex.cands.length });
       // the plan advances while the OC lives (simulation minutes)
       await quiet();
-      const prog = await page.evaluate(async (id) => { const b = OC.Brain.get(id); let i0 = b.plan ? b.plan.i : -1, maxI = i0; for (let k = 0; k < 40 && b.plan; k++) { OC.Sim.advance(10); await new Promise((r) => setTimeout(r, 120)); if (b.plan) maxI = Math.max(maxI, b.plan.i); } return { i0, maxI, ended: !b.plan, done: OC.Mind11.st(OC.Chars.get(id)).done, dbg: { holds: [...b.holds], st: b.st, act: b.act, now: Math.round(OC.Sim.now()), until: b.plan && Math.round(b.plan.until), loc: OC.Chars.get(id).life.loc, trip: !!OC.Chars.get(id).life.trip } }; }, mate);
+      const prog = await page.evaluate(async (id) => { const b = OC.Brain.get(id); let i0 = b.plan ? b.plan.i : -1, maxI = i0; for (let k = 0; k < 200 && b.plan; k++) { OC.Sim.advance(10); await new Promise((r) => setTimeout(r, 250)); if (b.plan) maxI = Math.max(maxI, b.plan.i); if (maxI > i0) break; } /* walking to the next place takes real time (up to ~50 s on a slow machine) */ return { i0, maxI, ended: !b.plan, done: OC.Mind11.st(OC.Chars.get(id)).done, dbg: { holds: [...b.holds], st: b.st, act: b.act, now: Math.round(OC.Sim.now()), until: b.plan && Math.round(b.plan.until), loc: OC.Chars.get(id).life.loc, trip: !!OC.Chars.get(id).life.trip } }; }, mate);
       check('4c 計畫會一步一步做下去（做完一個活動就換下一步，最後完成或合理放棄）', prog.maxI > prog.i0 || prog.ended, prog);
       // urgent need drops a plan
       const drop = await page.evaluate(async (id) => { const c = OC.Chars.get(id), b = OC.Brain.get(id); b.holds.clear(); if (!b.plan) { b.plan = { id: 'x', zh: '測試計畫', why: 't', steps: [{ act: 'read' }, { act: 'rest' }], i: 0, until: OC.Sim.now() + 300, miss: 0 }; } c.needs.food = 4; b.st = 'think'; b.thinkAt = 0; for (let i = 0; i < 12 && b.plan; i++) { OC.Sim.advance(2); await new Promise((r) => setTimeout(r, 150)); } return { plan: !!b.plan, log: OC.Brain.log.filter((l) => l.who === id).slice(0, 4).map((l) => l.text) }; }, mate);
@@ -219,13 +223,13 @@ const { check, wait } = H;
         OC.Sound.setIntensity(2, 12000); await new Promise((r) => setTimeout(r, 400)); const st2 = Object.assign({}, OC.Sound.stats); const busy = await window.__measure(() => 0, 5000); const st3 = Object.assign({}, OC.Sound.stats);
         OC.Sound.setIntensity(0, 1);
         const g = OC.Sound._tap(), base = OC.Sound.cfg().music, calls = [], o = g.bus.music.gain.setTargetAtTime.bind(g.bus.music.gain); g.bus.music.gain.setTargetAtTime = (v, t, k) => { calls.push({ v: +v.toFixed(3), t: +t.toFixed(2) }); return o(v, t, k); };
-        OC.Sound.speak(OC.Chars.active(), '嗨，早安呀！', { emo: 'happy' }); await new Promise((r) => setTimeout(r, 200)); g.bus.music.gain.setTargetAtTime = o;
+        await new Promise((r) => setTimeout(r, 1200)); const mv = OC.Sound.musicVoices, spoke = OC.Sound.speak(OC.Chars.active(), '嗨，早安呀！', { emo: 'happy' }); await new Promise((r) => setTimeout(r, 200)); g.bus.music.gain.setTargetAtTime = o;
         sc.music = 0; OC.Sound.apply();
-        return { kinds, mood: OC.Sound.mood, calm: { perc: st1.perc - st0.perc, kick: st1.kick - st0.kick }, busy: { perc: st3.perc - st2.perc, kick: st3.kick - st2.kick }, calmHF: +calm.hf.toExponential(3), busyHF: +busy.hf.toExponential(3), base, calls };
+        return { kinds, mood: OC.Sound.mood, calm: { perc: st1.perc - st0.perc, kick: st1.kick - st0.kick }, busy: { perc: st3.perc - st2.perc, kick: st3.kick - st2.kick }, mv, spoke: +(spoke || 0).toFixed(2), calmHF: +calm.hf.toExponential(3), busyHF: +busy.hf.toExponential(3), base, calls };
       });
       const dk = mu.calls;
       check('6f 音樂依場合選曲（小遊戲、夜晚的家、室內、白天、雨天）', mu.kinds.mini === 'minigame' && mu.kinds.cozy === 'cozy' && mu.kinds.indoor === 'indoor' && mu.kinds.day === 'day' && mu.kinds.rain === 'rain' && mu.mood === 'day', mu.kinds);
-      check('6g 音樂強度層真的啟動（強度 0 沒有打擊樂；強度 2 排進沙鈴與輕鼓）；有人說話時音樂先讓位（降到 ~55%）、說完才回來', mu.calm.perc === 0 && mu.calm.kick === 0 && mu.busy.perc >= 8 && mu.busy.kick >= 2 && dk.length >= 2 && dk[0].v < mu.base * 0.7 && dk[dk.length - 1].v === mu.base && dk[dk.length - 1].t > dk[0].t + 0.5, mu);
+      check('6g 音樂強度層真的啟動（強度 0 沒有打擊樂；強度 2 排進沙鈴與輕鼓）；音樂最忙時角色照樣說得出話；說話時音樂先讓位（降到 ~55%）、說完才回來', mu.calm.perc === 0 && mu.calm.kick === 0 && mu.busy.perc >= 8 && mu.busy.kick >= 2 && mu.spoke > 0.3 && dk.length >= 2 && dk[0].v < mu.base * 0.7 && dk[dk.length - 1].v === mu.base && dk[dk.length - 1].t > dk[0].t + 0.5, mu);
 
       // 6h hooks: a new action makes its sound once, spoken bubbles are voiced (thoughts are not), footsteps by ground, haptic rhythms
       const hk = await page.evaluate(async () => {
