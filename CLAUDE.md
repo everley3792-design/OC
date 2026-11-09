@@ -17,6 +17,7 @@
 - **10.0（0.10.0-alpha）美術與體驗重構**：「晴空玩具」Design System（白瓷玩具表面、長春花紫強調、珊瑚紅點、星空深色主題、計算出的彈簧動態）、原創貼紙圖示（`OC.UI.sticker`）、依參考圖重排的 HUD（頭像名牌、天氣膠囊、系統鍵、右側工具列、任務卡、互動鈕、白色大導覽列）、頁首雲邊天空、分類貼紙鈕、世界調色（暖主光／冷天光、金色午後、光暈、景深）、角色玩具光影、跳躍預備／回彈。規格：`docs/design-system.md`；紀錄：`docs/v10-report.md`。
 - **10.1（0.10.1-alpha）**：修正「互動後角色卡住」（遺失的放開手勢、被取代的對話、沒回答的事件提問，加上保留的安全網）、環狀選單改成連續動作、多面體植物、逐頁打磨。驗收：`node game/tests/v10/run.js`。紀錄：`docs/v10-report.md` 後半。
 - **11.0（0.11.0-alpha）互動與生命感重做**：真正的滑動撫摸（依手指速度／身體部位／個體喜好連續累積，不是點一下）、親近環（抱抱、擊掌、戳、牽手）、`OC.Anim11` 107 個資料驅動動作（姿勢間 0.2 秒柔和過渡、情緒小動作、觸摸層）、`OC.Mind11` 多步計畫／每日目標／對他人的認知／可解釋的「想法」、`OC.Social11` 10 種雙人互動（各有互補動畫）、創角舞台（轉盤、點部位）與誕生演出、角色聲線（每個 OC 一種、隨心情改變）／立體聲定位／動作與腳步音效／音樂強度層／分層觸覺節奏、世界觸控回饋（點地面波紋、點樹搖晃落葉、跑步揚塵）、桌寵多 10 個小動作。驗收：`node game/tests/v11/run.js`。紀錄與未驗證項目：`docs/v11-report.md`。
+- **12.0（0.12.0-alpha）修正與成熟化**：修掉純文字格的灰色圓底座與作息輸入框重疊、請求可取消、技能頁與地圖重新設計、**去除 NPC（只用玩家自己的角色）**、極簡 HUD（工具把手＋小膠囊、導覽列只有圖示、閒置淡出）、**每個角色各自的操控模式（手動／半自動（預設）／全自動），狀態卡、長按 HUD 頭像、生活設定都能切換**、成熟語氣（`lines12.js` 約 480 句、預設「沉穩」；「活潑」回到舊的）與預設「雅緻」介面風格、`OC.Arcs`（情緒感染、冷戰→解凍→和解／疏遠、三人以上的聚會）、桌寵自己的聲音（`OC.PetSound` ＋ 原生 `PetSounds` ＋ core `PetSound`）與雙人桌面動作（`PetSocial.KINDS`）、`OC.Sound.cue`（過場短句接到真實事件）、3D 的接觸陰影／房間布置（`OC.Dress`）／重新建模的家具（`models12.js`）。**3D 只做了一部分：房屋、樹木、岩石的造型沒有重新建模。** 驗收：`node game/tests/v12/run.js`。紀錄（問題→原因→修正→驗證＋未驗證項目）：`docs/v12-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -26,7 +27,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
-  js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（居民/任務/成就/目標規則）
+  js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（任務/成就/目標規則；12.0 起沒有居民）
   js/life/            data.js（需求/情緒/活動/社交/習慣規則/台詞/事件資料）sim.js（固定步長排程器＋遊戲時鐘＋離線補算）mind.js（需求/情緒/回憶/紀錄/關係/願望/技能/作息/成長）
                       talk.js（對話引擎）brain.js（Utility AI、活動狀態機、可供性/預約、社交編排、分層模擬）events.js（事件生命週期）
   js/art/             vec.js vchar.js（第二階段 rig，NPC 圖示仍用）rig.js（擴充 rig：比例、五官、部件錨點）style.js（物品目錄、預設外觀）
@@ -44,6 +45,9 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/life/lines8.js   8.0 台詞（資料）  events9.js（0.9 事件與台詞，資料）
   js/world/ambient.js OC.Ambient（蝴蝶、鳥群、跳魚；純視覺）
   js/char/anim11.js   OC.Anim11（11.0 資料驅動動作庫、觸摸層、情緒小動作 fidget；render.js 的預設分支呼叫它）
+  js/life/lines12.js  12.0 成熟語氣台詞（資料，`m:true`；約 480 句／141 分類）  arcs12.js（OC.Arcs：情緒感染、冷戰、三人以上聚會）
+  js/world/models12.js 重新建模的家具（同 id、同占地；書依顏色合併）  dress12.js（OC.Dress：畫框、地毯、窗光、小燈串、商店街花圃；純視覺）
+  js/pet/petsound.js  OC.PetSound（用角色自己的聲線離線合成 14 個 WAV，交給原生）
   js/life/mind11.js   OC.Mind11（計畫、每日目標、對他人的認知、想法說明）  social11.js（OC.Social11 雙人互動種類）  lines11.js（11.0 台詞，資料）
   js/play/            content.js（OC.PlayData：任務、挑戰、請求、技能解鎖、人生目標、稱號、成就、紀念品、新台詞）progress.js（OC.Progress 唯一進度事件）
                       quests.js（OC.Quests）achieve.js（OC.Achieve）growth.js（OC.Growth 技能解鎖／人生目標／稱號）requests.js（OC.Requests 角色請求）
@@ -52,6 +56,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
+  tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
   tests/v11/          run.js：11.0 驗收 1–7（撫摸、親近環、動作庫、AI 計畫、雙人互動、音訊、世界觸控回饋；音訊用音訊執行緒上的錄音節點量測）
   tests/pet/          run.js + mock-native.js：第七階段（桌寵的遊戲端：狀態、權限、影格輸出、多隻、同步、台詞、App 情境、工具、備份、重開、瀏覽器版）
   tests/fixtures/     匯入測試素材（PNG 序列、GIF、APNG、WebP、Sprite Sheet、ZIP、損壞檔；不打包進 APK）
@@ -71,12 +76,13 @@ node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
 node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC、操控模式、極簡 HUD、成熟語氣、冷戰與聚會、過場短句、3D（約 25 分鐘）
 node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
 node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（39 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（54 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.11.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.12.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -88,7 +94,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **10.0 Design System**（`docs/design-system.md`）：表面一律「白瓷＋模具邊」（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（長春花紫）＝可按／已選取，`--alert`＝紅點／新東西，`--sun`＝星幣／獎勵；按下用 `--t-press` 下沉、放開用 `--spring` 彈回，大面積（頁面、表單）用 `--spring-soft`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`（原創、48 格、左上光源），小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。
 - 世界調色（`html.grade`、`html.dof`、`--glow-*`）由效能模式決定：高＝調色＋景深、平衡＝調色、省電＝都關；景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
 - 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個操作元件（名牌、天氣時間、右側工具列 3 個、任務卡；通知鈴只在有通知時出現；導覽列另計），不要在 HUD 重複已有的入口（設定在「日常」、互動＝點你的 OC）。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
-- **新遊戲不得自動加入玩家沒選的角色**：居民（`world.residents`）預設關閉；角色只由玩家建立、匯入或明確加入。
+- **新遊戲不得自動加入玩家沒選的角色**：角色只由玩家建立、匯入或明確加入（12.0 起連居民／NPC 系統都已移除）。
 - 開場／教學：自動化測試設 `localStorage['oc.skipIntro']='1'`（harness 預設）；`OC.Intro`、`OC.Tutorial` 的進度存在 `S.intro`。教學步驟必須由真實事件完成（`St.emit('menu:open' | 'touch:pet' | 'touch:land' | 'status:open' | 'time:panel' | 'cam:*')`）。
 - 角色觸碰走 `OC.Touch`（World 的 claim 掛鉤）：手指落在角色上就屬於角色，不移動鏡頭；放開後一定落在可走地面；資料變化只經既有 API（`LifeUI.pet`、`Brain.hold`、`Mind.feel`）。
 - 說話一律經 `OC.Chars.speak(c, text, {to, emo, cat, rnd})`；不要在程式裡直接加口癖或口頭禪。
@@ -154,6 +160,15 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **11.0 觸覺**：節奏用 `OC.UI.haptic('purr'|'heartbeat'|'giggle'|'melt')`（Android 上拆成連續的系統回饋常數，仍受系統觸覺設定控制；網頁版是單一 vibrate 圖案）。關閉觸覺設定＝完全不震動。
 - **11.0 世界回饋**：點樹／灌木／花叢（`ctx.sway` 登記的物件）＝搖晃＋落葉（`World.shakeAt/shake`），不會讓 OC 走過去；粒子（葉、灰塵）只用兩個池化的 InstancedMesh（多 2 個 draw call），省電模式／減少動態時不產生粒子；點地面的波紋在點下去的當下就定位（不等下一幀）。
 - **測試期間不得修改 `game/`**：測試頁面重載時會讀到半途改動的檔案，結果會被污染（0.11 的教訓）；軟體渲染約 2 fps，條件用「等到成立」而不是固定等待。
+
+- **12.0 無 NPC**：沒有居民系統；所有社交、關係、請求都只涉及玩家自己建立／匯入的角色。存檔載入／匯入時刪除 `npcs`，不要再加回來。
+- **12.0 操控模式**：每個角色一個 `c.life.control`（`manual`／`semi`（預設）／`auto`），只經 `OC.Brain.setControl(id, mode)` 改；`Brain.manualMode(b)` 為真時 AI 不挑活動、不被邀請（`Mind11.shape`、`Arcs` 的聚會也跳過）。新的互動保留要能在切換模式時被放開。測試 harness 預設把角色設成手動。
+- **12.0 語氣與風格**：新台詞只加到 `lines12.js`（資料，短、具體、不用波浪號與疊驚嘆號；`m:true`），由 `Talk.toneW` 依 `life.settings.tone`（`mature` 預設／`playful`）加權；介面風格是 `html[data-style]`（`refined` 預設／`toy`），新元件仍只用 tokens，兩種風格都要能用。
+- **12.0 OC.Arcs**：所有邏輯跑在 `Sim.onStep`（遊戲分鐘）；聚會的保留用 `'group'`，結束／被打斷／超時／看門狗（`MAX_AGE.group`）都要放開所有人；冷戰只影響 AI 分數與邀請回應，**不自動改關係類型**；玩家固定（`fixed`）的關係與 `lockRel` 不被捲入；沒有獎勵、不送進度事件。`Mind.relPair` 是唯一改關係的入口。
+- **12.0 過場短句**：只用 `OC.Sound.cue(名稱)`（`Sound.CUES` 一張表、3 秒冷卻、離線補算與音效關閉時不響）；新事件加進表，不要直接呼叫 `stinger`。
+- **12.0 桌寵聲音**：遊戲只負責「做出這個角色自己的 14 個 WAV」（`OC.PetSound.CLIPS` 必須和 `core/pet/PetSound.kt` 的 `CLIPS` 完全一致，pet 測試 16a 會讀 Kotlin 檔比對）；播哪一個、何時播由 `PetSound`（純 Kotlin、單元測試）決定；預設關閉；原生只用 `SoundPool`，靜音／通話／螢幕關閉不出聲；不得加外部音檔。
+- **12.0 雙人桌面動作**：新的種類加在 `PetSocial.KINDS`（每個動畫必須在 `PetBrain.ANIMS` 與 `OC.PetSync.ANIMS`，台詞分類在 `LINE_CATS`）；兩隻都在地板上才開始、被抓起／跳起就取消；效果只經遊戲的 `meet` 處理（每對每天一次、不計入任務）。
+- **12.0 3D**：放在地面的東西經 `OC.Areas._h.place`（自動接觸陰影，一個地點一個 InstancedMesh；不要讓房間外殼有接觸陰影：`userData.noContact`）；純視覺的布置寫在 `OC.Dress`（不得蓋住可走區域，角落物件要 `ctx.block`）；重新建模的家具在 `models12.js`，**同 id、同占地**，大量小件要合併（`boxes()`）；雲影只在室外。
 
 ## 環境限制（實測）
 - 無法連線 `dl.google.com` / Google Maven → 無法用 AGP / 下載 Android SDK；改用離線管線（`docs/android-build.md`）。

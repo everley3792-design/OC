@@ -89,3 +89,13 @@ OC.LifeUI (ui/lifeui.js) 互動選單、通知、檔案分頁、設定、對話�
 
 ## 自主程度
 完整／少社交／少事件／限制（只做基本生活）／暫停（玩家安排的仍會執行），以及「不做的活動」清單、鎖定關係自動變化、關閉成長建議、關閉自言自語泡泡。
+
+## 12.0：操控模式與 `OC.Arcs`
+
+**操控模式**：`c.life.control` ∈ `manual`／`semi`（預設）／`auto`；`Brain.setControl(id, mode)` 是唯一入口，`Brain.manualMode(b)` 為真時 AI 不挑活動（只處理急迫需求）、不被邀請、不參加聚會。半自動：自己生活，玩家下指令或碰牠時先聽玩家的（有讓步時間窗，之後自己接手）；全自動：只有玩家親手帶牠走時才停。
+
+**`OC.Arcs`**（`js/life/arcs12.js`，全部跑在 `Sim.onStep`）
+- 情緒感染：每 12 遊戲分鐘，強度 ≥ 0.45 的情緒傳給 120 px 內的人（親近度、個性、對方本來的情緒加權；每種情緒每對冷卻 45 分鐘）。
+- 冷戰：每 30 遊戲分鐘檢查；衝突 ≥ 38 且熟悉 ≥ 18、不是對手／戀人／伴侶／自訂、沒有 `fixed`、不在 `lockRel` → 進入 `cold`（2–4 天）：`Arcs.shape` 把對方的社交候選分數 ×0.08（道歉除外）、`Brain.Social.respond` 拒絕邀請、擦身而過尷尬；時間到 → `thaw`；之後經道歉（`Arcs.onSocial`）、共同朋友調解（聚會 `mediation`）、玩家（`Arcs.mediate`，4 遊戲小時冷卻）、或時間（1 天後依個性機率）→ `reconciled`（衝突 −30、信任 +8、好感 +8、有回憶）；三次沒成功 → `drifted`（好感 −6、親密 −3）。和好後 3 天內不再開始新的冷戰。
+- 聚會 `Arcs.gather(kind, ids)`：`circle`、`meal`、`photo`、`mediation`；3–4 人，每人 `Brain.hold(id, 'group')`；走到位置 → 輪流說話與反應；結束／有人離開畫面／超過 80 秒都 `unhold` 全部；`MAX_AGE.group = 120 s` 是看門狗。自動聚會只在「全自主」、且每次 20 遊戲分鐘 20% 機率、聚會後冷卻 240 遊戲分鐘。沒有獎勵、不送進度事件。
+- 資料：`life.arcs = { rifts, cd, gcd, n }`；台詞分類 `rift_cold`、`rift_sorry`、`rift_forgive`、`rift_refuse`、`med_open`、`group_open`、`group_talk`、`group_react`、`meal_open`、`meal_talk`、`photo_count`、`photo_done`（`lines12.js`）。

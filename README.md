@@ -2,9 +2,16 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.11.0-alpha（11.0 互動與生命感重做）
+## 目前版本 0.12.0-alpha（12.0 修正與成熟化）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.11.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.11.0-alpha-debug.apk)（Android 8.0+，targetSdk 35，可覆蓋舊版，存檔不變）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.12.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.12.0-alpha-debug.apk)（Android 8.0+，targetSdk 35；sha256 同目錄）
+- **12.0 新增／修正**：修掉純文字格的灰色圓底座與作息輸入框重疊；請求可取消；技能頁與地圖重新設計；**去除 NPC**；極簡 HUD；**每個角色各自的操控模式（手動／半自動（預設）／全自動），隨時可切**；成熟語氣的新台詞與「雅緻」介面風格；情緒感染、冷戰與和解、三人以上的聚會；桌寵自己的聲音與雙人桌面動作；過場短句接到真實事件；3D 接觸陰影、房間布置與重新建模的家具（**房屋／樹木／岩石的造型沒有重新建模**）。
+- 12.0 紀錄（問題→原因→修正→驗證、**未驗證與未完成項目**）：[`docs/v12-report.md`](docs/v12-report.md)；畫面：`deliverables/v12/`
+- 測試：`node game/tests/v12/run.js`（12.0 驗收）；Kotlin：`cd android && gradle -PcoreOnly=true test`
+- ⚠️ 桌寵（含新的聲音與雙人動作）、小工具、觸覺等原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+
+## 0.11.0-alpha（11.0 互動與生命感重做）
+
 - **11.0 新增**：滑動撫摸（依手指速度、身體部位與每個角色的喜好連續累積）、親近環（抱抱／擊掌／戳／牽手）、107 個資料驅動動作與柔和過渡、會計畫與設目標的 AI（可看「想法」）、10 種雙人互動、創角舞台（轉盤、點部位）、角色聲線／立體聲／動作與腳步音效／音樂強度層／觸覺節奏、世界觸控回饋（波紋、搖樹落葉、揚塵）、桌寵多 10 個小動作。
 - 11.0 紀錄（做了什麼、發現並修掉的問題、測試、**未驗證與未完成項目**）：[`docs/v11-report.md`](docs/v11-report.md)；畫面：`deliverables/v11/`
 - 10.0／10.1 紀錄：[`docs/v10-report.md`](docs/v10-report.md)；規格：[`docs/design-system.md`](docs/design-system.md)；更早：[`docs/v9-report.md`](docs/v9-report.md)、[`docs/v8-report.md`](docs/v8-report.md)

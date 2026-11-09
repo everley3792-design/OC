@@ -114,3 +114,19 @@ OverlayPetService (前景服務 specialUse)
 
 ## 12. 診斷
 遊戲「桌寵管理 › 診斷」：服務狀態與原因、實測 fps 與上限、每幀耗時、影格快取用量、螢幕與 insets、待同步互動與被丟棄數、前景服務類型、App 情境狀態、每隻的狀態／動畫／表面／位置／重畫次數，以及同步紀錄（每個互動的套用結果）。
+
+## 12.0：桌寵的聲音與雙人動作
+
+**聲音**
+- 遊戲端 `OC.PetSound`（`js/pet/petsound.js`）用角色自己的聲線（`OC.Sound.voiceOf`）離線合成 14 個短 WAV（22 050 Hz、單聲道、16-bit，約 250 KB／隻），名稱 = `core/pet/PetSound.kt` 的 `CLIPS`（測試比對）。`OCNative.petSounds(oc, json)`：`{"clips": {"tap_a": "data:audio/wav;base64,…"}}`，名稱 `[a-z0-9_]{1,24}`、必須是 RIFF/WAVE、總計 < 4 MB，先寫暫存資料夾再整個換入（`filesDir/pet/snd/<oc>/`）。只有開啟「桌面音效」時才輸出；聲線沒變就不重做。
+- 原生 `overlay/PetSounds.kt`：`SoundPool`（最多 3 個同時、`USAGE_ASSISTANCE_SONIFICATION`）；手機靜音／震動、通話中、螢幕關閉時不出聲；不要求音訊焦點、不錄音。
+- `core:pet` 的 `PetSound`（純 Kotlin、單元測試）決定何時播：預設關閉、全域間隔 0.3 秒、各事件冷卻、同一種不連續重複、睡著只有醒來與被摸、心情改變音高（rate）與音量、不超過玩家設的音量。事件：點一下、被摸、醒來、跳、落地、被丟出、說話、吃東西、禮物、碰面（開心／鬧彆扭）。
+- `petConfig.global` 多了 `sound`（開關，預設 false）與 `soundVol`（0.3／0.6／0.9）。
+
+**雙人動作**（`core/pet/PetSocial.KINDS`）
+- 11 種：打招呼、聊天、擁抱、擊掌、並肩坐著、分享食物、安慰、追逐、賭氣、爭吵、道歉。每種是幾個時間點的「拍」（`Beat(at, a, b, dur, move)`），兩邊播互補的動畫（`hug`／`hugme`、`comfort`／`comforted`、`feedbite`／`bitefed`、`argue`／`upset`、`apologize`／`accept`…）；追逐讓兩隻一起跑，爭吵後各自轉身走開。
+- 挑哪一種：`choose()` 依好感（< −0.3 爭吵／賭氣）、剛吵過且不再討厭（道歉）、一隻難過一隻沒事（沒事的去安慰）、其餘依好感與精力／飢餓加權，且不連續重複同一種。
+- 兩隻都在地板上、都不忙才開始；任一隻被抓起／跳起／掉落就取消；沒有任何一隻會卡在 `REACT`（單元測試逐一檢查）。
+- 遊戲端 `meet` 事件的 `kind` 擴充：爭吵（衝突 +2）、道歉（衝突 −3、好感 +2）、安慰（信任 +1）；每對每天一次、不計入任務／成就。台詞分類 `quarrel`／`sorry`／`comfort_d`（遊戲的對話引擎產生）。
+- `OCNative.petTestPair(kind)`：讓前兩隻桌寵走到一起做一次（寵物中心「測試雙人互動」）。
+- 📱 以上在實機的實際表現尚未驗證。
