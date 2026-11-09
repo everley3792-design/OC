@@ -281,6 +281,8 @@
     ['req_later', '好，那我等你。', Pp], ['req_later', '嗯嗯，晚點也可以！', B], ['req_later', '……沒關係，不急。', Cc],
     ['req_decline', '這樣啊……沒關係啦。', Pp], ['req_decline', '嗚……好吧，下次喔！', B], ['req_decline', '嗯，我知道了。', Cc], ['req_decline', '……哼。算了。', { trait: 'stubborn' }, 4], ['req_decline', '沒、沒事的……', { trait: 'sensitive' }, 4],
     ['req_done', '謝謝你！你真的幫了大忙！', Pp], ['req_done', '耶——！最喜歡你了！', B], ['req_done', '……謝謝你。我會記得的。', Cc], ['req_done', '還不錯嘛。謝了。', K], ['req_done', '我、我好開心……', { trait: 'shy' }, 3],
+    ['req_cancel', '嗯。那就先不做了，之後有機會再說。', Pp], ['req_cancel', '沒關係，你也有你的安排。', Cc], ['req_cancel', '……知道了。', K], ['req_cancel', '好，那我自己想辦法。', B],
+    ['req_cancel', '我還以為……算了，沒事。', { trait: 'sensitive' }, 4], ['req_cancel', '說好的事又收回去。……隨你吧。', { trait: 'stubborn' }, 4],
     ['req_expire', '之前說的那件事……算了，沒關係啦。', Pp], ['req_expire', '那件事我自己想通了！', B],
     ['req_recall', '還記得你幫我{memshort}嗎？我一直記得喔。', Pp], ['req_recall', '上次{memshort}，真的好開心！', B],
     ['skill_up', '我好像變厲害了一點！', Pp], ['skill_up', '看我看我！我學會了！', B], ['skill_up', '……嗯，有進步。', K], ['skill_up', '努力有回報了。', { trait: 'diligent' }, 3],

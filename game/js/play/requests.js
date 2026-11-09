@@ -85,7 +85,10 @@
       const btns = h('div.vstack', { style: { gap: '8px', marginTop: '12px' } });
       if (r.state === 'offer') btns.append(h('button.btn.primary.block', { on: { click: () => { api.close(); answer(r.id, 'accept'); } } }, icon('heart', 's'), '好啊，交給我！'),
         h('div.hstack', null, h('button.btn.block', { on: { click: () => { api.close(); answer(r.id, 'later'); } } }, '等一下'), h('button.btn.ghost.block', { on: { click: () => { api.close(); answer(r.id, 'decline'); } } }, '這次不行')));
-      else if (r.state === 'active') { const hb = helpButton(r, api); if (hb) btns.append(hb); }
+      else if (r.state === 'active') {
+        const hb = helpButton(r, api); if (hb) btns.append(hb);
+        btns.append(h('button.btn.ghost.block', { on: { click: async () => { const ok = await OC.UI.confirm('取消這個請求？', `${name(c)}已經答應了這件事。取消之後不會有獎勵，${OC.Chars.has(c, 'sensitive') ? '而且牠可能會有點失落。' : '牠大概會理解，但會記得。'}`, '取消請求', true); if (ok) { api.close(); cancel(r.id); } } } }, '取消這個請求'));
+      }
       b.append(btns);
     });
   }
@@ -153,6 +156,21 @@
     St.touch('play', { req: r.id }); St.emit('play:req', { id: r.id, how });
   }
 
+  /** 12.0: the player takes back a request they had accepted. The reward is never paid; how it lands depends on the character */
+  function cancel(id) {
+    const r = R().list.find((x) => x.id === id); if (!r || r.state !== 'active') return false; const c = OC.Chars.get(r.oc); if (!c) return false;
+    const a = A().actorOf(c.id), now = Sim().now();
+    r.state = 'cancelled'; r.cancelledAt = now; R().cd[c.id] = R().cd[c.id] || {}; R().cd[c.id][r.type] = now + 1440;
+    const sens = OC.Chars.has(c, 'sensitive'), stub = OC.Chars.has(c, 'stubborn');
+    if (sens) { M().feel(c, 'down', 0.25, '你取消了答應過的事'); M().player(c, { aff: -1 }); }
+    else if (stub) { M().feel(c, 'annoyed', 0.2, '你取消了答應過的事'); M().player(c, { aff: -0.5 }); }
+    else M().feel(c, 'calm', 0.1, '你取消了請求');
+    M().remember(c, { type: 'player', imp: sens ? 0.45 : 0.25, text: `你取消了「${r.text}」`, key: 'reqcancel:' + r.id });
+    const ln = OC.Talk.say('req_cancel', c, null); if (ln && a) A().bubble(a, ln.text, name(c));
+    St.touch('play', { req: r.id }); St.emit('play:req', { id: r.id, how: 'cancel' });
+    return true;
+  }
+
   // ---------------- completion ----------------
   function onEvent(d) {
     for (const r of open()) {
@@ -187,5 +205,5 @@
   function debugOffer(ocId, type) { const r = newRequest(true, ocId, type); return r; }
   const list = () => R().list;
 
-  OC.Requests = { tick, frame, clearBadges, openSheet, answer, help, onEvent, list, open, ofOC, text, goalOf, debugOffer, howText };
+  OC.Requests = { tick, frame, clearBadges, openSheet, answer, cancel, help, onEvent, list, open, ofOC, text, goalOf, debugOffer, howText };
 })();
