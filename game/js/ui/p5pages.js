@@ -25,22 +25,62 @@
   const coin = (n) => h('span.price', null, h('span', { style: { color: 'var(--sun)', display: 'inline-grid' } }, icon('coin', 's')), h('b.num', null, n.toLocaleString()));
 
   // ======================= world map =======================
-  function drawWorld(cv) {
-    const x = cv.getContext('2d'), W = cv.width, H = cv.height; const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8EDDF2'); g.addColorStop(1, '#4FC3E8'); x.fillStyle = g; x.fillRect(0, 0, W, H);
-    x.strokeStyle = 'rgba(255,255,255,.35)'; x.lineWidth = 3; const r = OC.rng(5); for (let i = 0; i < 40; i++) { const px = r() * W, py = r() * H; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 10, py - 6, px + 20, py); x.stroke(); }
-    const isle = (cx, cy, rx, ry, col, sand = '#F7E3A8') => { x.fillStyle = sand; x.beginPath(); x.ellipse(cx, cy, rx + 10, ry + 9, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = col; x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); x.fill(); };
-    for (const [id, p] of Object.entries(PL().P)) { if (!p.map) continue; const cx = p.map.x * W, cy = p.map.y * H; if (p.locked) { x.globalAlpha = 0.55; isle(cx, cy, 70, 46, '#BFC7D5', '#E2E6EE'); x.globalAlpha = 1; continue; } isle(cx, cy, id === 'isle' ? 120 : 82, id === 'isle' ? 82 : 56, { isle: '#7CCB5A', street: '#E8D7B8', forest: '#3F9A40', beach: '#F7E3A8' }[id] || '#7CCB5A'); }
-    // paths (ferry / bridges) between open places
-    x.setLineDash([10, 10]); x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = 5; const c0 = PL().P.isle.map;
-    for (const id of ['street', 'forest', 'beach']) { const p = PL().P[id].map; x.beginPath(); x.moveTo(c0.x * W, c0.y * H); x.quadraticCurveTo((c0.x + p.x) / 2 * W, Math.min(c0.y, p.y) * H - 40, p.x * W, p.y * H); x.stroke(); }
+  /** 12.0: the world map as a little illustrated chart — depth-shaded sea, foam, sand, shaded land, tiny landmarks, boats on the routes,
+   *  fogged-in islands that are not open yet, a compass, tinted by the time of day. Original, drawn in code. */
+  function drawWorld(cv, phase) {
+    const x = cv.getContext('2d'), W = cv.width, H = cv.height, P = PL().P, rnd = OC.rng(11);
+    const night = phase === 'night', dusk = phase === 'dusk';
+    // --- sea: deep in the middle of nowhere, turquoise near the land
+    let g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#7FD6EE'); g.addColorStop(0.5, '#43B6E3'); g.addColorStop(1, '#2C93D1'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    g = x.createRadialGradient(W * 0.5, H * 0.52, W * 0.1, W * 0.5, H * 0.52, W * 0.75); g.addColorStop(0, 'rgba(255,255,255,.14)'); g.addColorStop(1, 'rgba(10,50,120,.22)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    // soft swell lines
+    x.lineCap = 'round'; for (let i = 0; i < 46; i++) { const px = rnd() * W, py = rnd() * H, l = 18 + rnd() * 26; x.strokeStyle = `rgba(255,255,255,${0.1 + rnd() * 0.16})`; x.lineWidth = 2 + rnd() * 2; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + l / 2, py - 7, px + l, py); x.stroke(); }
+    // --- helpers
+    const blob = (cx, cy, rx, ry, seed, k = 1, n = 16, jag = 0.13) => { const r = OC.rng(seed), pts = []; const ph = r() * 6.28; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, j = 1 + (r() - 0.5) * 2 * jag + Math.sin(a * 2 + ph) * 0.05; pts.push([cx + Math.cos(a) * rx * k * j, cy + Math.sin(a) * ry * k * j]); } return pts; };
+    const path = (pts) => { x.beginPath(); const n = pts.length; for (let i = 0; i < n; i++) { const p0 = pts[i], p1 = pts[(i + 1) % n], mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2; if (i === 0) x.moveTo(mx, my); else x.quadraticCurveTo(p0[0], p0[1], mx, my); } const p0 = pts[0], p1 = pts[1]; x.quadraticCurveTo(p0[0], p0[1], (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2); x.closePath(); };
+    const tree = (px, py, s, c1 = '#2E8B4A', c2 = '#44A95F') => { x.fillStyle = 'rgba(0,50,40,.22)'; x.beginPath(); x.ellipse(px + 3 * s, py + 2 * s, 9 * s, 4 * s, 0, 0, 7); x.fill(); x.fillStyle = '#7A5A3C'; x.fillRect(px - 1.6 * s, py - 4 * s, 3.2 * s, 6 * s); for (let i = 0; i < 3; i++) { const y0 = py - 6 * s - i * 8 * s, w = (11 - i * 2.4) * s; x.fillStyle = i % 2 ? c2 : c1; x.beginPath(); x.moveTo(px, y0 - 11 * s); x.lineTo(px + w, y0 + 3 * s); x.lineTo(px - w, y0 + 3 * s); x.closePath(); x.fill(); } };
+    const house = (px, py, s, wall, roof) => { x.fillStyle = 'rgba(0,40,60,.2)'; x.beginPath(); x.ellipse(px + 5 * s, py + 4 * s, 15 * s, 5 * s, 0, 0, 7); x.fill(); x.fillStyle = wall; x.fillRect(px - 11 * s, py - 10 * s, 22 * s, 15 * s); x.fillStyle = 'rgba(0,0,0,.1)'; x.fillRect(px + 2 * s, py - 10 * s, 9 * s, 15 * s); x.fillStyle = roof; x.beginPath(); x.moveTo(px - 15 * s, py - 9 * s); x.lineTo(px, py - 24 * s); x.lineTo(px + 15 * s, py - 9 * s); x.closePath(); x.fill(); x.fillStyle = 'rgba(255,255,255,.28)'; x.beginPath(); x.moveTo(px - 15 * s, py - 9 * s); x.lineTo(px, py - 24 * s); x.lineTo(px - 2 * s, py - 9 * s); x.closePath(); x.fill(); x.fillStyle = '#6B4B33'; x.fillRect(px - 2.5 * s, py - 3 * s, 5 * s, 8 * s); };
+    const palm = (px, py, s) => { x.strokeStyle = '#8A6A44'; x.lineWidth = 3 * s; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 5 * s, py - 14 * s, px + 2 * s, py - 24 * s); x.stroke(); x.fillStyle = '#2F9C58'; for (let i = 0; i < 5; i++) { const a = -2.6 + i * 0.6; x.beginPath(); x.ellipse(px + 2 * s + Math.cos(a) * 9 * s, py - 24 * s + Math.sin(a) * 5 * s, 10 * s, 3.4 * s, a, 0, 7); x.fill(); } };
+    const boat = (px, py, ang) => { x.save(); x.translate(px, py); x.rotate(ang); x.fillStyle = 'rgba(0,50,90,.2)'; x.beginPath(); x.ellipse(2, 6, 14, 4, 0, 0, 7); x.fill(); x.fillStyle = '#FFFDF6'; x.beginPath(); x.moveTo(-1, -18); x.lineTo(11, 0); x.lineTo(-1, 0); x.closePath(); x.fill(); x.fillStyle = '#FFE1A8'; x.beginPath(); x.moveTo(-3, -14); x.lineTo(-3, 0); x.lineTo(-11, 0); x.closePath(); x.fill(); x.fillStyle = '#C0583F'; x.beginPath(); x.moveTo(-13, 1); x.lineTo(13, 1); x.lineTo(9, 7); x.lineTo(-9, 7); x.closePath(); x.fill(); x.restore(); };
+    // --- routes first (under the islands)
+    const c0 = P.isle.map, routes = ['street', 'forest', 'beach'].filter((id) => P[id] && !P[id].locked);
+    x.setLineDash([2, 13]); x.lineCap = 'round'; x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 6;
+    const curve = (a, b, t) => { const mx = (a.x + b.x) / 2 * W, my = Math.min(a.y, b.y) * H - 44; return [(1 - t) * (1 - t) * a.x * W + 2 * (1 - t) * t * mx + t * t * b.x * W, (1 - t) * (1 - t) * a.y * H + 2 * (1 - t) * t * my + t * t * b.y * H]; };
+    for (const id of routes) { const p = P[id].map; x.beginPath(); x.moveTo(c0.x * W, c0.y * H); x.quadraticCurveTo((c0.x + p.x) / 2 * W, Math.min(c0.y, p.y) * H - 44, p.x * W, p.y * H); x.stroke(); }
     x.setLineDash([]);
-    // tiny landmarks
-    const tree = (px, py, col = '#2F7D3A') => { x.fillStyle = col; x.beginPath(); x.moveTo(px, py - 18); x.lineTo(px + 10, py + 4); x.lineTo(px - 10, py + 4); x.fill(); };
-    const fm = PL().P.forest.map; for (let i = 0; i < 9; i++) tree(fm.x * W - 50 + (i % 3) * 40 + (i > 2 ? 10 : 0), fm.y * H - 26 + Math.floor(i / 3) * 22);
-    const hm = (px, py, roof) => { x.fillStyle = '#FFF4DE'; x.fillRect(px - 12, py - 8, 24, 16); x.fillStyle = roof; x.beginPath(); x.moveTo(px - 15, py - 8); x.lineTo(px, py - 22); x.lineTo(px + 15, py - 8); x.fill(); };
-    const im = PL().P.isle.map; hm(im.x * W - 20, im.y * H - 10, '#F26B5B'); hm(im.x * W + 40, im.y * H + 20, '#FFC93C');
-    const sm = PL().P.street.map; ['#F26B5B', '#9B7BE0', '#3FC1B0', '#FFC93C'].forEach((c, i) => hm(sm.x * W - 45 + i * 30, sm.y * H - 4 + (i % 2) * 6, c));
-    const bm = PL().P.beach.map; x.fillStyle = '#F26B5B'; x.beginPath(); x.moveTo(bm.x * W - 20, bm.y * H); x.lineTo(bm.x * W, bm.y * H - 24); x.lineTo(bm.x * W + 20, bm.y * H); x.fill();
+    // --- islands (locked ones last, in the mist)
+    const order = Object.entries(P).filter(([, p]) => p.map).sort((a, b) => (a[1].locked ? 1 : 0) - (b[1].locked ? 1 : 0));
+    for (const [id, p] of order) {
+      const cx = p.map.x * W, cy = p.map.y * H, big = id === 'isle', rx = big ? 132 : p.locked ? 78 : 92, ry = big ? 88 : p.locked ? 52 : 62, seed = id.length * 31 + id.charCodeAt(0);
+      x.save(); if (p.locked) x.globalAlpha = 0.5;
+      // soft shadow + turquoise shallows + foam
+      x.shadowColor = 'rgba(8,60,110,.35)'; x.shadowBlur = 26; x.shadowOffsetY = 14; x.fillStyle = 'rgba(8,60,110,.3)'; path(blob(cx, cy, rx, ry, seed, 1.12)); x.fill(); x.shadowColor = 'transparent'; x.shadowBlur = 0; x.shadowOffsetY = 0;
+      x.shadowColor = 'rgba(150,240,245,.9)'; x.shadowBlur = 34; x.fillStyle = 'rgba(170,240,245,.6)'; path(blob(cx, cy, rx, ry, seed, 1.2)); x.fill(); x.shadowColor = 'transparent'; x.shadowBlur = 0;
+      x.strokeStyle = 'rgba(255,255,255,.95)'; x.lineWidth = 5; path(blob(cx, cy, rx, ry, seed, 1.12)); x.stroke(); x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 2.5; x.setLineDash([6, 9]); path(blob(cx, cy, rx, ry, seed, 1.19)); x.stroke(); x.setLineDash([]);
+      // sand, then the shaded land
+      g = x.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry); g.addColorStop(0, '#FBEBB9'); g.addColorStop(1, '#EBCF8B'); x.fillStyle = g; path(blob(cx, cy, rx, ry, seed, 1.06)); x.fill();
+      const land = id === 'beach' ? ['#F8E6AE', '#E8C97F'] : id === 'street' ? ['#E6D8C0', '#C9B592'] : id === 'forest' ? ['#58B068', '#2C7A47'] : ['#8CD472', '#4EA64B'];
+      g = x.createRadialGradient(cx - rx * 0.35, cy - ry * 0.45, 8, cx, cy, rx); g.addColorStop(0, land[0]); g.addColorStop(1, land[1]); x.fillStyle = p.locked ? '#BDC8D6' : g; path(blob(cx, cy, rx, ry, seed, 0.9)); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.16)'; x.beginPath(); x.ellipse(cx - rx * 0.3, cy - ry * 0.35, rx * 0.4, ry * 0.22, -0.3, 0, 7); x.fill();
+      x.restore();
+      if (p.locked) continue;
+      // landmarks
+      if (id === 'isle') { tree(cx - 78, cy - 22, 1); tree(cx - 56, cy - 36, 0.9); tree(cx + 70, cy - 30, 1.1, '#2F9B52', '#4FB868'); house(cx - 28, cy - 6, 1.1, '#FFF4DE', '#F26B5B'); house(cx + 36, cy + 12, 1, '#FFF4DE', '#F4B83A'); x.fillStyle = '#B98A5A'; x.fillRect(cx + 70, cy + 40, 36, 6); x.fillStyle = '#9C7347'; x.fillRect(cx + 74, cy + 46, 4, 8); x.fillRect(cx + 98, cx * 0 + cy + 46, 4, 8); }
+      if (id === 'forest') { for (let i = 0; i < 12; i++) tree(cx - 62 + (i % 4) * 36 + (i > 3 ? 10 : 0) + (i > 7 ? -6 : 0), cy - 22 + Math.floor(i / 4) * 24, 0.95 + (i % 3) * 0.12, i % 2 ? '#25703F' : '#2E8B4A', '#3B9E58'); }
+      if (id === 'street') { ['#F26B5B', '#9B7BE0', '#3FC1B0', '#F4B83A'].forEach((c, i) => house(cx - 54 + i * 36, cy - 6 + (i % 2) * 10, 0.9, '#FFF8EA', c)); x.fillStyle = 'rgba(255,255,255,.5)'; x.fillRect(cx - 62, cy + 20, 124, 5); }
+      if (id === 'beach') { palm(cx - 42, cy + 6, 1.1); palm(cx + 30, cy - 10, 0.95); x.fillStyle = '#F26B5B'; x.beginPath(); x.moveTo(cx - 4, cy + 18); x.lineTo(cx + 22, cy + 6); x.lineTo(cx + 48, cy + 18); x.closePath(); x.fill(); x.fillStyle = '#FFF4DE'; x.beginPath(); x.moveTo(cx + 22, cy + 6); x.lineTo(cx + 34, cy + 17); x.lineTo(cx + 48, cy + 18); x.closePath(); x.fill(); x.fillStyle = '#6B4B33'; x.fillRect(cx + 21, cy + 6, 2, 24); }
+    }
+    // boats on the routes
+    routes.forEach((id, i) => { const t = 0.4 + i * 0.12, [bx, by] = curve(c0, P[id].map, t), [bx2, by2] = curve(c0, P[id].map, t + 0.02); boat(bx, by - 6, Math.atan2(by2 - by, bx2 - bx) * 0.25); });
+    // mist over what is not open yet
+    for (const [id, p] of order) { if (!p.locked) continue; const cx = p.map.x * W, cy = p.map.y * H; for (let i = 0; i < 7; i++) { x.fillStyle = `rgba(255,255,255,${0.22 + (i % 3) * 0.06})`; x.beginPath(); x.ellipse(cx - 70 + i * 24, cy + (i % 2 ? 14 : -10), 44, 20, 0, 0, 7); x.fill(); } }
+    // compass rose, bottom left
+    { const cx = 70, cy = H - 72; x.save(); x.translate(cx, cy); x.fillStyle = 'rgba(255,255,255,.2)'; x.beginPath(); x.arc(0, 0, 40, 0, 7); x.fill(); x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 34, 0, 7); x.stroke(); for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.fillStyle = i === 0 ? '#F26B5B' : 'rgba(255,255,255,.95)'; x.beginPath(); x.moveTo(0, -32); x.lineTo(6, -6); x.lineTo(-6, -6); x.closePath(); x.fill(); } x.restore(); }
+    // time of day
+    if (dusk) { x.fillStyle = 'rgba(255,140,90,.2)'; x.fillRect(0, 0, W, H); const gg = x.createLinearGradient(0, 0, 0, H); gg.addColorStop(0, 'rgba(255,180,120,.25)'); gg.addColorStop(1, 'rgba(120,60,140,.18)'); x.fillStyle = gg; x.fillRect(0, 0, W, H); }
+    if (night) { x.fillStyle = 'rgba(14,22,80,.5)'; x.fillRect(0, 0, W, H); const r2 = OC.rng(7); for (let i = 0; i < 36; i++) { x.fillStyle = `rgba(255,255,230,${0.3 + r2() * 0.6})`; x.beginPath(); x.arc(r2() * W, r2() * H * 0.45, 0.8 + r2() * 1.6, 0, 7); x.fill(); } }
+    // vignette
+    g = x.createRadialGradient(W / 2, H / 2, W * 0.42, W / 2, H / 2, W * 0.78); g.addColorStop(0, 'rgba(0,30,80,0)'); g.addColorStop(1, 'rgba(0,30,80,.28)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
   }
   const OCS_AT = (pl) => OC.Chars.all().filter((c) => c.status.onIsland && (c.id === S().activeId ? (OC.World.area && OC.World.area.id) : c.life.loc || 'isle') === pl);
   const where = (c) => { const pl = c.id === S().activeId ? OC.World.area && OC.World.area.id : c.life.loc || 'isle'; const tr = c.life.trip && c.life.trip.eta > OC.Sim.now(); return { pl, tr }; };
@@ -55,7 +95,7 @@
   }
   Pg().define('explore', '地圖', {
     build(p, el) {
-      p.map = h('div.map-wrap'); const cv = h('canvas', { width: 720, height: 720 }); p.map.append(cv); drawWorld(cv);
+      p.map = h('div.map-wrap'); const cv = h('canvas', { width: 720, height: 720 }); p._cv = cv; p._ph = OC.Clock.phase(OC.Clock.hour()); p.map.append(cv, h('div.map-waves'), h('div.map-title', null, h('b', null, '晴日群島'), h('span', null, '探索進度 ' + Object.keys(S().places.visited).length + ' 處')), h('div.map-fog')); drawWorld(cv, p._ph);
       p.pins = {}; for (const [id, pl] of Object.entries(PL().P)) { if (!pl.map) continue; const pin = h('button.map-pin' + (pl.locked ? '.locked' : ''), { style: { left: pl.map.x * 100 + '%', top: pl.map.y * 100 + '%' }, 'aria-label': pl.zh, on: { click: () => { p.sel = id; p.refresh(p); } } }, h('div.pin', { style: { '--c': pl.col } }, icon(pl.icon, 's')), h('label', null, pl.zh), h('div.pin-ocs')); p.map.append(pin); p.pins[id] = pin; }
       p.info = h('div', { style: { marginTop: '12px' } }); p.who = h('div');
       el.append(p.map, p.info, p.who);
@@ -63,6 +103,7 @@
     refresh(p) {
       const cur = OC.World.area ? OC.World.area.id : 'isle', curTop = PL().top(cur); p.sel = p.sel || curTop;
       if (same(p, [p.sel, cur, OC.Clock.weather(), OC.Clock.phase(OC.Clock.hour()), Object.keys(S().places.visited).length, Object.keys(S().seen).length, OC.Chars.all().map((c) => { const w = where(c); return c.id + w.pl + w.tr + OC.LifeUI.doingText(c); }).join()].join('|'))) return;
+      { const ph = OC.Clock.phase(OC.Clock.hour()); if (ph !== p._ph) { p._ph = ph; drawWorld(p._cv, ph); } const t = p.map.querySelector('.map-title span'); if (t) t.textContent = '探索進度 ' + Object.keys(S().places.visited).length + ' 處'; }
       for (const [id, pin] of Object.entries(p.pins)) { pin.classList.toggle('on', id === p.sel); pin.classList.toggle('here', id === curTop); const ocs = OCS_AT(id).concat(Object.entries(PL().P).filter(([, q]) => q.parent === id).flatMap(([k]) => OCS_AT(k))); pin.querySelector('.pin-ocs').replaceChildren(...ocs.slice(0, 4).map((c) => h('i', { title: name(c) }, name(c).slice(0, 1)))); }
       const subs = [p.sel].concat(Object.entries(PL().P).filter(([, q]) => q.parent === p.sel).map(([k]) => k));
       p.info.replaceChildren(...subs.map((id) => placeCard(id, cur)));

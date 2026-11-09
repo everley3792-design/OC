@@ -772,3 +772,48 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 .routine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .routine-grid label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: var(--fs-s); }
 .routine-grid select.input { width: 100%; min-width: 0; }
+
+/* 12.0 skill book */
+.skill-book { display: flex; flex-direction: column; gap: 10px; }
+.sk-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 14px; border-radius: var(--r-l); background: var(--surface); box-shadow: var(--hl), 0 3px 0 var(--line), var(--shadow-1); }
+.sk-sum > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .sk-sum .faint { font-size: var(--fs-xs); } .sk-sum b { font-size: var(--fs-l); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.sk-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; text-align: left; border-radius: var(--r-l); background: var(--surface); box-shadow: var(--hl), 0 3px 0 var(--line), var(--shadow-1); transition: transform var(--t-spring) var(--spring); }
+.sk-tile:active { transform: scale(.97); transition-duration: var(--t-press); }
+.sk-tile.idle { opacity: .72; }
+.sk-ring { position: relative; width: 56px; height: 56px; border-radius: 50%; background: conic-gradient(var(--teal) var(--pct, 0%), var(--surface-3) 0); display: grid; place-items: center; flex: none; }
+.sk-ring.l { width: 72px; height: 72px; }
+.sk-ic { width: calc(100% - 10px); height: calc(100% - 10px); border-radius: 50%; background: var(--surface); display: grid; place-items: center; }
+.sk-name { font-weight: 800; color: var(--ink); } .sk-lv { color: var(--teal); display: flex; align-items: baseline; gap: 1px; font-size: var(--fs-s); } .sk-lv b { font-size: var(--fs-xl, 22px); }
+.sk-lv.l b { font-size: 30px; }
+.sk-next { font-size: var(--fs-xs); color: var(--ink-3, var(--ink-2)); line-height: 1.35; min-height: 2.7em; }
+.sk-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.sk-ladder { display: flex; flex-direction: column; gap: 0; position: relative; }
+.sk-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; position: relative; color: var(--locked); }
+.sk-step > i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 900 12px var(--font-num); background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--line); flex: none; z-index: 1; }
+.sk-step:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 40px; bottom: -10px; width: 2px; background: var(--line); }
+.sk-step.on { color: var(--ink); } .sk-step.on > i { background: var(--teal); color: #fff; box-shadow: none; } .sk-step.on:not(:last-child)::after { background: var(--teal); }
+.sk-step.next { color: var(--ink); } .sk-step.next > i { box-shadow: inset 0 0 0 2.5px var(--accent); color: var(--accent); background: var(--accent-soft); }
+.sk-how { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; }
+
+/* 12.0 map: framed chart, drifting swell layer, title ribbon, sticker pins with a tail */
+.map-wrap { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .7), var(--shadow-2); border-radius: var(--r-xl, 26px); }
+.map-waves { position: absolute; inset: 0; pointer-events: none; opacity: .55; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60'%3E%3Cpath d='M6 20q14-9 28 0t28 0 28 0M-20 50q14-9 28 0t28 0 28 0 28 0' fill='none' stroke='white' stroke-opacity='.35' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"); background-size: 120px 60px; animation: map-drift 38s linear infinite; mix-blend-mode: soft-light; }
+@keyframes map-drift { to { background-position: 240px 120px; } }
+.reduce-motion .map-waves { animation: none; } @media (prefers-reduced-motion: reduce) { .map-waves { animation: none; } }
+.map-title { position: absolute; left: 14px; top: 12px; display: flex; flex-direction: column; gap: 1px; padding: 7px 14px 8px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 86%, transparent); box-shadow: 0 2px 0 var(--line), var(--shadow-1); backdrop-filter: blur(6px); }
+.map-title b { font-size: var(--fs-m); letter-spacing: .08em; color: var(--ink); } .map-title span { font-size: var(--fs-xs); color: var(--ink-2); }
+.map-fog { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 60px rgba(255, 255, 255, .18); }
+.map-pin { gap: 0; }
+.map-pin .pin { width: 40px; height: 40px; background: var(--c, var(--accent)); color: #fff; box-shadow: 0 0 0 3px #fff, 0 4px 0 rgba(0, 0, 0, .14), var(--shadow-2); position: relative; }
+.map-pin .pin::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 12px; height: 12px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 0 0 4px 0; box-shadow: 3px 3px 0 -1px #fff; z-index: -1; }
+.map-pin .pin svg { width: 20px; height: 20px; stroke: #fff; }
+.map-pin label { margin-top: 12px; background: color-mix(in srgb, var(--surface) 90%, transparent); font-size: var(--fs-xs); letter-spacing: .03em; }
+.map-pin.on .pin { background: var(--c, var(--accent)); color: #fff; transform: scale(1.18); }
+.map-pin.on .pin::before { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #fff; animation: map-ping 1.8s ease-out infinite; }
+@keyframes map-ping { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+.reduce-motion .map-pin.on .pin::before { animation: none; opacity: .6; }
+.map-pin.locked .pin { background: #AEB7C6; }
+.map-pin.here .pin { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--teal), var(--shadow-2); }
+
+.map-pin { transform: translate(-50%, -66%); }

@@ -189,10 +189,30 @@
     const el = h('div', null,
       T('稱號'), card(titleSel, small('稱號從成就、挑戰與人生目標取得，全島共用，每位 OC 可以戴一個。')),
       T('人生目標', '長期的夢想'), aspCard, doneList.length ? h('div.chips', { style: { marginTop: '6px' } }, ...doneList.map((d) => h('span.tag.sun', null, icon('star', 's'), d.zh))) : null,
-      T('技能', '經常做相關的事就會進步'), h('div.vstack', { style: { gap: '8px' } }, ...skills.map((s2) => h('div.skill-card', null,
-        h('div.hstack', null, h('div.q-ic', null, OC.UI.stickerOr(s2.ic, 'm')), h('b.grow', null, s2.zh), h('span.lv', null, `Lv.${s2.lv}`)), bar(s2.pct, 100, 'var(--teal)'),
-        h('div.unlocks', null, ...s2.unlocks.map((u) => h('div.unl' + (u.on ? '.on' : ''), null, h('span.num', null, `Lv.${u.lv}`), h('span', null, u.zh))))))));
+      T('技能', '做相關的事就會累積經驗，等級會帶來實際的效果'), skillBook(c, skills));
     p._g = el; return el;
+  }
+  // ---- 12.0 skill book: a ring per skill, the next unlock at a glance, a ladder sheet for the details ----
+  function skillBook(c, skills) {
+    const all = skills.reduce((n, x) => n + x.unlocks.length, 0), got = skills.reduce((n, x) => n + x.unlocks.filter((u) => u.on).length, 0), top = skills.find((x) => x.xp > 0);
+    return h('div.skill-book', null,
+      h('div.sk-sum', null, h('div', null, h('span.faint', null, '技能總等級'), h('b.num', null, skills.reduce((n, x) => n + x.lv, 0))), h('div', null, h('span.faint', null, '最拿手'), h('b', null, top ? top.zh : '還沒有')), h('div', null, h('span.faint', null, '已解鎖效果'), h('b.num', null, `${got}/${all}`))),
+      h('div.sk-grid', null, ...skills.map((x) => {
+        const next = x.unlocks.find((u) => !u.on);
+        return h('button.sk-tile' + (x.xp ? '' : '.idle'), { style: { '--pct': (x.lv >= 10 ? 100 : x.pct) + '%' }, 'aria-label': `${x.zh} ${x.lv} 級`, on: { click: () => skillSheet(c, x) } },
+          h('div.sk-ring', null, h('div.sk-ic', null, OC.UI.stickerOr(x.ic, 'm'))),
+          h('div.sk-name', null, x.zh), h('div.sk-lv', null, h('b.num', null, x.lv), h('span', null, ' 級')),
+          h('div.sk-next', null, next ? `下一個：${next.zh}` : '效果已全部解鎖'));
+      })));
+  }
+  function skillSheet(c, x) {
+    const D = OC.LifeData, acts = Object.values(D.ACTS).filter((a) => a.sk === x.id).map((a) => a.zh), next = x.lv >= 10 ? null : 15 * (x.lv + 1) * (x.lv + 1), nu = x.unlocks.find((u) => !u.on);
+    sheet(x.zh, (b) => {
+      b.append(
+        h('div.sk-head', { style: { '--pct': (x.lv >= 10 ? 100 : x.pct) + '%' } }, h('div.sk-ring.l', null, h('div.sk-ic', null, OC.UI.stickerOr(x.ic, 'l'))), h('div.grow', null, h('div.sk-lv.l', null, h('b.num', null, x.lv), h('span', null, ' 級')), small(next ? `經驗 ${Math.round(x.xp)}／${next}，距離下一級還差 ${Math.max(1, Math.ceil(next - x.xp))}` : '已經是最高等級。'))),
+        h('div.sk-ladder', null, ...x.unlocks.map((u) => h('div.sk-step' + (u.on ? '.on' : u === nu ? '.next' : ''), null, h('i', null, u.on ? icon('check', 's') : String(u.lv)), h('div.grow', null, h('div', null, u.zh), h('div.faint', null, u.on ? `${u.lv} 級・已生效` : `${u.lv} 級解鎖`))))),
+        acts.length ? h('div.sk-how', null, h('span.faint', null, '這樣練：'), ...acts.map((a) => h('span.tag', null, a))) : null);
+    });
   }
   function pickAsp(c, p) {
     sheet('選一個人生目標', (b, api) => b.append(small('牠會比較常做相關的事。完成後有獎勵與稱號；個性的改變仍然會先問你。'), h('div.vstack', { style: { gap: '8px', marginTop: '8px' } }, ...Object.entries(PD().ASPIRATIONS).map(([id, x]) => { const done = (c.life.asp && c.life.asp.done || []).includes(id), fit = x.fit(c); return h('button.q-row' + (done ? '.claimed' : ''), { on: { click: () => { if (done) { toast('這個目標已經完成過了', 'info'); return; } OC.Growth.setAsp(c, id, 'player'); api.close(); p.refresh(p); } } }, h('div.q-ic', null, icon(x.ic, 's')), h('div.grow', { style: { textAlign: 'left' } }, h('b', null, x.zh), small(x.d)), done ? h('span.tag', null, '完成過') : fit > 1.2 ? h('span.tag.teal', null, '很適合') : null); }))));

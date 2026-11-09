@@ -9,26 +9,26 @@
   'use strict';
   const S = () => OC.Store.s, St = OC.Store, Sim = () => OC.Sim;
   const P = {
-    isle: { zh: '晴日島', type: 'home', area: 'isle', map: { x: 0.47, y: 0.6 }, icon: 'home', col: '#6CCB5F', decor: true,
+    isle: { zh: '晴日島', type: 'home', area: 'isle', map: { x: 0.46, y: 0.68 }, icon: 'home', col: '#6CCB5F', decor: true,
       d: '你和 OC 們的家園。住宅、中央廣場、菜園、果樹、花圃與碼頭都在這裡。', facilities: ['我的家（室內）', '中央廣場', '菜園 ×4', '果樹 ×7', '花圃', '雜貨攤', '碼頭釣魚', '長椅'],
       acts: ['eat', 'drink', 'rest', 'nap', 'tend', 'play', 'observe', 'fish', 'walk', 'explore', 'stretch', 'daydream', 'read'], finds: ['apple', 'orange', 'peach', 'flower', 'shell', 'f_sardine', 'f_silver', 'b_butterfly', 'b_ladybug'] },
     home: { zh: '我的家', type: 'home', area: 'home', parent: 'isle', interior: true, icon: 'home', col: '#F2B33D', decor: true,
       d: '可以自由佈置的家。睡覺、做料理、看書、和朋友聚會。', facilities: ['床', '小廚房（料理）', '書櫃', '自由佈置'], acts: ['sleep', 'nap', 'eat', 'rest', 'read', 'study', 'tidy', 'play', 'daydream'], finds: [] },
-    street: { zh: '晴日商店街', type: 'street', area: 'street', map: { x: 0.75, y: 0.47 }, icon: 'cart', col: '#F26B5B',
+    street: { zh: '晴日商店街', type: 'street', area: 'street', map: { x: 0.78, y: 0.55 }, icon: 'cart', col: '#F26B5B',
       d: '食品店、服裝店、家具行、禮品屋與每日市場；還有雲朵咖啡館與葉影圖書館。', facilities: ['晴日食品店', '小針線服裝店', '木木家具行', '星星禮品屋', '每日市場', '雲朵咖啡館', '葉影圖書館'], acts: ['browse', 'rest', 'observe', 'walk', 'play'], finds: [] },
     cafe: { zh: '雲朵咖啡館', type: 'cafe', area: 'cafe', parent: 'street', interior: true, icon: 'apple', col: '#8A5A3C',
       d: '點一杯拿鐵、吃鬆餅、和朋友聊天；也可以借廚房做料理。', facilities: ['點餐櫃台', '咖啡館廚房（料理）', '雙人桌 ×3'], acts: ['eat', 'drink', 'rest', 'read'], finds: ['latte', 'pancake'] },
     library: { zh: '葉影圖書館', type: 'library', area: 'library', parent: 'street', interior: true, icon: 'book', col: '#556080',
       d: '安靜的圖書館。在書桌讀書可以提升閱讀技能。', facilities: ['書櫃 ×4', '閱讀書桌 ×2', '懶骨頭'], acts: ['read', 'study', 'rest', 'nap', 'daydream'], finds: [] },
-    forest: { zh: '苔光森林', type: 'nature', area: 'forest', map: { x: 0.2, y: 0.3 }, icon: 'leaf', col: '#3F9A40',
+    forest: { zh: '苔光森林', type: 'nature', area: 'forest', map: { x: 0.21, y: 0.42 }, icon: 'leaf', col: '#3F9A40',
       d: '安靜的森林。採集莓果與香草、觀察小生物、在池塘釣魚。夜晚有螢火蟲。', facilities: ['採集點', '池塘釣魚', '小生物觀察'], acts: ['forage', 'explore', 'observe', 'fish', 'walk', 'rest', 'daydream'],
       finds: ['mushroom', 'berry', 'herb', 'acorn', 'f_carp', 'f_koi', 'f_shrimp', 'b_ladybug', 'b_beetle', 'b_butterfly', 'b_firefly', 'b_snail'] },
-    beach: { zh: '星砂海灘', type: 'beach', area: 'beach', map: { x: 0.78, y: 0.17 }, icon: 'sparkle', col: '#4FC3E8',
+    beach: { zh: '星砂海灘', type: 'beach', area: 'beach', map: { x: 0.76, y: 0.3 }, icon: 'sparkle', col: '#4FC3E8',
       d: '細細的星砂與長長的碼頭。釣魚、撿貝殼、看海、在沙灘上玩。', facilities: ['碼頭釣魚', '海邊釣魚', '潮池', '沙灘毛巾', '沙堡'], acts: ['fish', 'observe', 'play', 'rest', 'nap', 'walk', 'explore'],
       finds: ['shell', 'shell_star', 'shell_conch', 'sea_glass', 'f_sardine', 'f_rainbow', 'f_puffer', 'f_starbream', 'f_silver', 'f_moonjelly', 'b_crab'] },
     // not built yet — shown as clearly locked (never a fake button)
-    hill: { zh: '風車丘', type: 'nature', locked: true, map: { x: 0.16, y: 0.76 }, icon: 'lock', col: '#9AA3B5', d: '風很大的山丘，有一座老風車。', why: '尚未開放（之後的版本）' },
-    fair: { zh: '彩虹遊樂園', type: 'fun', locked: true, map: { x: 0.8, y: 0.8 }, icon: 'lock', col: '#9AA3B5', d: '表演、比賽與節慶活動的地方。', why: '尚未開放（之後的版本）' },
+    hill: { zh: '風車丘', type: 'nature', locked: true, map: { x: 0.17, y: 0.8 }, icon: 'lock', col: '#9AA3B5', d: '風很大的山丘，有一座老風車。', why: '尚未開放（之後的版本）' },
+    fair: { zh: '彩虹遊樂園', type: 'fun', locked: true, map: { x: 0.82, y: 0.87 }, icon: 'lock', col: '#9AA3B5', d: '表演、比賽與節慶活動的地方。', why: '尚未開放（之後的版本）' },
   };
   const TYPES = { home: '住宅', street: '商店街', cafe: '咖啡館', library: '學習場所', nature: '自然探索', beach: '海灘', fun: '娛樂', island: '其他島嶼' };
   const OUTDOOR = ['isle', 'street', 'forest', 'beach'];

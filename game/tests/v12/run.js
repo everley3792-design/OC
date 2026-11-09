@@ -1,6 +1,8 @@
 /* OC Shimeji 12.0 acceptance (Playwright, real pointer events). node game/tests/v12/run.js [1 2 …]   (http.server on :8765)
  *   1 requests: an accepted request can be cancelled (confirm, no reward, the reaction follows the character, cooldown)
  *   2 layout: text-only tiles have no pedestal circle; the routine card's two selects do not overlap their labels
+ *   3 skill book: a ring tile per skill with level and next unlock; the sheet shows the ladder
+ *   4 map: pins stay inside the chart and clear of the title; the chart is redrawn for the time of day
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -62,6 +64,44 @@ const { check, wait } = H;
         const r = { labels: labels.length, sels: sels.length, widths: sels.map((x) => Math.round(x.width)), noOverlap: sels.length === 2 && sels[0].right <= sels[1].left + 1, within: sels.every((x) => x.right <= 361) }; host.remove(); return r;
       });
       check('2b 作息卡：睡覺／起床兩個選單並排、沒有重疊、不超出卡片', rc.skipped || (rc.noOverlap && rc.within), rc);
+    }
+
+    // ================= 3. skill book =================
+    if (want(3)) {
+      await closeAll();
+      const sk = await page.evaluate(async () => {
+        const c = OC.Chars.active(); c.life.skills.reading = 70; OC.Pages.open('profile', { id: c.id }); await new Promise((r) => setTimeout(r, 900));
+        [...document.querySelectorAll('[data-page="profile"] button')].find((b) => b.textContent.trim() === '成長').click(); await new Promise((r) => setTimeout(r, 900));
+        const tiles = [...document.querySelectorAll('.sk-tile')], n = Object.keys(OC.PlayData.SKILLS).length;
+        const first = tiles[0], lvTxt = first && first.querySelector('.sk-lv') && first.querySelector('.sk-lv').textContent.trim(), sum = document.querySelector('.sk-sum') && document.querySelector('.sk-sum').textContent.replace(/\s+/g, ' ');
+        const next = first && first.querySelector('.sk-next').textContent;
+        first.click(); await new Promise((r) => setTimeout(r, 800));
+        const steps = [...document.querySelectorAll('.sheet .sk-step')].map((e) => e.className.replace('sk-step', '').trim() || 'later');
+        return { tiles: tiles.length, n, lvTxt, sum, next, steps };
+      });
+      check('3a 技能頁：每個技能一格（環形進度、等級數字、下一個解鎖），上方有總覽', sk.tiles === sk.n && /\d/.test(sk.lvTxt || '') && /技能總等級/.test(sk.sum || '') && /下一個|全部/.test(sk.next || ''), sk);
+      check('3b 點技能格：表單列出每一級的效果（已生效／下一個／之後）', sk.steps.length >= 2 && sk.steps.includes('on') && sk.steps.some((x) => x === 'next'), sk.steps);
+      await closeAll(); await page.evaluate(() => OC.App.tab('island')); await wait(page, 400);
+    }
+
+    // ================= 4. map =================
+    if (want(4)) {
+      await closeAll();
+      const mp = await page.evaluate(async () => {
+        const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 10; OC.App.tab('explore'); await new Promise((r) => setTimeout(r, 1500));
+        const wrap = document.querySelector('.map-wrap'), wr = wrap.getBoundingClientRect(), cv = wrap.querySelector('canvas');
+        const pins = [...document.querySelectorAll('.map-pin')].map((p) => ({ id: p.getAttribute('aria-label'), r: p.querySelector('.pin').getBoundingClientRect() }));
+        const title = document.querySelector('.map-title').getBoundingClientRect();
+        const outside = pins.filter((p) => p.r.top < wr.top + 2 || p.r.bottom > wr.bottom || p.r.left < wr.left || p.r.right > wr.right).map((p) => p.id);
+        const hit = pins.filter((p) => !(p.r.right < title.left || p.r.left > title.right || p.r.bottom < title.top || p.r.top > title.bottom)).map((p) => p.id);
+        const sample = () => { const x = cv.getContext('2d'); return Array.from(x.getImageData(20, 20, 4, 4).data).join(); };
+        const dayPx = sample(); S.settings.fixedHour = 23; OC.Pages.open('explore'); await new Promise((r) => setTimeout(r, 1800)); const nightPx = sample();
+        S.settings.fixedHour = 10; OC.Pages.open('explore'); await new Promise((r) => setTimeout(r, 1800));
+        return { pins: pins.length, outside, hit, dayPx, nightPx, locked: [...document.querySelectorAll('.map-pin.locked')].length };
+      });
+      check('4a 地圖：每個圖釘都在地圖範圍內、不被左上角標題牌擋住；未開放的小島仍標示（鎖）', mp.pins === 6 && !mp.outside.length && !mp.hit.length && mp.locked === 2, mp);
+      check('4b 地圖依時段重畫（白天與夜晚的畫面不同）', mp.dayPx !== mp.nightPx, { dayPx: mp.dayPx, nightPx: mp.nightPx });
+      await page.evaluate(() => OC.App.tab('island')); await wait(page, 400);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
