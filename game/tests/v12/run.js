@@ -4,6 +4,8 @@
  *   3 skill book: a ring tile per skill with level and next unlock; the sheet shows the ladder
  *   4 map: pins stay inside the chart and clear of the title; the chart is redrawn for the time of day
  *   5 no NPCs: no resident system, page, setting, drop target or daily quest is left; old saves drop the data and keep every character
+ *   6 control modes: every character has its own mode (default semi); manual stays put, semi / auto live on their own; status card, HUD long-press sheet, settings
+ *   7 minimal HUD: one tools handle, the mood row moved to the status card, a slim quest chip, icon-only bar (label on the active tab), dims when idle
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -119,6 +121,75 @@ const { check, wait } = H;
       check('5a 沒有居民（NPC）：設定沒有開關、沒有居民頁、沒有相關程式介面、存檔沒有欄位、每日任務沒有「和居民聊天」', !r.settingsHasResidents && !r.api.length && !r.appNpcs && r.store.npcs === undefined && r.store.residents === undefined && !r.poolTalk && !r.dailiesTalk && r.friendLevels === 5, r);
       const w = await page.evaluate(() => { const items = OC.Chars.all().map((c) => c.profile.name); return { n: items.length, mates: Object.keys(OC.App.mates || {}).length }; });
       check('5b 小島上只有玩家自己的角色（沒有任何自動出現的居民）', w.n === 3 && w.mates <= 2, w);
+    }
+
+    // ================= 6. control modes =================
+    if (want(6)) {
+      await closeAll(); await quiet();
+      const d = await page.evaluate(() => {
+        const c = OC.Chars.blank('custom'); c.profile.name = '新角色'; const fresh = c.life.control;
+        const old = OC.Chars.all()[0]; delete old.life.control; OC.Chars.normalize(old);
+        return { fresh, migrated: old.life.control };
+      });
+      check('6a 每個新角色、既有角色的操控模式預設都是「半自動」', d.fresh === 'semi' && d.migrated === 'semi', d);
+      // behaviour: a manual character does not start things on its own; a semi / auto one does (the played OC and a mate alike)
+      const ids = await page.evaluate(() => OC.Chars.all().map((c) => c.id));
+      const run = await page.evaluate(async ([id, mate]) => {
+        const out = {}; const S = OC.Store.s;
+        for (const mode of ['manual', 'semi', 'auto']) {
+          for (const c0 of OC.Chars.all()) { OC.Brain.setControl(c0.id, mode); const b0 = OC.Brain.get(c0.id); b0.holds.clear(); b0.invited = null; }   // everybody in the same mode: nobody invites a manual one
+          for (const who of [id, mate]) {
+            const c = OC.Chars.get(who), b = OC.Brain.get(who); if (b.st === 'do' || b.st === 'go' || b.st === 'social') OC.Brain.abort(b, 't'); b.cmdAt = 0; b.queued = null; if (b.a) b.a.path = null; b.thinkAt = 0;
+            Object.assign(c.needs, { fun: 15, interest: 15, active: 15, social: 20, food: 85, sleep: 90, energy: 90, comfort: 80 });   // bored and restless, but nothing urgent
+            for (let i = 0; i < 8; i++) { OC.Sim.advance(3); await new Promise((r) => setTimeout(r, 200)); }   // let leftovers of the previous mode settle
+            if (b.st === 'do' || b.st === 'go' || b.st === 'social') OC.Brain.abort(b, 't'); b.thinkAt = 0; let started = 0; const t0 = Date.now();
+            while (Date.now() - t0 < 30000 && !started) { OC.Sim.advance(3); Object.assign(c.needs, { fun: 15, interest: 15, active: 15, food: 85, sleep: 90, energy: 90, comfort: 80 }); /* keep it from being urgent: manual still looks after real needs */ await new Promise((r) => setTimeout(r, 200)); started = b.st === 'go' || b.st === 'do' ? 1 : 0; }
+            out[(who === id ? 'played-' : 'mate-') + mode] = started > 0; if (mode === 'manual' && started) out['why-' + who] = { st: b.st, act: b.act, reason: b.dbg && b.dbg.reason, log: OC.Brain.log.filter((l) => l.who === who).slice(-3).map((l) => l.text || l.t) };
+          }
+        }
+        return out;
+      }, [ids[0], ids[1]]);
+      check('6b 手動的角色（操控中的或同伴）不會自己開始新活動；半自動、全自動的會自己生活', !run['played-manual'] && !run['mate-manual'] && run['played-semi'] && run['mate-semi'] && run['played-auto'] && run['mate-auto'], run);
+      // UI: status card
+      await page.evaluate(() => { OC.Brain.setControl(OC.Store.s.activeId, 'semi'); OC.App.toggleStatus(true); }); await wait(page, 900);
+      const sc = await page.evaluate(() => { const bs = [...document.querySelectorAll('.status-card .sc-ctl .seg button')].map((b) => b.textContent.trim()); const on = document.querySelector('.status-card .sc-ctl .seg button.on'); return { bs, on: on && on.textContent.trim(), desc: document.querySelector('.sc-ctld').textContent.slice(0, 20) }; });
+      await page.click('.status-card .sc-ctl .seg button[data-v="auto"]'); await wait(page, 500);
+      const after = await page.evaluate(() => ({ mode: OC.Chars.active().life.control, pill: !document.querySelector('.hud-ctl').hidden && document.querySelector('.hud-ctl').textContent, desc: document.querySelector('.sc-ctld').textContent.slice(0, 14) }));
+      await page.click('.status-card .sc-ctl .seg button[data-v="semi"]'); await wait(page, 500);
+      const back = await page.evaluate(() => ({ mode: OC.Chars.active().life.control, pillHidden: document.querySelector('.hud-ctl').hidden }));
+      check('6c 狀態卡有操控模式切換（手動／半自動／全自動＋說明）；改成非預設時 HUD 出現小標籤，回到半自動就隱藏', sc.bs.length === 3 && sc.on.includes('半自動') && after.mode === 'auto' && after.pill === '全自動' && back.mode === 'semi' && back.pillHidden, { sc, after, back });
+      await page.evaluate(() => OC.App.toggleStatus(false)); await wait(page, 400);
+      // UI: long-press the avatar → the quick sheet with every character
+      const box = await page.evaluate(() => { const r = document.querySelector('.hud-me').getBoundingClientRect(); return { x: r.x + 30, y: r.y + 30 }; });
+      await page.mouse.move(box.x, box.y); await page.mouse.down(); await wait(page, 1400); await page.mouse.up(); await wait(page, 700);
+      const sh = await page.evaluate(() => { const s = [...document.querySelectorAll('.sheet')].pop(); return s ? { title: s.textContent.slice(0, 12), rows: s.querySelectorAll('.ctl-row').length, status: !!document.querySelector('.status-card.on') } : null; });
+      check('6d 長按 HUD 頭像：出現「操控模式」表單，列出每個角色，可逐一或全部切換（且不會同時打開狀態卡）', sh && /操控模式/.test(sh.title) && sh.rows === 3 && !sh.status, sh);
+      await page.click('.sheet .ctl-row:nth-of-type(2) .seg button[data-v="manual"]'); await wait(page, 400);
+      const one = await page.evaluate((m) => OC.Chars.get(m).life.control, ids[1]);
+      await page.evaluate(() => { const all = [...document.querySelectorAll('.sheet .seg')].pop(); all.querySelector('button[data-v="semi"]').click(); }); await wait(page, 400);
+      const allm = await page.evaluate(() => OC.Chars.all().map((c) => c.life.control));
+      check('6e 表單可以改單一角色，也可以「全部角色一次設定」', one === 'manual' && allm.every((m) => m === 'semi'), { one, allm });
+      await closeAll();
+    }
+
+    // ================= 7. minimal HUD =================
+    if (want(7)) {
+      await closeAll(); await page.evaluate(() => { OC.App.tab('island'); OC.App.rail(false); }); await wait(page, 700);
+      const vis = (sel) => `[...document.querySelectorAll('${sel}')].filter((e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && !e.hidden; }).length`;
+      const hud = await page.evaluate((q) => ({ controls: eval(q), moodRowVisible: [...document.querySelectorAll('.hud-plate .hud-row')].filter((e) => getComputedStyle(e).display !== 'none').length, railOpen: document.querySelector('.hud-rail').classList.contains('open') }), vis('#hud button'));
+      check('7a 常駐 HUD 只剩：頭像名牌、時間、一個工具把手（有任務時多一個小膠囊）；心情列移到狀態卡', hud.controls <= 4 && hud.moodRowVisible === 1 && !hud.railOpen, hud);
+      await page.evaluate(() => OC.App.rail(true)); await wait(page, 600);
+      const open = await page.evaluate((q) => ({ n: eval(q), exp: document.querySelector('.rail-toggle').getAttribute('aria-expanded') }), vis('.hud-rail button'));
+      await page.evaluate(() => OC.App.rail(false)); await wait(page, 300);
+      const shut = await page.evaluate((q) => eval(q), vis('.hud-rail button'));
+      check('7b 點工具把手：展開背包、鏡頭、佈置（共 4 個鈕），再收起只剩把手', open.n === 4 && open.exp === 'true' && shut === 1, { open, shut });
+      const tb = await page.evaluate(() => [...document.querySelectorAll('.tab')].map((t) => ({ on: t.classList.contains('on'), label: parseFloat(getComputedStyle(t.querySelector('span:not(.stk)')).opacity), icon: t.querySelector('.stk').getBoundingClientRect().width > 0 })));
+      check('7c 導覽列只有圖示；標籤只出現在目前分頁（所有圖示都看得到）', tb.length === 5 && tb.every((t) => t.icon) && tb.filter((t) => t.label > 0.5).length === 1 && tb.find((t) => t.on).label > 0.5, tb);
+      await page.evaluate(() => document.getElementById('hud').classList.remove('idle')); await wait(page, 7500);
+      const idle = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
+      await page.mouse.click(196, 500); await wait(page, 700);
+      const awake = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
+      check('7d 安靜幾秒後 HUD 自己淡出（讓出畫面），一碰就回來', +idle < 0.8 && +awake > 0.95, { idle, awake });
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

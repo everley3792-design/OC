@@ -430,7 +430,7 @@
       el.replaceChildren(
         T('自主程度'), card(auto, small({ full: 'OC 會自己生活、社交、遇到事件。', lessSocial: '比較少主動找人聊天。', fewerEvents: '事件間隔拉長很多。', restricted: '只做吃飯、休息、睡覺等基本的事。', paused: '大家停下自主行動（需求仍會變化，你安排的活動仍會執行）。' }[st.autonomy])),
         T('細節'), card(
-          h('div.hstack', null, h('span.grow', null, '操控中的角色也自己生活'), toggle(st.playerAuto, (v) => set('playerAuto', v))), small('關閉時，牠只在你一段時間沒操作後做些原地的小動作。'),
+          h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會向你提出請求'), toggle(st.requests !== false, (v) => set('requests', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會自己找人生目標'), toggle(st.aspAuto !== false, (v) => set('aspAuto', v))), small('關閉後不會自動產生，你仍然可以在角色檔案「成長」幫牠選。'),
@@ -504,5 +504,21 @@
       T('預約中的位置'), card(small([...B().res.entries()].map(([k, v]) => `${k}→${name(Ch().get(v) || { profile: { name: '?' } })}`).join('、') || '—')));
   }
 
-  OC.LifeUI = { routineCard, doingText, noticeCount, pushNotice, notices, interact, think, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
+  // ---------------- 12.0 control modes ----------------
+  const CTL = [['manual', '手動', 'move', '只照你說的做；肚子餓、很睏時才自己處理。'], ['semi', '半自動', 'sparkle', '自己生活（計畫、目標、社交都會），你下指令或碰牠時，牠會先聽你的。預設。'], ['auto', '全自動', 'zap', '完全自己生活，只有在你親手帶牠走的時候才停下來。']];
+  const ctlZh = (m) => (CTL.find((x) => x[0] === m) || CTL[1])[1];
+  /** the quick sheet: every character's mode at a glance, one tap to change (also from the HUD: long-press your avatar) */
+  function controlSheet() {
+    sheet('操控模式', (b) => {
+      const rows = h('div.vstack', { style: { gap: '10px' } });
+      const all = seg(CTL.map(([v, zh, ic]) => [v, zh, ic]), '', (v) => { for (const c of Ch().all()) OC.Brain.setControl(c.id, v); build(); });
+      const build = () => {
+        rows.replaceChildren(...Ch().all().map((c) => { const m = OC.Brain.ctlOf ? (c.life.control || 'semi') : 'semi'; return h('div.ctl-row', null, h('div.hstack', null, avatarOf(c, 36), h('b.grow', null, name(c) + (c.id === S().activeId ? '（操控中）' : '')), h('span.faint', null, ctlZh(m))), seg(CTL.map(([v, zh, ic]) => [v, zh, ic]), m, (v) => { OC.Brain.setControl(c.id, v); build(); })); }));
+      };
+      build();
+      b.append(small('半自動是預設：角色們用完整的 AI 自己生活，你隨時可以改。'), h('div.ctl-help', null, ...CTL.map(([v, zh, , d]) => h('div', null, h('b', null, zh), h('span.faint', null, ' ' + d)))), rows, h('div.muted', { style: { margin: '14px 0 6px' } }, '全部角色一次設定'), all);
+    });
+  }
+  const avatarOf = (c, px) => { const cv = h('canvas', { width: px * 2, height: px * 2 }); cv.style.cssText = `width:${px}px;height:${px}px;border-radius:50%;background:var(--surface-2);flex:none`; A().live(cv, () => ({ char: Ch().get(c.id), pose: { face: 0.2 } })); return cv; };
+  OC.LifeUI = { controlSheet, ctlZh, CTL, routineCard, doingText, noticeCount, pushNotice, notices, interact, think, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
 })();

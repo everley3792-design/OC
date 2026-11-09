@@ -817,3 +817,49 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 .map-pin.here .pin { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--teal), var(--shadow-2); }
 
 .map-pin { transform: translate(-50%, -66%); }
+
+/* 12.0 control modes: HUD pill (only when not the default), status-card row, quick sheet */
+.hud-ctl { padding: 0 7px; border-radius: var(--r-pill); font-size: 10px; font-weight: 800; line-height: 16px; background: var(--accent-soft); color: var(--accent); }
+.hud-ctl[data-m="manual"] { background: var(--sun-soft); color: var(--ink-2); } .hud-ctl[data-m="auto"] { background: var(--teal-soft); color: var(--teal); }
+.sc-ctl { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; } .sc-ctl .seg { width: 100%; } .sc-ctld { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.4; }
+.ctl-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--r-m); background: var(--surface-2); }
+.ctl-help { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 14px; font-size: var(--fs-s); line-height: 1.45; }
+
+/* ================= 12.0 minimal HUD =================
+   top-left: avatar + name & coins · a small time pill · top-right: one tools handle · bottom: a slim quest chip and an icon-only bar.
+   The mood bar and its text live in the status card (tap the avatar); the HUD dims by itself when nothing is happening. */
+#hud.idle > * { opacity: .5; } #hud.idle > .status-card { opacity: 1; }
+.hud-av { width: 52px; height: 52px; border-width: 3px; }
+.hud-plate { height: 38px; min-width: 0; margin-left: -16px; padding: 0 12px 0 24px; gap: 0; background: var(--hud-glass); box-shadow: var(--hl), 0 2px 0 var(--lip), var(--shadow-1); }
+.hud-plate .hud-row + .hud-row { display: none; }
+.hud-name { font-size: var(--fs-m); }
+.hud-time { top: calc(var(--sat) + 66px); height: 34px; padding: 0 12px 0 6px; gap: 4px; background: var(--hud-glass); box-shadow: var(--hl), 0 2px 0 var(--lip), var(--shadow-1); }
+.hud-time b { display: none; } .hud-time .num { font-size: var(--fs-s); color: var(--ink); font-weight: 800; }
+.hud-time .hud-wx .stk { width: 24px; height: 24px; }
+.hud-rail { top: calc(var(--sat) + 12px); gap: 8px; align-items: flex-end; }
+.rail-btn, .hud-rail .bag-fab { width: 46px; height: 46px; min-width: 48px; min-height: 48px; border-radius: 50%; background: var(--hud-glass); }
+.rail-btn small { display: none; }
+.rail-btn .stk { width: 26px; height: 26px; }
+.hud-rail:not(.open) > :not(.rail-toggle) { display: none; }
+.hud-rail.open > :not(.rail-toggle) { animation: rail-in 300ms var(--spring) backwards; }
+.hud-rail.open > :nth-child(3) { animation-delay: 45ms; } .hud-rail.open > :nth-child(4) { animation-delay: 90ms; }
+@keyframes rail-in { from { opacity: 0; transform: translateY(-10px) scale(.7); } }
+.rail-toggle .stk { transition: transform var(--t-spring) var(--spring); } .hud-rail.open .rail-toggle .stk { transform: rotate(90deg); }
+.reduce-motion .hud-rail.open > :not(.rail-toggle) { animation: none; }
+.hud-sys { right: calc(var(--sar) + 66px); top: calc(var(--sat) + 14px); }
+.hud-sq { width: 44px; height: 44px; min-width: 48px; min-height: 48px; }
+/* quest: a slim chip, not a card */
+.hud-quest { padding: 6px 12px 6px 8px; border-radius: var(--r-pill); max-width: min(78vw, 300px); }
+.hud-quest small { display: none; } .hud-quest .hud-qic { width: 26px; height: 26px; }
+.hud-quest b { font-size: var(--fs-s); font-weight: 700; }
+.hud-quest:not(.ready) { background: var(--hud-glass); opacity: .88; } .hud-quest.ready { box-shadow: 0 0 0 2px var(--accent), var(--shadow-1); }
+/* bar: icons only; the label shows on the active tab */
+:root { --tabbar-h: 58px; }
+.tab { gap: 0; } .tab > span:not(.stk) { max-height: 0; opacity: 0; overflow: hidden; transition: max-height var(--t-base), opacity var(--t-base); }
+.tab.on > span:not(.stk) { max-height: 14px; opacity: 1; }
+.tab .stk { width: 28px; height: 28px; }
+.hud-quest { width: auto; }
+
+/* the minimal HUD pieces stay readable over a bright island */
+.rail-btn, .hud-rail .bag-fab, .hud-sq, .hud-plate, .hud-time, .hud-quest:not(.ready) { background: color-mix(in srgb, var(--surface) 90%, transparent); }
+.tab .stk { filter: grayscale(1) opacity(.62); }

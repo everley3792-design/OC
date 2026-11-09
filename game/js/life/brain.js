@@ -96,6 +96,17 @@
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
   const charOf = (b) => OC.Chars.get(b.id);
+  /** 12.0 control mode of a character (each one has its own; the default is 'semi'):
+   *  manual — only does what you say (it still looks after urgent needs) · semi — lives on its own with the full AI (plans, goals, social) and
+   *  yields to you for a while after a command or touch · auto — lives on its own and yields only while you are walking it */
+  const ctlOf = (b) => { const c = charOf(b), m = c && c.life && c.life.control; return m === 'manual' || m === 'auto' ? m : 'semi'; };
+  const manualMode = (b) => ctlOf(b) === 'manual';
+  function setControl(id, mode) {
+    const c = OC.Chars.get(id); if (!c || !['manual', 'semi', 'auto'].includes(mode)) return false;
+    c.life.control = mode; OC.Chars.save && OC.Chars.save(c);
+    const b = brains[id]; if (b) { b.thinkAt = 0; if (mode !== 'manual') b.manualOverride = 0; }
+    OC.Store.emit('control', { id, mode }); return true;
+  }
   const available = (b) => b && b.a && !b.holds.size && !b.queued && !b.leaving && !(b.byPlayer && (b.st === 'go' || b.st === 'do')) && b.st !== 'social' && !(b.invited && convs.includes(b.invited)) && b.st !== 'event' && !(b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) && !(b.slot && b.slot.inside && b.st === 'do');
 
   // ---------------- scoring ----------------
@@ -173,7 +184,7 @@
 
   // ---------------- social candidates ----------------
   function socialCands(c, b) {
-    const out = []; if (settings().autonomy === 'paused' || b.manual && !settings().playerAuto) return out;
+    const out = []; if (settings().autonomy === 'paused' || manualMode(b)) return out;
     const urg = M().urgent(c); if (urg && urg !== 'social') return out;                // look after yourself first
     const st = settings(), lessSocial = st.autonomy === 'lessSocial' || st.autonomy === 'restricted';
     const base = Math.pow(def(c.needs.social), 1.3) * (0.6 + 0.8 * c.personality.social / 100) + (has(c, 'outgoing') ? 0.2 : 0) + (has(c, 'social') ? 0.15 : 0) - (has(c, 'shy') ? 0.15 : 0);
@@ -209,13 +220,13 @@
   function candidates(b) {
     const c = charOf(b); if (!c || !b.a) return [];
     const out = [], st = settings();
-    const manualIdle = b.manual && !st.playerAuto && !(b.manualOverride > nowR());
+    const manualIdle = manualMode(b) && !(b.manualOverride > nowR());
     const low = ['food', 'sleep', 'energy'].filter((k) => c.needs[k] < 25).sort((x, y) => c.needs[x] - c.needs[y])[0];
     for (const act of Object.keys(D().ACTS)) {
       if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
-      if (manualIdle && A.verb && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;
+      if (manualIdle && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;   // manual: only what an urgent need asks for
       const sc = actScore(c, b, act); let target = null, ts = 0;
       if (A.verb === 'wander' || A.verb === 'explore') { const p = wanderPoint(c, b, A.verb === 'explore'); if (!p) continue; target = { pt: p }; }
       else if (A.verb) { const bs = bestSlot(c, b, A.verb); if (!bs) continue; target = { slot: bs.slot }; ts = bs.s; }
@@ -239,7 +250,11 @@
     const c = charOf(b); if (!c) return;
     if (settings().autonomy === 'paused' && !b.queued) { b.thinkAt = nowR() + 2; return; }
     if (b.invited && convs.includes(b.invited)) { b.thinkAt = nowR() + 1; return; }
-    if (b.manual && !settings().playerAuto && !(b.manualOverride > nowR()) && (nowR() - b.cmdAt < 40 || b.a.path || b.a.joy || b.a.mode === 'sit' || b.a.mode === 'talk')) { b.thinkAt = nowR() + 2; return; }
+    if (b.manual && !(b.manualOverride > nowR())) {   // the character you are playing yields to you
+      const m = ctlOf(b), walking = b.a.path || b.a.joy, recent = nowR() - b.cmdAt < 40, posed = b.a.mode === 'sit' || b.a.mode === 'talk';
+      if (m === 'manual' ? (walking || recent || posed) : m === 'semi' ? (walking || recent) : walking) { b.thinkAt = nowR() + 2; return; }
+      if (m !== 'manual' && posed) { b.a.mode = 'idle'; b.a.seatY = 0; release(b.id); OC.World.setAction(b.a, 'idle'); }   // the pose you gave it is over: it gets up on its own
+    }
     if (b.resumeTrip) { const L = b.resumeTrip; b.resumeTrip = null; if (OC.Places.open(L.to) && settings().travel !== false) { dlog(b, `繼續前往${OC.Places.get(L.to).zh}`); startTravel(b, L.to, L.act); return; } }
     let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
     if (OC.Mind11) list = OC.Mind11.shape(c, b, list);                                     // 11.0: plans · goals · knowledge
@@ -415,7 +430,7 @@
   const placeActs = (pl) => { const p = OC.Places.get(pl); return p && !p.locked ? (p.acts || []) : []; };
   /** activities worth a trip: not available here (or a place the OC loves), minus the distance */
   function travelCands(c, b) {
-    if (!placeOK() || settings().travel === false || (b.manual && !settings().playerAuto)) return [];
+    if (!placeOK() || settings().travel === false || b.manual || manualMode(b)) return [];   // the character you are playing stays where you are
     const st = settings(); if (st.autonomy === 'paused' || st.autonomy === 'restricted') return [];
     if (M().urgent(c) && M().urgent(c) !== 'social') return [];
     const cur = here(), out = [], local = new Set(); for (const o of aff) if (o.slots.some((s2) => free(s2, c.id))) o.verbs.forEach((v) => local.add(v));
@@ -753,7 +768,7 @@
 
   OC.Brain = {
     init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); },
-    entryPoint, arrived, noticeNew, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
+    entryPoint, arrived, noticeNew, ctlOf, manualMode, setControl, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,
   };

@@ -95,18 +95,22 @@
     const el = $('#hud');
     hud.av = h('canvas', { width: 128, height: 128 }); hud.name = h('b.hud-name'); hud.mood = h('span.hud-moodtxt');
     hud.coins = h('span.num'); hud.moodBar = h('i');
-    hud.me = h('button.hud-me', { 'aria-label': '角色狀態', 'aria-expanded': 'false', on: { click: () => { haptic('tick'); toggleStatus(); } } },
+    hud.ctl = h('span.hud-ctl', { hidden: true });
+    hud.me = h('button.hud-me', { 'aria-label': '角色狀態（長按：操控模式）', 'aria-expanded': 'false', on: { click: () => { if (hud._lp) { hud._lp = false; return; } haptic('tick'); toggleStatus(); } } },
       h('div.hud-av', null, hud.av),
       h('div.hud-plate', null,
-        h('div.hud-row', null, hud.name, h('span.hud-coins', { 'aria-label': '星幣' }, stk('coin', 's'), hud.coins)),
+        h('div.hud-row', null, hud.name, hud.ctl, h('span.hud-coins', { 'aria-label': '星幣' }, stk('coin', 's'), hud.coins)),
         h('div.hud-row', null, stk('heart', 's'), h('div.hud-bar', null, hud.moodBar), hud.mood)));
+    { let lp = 0; hud.me.addEventListener('pointerdown', () => { hud._lp = false; clearTimeout(lp); lp = setTimeout(() => { hud._lp = true; haptic('long'); OC.LifeUI.controlSheet(); }, 520); });
+      for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hud.me.addEventListener(ev, () => clearTimeout(lp)); }
     hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span.hud-wx');
     hud.timeBtn = h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => { haptic('tick'); timePanel(); } } }, hud.wxIc, h('div', null, h('b', null, hud.wx), hud.time));
     hud.badge = h('span.badge.num');
     hud.bell = h('button.hud-sq.hud-bell', { 'aria-label': '通知', hidden: true, on: { click: () => { haptic('tick'); OC.LifeUI.notices(); } } }, stk('bell'), hud.badge);
-    hud.cam = h('button.rail-btn', { 'aria-label': '鏡頭模式', on: { click: () => { haptic('tick'); camSheet(); } } }, stk('camera'), h('small', null, '鏡頭'));
-    hud.deco = h('button.rail-btn', { 'aria-label': '佈置模式', on: { click: () => { haptic('tick'); setDecorate(!decorate); } } }, stk('sofa'), h('small', null, '佈置'));
-    hud.rail = h('div.hud-rail', null, hud.cam, hud.deco);
+    hud.cam = h('button.rail-btn', { 'aria-label': '鏡頭模式', on: { click: () => { haptic('tick'); rail(false); camSheet(); } } }, stk('camera'), h('small', null, '鏡頭'));
+    hud.deco = h('button.rail-btn', { 'aria-label': '佈置模式', on: { click: () => { haptic('tick'); rail(false); setDecorate(!decorate); } } }, stk('sofa'), h('small', null, '佈置'));
+    hud.railBtn = h('button.rail-btn.rail-toggle', { 'aria-label': '工具', 'aria-expanded': 'false', on: { click: () => { haptic('tick'); rail(!hud.rail.classList.contains('open')); } } }, stk('more'));
+    hud.rail = h('div.hud-rail', null, hud.railBtn, hud.cam, hud.deco);
     hud.questT = h('b.ellipsis'); hud.questS = h('small.ellipsis'); hud.questIc = h('span.hud-qic');
     hud.quest = h('button.hud-quest', { 'aria-label': '今天的任務', hidden: true, on: { click: () => { haptic('tick'); tab('more'); } } }, hud.questIc, h('div.grow', null, hud.questT, hud.questS), icon('chev', 's'));
     // ≤ 6 permanent controls (name plate, weather, 3 tools, quest card); the bell only appears with notices.
@@ -116,6 +120,16 @@
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();
   }
+  /** 12.0 minimal HUD: one tools handle; it opens bag · camera · decorate and folds itself back after a few seconds */
+  let railT = 0;
+  function rail(open) {
+    if (!hud.rail) return; hud.rail.classList.toggle('open', !!open); hud.railBtn.setAttribute('aria-expanded', open ? 'true' : 'false'); clearTimeout(railT);
+    if (open) railT = setTimeout(() => rail(false), 5000);
+  }
+  /** the HUD also dims after a few quiet seconds (never while a card or menu is open) */
+  let idleT = 0;
+  function hudAwake() { const el = $('#hud'); if (!el) return; el.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => { if (!statusEl && !OC.UI.stack.length && !hud.rail.classList.contains('open')) el.classList.add('idle'); else hudAwake(); }, 6000); }
+  document.addEventListener('pointerdown', () => hudAwake(), true);
   /** while the player pans / zooms the island the HUD steps back (more of the world, less chrome) */
   function hudCalm() { const el = $('#hud'); if (!el) return; el.classList.add('calm'); clearTimeout(calmT); calmT = setTimeout(() => el.classList.remove('calm'), 1100); }
   let lastHudKey = '';
@@ -126,12 +140,13 @@
   }
   function updateHUD() {
     const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
-    const key = [OC.Chars.name(c), OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
+    const key = [OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
     hud.name.textContent = OC.Chars.name(c); hud.mood.textContent = doing || OC.Mind.label(c);
+    { const m = c.life.control || 'semi'; hud.ctl.hidden = m === 'semi'; hud.ctl.textContent = OC.LifeUI.ctlZh(m); hud.ctl.dataset.m = m; }
     hud.moodBar.style.width = Math.max(4, Math.min(100, mood)) + '%'; hud.moodBar.classList.toggle('low', mood < 30);
     hud.bell.hidden = !nn; hud.badge.textContent = nn > 9 ? '9+' : nn;
-    hud.time.textContent = L.cycle ? `${L.date}・${L.time}` : `${L.date} ${L.time}`; hud.wx.textContent = L.phase === 'night' && L.wx === 'clear' ? '晴朗的夜' : L.wxZh;
+    hud.time.textContent = L.time; hud.wx.textContent = L.phase === 'night' && L.wx === 'clear' ? '晴朗的夜' : L.wxZh;
     const wi = L.phase === 'night' && (L.wx === 'clear' || L.wx === 'cloudy') ? 'moon' : L.wxIcon;
     if (hud.wxIc.dataset.k !== wi) { hud.wxIc.dataset.k = wi; hud.wxIc.replaceChildren(stk(wi, 'm')); }
     hud.coins.textContent = S().coins.toLocaleString();
@@ -184,7 +199,9 @@
     el._f = { name: h('b'), title: h('small.sc-title'), mood: h('div.sc-mood'), doing: h('div.sc-doing'), wish: h('div.sc-wish'), bars: {} };
     const grid = h('div.sc-needs', null, ...OC.LifeData.NEEDS.map((n) => { const i = h('i', { style: { '--c': n.c } }); el._f.bars[n.id] = i; return h('div.sc-need', { title: n.how }, icon(n.ic, 's'), h('span', null, n.zh), h('div.bar', null, i)); }));
     el._f.who = h('div.sc-who');
-    el.append(h('div.sc-head', null, cv, h('div.grow', null, el._f.name, el._f.title, el._f.mood, el._f.doing)), grid, el._f.wish, el._f.who,
+    el._f.ctlD = h('div.sc-ctld'); el._f.ctl = OC.UI.seg(OC.LifeUI.CTL.map(([v, zh, ic]) => [v, zh, ic]), me().life.control || 'semi', (v) => { OC.Brain.setControl(S().activeId, v); el._f.ctlD.textContent = OC.LifeUI.CTL.find((x) => x[0] === v)[3]; lastHudKey = ''; });
+    el._f.ctlD.textContent = (OC.LifeUI.CTL.find((x) => x[0] === (me().life.control || 'semi')) || OC.LifeUI.CTL[1])[3];
+    el.append(h('div.sc-head', null, cv, h('div.grow', null, el._f.name, el._f.title, el._f.mood, el._f.doing)), grid, el._f.wish, el._f.who, h('div.sc-ctl', null, el._f.ctl, el._f.ctlD),
       h('div.sc-actions', null,
         h('button.btn.s', { on: { click: () => { toggleStatus(false); OC.LifeUI.think(S().activeId); } } }, icon('sparkle', 's'), '想法'),
         h('button.btn.s', { on: { click: () => { toggleStatus(false); setCamMode('focus', player); } } }, icon('eye', 's'), '特寫'),
@@ -234,7 +251,7 @@
   // =============================== quick bag ===============================
   let bagFab, tray, slots, trayY = 0;
   function buildBag() {
-    bagFab = h('button.rail-btn.bag-fab', { 'aria-label': '快速背包', on: { click: () => { haptic('tick'); tray.classList.contains('open') ? closeTray() : openTray(); } } }, OC.UI.sticker('bag'), h('small', null, '背包'));
+    bagFab = h('button.rail-btn.bag-fab', { 'aria-label': '快速背包', on: { click: () => { haptic('tick'); rail(false); tray.classList.contains('open') ? closeTray() : openTray(); } } }, OC.UI.sticker('bag'), h('small', null, '背包'));
     slots = h('div.slots');
     const grab = h('div.grab', { 'aria-label': '拖曳以移動或收合' });
     tray = h('div.tray', { role: 'region', 'aria-label': '快速背包' }, h('div.tray-head', null, h('b', null, '快速背包'), grab, h('button.btn.ghost.s', { on: { click: () => { closeTray(); OC.Pages.open('bag'); } } }, '全部'), h('button.icon-btn', { 'aria-label': '收起', on: { click: closeTray } }, icon('close', 's'))), slots);
@@ -984,6 +1001,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

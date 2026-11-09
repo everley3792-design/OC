@@ -109,6 +109,7 @@
       emo: { list: [], dom: 'neutral', domAt: 0, recent: [], cd: {} },
       mem: { recent: [], long: [], seq: 0 },
       rec: { act: {}, seq: {}, place: {}, placeZh: {}, lastAct: null, social: 0, nightAwake: 0 },
+      control: 'semi',   // 12.0 control mode: 'manual' | 'semi' (default: lives on its own, yields to you) | 'auto'
       habits: [], wishes: [], skills: {}, routine: { sleep: null, wake: null }, player: { aff: 0, fam: 0, last: 0 }, cur: null, log: [],
       loc: 'isle', trip: null, places: {},   // Phase 5: current place, travelling { to, act, eta }, place id → { visits, last }
     };

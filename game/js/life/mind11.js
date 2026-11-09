@@ -93,7 +93,7 @@
   // ------------------------------------------------------------------ shaping the decision (called from brain.decide)
   /** boost / inject according to the current plan, goals and knowledge; may adopt a new plan. list is re-sorted. */
   function shape(c, b, list) {
-    if (!c || !b || b.queued || b.manual && !(OC.Store.s.life.settings.playerAuto)) return list;
+    if (!c || !b || b.queued || OC.Brain.manualMode(b)) return list;
     const k = st(c), s = OC.Store.s.life.settings; if (s.autonomy === 'paused' || s.autonomy === 'restricted') return list;
     const ctx = ctxOf(c, b); ensureGoals(c, ctx);
     const urgent = M().urgent(c);

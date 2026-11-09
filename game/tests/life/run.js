@@ -41,10 +41,10 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       check('1c 熱愛閱讀的小空最想讀書、精力充沛的栗子最想玩', r['小空'].readScore > r['栗子'].readScore && r['栗子'].playScore > r['小空'].playScore, r);
       check('1d 作息不同（栗子早起）', r['栗子'].routine.wake < r['小空'].routine.wake, `${r['栗子'].routine.wake} vs ${r['小空'].routine.wake}`);
       // live: let them live 25 s at ×10 and compare what they actually chose
-      await page.evaluate(() => { OC.Store.s.life.settings.playerAuto = true; });     // let all three live on their own
+      await page.evaluate(() => { for (const c of OC.Chars.all()) c.life.control = 'semi'; });     // let all three live on their own
       await wait(page, 45000);
       const acts = await page.evaluate(() => Object.fromEntries(OC.Chars.all().map((c) => [c.profile.name, Object.entries(c.life.rec.act).map(([k, v]) => k + v.n).join(',') + '|social' + (c.life.rec.social || 0) + '|asked' + OC.Brain.log.filter((x) => x.who === c.id && x.text.startsWith('去找')).length])));
-      await page.evaluate(() => { OC.Store.s.life.settings.playerAuto = false; });
+      await page.evaluate(() => { for (const c of OC.Chars.all()) c.life.control = 'manual'; });
       console.log('activities', JSON.stringify(acts));
       check('1e 實際生活紀錄不同', new Set(Object.values(acts)).size === 3, acts);
       await page.screenshot({ path: path.join(SHOTS, '1-three-ocs.png') });
