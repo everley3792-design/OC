@@ -291,7 +291,7 @@ const { check, wait } = H;
         await new Promise((r) => setTimeout(r, 300)); const c1 = W.fx.calls;
         let t0 = Date.now(); while (dust() > 0 && Date.now() - t0 < 12000) await new Promise((r) => setTimeout(r, 300));
         const left = dust();
-        a.lift = 20; await new Promise((r) => setTimeout(r, 600)); a.lift = 0; await new Promise((r) => setTimeout(r, 900)); const landed = W.fx.puffs;
+        a.lift = 20; await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))); a.lift = 0; let landed = 0; for (let i = 0; i < 60 && !landed; i++) { await new Promise((r) => setTimeout(r, 150)); landed = W.fx.puffs; } /* a frame must see it in the air before it can see it land */
         return { n0, calls0: c0, calls1: c1, left, landed };
       });
       check('7d 灰塵：會揚起、很快散掉；落地會揚起一小團；多用的繪製呼叫不超過 2 個', du.n0 >= 4 && du.left === 0 && du.landed >= 1 && du.calls1 - du.calls0 <= 2, du);
