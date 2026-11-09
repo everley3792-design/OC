@@ -3,6 +3,7 @@
  *   2 layout: text-only tiles have no pedestal circle; the routine card's two selects do not overlap their labels
  *   3 skill book: a ring tile per skill with level and next unlock; the sheet shows the ladder
  *   4 map: pins stay inside the chart and clear of the title; the chart is redrawn for the time of day
+ *   5 no NPCs: no resident system, page, setting, drop target or daily quest is left; old saves drop the data and keep every character
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -102,6 +103,22 @@ const { check, wait } = H;
       check('4a 地圖：每個圖釘都在地圖範圍內、不被左上角標題牌擋住；未開放的小島仍標示（鎖）', mp.pins === 6 && !mp.outside.length && !mp.hit.length && mp.locked === 2, mp);
       check('4b 地圖依時段重畫（白天與夜晚的畫面不同）', mp.dayPx !== mp.nightPx, { dayPx: mp.dayPx, nightPx: mp.nightPx });
       await page.evaluate(() => OC.App.tab('island')); await wait(page, 400);
+    }
+
+    // ================= 5. no NPCs =================
+    if (want(5)) {
+      await closeAll();
+      const r = await page.evaluate(async () => {
+        OC.Pages.open('settings'); await new Promise((r) => setTimeout(r, 700));
+        const settingsText = (document.querySelector('[data-page="settings"]') || document.body).textContent;
+        let npcPage = true; try { OC.Pages.open('npc', { id: 'kuri' }); } catch (e) { npcPage = false; } OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close());
+        const qs = OC.Quests.legacyToday ? OC.Quests.legacyToday().map((q) => q.id) : [], pool = Object.values(OC.Game.QUEST_POOL).map((q) => q.id);
+        const s = OC.Store.s; const dailies = (s.play.q.list || []).map((q) => q.key);
+        return { settingsHasResidents: /居民/.test(settingsText), npcPage, api: ['NPCS', 'npc', 'dialogue', 'talked', 'gift', 'addFriend'].filter((k) => k in OC.Game), appNpcs: 'npcs' in OC.App, store: { npcs: s.npcs, residents: s.world.residents }, poolTalk: pool.includes('talk'), dailiesTalk: dailies.some((k) => /d_talk/.test(k)), friendLevels: OC.Game.LEVELS.length };
+      });
+      check('5a 沒有居民（NPC）：設定沒有開關、沒有居民頁、沒有相關程式介面、存檔沒有欄位、每日任務沒有「和居民聊天」', !r.settingsHasResidents && !r.api.length && !r.appNpcs && r.store.npcs === undefined && r.store.residents === undefined && !r.poolTalk && !r.dailiesTalk && r.friendLevels === 5, r);
+      const w = await page.evaluate(() => { const items = OC.Chars.all().map((c) => c.profile.name); return { n: items.length, mates: Object.keys(OC.App.mates || {}).length }; });
+      check('5b 小島上只有玩家自己的角色（沒有任何自動出現的居民）', w.n === 3 && w.mates <= 2, w);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

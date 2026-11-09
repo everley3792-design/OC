@@ -61,23 +61,6 @@
     },
   });
 
-  // =====================================================================
-  // 居民 NPC detail (relations + memories = dialogue event log)
-  // =====================================================================
-  define('npc', '居民', {
-    sub: true,
-    build(p, el) { p.cv = portraitCanvas(260); p.top = h('div'); p.body = h('div'); el.append(card(h('div.hero', null, h('div.portrait', null, p.cv), p.top)), p.body);
-      p.go = h('button.btn.primary.block', { style: { marginTop: '16px' }, on: { click: () => { const id = p.params.id; close('npc'); app().tab('island'); app().goToNpc(id); } } }, icon('walk', 's'), '去找他'); el.append(p.go);
-      app().live(p.cv, () => ({ char: OC.CharRender.presetChar(Gm.NPCS[p.params.id].preset), pose: { face: -0.2, mouth: 'smile' } })); },
-    refresh(p) {
-      const d = Gm.NPCS[p.params.id], n = Gm.npc(d.id), lv = Gm.friendLevel(n.fr), next = Gm.LEVELS[lv + 1];
-      p.el.querySelector('h1').textContent = d.zh;
-      p.top.replaceChildren(h('h2', null, d.zh), h('div.muted', null, n.met ? Gm.LEVEL_ZH[lv] : '還沒見過面'), h('div', { style: { margin: '6px 0' } }, hearts(n.fr)), next ? h('div', null, bar(100 * (n.fr - Gm.LEVELS[lv]) / (next - Gm.LEVELS[lv]), 'var(--heart)'), h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, `距離「${Gm.LEVEL_ZH[lv + 1]}」還差 ${next - n.fr}`)) : h('span.tag.accent', null, '已是摯友'));
-      const likes = n.liked.length ? n.liked.map((x) => h('span.tag.accent', null, icon('heart', 's'), Sty.ITEMS[x].zh)) : [h('span.muted', null, '多聊天或送禮就會知道')];
-      p.body.replaceChildren(title('個性'), card(d.who), title('喜歡的東西'), card(h('div.hstack', { style: { flexWrap: 'wrap' } }, ...likes)), title('回憶', '對話事件紀錄'), n.mem.length ? h('div.list', null, ...n.mem.map((m) => row(null, m.text, new Date(m.t).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })))) : card(h('span.muted', null, '還沒有回憶。到島上找他聊天吧！')));
-      p.go.hidden = OC.World.area && OC.World.area.id !== 'isle';
-    },
-  });
 
   // =====================================================================
   // 人生目標 life goals
@@ -96,7 +79,7 @@
   // 探索 explore / world map
   // =====================================================================
   const PLACES = [
-    { id: 'isle', zh: '晴日島', d: '你的家。果樹、雜貨攤、居民都在這裡。', x: 0.5, y: 0.62, open: true, finds: ['apple', 'orange', 'peach', 'flower', 'shell'] },
+    { id: 'isle', zh: '晴日島', d: '你的家。果樹、雜貨攤和你的 OC 都在這裡。', x: 0.5, y: 0.62, open: true, finds: ['apple', 'orange', 'peach', 'flower', 'shell'] },
     { id: 'forest', zh: '苔光森林', d: '安靜的森林，可以採到森林蘑菇。夜晚有螢火蟲。', x: 0.26, y: 0.28, open: true, finds: ['mushroom'] },
     { id: 'beach', zh: '星砂海灘', d: '傳說中星砂會發光的海灘。', x: 0.8, y: 0.3, open: false },
     { id: 'hill', zh: '風車丘', d: '風很大的山丘，有一座老風車。', x: 0.18, y: 0.78, open: false },
@@ -232,9 +215,7 @@
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
         title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
-        title('世界'), card(h('button.btn.block', { on: { click: () => app().timePanel() } }, icon('clock', 's'), '時間與天氣…'), h('div.faint', { 'data-time-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }),
-          h('div.hstack', { style: { marginTop: '12px' } }, h('span.grow', null, '小島居民（栗子、小空）'), toggle(S().world.residents, (v) => { S().world.residents = v; St.touch('world'); app().loadArea(OC.World.area.id, { x: app().player.x, y: app().player.y }); })),
-          h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, '預設不出現：小島上只有你自己的 OC。打開後兩位居民會住進空屋，可以聊天、送禮；關掉時好感度與回憶都會保留。')),
+        title('世界'), card(h('button.btn.block', { on: { click: () => app().timePanel() } }, icon('clock', 's'), '時間與天氣…'), h('div.faint', { 'data-time-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } })),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); }))),
         // 聲音：Phase 6 adds the real sound settings at the end of this page (js/ui/p6pages.js)

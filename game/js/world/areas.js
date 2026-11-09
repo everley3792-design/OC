@@ -83,7 +83,6 @@
   const WATERFALL_X = 360;
   const isle = {
     id: 'isle', zh: '晴日島', bounds: { x0: 0, y0: 200, x1: 600, y1: 1000 }, spawn: { x: 300, y: 660 }, seaY: -6,
-    NPC: { kuri: { home: { x: 120, y: 700 }, r: 80 }, sora: { home: { x: 500, y: 570 }, r: 70 } },
     // Phase 4 affordance spots (life AI): verbs = what OCs can do there; n = capacity
     spots: [
       { id: 'plaza', zh: '廣場', x: 290, y: 624, verbs: ['play', 'view'], n: 4, r: 24 },
@@ -188,9 +187,9 @@
     ctx.block(300, 352, 80, 48);
     ctx.interact({ type: 'home', x: 300, y: 376, lvl: 1, hit: { w: 80, h: 110, d: 6 }, at: { x: 300, y: 392 }, label: '我的家' });
     const kh = Mo.house({ roof: P.yellow, shutter: P.coral, w: 60, d: 46, h: 40, wall: '#FFF1E0' }); place(ctx, kh, 116, 640, 0, 1.5);
-    ctx.block(116, 640, 70, 42); ctx.interact({ type: 'npcHome', npc: 'kuri', x: 116, y: 662, hit: { w: 70, h: 96, d: 4 }, at: { x: 116, y: 676 }, label: '栗子的家' });
+    ctx.block(116, 640, 70, 42); 
     const sh = Mo.house({ roof: P.purple, shutter: P.yellow, w: 60, d: 46, h: 40, wall: '#F7F1FF' }); place(ctx, sh, 500, 506, 0, 1.5);
-    ctx.block(500, 506, 70, 42); ctx.interact({ type: 'npcHome', npc: 'sora', x: 500, y: 528, hit: { w: 70, h: 96, d: 4 }, at: { x: 500, y: 542 }, label: '小空的家' });
+    ctx.block(500, 506, 70, 42); 
     const st = Mo.stall(); place(ctx, st, 290, 568, 0, 1.5); ctx.block(290, 568, 68, 22);
     ctx.interact({ type: 'shop', x: 290, y: 580, hit: { w: 70, h: 72, d: 6 }, at: { x: 290, y: 598 }, label: '晴日雜貨攤' });
     for (const [x, y] of [[226, 648], [356, 648]]) { const b = Mo.bench(); place(ctx, b, x, y, 0, 1.5); ctx.block(x, y, 38, 8); ctx.interact({ type: 'bench', x, y: y + 3, hit: { w: 40, h: 26, d: 6 }, at: { x, y: y + 12 }, seat: { x, y: y + 1, up: 7 }, label: '長椅' }); }

@@ -16,7 +16,7 @@
     { id: 'energy', zh: '精力', ic: 'zap', c: 'var(--need-energy)', decay: 6, how: '坐下休息、打盹或睡覺；走很多路會下降' },
     { id: 'sleep', zh: '睡眠', ic: 'sleep', c: 'var(--need-sleep)', decay: 5.5, how: '晚上回家或在小床上睡覺；睡不夠會影響精力與心情' },
     { id: 'fun', zh: '娛樂', ic: 'sparkle', c: 'var(--need-fun)', decay: 7, how: '玩耍、閱讀、看風景、和朋友一起玩' },
-    { id: 'social', zh: '社交', ic: 'users', c: 'var(--need-social)', decay: 5, how: '和其他 OC 或居民聊天、一起活動、被你摸摸頭' },
+    { id: 'social', zh: '社交', ic: 'users', c: 'var(--need-social)', decay: 5, how: '和其他 OC 聊天、一起活動、被你摸摸頭' },
     { id: 'comfort', zh: '舒適', ic: 'sofa', c: 'var(--need-comfort)', decay: 4, how: '坐在長椅、椅子或靠墊上；下雨時下降較快' },
     { id: 'interest', zh: '好奇', ic: 'compass', c: 'var(--need-interest)', decay: 3, how: '探索、閱讀、觀察；一直做同樣的事會下降' },
     { id: 'active', zh: '活動', ic: 'walk', c: 'var(--need-active)', decay: 4, how: '散步、玩耍、伸展；坐太久會下降' },

@@ -22,7 +22,7 @@
   const TRAITS = [
     // group: 社交 social / 情緒 mood / 生活 life / 興趣 interest
     { id: 'shy', zh: '害羞', g: '社交', d: '社交需求下降較慢；被搭話會臉紅', x: ['outgoing'] },
-    { id: 'outgoing', zh: '外向', g: '社交', d: '看到居民會主動打招呼', x: ['shy'] },
+    { id: 'outgoing', zh: '外向', g: '社交', d: '看到其他 OC 會主動打招呼', x: ['shy'] },
     { id: 'gentle', zh: '溫柔', g: '社交', d: '送禮時對方更開心' },
     { id: 'stubborn', zh: '固執', g: '社交', d: '不容易被說服（未來事件）' },
     { id: 'social', zh: '社交達人', g: '社交', d: '聊天獲得更多社交' },

@@ -117,7 +117,7 @@
     OC.Brain && OC.Brain.hold(c.id, 'stage');
     Wd.shot({ x: a.x, y: a.y - 20, zoom: 2.5, yaw: 0, speed: 2.2, instant: true });
     a.lift = reduce() ? 0 : 150; a.tFace = 0; a.tBack = 0;
-    const card = h('div.debut-card', null, h('small', null, '新居民'), h('b', null, nm), h('span', null, `${OC.Chars.typeTitle(c)}・搬到了晴日島`));
+    const card = h('div.debut-card', null, h('small', null, '新成員'), h('b', null, nm), h('span', null, `${OC.Chars.typeTitle(c)}・搬到了晴日島`));
     document.getElementById('app').append(card);
     snd('sparkle'); OC.Stage && OC.Stage.fx && OC.Stage.fx(a, 'sparkle');
     // fall with gravity, land with a squash (data-free: purely visual)

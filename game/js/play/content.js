@@ -23,11 +23,10 @@
     Q('d_feed', 'daily', 'care', '好好吃飯', '餵 OC 吃一樣東西', { ev: 'eat', n: 1, w: { by: 'player' } }, { coins: 50 }, { ic: 'apple' }),
     Q('d_fav', 'daily', 'care', '喜歡的味道', '讓一位 OC 吃到「喜歡」以上的食物', { ev: 'eat', n: 1, w: { lv: '>=1', by: 'player' } }, { coins: 80 }, { ic: 'heart' }),
     Q('d_newtaste', 'daily', 'care', '新口味', '讓 OC 嚐一種第一次吃的食物', { ev: 'eat', n: 1, w: { first: true, by: 'player' } }, { coins: 80 }, { ic: 'apple' }),
-    Q('d_gift', 'daily', 'social', '一份心意', '送禮物給 OC 或居民', { ev: 'gift', n: 1 }, { coins: 70 }, { ic: 'gift' }),
+    Q('d_gift', 'daily', 'social', '一份心意', '送禮物給你的 OC', { ev: 'gift', n: 1 }, { coins: 70 }, { ic: 'gift' }),
     Q('d_play', 'daily', 'care', '玩具時間', '陪 OC 玩一次玩具', { ev: 'play', n: 1 }, { coins: 60 }, { ic: 'play', req: { kinds: ['toy'] } }),
     Q('d_pet', 'daily', 'care', '摸摸頭', '摸摸 OC 的頭 2 次', { ev: 'pet', n: 2 }, { coins: 40 }, { ic: 'paw' }),
     Q('d_chat', 'daily', 'social', '聊聊天', '和 OC 聊天 2 次', { ev: 'chat', n: 2 }, { coins: 50 }, { ic: 'chat' }),
-    Q('d_talk', 'daily', 'social', '島上的鄰居', '和居民聊天', { ev: 'talk', n: 1 }, { coins: 50 }, { ic: 'chat' }),
     Q('d_fish', 'daily', 'nature', '今天的魚', '釣到 1 條魚', { ev: 'fish', n: 1 }, { coins: 70 }, { ic: 'sparkle' }),
     Q('d_cook', 'daily', 'make', '今天吃什麼', '做一道料理', { ev: 'cook', n: 1 }, { coins: 80 }, { ic: 'apple' }),
     Q('d_garden', 'daily', 'nature', '菜園日記', '在菜園播種或澆水', { ev: ['plant', 'water'], n: 1 }, { coins: 50 }, { ic: 'leaf' }),
@@ -174,8 +173,8 @@
   // ======================= achievements =======================
   // cat: life social explore collect skill create special ; v(): current value from real records ; hidden: shown as ？？？ until done
   const C = () => OC.Progress, st = () => OC.Store.s.stats;
-  /** best friendship on the resident scale: resident friendship points, or an OC↔OC relationship mapped onto the same levels */
-  const friendScore = () => { const L = OC.Game.LEVELS, npc = Math.max(0, ...Object.values(OC.Store.s.npcs).map((n) => n.fr)); let oc = 0; for (const r of Object.values(OC.Store.s.life.rel || {})) { const t = r.type; if (t === 'bestfriend' || t === 'lover' || t === 'partner') oc = Math.max(oc, L[4]); else if (t === 'friend') oc = Math.max(oc, L[2]); } return Math.max(npc, oc); };
+  /** best friendship between two of the player's own OCs, on the friendship scale (OC.Game.LEVELS) */
+  const friendScore = () => { const L = OC.Game.LEVELS; let oc = 0; for (const r of Object.values(OC.Store.s.life.rel || {})) { const t = r.type; if (t === 'bestfriend' || t === 'lover' || t === 'partner') oc = Math.max(oc, L[4]); else if (t === 'friend') oc = Math.max(oc, L[2]); } return oc; };
   const maxSkill = () => Math.max(0, ...OC.Chars.all().flatMap((c) => Object.keys(SKILLS).map((k) => OC.Mind.skillLv(c, k))));
   const relCount = (t) => Object.values(OC.Store.s.life.rel).filter((r) => [].concat(t).includes(r.type)).length / 2;
   const A = (id, cat, zh, d, v, n, reward, o) => Object.assign({ id, cat, zh, d, v, n, reward: reward || { coins: 150 } }, o || {});
@@ -188,10 +187,9 @@
     A('fav5', 'life', '懂你的胃', '讓 OC 吃到最愛的食物 5 次', () => C().count('eat', { lv: 2 }), 5, { coins: 200, items: { cake: 1 } }),
     A('nap10', 'life', '好好休息', 'OC 們睡了 10 次午覺或好覺', () => C().count('act', { act: ['nap', 'sleep'] }), 10),
     // social
-    A('chat10', 'social', '話匣子', '和居民聊天 10 次', () => st().talks, 10),
-    // 8.0: residents are optional → friendships between the player's own OCs count too (same thresholds)
-    A('friend', 'social', '交到朋友', '任兩位 OC（或 OC 和居民）成為「朋友」', () => friendScore(2), OC.Game.LEVELS[2]),
-    A('bff', 'social', '摯友', '任兩位 OC（或 OC 和居民）成為「摯友」', () => friendScore(4), OC.Game.LEVELS[4], { coins: 300 }),
+    A('chat10', 'social', '話匣子', '和 OC 聊天 10 次', () => st().talks, 10),
+    A('friend', 'social', '交到朋友', '任兩位 OC 成為「朋友」', () => friendScore(2), OC.Game.LEVELS[2]),
+    A('bff', 'social', '摯友', '任兩位 OC 成為「摯友」', () => friendScore(4), OC.Game.LEVELS[4], { coins: 300 }),
     A('gift5', 'social', '送禮高手', '送出 5 份禮物', () => st().gifts, 5),
     A('ocfriends', 'social', '好朋友誕生', '兩位 OC 成為朋友', () => relCount(['friend', 'bestfriend']), 1, { coins: 200, items: { souv_badge: 1 } }),
     A('ocbff', 'social', '最好的朋友', '兩位 OC 成為摯友', () => relCount('bestfriend'), 1, { coins: 400, title: 'socialstar' }),

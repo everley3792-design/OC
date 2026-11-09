@@ -207,7 +207,7 @@
     const unit = Math.min(canvas.height * (o.fill || 0.86) / h, canvas.width / 46);
     return draw(x, c, Object.assign({ action: 'idle', at: o.t || 0, dir: 'front', face: 0.15, noShadow: true }, o.pose || {}), canvas.width / 2, canvas.height * (o.feet || 0.95), unit * (o.scale || 1), o.t || 0);
   }
-  /** for NPCs / presets that are not in the roster */
+  /** for presets (creator templates) that are not in the roster */
   const presetCache = {};
   function presetChar(key) { return presetCache[key] || (presetCache[key] = OC.Chars.fromPreset(key)); }
 

@@ -26,8 +26,8 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       await page.waitForSelector('.intro-film', { timeout: 20000 }); await wait(page, 1500); await shot(page, '2-opening');
       // the film runs on real time (16.5 s): sample while it plays (a slow screenshot must not make the test miss it)
       const yaws = [], subs = []; for (let i = 0; i < 5; i++) { const r = await page.evaluate(() => { const s = document.querySelector('.intro-subtitle'); return [OC.World.yaw, s ? s.textContent : '']; }); yaws.push(r[0]); subs.push(r[1]); await wait(page, 500); }
-      const mid = await page.evaluate(([y, ss]) => ({ chars: OC.Chars.all().length, npcs: Object.keys(OC.App.npcs || {}).length, yaw: Math.max(...y) - Math.min(...y), sub: ss.reduce((a, b) => (b.length > a.length ? b : a), '') }), [yaws, subs]);
-      check('1a 全新安裝：開場期間沒有任何角色或居民（小島是空的）', mid.chars === 0 && mid.npcs === 0, mid);
+      const mid = await page.evaluate(([y, ss]) => ({ chars: OC.Chars.all().length, mates: Object.keys(OC.App.mates || {}).length, yaw: Math.max(...y) - Math.min(...y), sub: ss.reduce((a, b) => (b.length > a.length ? b : a), '') }), [yaws, subs]);
+      check('1a 全新安裝：開場期間沒有任何角色（小島是空的）', mid.chars === 0 && mid.mates === 0, mid);
       check('2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播', mid.yaw > 0.05 && mid.sub.length > 4, mid);
       const t0 = Date.now(); await page.tap('.intro-skip'); await page.waitForSelector('.intro-welcome.on', { timeout: 8000 });
       check('2b 開場可以跳過（立刻到歡迎畫面），並記住看過了', Date.now() - t0 < 4000 && await page.evaluate(() => OC.Store.s.intro.seen), Date.now() - t0);
@@ -46,8 +46,8 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       }
       await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       await wait(page, 1200); await shot(page, '2-debut');
-      const r = await page.evaluate(() => ({ chars: OC.Chars.all().map((c) => c.profile.name), npcs: Object.keys(OC.App.npcs).length, residents: OC.Store.s.world.residents, v: OC.Store.s.v }));
-      check('1c 創角後只有玩家自己的 OC，居民不會自動出現（設定可開啟）', r.chars.length === 1 && r.npcs === 0 && r.residents === false && r.v === 7, r);
+      const r = await page.evaluate(() => ({ chars: OC.Chars.all().map((c) => c.profile.name), mates: Object.keys(OC.App.mates).length, legacy: { npcs: OC.Store.s.npcs, residents: OC.Store.s.world.residents }, hasNpcApi: !!(OC.Game.NPCS || OC.App.npcs), v: OC.Store.s.v }));
+      check('1c 創角後只有玩家自己的 OC；已經沒有居民（NPC）系統與存檔欄位', r.chars.length === 1 && r.mates === 0 && r.legacy.npcs === undefined && r.legacy.residents === undefined && !r.hasNpcApi && r.v === 7, r);
       await page.waitForSelector('.tut-card.on', { timeout: 15000 }).catch(() => null);
       const tut = await page.evaluate(() => ({ active: OC.Tutorial.active, step: OC.Tutorial.step }));
       check('2d 角色登場後，由這位 OC 開始新手教學', tut.active && tut.step === 0, tut);
@@ -254,13 +254,13 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       const r = await page.evaluate(() => {
         const s = JSON.parse(OC.Store.exportJSON()), keep = OC.Store.persist; OC.Store.persist = () => {};
         const v6 = JSON.parse(JSON.stringify(s)); v6.v = 6; delete v6.intro; delete v6.view; v6.world.residents = undefined; v6.npcs = { kuri: { fr: 30, met: true, liked: [], mem: [], lastTalk: 0, lastGift: '' } };
-        OC.Store.importJSON(JSON.stringify(v6)); const a = { v: OC.Store.s.v, residents: OC.Store.s.world.residents, intro: OC.Store.s.intro.seen, chars: OC.Chars.all().length, tut: OC.Store.s.intro.tutorial.done };
-        const v6b = JSON.parse(JSON.stringify(v6)); v6b.npcs = {}; OC.Store.importJSON(JSON.stringify(v6b)); const b = { residents: OC.Store.s.world.residents };
+        OC.Store.importJSON(JSON.stringify(v6)); const a = { v: OC.Store.s.v, residents: OC.Store.s.world.residents, npcs: OC.Store.s.npcs, intro: OC.Store.s.intro.seen, chars: OC.Chars.all().length, tut: OC.Store.s.intro.tutorial.done };
+        const v6b = JSON.parse(JSON.stringify(v6)); v6b.npcs = {}; OC.Store.importJSON(JSON.stringify(v6b)); const b = { residents: OC.Store.s.world.residents, npcs: OC.Store.s.npcs, chars: OC.Chars.all().length };
         OC.Store.importJSON(JSON.stringify(s)); OC.Store.persist = keep;
         return { a, b };
       });
-      check('16a 0.7 存檔升級到 v7：已經認識的居民保留、角色不重建、已玩過的玩家不再播教學', r.a.v === 7 && r.a.residents === true && r.a.intro && r.a.chars === 3 && r.a.tut, r.a);
-      check('16b 沒見過居民的舊存檔：居民改為不出現（資料保留，可在設定開啟）', r.b.residents === false, r.b);
+      check('16a 0.7 存檔升級到 v7：舊的居民資料被丟棄、玩家的角色全部保留、已玩過的玩家不再播教學', r.a.v === 7 && r.a.residents === undefined && r.a.npcs === undefined && r.a.intro && r.a.chars === 3 && r.a.tut, r.a);
+      check('16b 沒見過居民的舊存檔：同樣沒有居民欄位、角色保留', r.b.residents === undefined && r.b.npcs === undefined && r.b.chars === 3, r.b);
     }
 
     // ================= 17. 9.0 polish: new events, choices, quiz, ambient life, notices, settings =================

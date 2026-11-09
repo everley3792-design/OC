@@ -27,7 +27,6 @@
       shops: {},                     // per shop: { day, sold: { id: n } } daily stock
       places: { visited: {}, found: {} },   // place id → first visit; place id → { discoverable id: at }
       garden: {},                    // plot id → { seed, at, water, stage… } (see js/world/places.js)
-      npcs: {},                      // id → { fr, met, liked:[], mem:[], lastTalk, lastGift }
       stats: { steps: 0, shakes: 0, talks: 0, gifts: 0, placed: 0, anims: 0, eaten: 0, sold: 0, bought: 0, picked: 0, visits: {} },
       quests: { day: '', done: {}, claimed: {} },
       ach: {},                       // id → unlocked timestamp
@@ -45,8 +44,7 @@
       },
       seen: { apple: Date.now(), flower: Date.now() },   // collection: item id → first obtained timestamp (starter items)
       goal: null,                    // life goal id
-      // 8.0: the island's resident NPCs (栗子・小空 from 0.2) are opt-in — a new game starts with only the player's own OCs
-      world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {}, residents: false },
+      world: { trees: {}, shells: { day: '', taken: [] }, mush: { day: '', taken: [] }, lamps: {} },
       // 8.0: first-run & tutorial progress (skip / replay / resume), camera mode
       intro: { seen: false, tutorial: { step: 0, done: false, skipped: false } },
       view: { mode: 'classic', yaw: 0 },
@@ -89,6 +87,8 @@
     if (data && data.v === 4) data = migrateV4(data);             // Phase 5 → Phase 6: quests / requests / achievements (additive)
     if (data && data.v === 5) data = migrateV5(data);             // Phase 6 → Phase 7: desktop pets (additive)
     if (data && data.v === 6) data = migrateV6(data);             // 7 → 8.0: residents opt-in (kept for saves that met them), intro done
+    // 12.0: the resident NPCs are gone — their old friendship data and the opt-in flag are dropped on load (every other field is kept)
+    if (data && data.v === 7) { delete data.npcs; if (data.world) delete data.world.residents; }
     S = data && data.v === 7 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
@@ -112,8 +112,7 @@
     if (!d.pet && d.petId) d.pet = { on: [d.petId], per: { [d.petId]: { size: (d.settings && d.settings.petScale) || 1 } } };
     return d;
   }
-  /** v6 → v7: residents become opt-in. A save that already met / befriended them keeps them (nothing is deleted either way:
-   *  their friendship data stays in S.npcs and the player can turn them on / off in Settings). Existing players skip the intro. */
+  /** v6 → v7: (historic) residents were made opt-in here; since 12.0 the resident data is dropped on load. Existing players skip the intro. */
   function migrateV6(d) {
     d.v = 7; d.migratedV6 = Date.now();
     const met = Object.values(d.npcs || {}).some((n) => n && (n.met || n.fr > 0));
@@ -164,6 +163,7 @@
     if (d.v === 4) d = migrateV4(d);
     if (d.v === 5) d = migrateV5(d);
     if (d.v === 6) d = migrateV6(d);
+    delete d.npcs; if (d.world) delete d.world.residents;   // 12.0: no resident NPCs any more
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }

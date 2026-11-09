@@ -8,7 +8,7 @@
   const St = OC.Store, S = () => St.s, Gm = OC.Game, Sty = OC.Style, Wd = OC.World;
   const $ = (s) => document.querySelector(s);
   const NATIVE = St.NATIVE;
-  let player = null, npcs = {}, curTab = 'island', decorate = false, placing = null, dlgOpen = null, paused = false;
+  let player = null, curTab = 'island', decorate = false, placing = null, dlgOpen = null, paused = false;
   const overlays = () => $('#overlays');
 
   // =============================== theme ===============================
@@ -264,12 +264,11 @@
   }
   function placeRings() { for (const r of rings) { if (r.a.hidden || r.a.dead) { r.el.hidden = true; continue; } const p = Wd.project(r.a.x, r.a.y, r.a.lvl, (r.a.gy - r.a.lvl * Wd.HY) + 20); r.el.hidden = false; r.el.style.left = p.x + 'px'; r.el.style.top = p.y + 'px'; } }
   function clearRings() { rings.forEach((r) => r.el.remove()); rings = []; }
-  /** OCs (and residents for gifts) the item can be dropped on, with a reason when not allowed now */
+  /** OCs the item can be dropped on, with a reason when not allowed now */
   function dropCands(id) {
     const k = OC.Items.useKind(id), out = [];
     if (k === 'place') return out;
     for (const r of OC.Use.receivers(id)) out.push({ a: r.a, oc: r.c.id, why: r.why });
-    if (k === 'gift' || k === 'eat' || k === 'drink' || k === 'play') for (const [nid, n] of Object.entries(npcs)) if (Sty.ITEMS[id].kind !== 'furniture') out.push({ a: n, npc: nid, why: null });
     return out;
   }
   function bindSlot(sl, id) {
@@ -293,17 +292,15 @@
     // only receivers count (a bench or a plot under the finger must not swallow the drop): nearest one within ~40px of its body
     let best = null, bd = 42;
     for (const t of dropCands(id)) { if (t.a.hidden) continue; const p = Wd.project(t.a.x, t.a.y, t.a.lvl, (t.a.gy - t.a.lvl * Wd.HY) + 18), d = Math.hypot(p.x - sx, p.y - (sy - 24)); if (d < bd) { bd = d; best = t; } }
-    if (best) return best.npc ? { kind: 'npc', npc: best.npc, a: best.a } : Object.assign({ kind: 'oc' }, best);
+    if (best) return Object.assign({ kind: 'oc' }, best);
     if (it && (it.type === 'self' || it.type === 'mate')) { const oc = it.type === 'self' ? S().activeId : it.id; const c = dropCands(id).find((t) => t.oc === oc); return c ? Object.assign({ kind: 'oc' }, c) : null; }
-    if (it && it.type === 'npc') return { kind: 'npc', npc: it.id, a: npcs[it.id] };
     return null;
   }
   function dropItem(sx, sy, id) {
     const t = dropTarget(sx, sy, id);
-    if (!t) { toast('拖到 OC 身上使用，拖到居民身上送禮。放開在空白處＝取消', 'info'); return; }
+    if (!t) { toast('拖到 OC 身上使用或送禮。放開在空白處＝取消', 'info'); return; }
     if (t.why) { toast(t.why, 'info'); return; }
     if (t.kind === 'oc') { const r = OC.Use.use(id, t.oc); if (r && r.then) r.then(() => renderSlots()); }
-    if (t.kind === 'npc') giveGift(t.npc, id);
     if (t.kind === 'place') { closeTray(); startPlacement({ id }, t.p); }
     renderSlots();
   }
@@ -340,16 +337,8 @@
     else if (b.lookAround) { a.tFace = (Math.random() - 0.5) * 1.6; }
     else if (r > 0.85 && b.emoteScale > 1) Wd.setAction(a, 'happy', { dur: 1, priority: 1 });
   }
-  function makeNPCs() {
-    npcs = {}; mates = {};
-    // 8.0: residents are opt-in (Settings › 世界 › 小島居民); a new game only has the player's own OCs
-    for (const [id, cfg] of Object.entries(S().world.residents ? Wd.area.NPC || {} : {})) {
-      const d = Gm.NPCS[id], c = OC.CharRender.presetChar(d.preset);
-      const a = Wd.actor({ id, x: cfg.home.x, y: cfg.home.y, char: () => c, interact: { type: 'npc', id, hit: { w: 44, h: 42, d: 6 }, prio: 2, label: d.zh }, fixedSpeed: true, speed: 34 });
-      a.home = cfg.home; a.r = cfg.r; a.wait = 1 + Math.random() * 3;
-      a.update = (b, dt) => wander(b, dt);
-      npcs[id] = a;
-    }
+  function makeMates() {
+    mates = {};
     // the player's other OCs who are at this place (they live everywhere now; js/life/brain.js moves them)
     presentHere().forEach((c, i) => addMate(c, i));
   }
@@ -430,15 +419,12 @@
     haptic();
     switch (it.type) {
       case 'self': case 'mate': menuFor(it, screenOf(it.type === 'self' ? player : mates[it.id])); break;
-      case 'npc': approachNpc(it.id); break;
       case 'drop': goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)); break;
       case 'tree': goThen(it.at.x, it.at.y, () => shakeTree(it)); break;
       case 'bed': goThen(it.at.x, it.at.y, () => pickFlower(it)); break;
       case 'bench': goThen(it.at.x, it.at.y, () => sit(it.seat)); break;
       case 'home': goThen(it.at.x, it.at.y, () => travel('home')); break;
       case 'shop': if (OC.WorldUI.tap(it)) break; goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); break;
-      case 'npcHome': if (!S().world.residents) { goThen(it.at.x, it.at.y, () => { face(player, 0, 1); toast('一間空著的小屋（設定 › 世界 可以邀請居民栗子、小空搬來）', 'home'); }); break; }
-        goThen(it.at.x, it.at.y, () => { face(player, 0, 1); const n = npcs[it.npc]; toast(`${it.label}${n && Math.hypot(n.x - player.x, n.y - player.y) < 140 ? `・${Gm.NPCS[it.npc].zh}就在附近` : '・現在不在家'}`, 'home'); }); break;
       case 'travel': goThen(it.at.x, it.at.y, () => tab('explore')); break;
       case 'travelHome': goThen(it.at.x, it.at.y, () => travel('isle')); break;
       case 'furn': if (decorate) { furnInteract(it); break; } menuFor(it, Wd.project(it.x, it.y, Wd.levelAt(it.x, it.y), 30)); break;
@@ -451,7 +437,6 @@
     if (it && (it.type === 'mate' || it.type === 'self') && !placing && !dlgOpen) return startCarry(it.type === 'self' ? S().activeId : it.id);
     if (!it) { menuFor({ type: 'ground', p: r.p }, Wd.project(r.p.x, r.p.y, Wd.levelAt(r.p.x, r.p.y), 0)); return; }
     if (it.type === 'tree') { const left = treeReadyIn(it); toast(left <= 0 ? `${it.label}・果實成熟了，點一下就能搖` : `${it.label}・還要約 ${Math.ceil(left)} 分鐘長出果實`, 'leaf'); return; }
-    if (it.type === 'npc') { const n = Gm.npc(it.id); toast(`${Gm.NPCS[it.id].zh}・${n.met ? Gm.LEVEL_ZH[Gm.friendLevel(n.fr)] : '還沒見過面'}`, 'heart'); return; }
     if (it.type === 'furn') { toast(`${Sty.ITEMS[it.id].zh}・開啟佈置模式即可移動`, 'sofa'); return; }
     toast(it.label || (it.type === 'self' ? `${OC.Chars.name(me())}・${OC.Chars.typeTitle(me())}` : '物品'), 'info');
   }
@@ -667,25 +652,6 @@
   function endTest(onReturn) { if (!testBar) return; OC.UI.popLayer(testBar.layer); testBar.remove(); testBar = null; testChar = null; if (player) { Wd.setAction(player, 'idle'); player.key = ''; } onReturn && onReturn(); }
 
 
-  // ---- NPC talk & gifts ----
-  function approachNpc(id) {
-    const n = npcs[id]; if (!n) return;
-    const side = player.x < n.x ? -1 : 1, tx = n.x + side * 20, ty = n.y + 4;
-    n.path = null; n.wait = 8;
-    goThen(tx, ty, () => { if (Math.hypot(n.x - player.x, n.y - player.y) > 44) { approachNpc(id); return; } talk(id); });
-  }
-  function talk(id) {
-    const n = npcs[id]; n.mode = 'talk'; n.path = null; face(n, player.x - n.x, 0.1); face(player, n.x - player.x, 0.1); player.mode = 'talk';
-    emote(n, '!', 0.9);
-    const dl = Gm.dialogue(id);
-    showDialogue(Gm.NPCS[id].zh, dl.lines, dl.choices, () => { Gm.talked(id); n.mode = 'idle'; n.wait = 2; player.mode = 'idle'; });
-  }
-  function giveGift(id, item) {
-    const n = npcs[id]; if (!n) return;
-    const r = Gm.gift(id, item); if (!r) return;
-    n.mode = 'talk'; n.path = null; face(n, player.x - n.x, 0.1); emote(n, r.mood === 'love' ? '♥' : r.mood === 'meh' ? '…' : '♪');
-    showDialogue(Gm.NPCS[id].zh, [r.line], [], () => { n.mode = 'idle'; n.wait = 2; });
-  }
   // ---- dialogue box ----
   let dlg;
   function buildDialogue() { dlg = { el: h('div.dlg', { role: 'dialog', 'aria-live': 'polite', on: { click: (e) => { if (!e.target.closest('button')) advanceDialogue(); } } }), who: h('div.who'), line: h('div.line'), choices: h('div.choices'), next: h('div.next', null, icon('next', 's')) }; dlg.el.append(dlg.who, dlg.line, dlg.choices, dlg.next); $('#app').append(dlg.el); }
@@ -712,7 +678,6 @@
     endDialogue();
   }
   function endDialogue() { const d = dlgOpen; if (!d) return; dlgOpen = null; OC.UI.popLayer(d.layer); dlg.el.classList.remove('open'); clearInterval(typeT); d.done && d.done(); }
-  function goToNpc(id) { setTimeout(() => approachNpc(id), 300); }
 
   // =============================== decorate / placement ===============================
   let decoEl = null;
@@ -786,7 +751,7 @@
     stopObserve(); OC.Brain.detachAll();
     Wd.loadArea(def, { pos, furniture: OC.Places.room(id) });
     OC.Brain.rebuild();
-    makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeNPCs(); spawnDailies();
+    makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeMates(); spawnDailies();
     S().pos = { area: id, x: player.x, y: player.y };
     OC.WorldUI.arrived(id, o.from); syncTreeFruit(); applyPerf(); Gm.checkAch();
   }
@@ -917,10 +882,9 @@
   St.on('play:title', (e) => OC.Stage.card({ kind: 'title', ic: 'star', title: `新稱號：「${e.zh}」`, sub: '可以在角色檔案的「成長」讓 OC 戴上' }));
   St.on('play:found', (e) => { const it = OC.Style.ITEMS[e.item]; const c = OC.Chars.get(e.oc); if (it && c) OC.Stage.card({ kind: 'discover', item: e.item, title: e.gift ? `${OC.Chars.name(c)}送你${it.zh}` : `${OC.Chars.name(c)}找到了${it.zh}`, sub: '技能帶來的驚喜' }); });
   St.on('reward', (r) => { if (r.why !== '成就' && r.why !== '新發現') setTimeout(() => toast(`${r.why} +${r.coins} 星幣`, 'coin'), 900); });
-  St.on('friendUp', (e) => toast(`和${Gm.NPCS[e.id].zh}的友情升到「${Gm.LEVEL_ZH[e.level]}」！`, 'heart'));
   // (9.0) the discovery card above is the only feedback — the extra toast made two notices per item
   St.on('saveError', () => toast('存檔空間不足：請刪除一些作品', 'info'));
-  ['inv', 'coins', 'needs', 'npc', 'chars', 'animations', 'assets', 'quest', 'ach', 'goal', 'placed', 'growth', 'life'].forEach((ev) => St.on(ev, () => { clearTimeout(refreshT); refreshT = setTimeout(() => OC.Pages.refreshOpen(), 120); }));
+  ['inv', 'coins', 'needs', 'chars', 'animations', 'assets', 'quest', 'ach', 'goal', 'placed', 'growth', 'life'].forEach((ev) => St.on(ev, () => { clearTimeout(refreshT); refreshT = setTimeout(() => OC.Pages.refreshOpen(), 120); }));
   let refreshT = 0;
 
   // =============================== boot ===============================
@@ -995,7 +959,7 @@
     if (e.k === 'picked' && st.picked >= 15) OC.Chars.suggest(c, 'trait', 'nature', '最近常常摘花、撿貝殼');
     if (e.k === 'eaten' && st.eaten >= 15) OC.Chars.suggest(c, 'trait', 'foodie', '吃了好多好吃的東西');
     if (e.k === 'anims' && st.anims >= 3) OC.Chars.suggest(c, 'trait', 'creative', '做了好幾段動畫');
-    if (e.k === 'talks' && st.talks >= 20) OC.Chars.suggest(c, 'trait', 'social', '常常和居民聊天');
+    if (e.k === 'talks' && st.talks >= 20) OC.Chars.suggest(c, 'trait', 'social', '常常和 OC 聊天');
     if (e.k === 'shakes' && st.shakes >= 10) OC.Chars.suggest(c, 'hobby', '照顧果樹', '搖了很多次果樹');
   });
   St.on('growthSuggest', (e) => { lastHudKey = ''; toast(`${OC.Chars.name(e.c)}好像${e.type === 'trait' ? '有了新的個性' : e.type === 'habit' ? '有了新習慣' : '發現了新興趣'}：「${(e.s && e.s.zh) || e.value}」（點右上角的鈴鐺決定）`, 'sparkle'); });
@@ -1020,6 +984,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, goToNpc, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get npcs() { return npcs; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

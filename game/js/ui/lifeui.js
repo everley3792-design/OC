@@ -258,7 +258,7 @@
   }
   function chat(id) {
     const c = Ch().get(id), a = A().actorOf(id); if (!c) return;
-    B().hold(id, 'dialogue'); if (OC.Progress) OC.Progress.emit('chat', { oc: id });
+    B().hold(id, 'dialogue'); OC.Store.stat && OC.Store.stat('talks'); if (OC.Progress) OC.Progress.emit('chat', { oc: id });
     const say = (cat, extra) => { const ln = OC.Talk.say(cat, c, null, extra); return ln ? ln.text : null; };
     const recentWith = M().memories(c, { type: 'social' })[0]; const o = recentWith && recentWith.who[0] && Ch().get(recentWith.who[0]);
     const lines = [say('chat_player', o ? { recentWith: true, act: (recentWith.data && recentWith.data.act) || null } : {}), say('chat_player')].filter(Boolean);
