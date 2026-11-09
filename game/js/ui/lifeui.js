@@ -301,7 +301,7 @@
     const fmt = (x) => `${String(Math.floor(x % 24)).padStart(2, '0')}:${x % 1 ? '30' : '00'}`;
     const sel = (vals, v, on) => h('select.input', { on: { change: (e) => on(+e.target.value) } }, ...vals.map((x) => h('option', { value: x, selected: Math.abs(x - v) < 0.01 }, fmt(x))));
     const set = (k, v) => { c.life.routine[k] = v; Ch().save(c); };
-    return card(h('div.hstack', null, h('span.grow', null, '睡覺'), sel(opts, r.sleep, (v) => set('sleep', v)), h('span.grow', { style: { textAlign: 'right' } }, '起床'), sel(wopts, r.wake, (v) => set('wake', v))),
+    return card(h('div.routine-grid', null, h('label', null, h('span.muted', null, '睡覺時間'), sel(opts, r.sleep, (v) => set('sleep', v))), h('label', null, h('span.muted', null, '起床時間'), sel(wopts, r.wake, (v) => set('wake', v)))),
       small(r.auto ? `依個性自動決定${r.early ? '（早起型）' : r.late ? '（夜貓子）' : ''}；改了之後牠會照你的設定作息。` : '你設定的作息。'),
       !r.auto ? h('button.btn.ghost.s', { style: { marginTop: '6px' }, on: { click: () => { c.life.routine = { sleep: null, wake: null }; Ch().save(c); } } }, '改回依個性自動') : null);
   }

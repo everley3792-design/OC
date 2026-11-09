@@ -107,11 +107,11 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
 .grid.c4 { grid-template-columns: repeat(4, 1fr); } .grid.c3 { grid-template-columns: repeat(3, 1fr); } .grid.c2 { grid-template-columns: repeat(2, 1fr); }
 /* tiles: white toy cells, the item sits on a soft round pedestal */
 .tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 1; border-radius: var(--r-m); background: var(--surface); box-shadow: var(--hl), 0 2.5px 0 var(--line), var(--shadow-1); font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); transition: transform var(--t-spring) var(--spring), box-shadow var(--t-base); }
-.tile::before { content: ""; position: absolute; left: 50%; top: 44%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 50% 40%, var(--surface-2) 0 58%, transparent 71%); pointer-events: none; }
 .tile > * { position: relative; }
 .tile:active { transform: scale(.94); transition-duration: var(--t-press); }
 .tile.on { background: var(--accent-soft); box-shadow: inset 0 0 0 2.5px var(--accent), 0 2.5px 0 var(--accent-lip); color: var(--ink); }
-.tile canvas { width: 66%; height: 66%; }
+.tile canvas { width: 66%; height: 66%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, var(--surface-2) 0 58%, transparent 71%); }   /* the soft round pedestal lives on the picture itself, so a text-only tile never gets one */
+.tile > img { border-radius: 50%; background: radial-gradient(circle at 50% 40%, var(--surface-2) 0 58%, transparent 71%); }
 .tile .count { position: absolute; right: 5px; bottom: 5px; min-width: 22px; padding: 0 6px; border-radius: var(--r-pill); background: var(--surface-2); font: 900 11px/18px var(--font-num); color: var(--ink-2); text-align: center; }
 .tile.locked { color: var(--locked); }
 
@@ -767,3 +767,8 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 .reduce-motion .tap-ripple.on i { animation: none; opacity: .8; transform: scale(1); }
 .reduce-motion .tap-ripple.on b { animation: none; transform: scale(1); }
 @media (prefers-reduced-motion: reduce) { .tap-ripple.on i { animation: none; opacity: .8; transform: scale(1); } .tap-ripple.on b { animation: none; transform: scale(1); } }
+
+/* 12.0 routine card: two labelled selects side by side (the labels used to be squeezed by wide time boxes) */
+.routine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.routine-grid label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: var(--fs-s); }
+.routine-grid select.input { width: 100%; min-width: 0; }
