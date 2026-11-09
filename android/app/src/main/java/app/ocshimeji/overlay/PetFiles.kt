@@ -18,6 +18,8 @@ import java.io.File
 object PetFiles {
     fun root(ctx: Context) = File(ctx.filesDir, "pet").apply { mkdirs() }
     fun ocDir(ctx: Context, id: String) = File(root(ctx), "oc/" + safe(id))
+    /** the OC's own sound clips (12.0): written by the game, played by [PetSounds] */
+    fun soundDir(ctx: Context, id: String) = File(root(ctx), "snd/" + safe(id))
     fun safe(id: String) = id.replace(Regex("[^A-Za-z0-9_\\-]"), "_").take(64)
 
     fun readConfig(ctx: Context): JSONObject = runCatching { JSONObject(File(root(ctx), "config.json").readText()) }.getOrElse { JSONObject() }

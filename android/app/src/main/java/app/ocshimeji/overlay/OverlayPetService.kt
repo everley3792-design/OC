@@ -56,6 +56,10 @@ class OverlayPetService : Service() {
     lateinit var uiCtx: Context; private set
     private val pets = LinkedHashMap<String, PetWindow>()
     private val social = PetSocial()
+    /** 12.0: the desktop pets' own sounds (core:pet PetSound decides when; this plays the clips) */
+    val sounds by lazy { PetSounds(this) }
+    var soundQuiet = true; private set
+    private var quietAt = 0L
     private val app = AppContext()
     private val main = Handler(Looper.getMainLooper())
     private var lastFrameNs = 0L
@@ -193,6 +197,7 @@ class OverlayPetService : Service() {
                 val dt = if (lastFrameNs == 0L) 0f else ((nowNs - lastFrameNs) / 1e9f).coerceAtMost(0.1f)
                 lastFrameNs = nowNs
                 val t0 = System.nanoTime(); val now = SystemClock.uptimeMillis()
+                if (now - quietAt > 1500) { quietAt = now; soundQuiet = !screenOn || (global.optBoolean("sound", false) && sounds.quiet()) }
                 for (w in pets.values) w.frame(dt, now, screenW, insetTop, paused, theme)
                 if (!paused && pets.size > 1) for (m in social.step(pets.map { PetSocial.Member(it.key, it.value.brain) }, dt)) meeting(m, now)
                 frames++; frameNsSum += System.nanoTime() - t0
@@ -240,7 +245,9 @@ class OverlayPetService : Service() {
 
     private fun meeting(m: PetSocial.Meeting, now: Long) {
         val a = pets[m.a] ?: return; val b = pets[m.b] ?: return
-        a.sayCat("friend", now); main.postDelayed({ b.sayCat("friend", SystemClock.uptimeMillis()) }, 1200)
+        val cat = PetSocial.KINDS[m.kind]?.lines ?: "friend"
+        a.sayCat(cat, now); main.postDelayed({ b.sayCat(cat, SystemClock.uptimeMillis()) }, 1200)
+        a.meetingSound(m.kind)   // 12.0: the warm or the low two-tone, once per meeting
         PetFiles.event(this, m.a, "meet", JSONObject().put("with", m.b).put("kind", m.kind))
     }
 
@@ -254,6 +261,20 @@ class OverlayPetService : Service() {
     fun removePet(id: String) {
         removedThisSession += id; pets.remove(id)?.detach()
         if (pets.isEmpty()) stopEverything("all pets put away") else { notifyUpdate(); writeStatus() }
+    }
+
+    /** "test on desktop": the first two pets walk to each other and play a paired action (12.0) */
+    fun testPair(kind: String) {
+        val l = pets.values.toList(); if (l.size < 2 || PetSocial.KINDS[kind] == null) return
+        val a = l[0]; val b = l[1]
+        b.brain.goTo(a.brain.x + a.sizePx * 0.7f * (if (b.brain.x >= a.brain.x) 1 else -1))
+        fun tryStart(left: Int) {
+            if (!running) return
+            val m = social.start(kind, PetSocial.Member(a.id, a.brain), PetSocial.Member(b.id, b.brain))
+            if (m != null) { meeting(m, SystemClock.uptimeMillis()); return }
+            if (left > 0) later(500) { tryStart(left - 1) }
+        }
+        later(900) { tryStart(20) }
     }
 
     /** "test on desktop": play an animation on a pet right now */
@@ -345,6 +366,7 @@ class OverlayPetService : Service() {
     override fun onDestroy() {
         if (running) stopEverything("")
         instance = null
+        runCatching { sounds.release() }
         PetSprites.cache.evictAll()
         super.onDestroy()
     }
@@ -424,6 +446,8 @@ class OverlayPetService : Service() {
         /** config or sprites changed (the game exported) → re-read */
         fun reload() { instance?.let { s -> s.main.post { if (running) s.reload() } } }
         fun pause(p: Boolean) { instance?.let { s -> s.main.post { if (running) s.setPaused(p) } } }
+        /** 12.0: the first two pets play a paired action (only while the service is running) */
+        fun testPair(kind: String) { val s = instance; if (s != null && running) s.main.post { s.testPair(kind) } }
         fun test(ctx: Context, oc: String, anim: String) {
             val s = instance
             if (s != null && running) s.main.post { s.test(oc, anim) }

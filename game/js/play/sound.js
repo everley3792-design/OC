@@ -351,11 +351,20 @@
   function perc(t, v) { if (!ctx || nvM() > 26) return; stats.perc++; const s2 = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); s2.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 6000; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.05); s2.connect(hp); hp.connect(g); g.connect(mfade); s2.start(t, Math.random()); s2.stop(t + 0.07); holdM(t + 0.07); }
   function kick(t) { if (!ctx || nvM() > 26) return; stats.kick++; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.0002, t + 0.16); o.connect(g); g.connect(mfade); o.start(t); o.stop(t + 0.18); holdM(t + 0.18); }
   /** a short phrase in the key of the current music: 'win' (up), 'warm' (settles), 'wonder' (sparkle) */
-  function stinger(kind) {
-    if (!ctx || !unlocked || !cfg().on || document.hidden) return;
+  function stinger(kind, delay = 0) {
+    if (!ctx || !unlocked || !cfg().on || document.hidden) return false;
     const m = MOODS[mood || 'day'], sc = m.scale, root = m.root + 12, seq = { win: [0, 2, 4, 7], warm: [4, 2, 0], wonder: [0, 3, 5, 7, 9] }[kind] || [0, 2, 4];
-    seq.forEach((d, i) => tone('event', NOTE(root + sc[d % sc.length] + 12 * Math.floor(d / sc.length)), { t: i * 0.1, d: kind === 'warm' ? 0.5 : 0.28, v: 0.07, type: 'triangle' }));
-    duck(1.2);
+    seq.forEach((d, i) => tone('event', NOTE(root + sc[d % sc.length] + 12 * Math.floor(d / sc.length)), { t: delay + i * 0.1, d: kind === 'warm' ? 0.5 : 0.28, v: 0.07, type: 'triangle' }));
+    duck(1.2 + delay); stats.sting = stats.sting || {}; stats.sting[kind] = (stats.sting[kind] || 0) + 1; return true;
+  }
+  /** 12.0: the few moments that earn a short phrase in the key of the music — one table, one cool-down (never two phrases on top of each other),
+   *  nothing while sound is off / the page is hidden / the game is catching up offline. `delay` lets the small sound effect of the same moment finish first. */
+  const CUES = { skill: ['win', 0.25], asp: ['win', 0.3], claim: ['win', 0.15], mini: ['win', 0.2], req: ['warm', 0.2], relUp: ['warm', 0.4], reconcile: ['warm', 0.3], photo: ['warm', 0.2], discover: ['wonder', 0.2], taste: ['wonder', 0.2] };
+  let cueAt = -1e9; stats.cues = {};
+  function cue(name) {
+    const c = CUES[name]; if (!c || !ctx || !unlocked || !cfg().on || document.hidden || (OC.Sim && OC.Sim.catching)) return false;
+    const now = performance.now(); if (now - cueAt < 3000) return false;   // real time: a suspended audio clock must not freeze the cool-down
+    if (!stinger(c[0], c[1])) return false; cueAt = now; stats.cues[name] = (stats.cues[name] || 0) + 1; stats.lastCue = name; return true;
   }
   /** choose the background music: title | day | dusk | night | rain | indoor | null (silence). Cross-fades over ~1.5 s */
   function music(want) {
@@ -378,6 +387,7 @@
     // gentle UI feedback for any tap on a control
     document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('button, .row.tap, .tile, .chip-btn, [role="tab"]'); if (t && !t.disabled) play(t.closest('.tabbar') ? 'tab' : 'tap'); }, true);
     OC.Store.on('coins', (e) => { if (e && e.d > 0) play('coin'); });
+    OC.Store.on('life:relUp', () => cue('relUp'));   // 12.0: two OCs grow closer (a friendship, a best friend)
   }
-  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, ACT_SND, get intensity() { return intensity; }, get stats() { return stats; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get musicVoices() { return nvM(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
+  OC.Sound = { boot, init, unlock, play, ambient, tick, apply, cfg, suspend, LIB, music, musicFor, speak, voiceOf, VEMO, duck, action, foot, placement, setIntensity, stinger, cue, CUES, ACT_SND, get intensity() { return intensity; }, get stats() { return stats; }, _tap() { return ctx ? { ctx, master, bus } : null; }, get voices() { return nv(); }, get musicVoices() { return nvM(); }, get mood() { return mood; }, MOODS, get ready() { return !!ctx && unlocked; }, get state() { return ctx ? ctx.state : 'none'; } };
 })();

@@ -96,7 +96,7 @@
     r.stage = 'reconciled'; r.endedAt = Sim().now(); r.how = how;
     M().relPair(a.id, b.id, { conflict: -30, trust: 8, aff: 8, intim: 2 }, '和好了');
     for (const [x, y] of [[a, b], [b, a]]) { M().feel(x, 'content', 0.5, `和${nm(y)}和好了`, y.id); M().remember(x, { type: 'milestone', imp: 0.8, text: `和${nm(y)}和好了`, key: 'rift:end:' + key(a.id, b.id) + ':' + Sim().day() }); }
-    ensure().n.reconciled++; notice(`${nm(a)}和${nm(b)}和好了。`); St_touch(); return true;
+    ensure().n.reconciled++; OC.Sound && OC.Sound.cue && OC.Sound.cue('reconcile'); notice(`${nm(a)}和${nm(b)}和好了。`); St_touch(); return true;
   }
   function drift(r) {
     const a = Ch().get(r.a), b = Ch().get(r.b); if (!a || !b) return; r.stage = 'drifted'; r.endedAt = Sim().now();
@@ -176,7 +176,7 @@
     if (run.kind === 'photo') {
       if (run.step === 0) { say(host, 'photo_count', null, 2.4); run.nextAt = run.t + 2.6; }
       else if (run.step === 1) { ids.forEach((id) => act(id, Ch().has(Ch().get(id), 'shy') ? 'shy' : 'peace', 1.8)); OC.Sound && OC.Sound.play('shutter'); run.nextAt = run.t + 1.2; }
-      else if (run.step === 2) { say(ids[1], 'photo_done', null, 2); OC.Sound && OC.Sound.stinger && OC.Sound.stinger('warm'); run.nextAt = run.t + 2; }
+      else if (run.step === 2) { say(ids[1], 'photo_done', null, 2); OC.Sound && OC.Sound.cue && OC.Sound.cue('photo'); run.nextAt = run.t + 2; }
       else return finish(true);
     } else if (run.kind === 'mediation') {
       const [m, a, b] = ids, r = run.rift;

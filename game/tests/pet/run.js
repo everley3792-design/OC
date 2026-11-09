@@ -66,7 +66,7 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
         const news = ['wave', 'clap', 'giggle', 'sigh', 'sneeze', 'hiccup', 'aha', 'bow', 'spin', 'wiggle'].map((k) => { const a = m.anims[k]; return { k, n: a && a.frames.length, loop: a && a.loop, src: a && a.src, differs: !!a && S.files[a.frames[0]] !== S.files[a.frames[Math.floor(a.frames.length / 2)]] }; });
         return { news, anims: Object.keys(m.anims), walk: m.anims.walk, run: m.anims.run, climb: m.anims.climb, hang: m.anims.hang, fall: m.anims.fall, idle: m.anims.idle, order, px: m.px, foot: m.foot };
       }, A);
-      check('2a 每個桌面動作都有影格組（31 個：21 個基本＋10 個 11.0 小動作，含爬牆／吊掛／偷看／掉落）', r.anims.length === 31 && ['climb', 'hang', 'peek', 'fall', 'run', 'jump'].every((k) => r.anims.includes(k)), r.anims.join(','));
+      check('2a 每個桌面動作都有影格組（46 個：21 個基本＋10 個 11.0 小動作＋15 個 12.0 雙人動作，含爬牆／吊掛／偷看／掉落）', r.anims.length === 46 && ['climb', 'hang', 'peek', 'fall', 'run', 'jump'].every((k) => r.anims.includes(k)), r.anims.join(','));
       check('2a2 11.0 新增的 10 個小動作（揮手、拍手、咯咯笑、嘆氣、打噴嚏、打嗝、靈光一閃、鞠躬、轉圈、扭一扭）都輸出：4 格以上、播一次、畫面真的在變', r.news.every((x) => x.n >= 4 && x.loop === 'once' && x.src === 'rig' && x.differs), r.news);
       check('2b 玩家影格：順序（紅綠藍黃）與每格時長原樣保留', r.order.join(',') === '100,010,001,110' && r.walk.durs.join() === '300,100,100,100' && r.walk.src === 'player', `${r.order} ${r.walk.durs}`);
       check('2c 循環模式、事件、優先級也帶到桌面', r.walk.loop === 'pingpong' && r.walk.events.length === 1 && r.walk.events[0].data === '一二！' && r.walk.priority === 6, r.walk);
@@ -278,6 +278,84 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
     if (want(15)) {
       const r = await page.evaluate(async () => { __mock.perms.overlay = true; __mock.running = false; __mock.sprites = {}; window.OCApp.startPets(); for (let i = 0; i < 100 && !__mock.running; i++) await new Promise((x) => setTimeout(x, 100)); return { run: __mock.running, sprites: Object.keys(__mock.sprites).length, cfg: !!__mock.config }; });
       check('15a 小工具的「放出桌寵」走遊戲的流程：先輸出外觀再啟動', r.run && r.sprites >= 1 && r.cfg, r);
+    }
+
+    // ================= 16. 12.0 desktop sounds: the OC's own voice → small WAV clips → the bridge; off by default =================
+    if (want(16)) {
+      const kt = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'android', 'core', 'pet', 'src', 'main', 'kotlin', 'app', 'ocshimeji', 'core', 'pet', 'PetSound.kt'), 'utf8');
+      const ktClips = ((kt.match(/val CLIPS: List<String> = listOf\(([\s\S]*?)\)/) || [])[1] || '').match(/"([a-z0-9_]+)"/g).map((x) => x.replace(/"/g, ''));
+      await page.evaluate(() => { __mock.perms.overlay = true; __mock.running = false; __mock.sounds = {}; __mock.calls.length = 0; });
+      const r = await page.evaluate(async ([a, b]) => {
+        const out = {}; const A = OC.Chars.get(a), B = OC.Chars.get(b);
+        out.clips = OC.PetSound.CLIPS.slice(); out.off = !OC.Store.s.pet.global.sound;
+        const t0 = performance.now(); const pa = await OC.PetSound.renderAll(A); out.ms = Math.round(performance.now() - t0);
+        const info = Object.entries(pa.clips).map(([n, u]) => { const k = OC.PetSound.peek(u); return { n, rate: k.rate, ch: k.ch, bits: k.bits, dur: +k.dur.toFixed(3), peak: +k.peak.toFixed(3), rms: +k.rms.toFixed(3), first: +k.first.toFixed(4), last: +k.last.toFixed(4) }; });
+        out.info = info; out.bytes = pa.bytes;
+        const pa2 = await OC.PetSound.renderAll(A), pb = await OC.PetSound.renderAll(B);
+        out.same = Object.keys(pa.clips).every((n) => pa.clips[n] === pa2.clips[n]); out.diff = Object.keys(pa.clips).filter((n) => pa.clips[n] !== pb.clips[n]).length;
+        out.f0 = [OC.PetSound.voice(A).f0, OC.PetSound.voice(B).f0].map((x) => Math.round(x));
+        return out;
+      }, [A, B]);
+      check('16a 音效清單和原生 PetSound.CLIPS 完全一致（改一邊沒改另一邊會被抓到）', JSON.stringify(r.clips) === JSON.stringify(ktClips) && r.clips.length === 14, { game: r.clips, kotlin: ktClips });
+      check('16b 每個音效都是合法的 16-bit 單聲道 WAV（22 050 Hz）、長度 0.05–1.2 秒、有聲音但不爆音（峰值 0.2–0.85）、頭尾沒有爆音；每隻不到 400 KB', r.info.length === 14 && r.info.every((k) => k.rate === 22050 && k.ch === 1 && k.bits === 16 && k.dur >= 0.05 && k.dur <= 1.2 && k.peak >= 0.2 && k.peak <= 0.85 && k.rms > 0.01 && k.first < 0.02 && k.last < 0.02) && r.bytes < 400 * 1024, { bytes: r.bytes, ms: r.ms, bad: r.info.filter((k) => !(k.rate === 22050 && k.dur >= 0.05 && k.dur <= 1.2 && k.peak >= 0.2 && k.peak <= 0.85 && k.rms > 0.01 && k.first < 0.02 && k.last < 0.02)) });
+      check('16c 同一隻每次輸出完全相同（重新輸出可以跳過）；不同的 OC 聲音不同（用牠自己的聲線）', r.same && r.diff >= 10 && r.f0[0] !== r.f0[1], { same: r.same, diff: r.diff, f0: r.f0 });
+      // off by default: starting the pets exports no sound; switching on exports once, and a re-sync with nothing changed does not render again
+      const s0 = await page.evaluate(async () => { OC.Store.s.pet.global.sound = false; const t = await OC.PetSync.start(); return { ok: t.ok, sounds: Object.keys(__mock.sounds).length, cfg: __mock.config && __mock.config.global.sound }; });
+      check('16d 預設關閉：啟動桌寵不會輸出任何音效；設定檔裡 sound 是 false', s0.ok && s0.sounds === 0 && !s0.cfg, s0);
+      const s1 = await page.evaluate(async () => {
+        const G = OC.Store.s.pet.global; G.sound = true; G.soundVol = 0.6; const k = await OC.PetSync.syncSounds(); const ids = OC.PetSync.on();
+        const at = ids.map((i) => OC.Store.s.pet.soundExported[i].at); const t0 = performance.now(); await OC.PetSync.syncSounds(); const again = performance.now() - t0;
+        return { k, ids: ids.length, exported: Object.keys(__mock.sounds).length, n: Object.values(__mock.sounds).map((x) => x.n), cfg: { on: __mock.config.global.sound, vol: __mock.config.global.soundVol }, same: ids.every((i, j) => OC.Store.s.pet.soundExported[i].at === at[j]), again: Math.round(again) };
+      });
+      check('16e 打開「桌面音效」：每隻桌寵輸出 14 個音效（用 OCNative.petSounds）；設定檔帶上開關與音量；沒變就不重做', s1.k === s1.ids && s1.exported === s1.ids && s1.n.every((n) => n === 14) && s1.cfg.on === true && s1.cfg.vol === 0.6 && s1.same, s1);
+      // a failed export never stops the pet
+      const s2 = await page.evaluate(async () => { const real = window.OCNative.petSounds; window.OCNative.petSounds = () => false; OC.Store.s.pet.soundExported = {}; __mock.running = false; const t = await OC.PetSync.start(); window.OCNative.petSounds = real; return { ok: t.ok, running: __mock.running, log: OC.Store.s.pet.syncLog.slice(0, 3).map((x) => x.kind + ':' + x.ok) }; });
+      check('16f 音效輸出失敗不會讓桌寵起不來（只是安靜），並記在同步紀錄', s2.ok && s2.running && s2.log.includes('sounds:false'), s2);
+      // the settings page
+      await page.evaluate(() => { OC.Store.s.pet.global.sound = false; }); await openPage(page, 'petcenter');
+      const ui0 = await page.$eval('[data-page=petcenter]', (e) => ({ has: e.innerText.includes('桌面音效'), vol: e.innerText.includes('試聽') }));
+      await page.evaluate(() => { const row = [...document.querySelectorAll('[data-page=petcenter] .hstack')].find((e) => e.textContent.includes('桌面音效')); const sw = row && row.querySelector('[role=switch], input, button, .toggle'); sw && sw.click(); });
+      await wait(page, 1500);
+      const ui1 = await page.evaluate(() => ({ on: OC.Store.s.pet.global.sound, vol: document.querySelector('[data-page=petcenter]').innerText.includes('試聽'), exported: Object.keys(__mock.sounds).length }));
+      await shot(page, '16-sound-setting');
+      check('16g 寵物中心有「桌面音效」開關（預設關、沒有音量列）；打開後出現音量與「試聽」，並開始輸出音效', ui0.has && !ui0.vol && ui1.on === true && ui1.vol && ui1.exported >= 1, { ui0, ui1 });
+      await page.evaluate(() => { OC.Store.s.pet.global.sound = false; OC.Store.s.pet.soundExported = {}; });
+    }
+
+    // ================= 17. 12.0 paired desktop actions: animations exported, line pools, meeting effects, test button =================
+    if (want(17)) {
+      const kt = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'android', 'core', 'pet', 'src', 'main', 'kotlin', 'app', 'ocshimeji', 'core', 'pet', 'PetSocial.kt'), 'utf8');
+      const kinds = [...kt.matchAll(/"([a-z]+)" to k\("[^"]+", (true|false), "([a-z_]+)"/g)].map((m) => ({ id: m[1], pos: m[2] === 'true', lines: m[3] }));
+      const beatAnims = [...new Set([...kt.matchAll(/Beat\([^)]*\)/g)].flatMap((m) => [...m[0].matchAll(/"([a-z]+)"/g)].map((x) => x[1])))];
+      await page.evaluate(() => { __mock.perms.overlay = true; __mock.running = false; __mock.sprites = {}; OC.Store.s.pet.exported = {}; });
+      const r = await page.evaluate(async ([a, b, kinds, beatAnims]) => {
+        const ok = await OC.PetSync.exportSprites(a, true); const man = __mock.sprites[a] && __mock.sprites[a].manifest.anims, cfg = (OC.PetSync.push('t'), __mock.config);
+        const have = beatAnims.filter((k) => man && man[k] && man[k].frames.length >= (['hug', 'hugme', 'highfive', 'comfort', 'comforted', 'feedbite', 'bitefed', 'sidebyside', 'chase', 'argue', 'upset', 'apologize', 'accept', 'turnaway', 'listen'].includes(k) ? 4 : 2));
+        const pools = Object.fromEntries(['quarrel', 'sorry', 'comfort_d', 'friend'].map((k) => [k, (cfg.data[a].lines[k] || []).length]));
+        return { ok, beatAnims, missing: beatAnims.filter((k) => !have.includes(k)), pools, linesUsed: [...new Set(kinds.map((k) => k.lines))], catKeys: Object.keys(OC.PetSync.LINE_CATS) };
+      }, [A, B, kinds, beatAnims]);
+      check('17a 原生每一種雙人互動（11 種）用到的動畫，遊戲都有輸出影格（新的雙人動作每個至少 4 格）', kinds.length === 11 && r.ok && r.beatAnims.length >= 14 && r.missing.length === 0, { kinds: kinds.length, missing: r.missing, anims: r.beatAnims });
+      check('17b 原生用到的台詞分類（friend／quarrel／sorry／comfort_d）遊戲都有對應，而且各有台詞可說', r.linesUsed.every((k) => r.catKeys.includes(k)) && r.pools.quarrel >= 1 && r.pools.sorry >= 1 && r.pools.comfort_d >= 1 && r.pools.friend >= 1, { used: r.linesUsed, pools: r.pools });
+      // meeting effects: argue raises the conflict a little, apologising lowers it, comfort helps trust; once per pair per day, and never counted for quests
+      const m = await page.evaluate(([a, b]) => {
+        const rel = () => OC.Mind.rel(a, b), S = OC.Store.s; S.pet.applied.day = ''; S.pet.applied.n = {}; rel().conflict = 20; const c0 = rel().conflict, q0 = OC.Progress.count ? OC.Progress.count('social', {}) : 0;
+        __mock.emit(a, 'meet', { with: b, kind: 'argue' }); const r1 = OC.PetSync.pull('t'); const c1 = rel().conflict;
+        S.pet.applied.day = ''; S.pet.applied.n = {}; __mock.emit(a, 'meet', { with: b, kind: 'apologize' }); const r2 = OC.PetSync.pull('t'); const c2 = rel().conflict;
+        __mock.emit(a, 'meet', { with: b, kind: 'apologize' }); const r3 = OC.PetSync.pull('t'); const c3 = rel().conflict;   // the same day again: capped
+        S.pet.applied.day = ''; S.pet.applied.n = {}; const t0 = rel().trust; __mock.emit(a, 'meet', { with: b, kind: 'comfort' }); OC.PetSync.pull('t'); const t1 = rel().trust;
+        return { c0, c1, c2, c3, r1: r1.out, r2: r2.out, r3: r3.out, t0, t1, q: [q0, OC.Progress.count ? OC.Progress.count('social', {}) : 0] };
+      }, [A, B]);
+      check('17c 桌面上碰面的效果：爭吵讓衝突小升、道歉讓衝突下降、安慰提高信任；同一天同一對只算一次；不計入任務', m.c1 > m.c0 && m.c2 < m.c1 && m.c3 === m.c2 && m.r3.capped === 1 && m.t1 > m.t0 && m.q[1] === m.q[0], m);
+      // the "test paired action" button
+      await page.evaluate(() => { OC.Store.s.pet.on = OC.Chars.all().slice(0, 2).map((c) => c.id); __mock.pairTests = []; }); await openPage(page, 'petcenter');
+      const t1 = await page.$eval('[data-page=petcenter]', (e) => e.innerText.includes('測試雙人互動'));
+      await page.evaluate(() => { const row = [...document.querySelectorAll('[data-page=petcenter] .row')].find((e) => e.textContent.includes('測試雙人互動')); row && row.click(); }); await wait(page, 700);
+      const items = await page.evaluate(() => [...document.querySelectorAll('.sheet .row')].map((e) => e.textContent.trim().slice(0, 8)));
+      await page.evaluate(() => { const row = [...document.querySelectorAll('.sheet .row')].find((e) => e.textContent.includes('擁抱')); row && row.click(); }); await wait(page, 500);
+      const sent = await page.evaluate(() => (__mock.pairTests || []).slice());
+      await page.evaluate(() => { OC.Store.s.pet.on = [OC.Chars.all()[0].id]; }); await openPage(page, 'petcenter');
+      const t2 = await page.$eval('[data-page=petcenter]', (e) => e.innerText.includes('測試雙人互動'));
+      check('17d 兩隻以上在桌面時才有「測試雙人互動」；選一種會真的傳給原生（hug）；只有一隻時不顯示', t1 && items.length >= 8 && sent.includes('hug') && !t2, { t1, items, sent, t2 });
     }
 
     check('全程沒有 JavaScript 錯誤', errors.length === 0, errors.slice(0, 5));

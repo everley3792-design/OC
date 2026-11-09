@@ -72,6 +72,8 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun startPet() = act.runOnUiThread { act.startPet() }
     @JavascriptInterface fun stopPet() = act.runOnUiThread { act.stopPet() }
     @JavascriptInterface fun petPause(paused: Boolean) = OverlayPetService.pause(paused)
+    /** 12.0: make the first two desktop pets play one paired action (hug, highfive, comfort …) */
+    @JavascriptInterface fun petTestPair(kind: String) = OverlayPetService.testPair(kind)
     @JavascriptInterface fun petTest(oc: String, anim: String) = act.runOnUiThread { if (OverlayPetService.canDrawOverlays(act)) OverlayPetService.test(act, oc, anim) else act.requestPermissionFor("overlay") }
     @JavascriptInterface fun setPetScale(scale: Float) { act.prefs.petScale = scale }   // 0.6 compatibility (size now lives in the pet config)
 
@@ -98,6 +100,25 @@ class NativeBridge(private val act: MainActivity) {
         dir.deleteRecursively(); require(tmp.renameTo(dir)) { "rename failed" }
         OverlayPetService.reload(); true
     }.getOrElse { android.util.Log.w("OCPet", "petSprites", it); false }
+
+    /**
+     * One OC's sound clips (12.0): {"clips": {"tap_a": "data:audio/wav;base64,…", …}}. Names are `[a-z0-9_]{1,24}`, every file must be a RIFF/WAVE,
+     * at most 4 MB in total; written into a temporary folder and swapped in only when complete.
+     */
+    @JavascriptInterface fun petSounds(oc: String, json: String): Boolean = runCatching {
+        val clips = JSONObject(json).getJSONObject("clips"); require(clips.length() in 1..40) { "no clips" }
+        val dir = PetFiles.soundDir(act, oc); val tmp = File(dir.parentFile, dir.name + ".tmp").apply { deleteRecursively(); mkdirs() }
+        var bytes = 0L
+        for (name in clips.keys()) {
+            require(Regex("^[a-z0-9_]{1,24}$").matches(name)) { "bad clip name $name" }
+            val b = Base64.decode(clips.getString(name).substringAfter("base64,"), Base64.DEFAULT)
+            require(b.size > 44 && String(b, 0, 4) == "RIFF" && String(b, 8, 4) == "WAVE") { "not a WAV: $name" }
+            bytes += b.size; require(bytes < 4L * 1024 * 1024) { "sounds too large" }
+            File(tmp, "$name.wav").writeBytes(b)
+        }
+        dir.deleteRecursively(); require(tmp.renameTo(dir)) { "rename failed" }
+        OverlayPetService.reload(); true
+    }.getOrElse { android.util.Log.w("OCPet", "petSounds", it); false }
 
     /** which OCs have exported frames on this device (id → anim count) */
     @JavascriptInterface fun petSpriteIndex(): String = JSONObject().apply {

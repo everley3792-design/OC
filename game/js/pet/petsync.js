@@ -33,6 +33,11 @@
     const d = OC.Anim11 && OC.Anim11.LIB && OC.Anim11.LIB[k], dur = d && d.dur ? d.dur : 1.2, n = Math.max(4, Math.min(10, Math.round(dur * 7)));
     ANIMS[k] = { zh, n, fps: Math.round((n / dur) * 10) / 10, loop: 'once' };
   }
+  // 12.0: the paired actions of two desktop pets (core/pet PetSocial.KINDS): each side's animation comes from the game's action library
+  for (const [k, zh, loop] of [['hug', '擁抱（抱的一方）', 'once'], ['hugme', '擁抱（被抱的一方）', 'once'], ['highfive', '擊掌', 'once'], ['comfort', '安慰（安慰的一方）', 'once'], ['comforted', '安慰（被安慰的一方）', 'once'], ['feedbite', '餵食（遞的一方）', 'once'], ['bitefed', '餵食（吃的一方）', 'once'], ['sidebyside', '並肩坐著', 'loop'], ['chase', '追逐', 'loop'], ['argue', '爭吵', 'loop'], ['upset', '不開心', 'loop'], ['apologize', '道歉', 'once'], ['accept', '接受道歉', 'once'], ['turnaway', '轉身走開', 'once'], ['listen', '傾聽', 'loop']]) {
+    const d = OC.Anim11 && OC.Anim11.LIB && OC.Anim11.LIB[k], dur = d && d.dur ? d.dur : 1.6, n = Math.max(4, Math.min(10, Math.round(dur * 7)));
+    ANIMS[k] = { zh, n, fps: Math.round((n / dur) * 10) / 10, loop };
+  }
   /** desktop line categories → game dialogue categories (LifeData.LINES, variables & conditions apply) */
   const LINE_CATS = {
     greet: ['desk_out'], tap: ['desk_tap'], double: ['chat_player'], wake: ['desk_wake'], pet: ['pet'], drag: ['desk_drag'], drop: ['desk_drop'],
@@ -40,10 +45,12 @@
     idle: ['desk_idle', 'chat_player'], sleepy: ['desk_sleepy'], hungry: ['desk_hungry'], lonely: ['desk_lonely'],
     morning: [['desk_morning', { phase: 'morning' }], ['ev_morning', { phase: 'morning' }]], evening: [['desk_evening', { phase: 'evening' }]],
     memory: ['ev_nostalgia', 'desk_memory'], friend: ['desk_friend'],
+    // 12.0: what two pets say after a quarrel, an apology or a comforting (the dialogue engine decides the wording)
+    quarrel: ['rift_cold'], sorry: ['rift_sorry'], comfort_d: ['comfort'],
     timer_start: ['desk_timer_start'], timer_done: ['desk_timer_done'], rest: ['desk_rest'], remind: ['desk_remind'],
   };
   const APP_CATS = { game: '遊戲', music: '音樂', video: '影片', read: '閱讀・新聞', social: '聊天・社群', work: '工作・文書', browse: '瀏覽器', map: '地圖', photo: '相片', shop: '購物' };
-  const CAT_ZH = { greet: '出現在桌面', tap: '點一下', double: '點兩下', wake: '被叫醒', pet: '被摸摸', drag: '被抓起來', drop: '被放下', eat_yum: '吃到喜歡的', eat_ok: '吃到普通的', eat_no: '吃到不喜歡的', gift: '收到禮物', idle: '閒聊', sleepy: '想睡', hungry: '肚子餓', lonely: '寂寞', morning: '早上', evening: '晚上', memory: '想起回憶', friend: '遇到其他 OC', timer_start: '番茄鐘開始', timer_done: '時間到', rest: '提醒休息', remind: '提醒事項' };
+  const CAT_ZH = { greet: '出現在桌面', tap: '點一下', double: '點兩下', wake: '被叫醒', pet: '被摸摸', drag: '被抓起來', drop: '被放下', eat_yum: '吃到喜歡的', eat_ok: '吃到普通的', eat_no: '吃到不喜歡的', gift: '收到禮物', idle: '閒聊', sleepy: '想睡', hungry: '肚子餓', lonely: '寂寞', morning: '早上', evening: '晚上', memory: '想起回憶', friend: '遇到其他 OC', quarrel: '和其他 OC 鬧僵時', sorry: '向其他 OC 道歉時', comfort_d: '安慰其他 OC 時', timer_start: '番茄鐘開始', timer_done: '時間到', rest: '提醒休息', remind: '提醒事項' };
   for (const k of Object.keys(APP_CATS)) { LINE_CATS['app_' + k] = [['app', { app: k === 'social' ? 'chat' : k }], ['desk_app', { app: k }]]; CAT_ZH['app_' + k] = '正在用：' + APP_CATS[k]; }
 
   // new dialogue (data, same format as LifeData.LINES: [cat, text, conditions, weight])
@@ -196,15 +203,35 @@
     return ok;
   }
 
+  // ------------------------------------------------------------------ 12.0 desktop sounds
+  const soundOn = () => !!P().global.sound;
+  /** the clips are the OC's own voice (OC.PetSound); exported once and again only when the voice changes */
+  async function exportSounds(id, force) {
+    const n = N(), c = Ch().get(id); if (!n || !n.petSounds || !c || !OC.PetSound) return false;
+    const s = OC.PetSound.sigOf(c), was = (P().soundExported = P().soundExported || {})[id];
+    if (!force && was && was.sig === s) return true;
+    let pack; try { pack = await OC.PetSound.renderAll(c); } catch (e) { log('sounds', `${name(c)} ${e.message}`, false); return false; }
+    let ok = false; try { ok = !!n.petSounds(id, JSON.stringify({ clips: pack.clips })); } catch (e) { ok = false; }
+    if (ok) { P().soundExported[id] = { sig: s, at: Date.now(), n: Object.keys(pack.clips).length, bytes: pack.bytes }; save('sounds'); }
+    log('sounds', `${name(c)} ${Object.keys(pack.clips).length} 個・${Math.round(pack.bytes / 1024)} KB`, ok);
+    return ok;
+  }
+  /** after the player switched the sounds on, or an OC changed its voice */
+  async function syncSounds() { if (!soundOn()) return 0; let k = 0; for (const id of on()) if (await exportSounds(id)) k++; push('sounds'); return k; }
+
   /** everything the desktop needs, then start the service (from the pet center button) */
   async function start() {
     const n = N(); if (!n) return { ok: false, why: '需要 Android App' };
     if (!n.canDrawOverlays()) { n.requestPermission ? n.requestPermission('overlay') : n.startPet(); return { ok: false, why: 'permission' }; }
     for (const id of on()) if (!(await exportSprites(id))) return { ok: false, why: '桌寵圖像輸出失敗' };
+    if (soundOn()) for (const id of on()) await exportSounds(id);   // a failed sound export never stops the pet: it simply stays quiet
     push('start'); widget(); n.startPet();
     return { ok: true };
   }
   function stop() { const n = N(); if (n) n.stopPet(); }
+  /** 12.0: the first two pets on the desktop play one paired action (core/pet PetSocial.KINDS) */
+  function testPair(kind) { const n = N(); if (!n || !n.petTestPair || on().length < 2) return false; try { n.petTestPair(kind); return true; } catch (e) { return false; } }
+  const PAIR_KINDS = [['hug', '擁抱'], ['highfive', '擊掌'], ['comfort', '安慰'], ['share', '分享食物'], ['sidebyside', '並肩坐著'], ['chase', '追逐'], ['argue', '爭吵'], ['apologize', '道歉']];
   function status() { const n = N(); if (!n || !n.petStatus) return null; try { return JSON.parse(n.petStatus()); } catch (e) { return null; } }
   function perms() { const n = N(); if (!n || !n.permissions) return null; try { return JSON.parse(n.permissions()); } catch (e) { return null; } }
 
@@ -254,7 +281,7 @@
     meet(ev, c) {
       const o = Ch().get(ev.data && ev.data.with); if (!c || !o) return 'no-oc';
       const k = [c.id, o.id].sort().join('|'); if (!capOk('meet', k, 1)) return 'capped';
-      const kind = ev.data.kind, d = kind === 'huff' ? { fam: 1, conflict: 1 } : { fam: 2, aff: kind === 'hug' ? 2 : 1 };
+      const kind = ev.data.kind, d = kind === 'huff' || kind === 'argue' ? { fam: 1, conflict: kind === 'argue' ? 2 : 1 } : kind === 'apologize' ? { fam: 2, aff: 2, conflict: -3 } : kind === 'comfort' ? { fam: 2, aff: 2, trust: 1 } : { fam: 2, aff: kind === 'hug' ? 2 : 1 };   // 12.0: the paired actions
       M().relChange(c.id, o.id, d, '在桌面上碰面'); M().relChange(o.id, c.id, d, '在桌面上碰面');
       M().needs(c, { social: 4 }); M().needs(o, { social: 4 });
       M().remember(c, { type: 'social', imp: 0.3, text: `在桌面上遇到${name(o)}`, who: [o.id], key: `desk:meet:${k}:${today()}` });
@@ -348,5 +375,5 @@
   function onPause() { if (!N()) return; if (N().isPetRunning()) push('pause'); widget(); }   // the widget shows the latest state even when the pets are not out
   function onResume() { if (!N()) return; OC.PetSync.pull('resume'); if (N().isPetRunning()) push('resume'); }
 
-  OC.PetSync = { ANIMS, LINE_CATS, CAT_ZH, APP_CATS, DEF_ONE, one, on, setOn, config, push, renderLines, renderSprites, exportSprites, sourceOf, start, stop, status, perms, pull, HANDLERS, widget, wcfg, Tools, tick, onPause, onResume, native: () => !!N(), log };
+  OC.PetSync = { ANIMS, LINE_CATS, CAT_ZH, APP_CATS, DEF_ONE, one, on, setOn, config, push, renderLines, renderSprites, exportSprites, exportSounds, syncSounds, soundOn, testPair, PAIR_KINDS, sourceOf, start, stop, status, perms, pull, HANDLERS, widget, wcfg, Tools, tick, onPause, onResume, native: () => !!N(), log };
 })();

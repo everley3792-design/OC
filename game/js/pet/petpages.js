@@ -64,7 +64,11 @@
         T('互動'), card(
           line('觸控穿透', toggle(G.passthrough, (v) => { G.passthrough = v; changed('passthrough'); }), '開啟後手指會穿過桌寵，直接操作下面的 App（桌寵會稍微透明，這是 Android 12 以上的規定）。通知裡也可以切換。'),
           line('對話泡泡', toggle(G.bubbles, (v) => { G.bubbles = v; changed('bubbles'); })),
-          line('震動回饋', toggle(G.haptics, (v) => { G.haptics = v; changed('haptics'); }))),
+          line('震動回饋', toggle(G.haptics, (v) => { G.haptics = v; changed('haptics'); })),
+          line('桌面音效', toggle(!!G.sound, (v) => { G.sound = v; changed('sound'); if (v) PS().syncSounds().then((k) => { toast(k ? `已為 ${k} 隻準備好牠們自己的聲音` : '音效還沒準備好（需要 Android App）', k ? 'check' : 'info'); p._sig = ''; p.refresh(p); }); else { p._sig = ''; p.refresh(p); } }),
+            '用牠自己的聲音做成的小音效：點一下、被摸、跳、落地、吃東西、遇到別隻桌寵。預設關閉；手機靜音、通話中、螢幕關閉時不會出聲，也不會比你設的音量更大。'),
+          G.sound ? line('音量', h('div.hstack', { style: { gap: '8px' } }, seg([['0.3', '小'], ['0.6', '中'], ['0.9', '大']], String(G.soundVol == null ? 0.6 : G.soundVol), (v) => { G.soundVol = +v; changed('soundVol'); }),
+            h('button.btn.ghost.s', { on: { click: () => { const c = Ch().get(PS().on()[0]); if (c && OC.PetSound) OC.PetSound.preview(c, 'talk_a'); } } }, '試聽'))) : null),
         h('div.list', { style: { marginTop: '12px' } },
           row('phone', 'App 情境對話', P().app.enabled ? '已開啟' : '關閉（預設）', null, () => Pg().open('petapps')),
           row('clock', '番茄鐘・提醒・待辦・筆記', toolsSub(), null, () => Pg().open('pettools'))),
@@ -76,6 +80,7 @@
           line('影格快取', seg([['16', '16MB'], ['24', '24MB'], ['48', '48MB']], String(G.cacheMB), (v) => { G.cacheMB = +v; changed('cache'); }), '記憶體不足時系統通知會自動清掉快取，之後再慢慢載入。')),
         T('主畫面小工具', '和桌寵分開：加到手機桌面上看狀態'), widgetCard(p),
         h('div.list', { style: { marginTop: '12px' } },
+          PS().on().length >= 2 ? row('paw', '測試雙人互動', '讓前兩隻桌寵走到一起，做一次擁抱、擊掌、安慰…', null, () => pairSheet()) : null,
           row('target', '診斷', '服務狀態、幀率、快取、同步紀錄', null, () => Pg().open('petdiag')),
           row('trash', '清除桌寵資料', '收起桌寵、刪除桌面用的圖像、提醒與待同步的互動（遊戲存檔不受影響）', null, async () => { if (!(await confirm('清除桌寵資料？', '還沒同步回遊戲的桌面互動也會一起刪除。', '清除', true))) return; n.petClearAll(); P().exported = {}; St.touch('pet'); toast('已清除', 'trash'); p._sig = ''; p.refresh(p); })));
     },
@@ -141,6 +146,13 @@
       const el = row(null, def.zh, s.label + (def.edge && s.src === 'rig' ? '・會旋轉貼在牆上' : ''), h('div.hstack', { style: { gap: '4px' } }, pick, test), () => { p.prev = { action: s.act, t0: performance.now() }; haptic(); });
       return el;
     }));
+  }
+  /** 12.0: pick a paired action to try on the desktop */
+  function pairSheet() {
+    sheet('測試雙人互動', (b, api) => {
+      const n = N(); b.append(h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginBottom: '8px' } }, n && n.petTestPair ? '前兩隻桌寵會先走到一起再開始（桌寵要正在桌面上）。這只是試看，不會改變牠們的關係。' : '需要 Android App（桌寵在桌面上才能測試）。'),
+        h('div.list', null, ...PS().PAIR_KINDS.map(([k, zh]) => row('paw', zh, null, null, () => { if (PS().testPair(k)) toast('已送出：' + zh, 'check'); else toast('需要桌寵正在桌面上（至少兩隻）', 'info'); api.close(); }))));
+    });
   }
   function linesSheet(c) {
     const cust = (P().custom[c.id] = P().custom[c.id] || {});

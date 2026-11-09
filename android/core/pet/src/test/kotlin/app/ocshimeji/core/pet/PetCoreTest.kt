@@ -1,7 +1,9 @@
 package app.ocshimeji.core.pet
 
 import kotlin.test.Test
+import kotlin.math.abs
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -119,5 +121,148 @@ class PetSocialTest {
         var met: PetSocial.Meeting? = null
         repeat(60 * 60) { a.update(1f / 60f); b.update(1f / 60f); s.step(members, 1f / 60f).firstOrNull()?.let { if (met == null) met = it } }
         assertNotNull(met); assertEquals("hug", met!!.kind)
+    }
+}
+
+/** 12.0: paired actions between two desktop pets */
+class PetPairedActionsTest {
+    private fun pair(sepX: Float = 80f): Triple<PetBrain, PetBrain, PetSocial> {
+        val a = PetBrain(1).apply { reset(1080, 2000, 200, startX = 400f) }
+        val b = PetBrain(2).apply { reset(1080, 2000, 200, startX = 400f + sepX) }
+        return Triple(a, b, PetSocial())
+    }
+    private fun members(a: PetBrain, b: PetBrain) = listOf(PetSocial.Member("a", a), PetSocial.Member("b", b))
+    private fun runFor(a: PetBrain, b: PetBrain, s: PetSocial, sec: Float, check: () -> Unit = {}) {
+        val m = members(a, b); var t = 0f
+        while (t < sec) { a.update(1f / 60f); b.update(1f / 60f); s.step(m, 1f / 60f); check(); t += 1f / 60f }
+    }
+
+    @Test fun everyKindUsesKnownAnimations() {
+        assertTrue(PetBrain.ANIMS.containsAll(PetSocial.ANIMS), "unknown: ${PetSocial.ANIMS - PetBrain.ANIMS.toSet()}")
+        assertTrue(PetSocial.KINDS.keys.containsAll(listOf("greet", "chat", "hug", "highfive", "sidebyside", "share", "comfort", "chase", "huff", "argue", "apologize")))
+    }
+
+    @Test fun eachKindPlaysBothSidesAndEnds() {
+        for ((id, kind) in PetSocial.KINDS) {
+            val (a, b, s) = pair(); val m = members(a, b)
+            val met = s.start(id, m[0], m[1]); assertNotNull(met, id); assertEquals(id, met!!.kind)
+            // the first beat plays at once, with complementary animations
+            val first = kind.beats.first(); a.update(0.001f); b.update(0.001f)
+            if (first.a != null) assertEquals(first.a, a.anim, "$id initiator"); if (first.b != null) assertEquals(first.b, b.anim, "$id other")
+            assertTrue(s.isBusy("a") && s.isBusy("b"))
+            val total = kind.beats.maxOf { it.at + it.dur }
+            runFor(a, b, s, total + 3f) { assertTrue(a.anim in PetBrain.ANIMS && b.anim in PetBrain.ANIMS, "$id: ${a.anim}/${b.anim}") }
+            assertFalse(s.isBusy("a") || s.isBusy("b"), "$id still busy")
+            assertTrue(a.state != PetBrain.State.REACT && b.state != PetBrain.State.REACT, "$id left a pet stuck in REACT")
+            assertTrue(a.x in a.minX..a.maxX && b.x in b.minX..b.maxX, "$id left the screen")
+        }
+    }
+
+    @Test fun theOneWhoIsNotDownComforts() {
+        val (a, b, s) = pair(); a.mood = PetBrain.Mood(emotion = "sad"); b.mood = PetBrain.Mood(emotion = "happy")
+        s.affinity = mapOf("a>b" to 0.4f, "b>a" to 0.4f)
+        val m = members(a, b)
+        assertEquals("comfort", s.choose(m[0], m[1]))
+        val met = s.start("comfort", m[0], m[1])!!
+        assertEquals("b", met.a, "the pet that is fine comforts"); assertEquals("a", met.b)
+        a.update(0.001f); b.update(0.001f); assertEquals("comfort", b.anim); assertEquals("comforted", a.anim)
+    }
+
+    @Test fun aQuarrelIsFollowedByAnApology() {
+        val (a, b, s) = pair(); s.affinity = mapOf("a>b" to -0.6f, "b>a" to -0.5f); s.pairCooldown = 5f
+        val m = members(a, b); val seen = ArrayList<String>()
+        // they dislike each other: they argue (or sulk)
+        var t = 0f; while (t < 120f && seen.isEmpty()) { a.update(1f / 60f); b.update(1f / 60f); s.step(m, 1f / 60f).forEach { seen += it.kind }; t += 1f / 60f }
+        assertTrue(seen.firstOrNull() in listOf("argue", "huff"), "first: $seen")
+        // time passes and they stop hating each other: the next meeting is a first step towards making up
+        runFor(a, b, s, 8f); s.affinity = mapOf("a>b" to 0.1f, "b>a" to 0.2f)
+        var next: String? = null; t = 0f
+        while (t < 300f && next == null) {
+            a.update(1f / 20f); b.update(1f / 20f); s.step(m, 1f / 20f).firstOrNull()?.let { next = it.kind }; t += 1f / 20f
+            if (next == null && !s.isBusy("a") && abs(a.x - b.x) > 100f) b.goTo(a.x + 70f)   // they wander back towards each other
+        }
+        assertEquals("apologize", next)
+        a.update(0.001f); b.update(0.001f); assertTrue("apologize" in listOf(a.anim, b.anim) && "accept" in listOf(a.anim, b.anim), "${a.anim}/${b.anim}")
+    }
+
+    @Test fun chaseMovesBothAndTheyEndUp() {
+        val (a, b, s) = pair(); val m = members(a, b); val ax = a.x; val bx = b.x
+        s.start("chase", m[0], m[1]); runFor(a, b, s, 2f)
+        assertTrue(abs(a.x - ax) > 40f && abs(b.x - bx) > 40f, "both moved: ${a.x - ax}, ${b.x - bx}")
+        runFor(a, b, s, 8f); assertFalse(s.isBusy("a"))
+    }
+
+    @Test fun pickingAPetUpCancelsThePairedAction() {
+        val (a, b, s) = pair(); val m = members(a, b)
+        s.start("hug", m[0], m[1]); assertTrue(s.isBusy("a"))
+        a.drag(200f, 300f); s.step(m, 1f / 60f)
+        assertFalse(s.isBusy("a") || s.isBusy("b"))
+        a.release(); runFor(a, b, s, 6f)   // lands; nothing throws, nobody is stuck
+        assertTrue(b.state != PetBrain.State.REACT)
+    }
+
+    @Test fun nothingStartsWhileBusyOrInTheAir() {
+        val (a, b, s) = pair(); val m = members(a, b)
+        assertNotNull(s.start("hug", m[0], m[1])); assertNull(s.start("highfive", m[0], m[1]), "already busy")
+        val (c, d, s2) = pair(); c.jump(); assertNull(s2.start("hug", members(c, d)[0], members(c, d)[1]), "in the air")
+        assertNull(s2.start("not-a-kind", members(d, d)[0], members(d, d)[1]))
+    }
+
+    @Test fun manyMeetingsOnlyEverUseKnownKinds() {
+        val (a, b, s) = pair(); s.pairCooldown = 3f; s.affinity = mapOf("a>b" to 0.35f, "b>a" to 0.3f)
+        a.mood = PetBrain.Mood(energy = 0.9f); b.mood = PetBrain.Mood(energy = 0.9f, hunger = 0.3f)
+        val m = members(a, b); val kinds = HashSet<String>(); var t = 0f
+        while (t < 1500f) { a.update(1f / 20f); b.update(1f / 20f); s.step(m, 1f / 20f).forEach { kinds += it.kind }; t += 1f / 20f; if (abs(a.x - b.x) > 160f && !s.isBusy("a")) { b.goTo(a.x + 60f) } }
+        assertTrue(kinds.isNotEmpty() && kinds.all { it in PetSocial.KINDS }, "$kinds"); assertTrue(kinds.size >= 2, "variety: $kinds")
+    }
+}
+
+/** 12.0: when a desktop pet makes a sound */
+class PetSoundTest {
+    private fun sound(on: Boolean = true) = PetSound(1).apply { this.on = on; volume = 0.8f }
+    private fun PetSound.wait(s: Float) = update(s)
+
+    @Test fun offByDefaultAndWhenQuiet() {
+        assertNull(PetSound().cue(PetSound.Ev.TAP))
+        val s = sound(); s.quiet = true; assertNull(s.cue(PetSound.Ev.TAP)); s.quiet = false; assertNotNull(s.cue(PetSound.Ev.TAP))
+        val z = sound(); z.volume = 0f; assertNull(z.cue(PetSound.Ev.TAP))
+    }
+
+    @Test fun gapsAndCooldowns() {
+        val s = sound(); assertNotNull(s.cue(PetSound.Ev.TAP))
+        s.wait(0.1f); assertNull(s.cue(PetSound.Ev.JUMP), "global gap")
+        s.wait(0.15f); assertNull(s.cue(PetSound.Ev.TAP), "tap cool-down (0.35 s)")
+        s.wait(0.2f); assertNotNull(s.cue(PetSound.Ev.TAP))
+        s.wait(0.9f); assertNotNull(s.cue(PetSound.Ev.JUMP)); s.wait(0.5f); assertNull(s.cue(PetSound.Ev.JUMP), "jump cool-down (0.8 s)")
+    }
+
+    @Test fun aSleepingPetOnlyWakesOrPurrs() {
+        val s = sound()
+        assertNull(s.cue(PetSound.Ev.TAP, asleep = true)); s.wait(1f); assertNull(s.cue(PetSound.Ev.TALK, asleep = true)); s.wait(1f)
+        assertNotNull(s.cue(PetSound.Ev.WAKE, asleep = true)); s.wait(3f); assertNotNull(s.cue(PetSound.Ev.PET, asleep = true))
+    }
+
+    @Test fun neverTheSameVariantTwiceInARow() {
+        val s = sound(); var last: String? = null
+        repeat(60) { s.wait(2f); val c = s.cue(PetSound.Ev.TALK)!!; assertTrue(c.clip != last, "repeat ${c.clip}"); last = c.clip }
+    }
+
+    @Test fun moodShapesPitchAndLoudnessButNeverAboveTheVolume() {
+        val happy = sound().cue(PetSound.Ev.TAP, "happy")!!; val sad = sound().cue(PetSound.Ev.TAP, "sad")!!
+        assertTrue(happy.rate > sad.rate, "${happy.rate} vs ${sad.rate}"); assertTrue(happy.volume > sad.volume)
+        repeat(50) { val s = sound(); s.volume = 0.7f; val c = s.cue(PetSound.Ev.GIFT, "excited")!!; assertTrue(c.volume <= 0.7f + 1e-6f && c.rate in 0.5f..2f) }
+    }
+
+    @Test fun onlyClipsThatExistAreUsed() {
+        val s = sound(); s.available = setOf("tap_b"); repeat(10) { s.wait(1f); assertEquals("tap_b", s.cue(PetSound.Ev.TAP)!!.clip) }
+        s.available = emptySet(); s.wait(1f); assertNull(s.cue(PetSound.Ev.TAP))
+        assertTrue(PetSound.Ev.values().flatMap { it.clips }.all { it in PetSound.CLIPS }, "every event clip is in CLIPS")
+        assertEquals(PetSound.CLIPS.size, PetSound.CLIPS.toSet().size)
+    }
+
+    @Test fun meetingsSoundWarmOrLow() {
+        val s = sound()
+        assertEquals("meet_good", s.meeting("hug")!!.clip); s.wait(7f); assertEquals("meet_bad", s.meeting("argue")!!.clip); s.wait(7f)
+        assertEquals("meet_good", s.meeting("apologize")!!.clip); assertNull(s.meeting("nonsense"))
     }
 }

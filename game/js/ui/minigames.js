@@ -35,6 +35,7 @@
   const bar = (x, X, Y, W, Hh, v, col) => { x.fillStyle = css('--surface-2'); x.beginPath(); x.roundRect(X, Y, W, Hh, Hh / 2); x.fill(); x.fillStyle = col; x.beginPath(); x.roundRect(X, Y, Math.max(Hh, W * Math.max(0, Math.min(1, v))), Hh, Hh / 2); x.fill(); };
   const me = () => A().me();
   function reward(c, o) {
+    if (OC.Sound && OC.Sound.cue) OC.Sound.cue('mini');   // 12.0: only called after a success
     if (o.skill) M().skill(c, o.skill, o.xp || 2);
     if (o.feel) M().feel(c, o.feel[0], o.feel[1], o.feel[2]);
     if (o.mem) M().remember(c, Object.assign({ type: 'activity', imp: 0.45, place: 'place:' + OC.World.area.id }, o.mem));

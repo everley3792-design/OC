@@ -40,7 +40,9 @@ class PetSprites(val oc: String, private val dir: File, val px: Int, private val
         /** used when an older export lacks a set (the game exports all of them with its own fallback chains) */
         private val FALLBACK = mapOf("run" to "walk", "fall" to "drag", "hang" to "climb", "climb" to "walk", "peek" to "idle", "pet" to "happy", "eat" to "happy", "talk" to "idle", "greet" to "happy", "cheer" to "happy", "shy" to "idle", "yawn" to "idle", "sad" to "idle", "surprised" to "happy", "jump" to "happy",
             // 11.0: an older export without these falls back to the nearest classic one
-            "wave" to "greet", "bow" to "greet", "clap" to "cheer", "spin" to "cheer", "giggle" to "happy", "wiggle" to "happy", "aha" to "surprised", "sneeze" to "surprised", "hiccup" to "surprised", "sigh" to "sad")
+            "wave" to "greet", "bow" to "greet",
+            // 12.0: paired actions — an older export without them shows the nearest classic one
+            "hug" to "happy", "hugme" to "happy", "highfive" to "cheer", "comfort" to "talk", "comforted" to "sad", "feedbite" to "eat", "bitefed" to "eat", "sidebyside" to "sit", "chase" to "run", "argue" to "talk", "upset" to "sad", "apologize" to "greet", "accept" to "happy", "turnaway" to "shy", "listen" to "idle", "clap" to "cheer", "spin" to "cheer", "giggle" to "happy", "wiggle" to "happy", "aha" to "surprised", "sneeze" to "surprised", "hiccup" to "surprised", "sigh" to "sad")
 
         /** byte budget of decoded frames for all pets (performance setting "sprite cache") */
         @Volatile var budgetBytes = 24 * 1024 * 1024

@@ -8,7 +8,7 @@
 (function () {
   const M = window.__mock = {
     perms: { overlay: false, notifications: 'denied', usage: false, exactAlarm: 'denied' }, sdk: 35,
-    running: false, paused: false, config: null, sprites: {}, events: [], seq: 0, acked: 0, reminders: [], widget: null, avatar: null,
+    running: false, paused: false, config: null, sprites: {}, sounds: {}, events: [], seq: 0, acked: 0, reminders: [], widget: null, avatar: null,
     calls: [], requested: [], tests: [], cleared: 0,
     /** the player did something to a pet on the desktop */
     emit(oc, type, data) { M.seq++; M.events.push({ id: M.inst + '-' + M.seq, inst: M.inst, seq: M.seq, t: Date.now(), oc, type, data: data || {} }); M.keep(); return M.seq; },
@@ -30,6 +30,7 @@
     stopPet: () => { log('stopPet'); M.running = false; },
     petPause: (p) => { M.paused = !!p; },
     petTest: (oc, a) => { M.tests.push([oc, a]); },
+    petTestPair: (k) => { M.pairTests = (M.pairTests || []).concat(k); },
     setPetScale: () => {},
     petConfig: (json) => { try { const o = JSON.parse(json); if (!o || !Array.isArray(o.pets)) return false; M.config = o; log('petConfig', o.pets.length); return true; } catch (e) { return false; } },
     petSprites: (oc, json) => {
@@ -41,12 +42,23 @@
         M.sprites[oc] = { manifest: man, files, n: Object.keys(files).length, bytes: Object.values(files).reduce((s, v) => s + v.length, 0) }; return true;
       } catch (e) { return false; }
     },
+    /** 12.0: one OC's sound clips {"clips": {"tap_a": "data:audio/wav;base64,…"}} — same validation as NativeBridge.petSounds */
+    petSounds: (oc, json) => {
+      try {
+        const o = JSON.parse(json), c = o.clips; if (!c || !Object.keys(c).length) return false; let bytes = 0;
+        for (const [n, v] of Object.entries(c)) {
+          if (!/^[a-z0-9_]{1,24}$/.test(n) || !String(v).startsWith('data:audio/wav;base64,')) return false;
+          const u = atob(String(v).split(',')[1]); if (u.slice(0, 4) !== 'RIFF' || u.slice(8, 12) !== 'WAVE') return false; bytes += u.length; if (bytes > 4 * 1024 * 1024) return false;
+        }
+        M.sounds[oc] = { clips: c, n: Object.keys(c).length, bytes }; log('petSounds', Object.keys(c).length); return true;
+      } catch (e) { return false; }
+    },
     petSpriteIndex: () => JSON.stringify(Object.fromEntries(Object.entries(M.sprites).map(([k, v]) => [k.replace(/[^A-Za-z0-9_\-]/g, '_'), Object.keys(v.manifest.anims).length]))),
     savePetSprites: () => false,
     petStatus: () => JSON.stringify(M.running ? { code: M.paused ? 'paused' : 'running', fps: 30, fpsCap: (M.config && M.config.global.fps) || 30, screenOn: true, pets: ((M.config && M.config.pets) || []).map((p) => ({ id: p.id, name: p.name, state: 'IDLE', anim: 'idle', surface: 'FLOOR', x: 0, y: 0, size: 288, sprites: M.sprites[p.id] ? Object.keys(M.sprites[p.id].manifest.anims).length : 0, draws: 1 })), events: M.events.length, fgsType: 'specialUse', error: '' } : { code: 'stopped', msg: '', pets: [] }),
     petEvents: () => JSON.stringify(M.events),
     petAck: (seq) => { M.acked = Math.max(M.acked, seq); M.events = M.events.filter((e) => e.seq > seq); M.keep(); },
-    petClearAll: () => { M.cleared++; M.running = false; M.sprites = {}; M.events = []; M.reminders = []; },
+    petClearAll: () => { M.cleared++; M.running = false; M.sprites = {}; M.sounds = {}; M.events = []; M.reminders = []; },
     launchableApps: () => JSON.stringify([{ pkg: 'com.example.game', label: '方塊遊戲', sys: 'game' }, { pkg: 'com.example.music', label: '音樂', sys: 'music' }, { pkg: 'com.example.bank', label: '銀行', sys: null }]),
     reminderSet: (json) => { const r = JSON.parse(json); r.id = r.id || 'r' + Date.now(); r.exactActive = !!r.exact && M.perms.exactAlarm === 'granted'; M.reminders = M.reminders.filter((x) => x.id !== r.id).concat(r); return JSON.stringify(r); },
     reminderCancel: (id) => { M.reminders = M.reminders.filter((x) => x.id !== id); },

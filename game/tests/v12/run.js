@@ -8,6 +8,7 @@
  *   7 minimal HUD: one tools handle, the mood row moved to the status card, a slim quest chip, icon-only bar (label on the active tab), dims when idle
  *   8 voice & look: the grown-up tone is the default (the engine prefers the new lines, the childish ones become rare, 活潑 restores them), refined style is the default and switchable
  *   9 arcs: mood contagion (cool-down, distance), cold war → thaw → make up / drift apart (apology, friend mediation, player), gatherings of three or more (circle, meal, photo, mediation) always release everybody
+ *  10 stingers: the short musical phrases are tied to real moments (skill level-up, new collection entry, closer friends, making up, claiming a reward), one cool-down, silent when sound is off
  * (further scenarios are added as the 12.0 features land)
  */
 const H = require('../life/harness.js');
@@ -319,6 +320,36 @@ const { check, wait } = H;
       }, [A, B]);
       check('9h 個人檔案的「關係」頁看得到「冷戰中」，並有「讓牠們談談」；按下去牠們會當面談（這次運氣好，和好了）', ui.tag.length === 1 && ui.hasBtn && ui.stage0 === 'cold' && ui.stage1 === 'reconciled', ui);
       await idle();
+    }
+
+    // ================= 10. stingers: the short musical phrases are tied to real moments, with one cool-down =================
+    if (want(10)) {
+      await closeAll(); await quiet();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), S = OC.Store.s, cues = () => Object.assign({}, OC.Sound.stats.cues), out = {};
+        const until = async (f, ms = 25000) => { const t = performance.now(); while (!f() && performance.now() - t < ms) await sleep(150); };
+        OC.Sound.unlock(); S.settings.sound = Object.assign({}, OC.Sound.cfg(), { on: true, music: 0, amb: 0 }); OC.Sound.apply(); await sleep(300);
+        const [A, B] = OC.Chars.all(); out.state = OC.Sound.state; out.table = Object.entries(OC.Sound.CUES).map(([k, v]) => [k, v[0]]);
+        // a skill level-up (a real game event → the card → the phrase)
+        let before = cues(); OC.Mind.skill(A, 'cook', 4000); await until(() => (cues().skill || 0) > (before.skill || 0)); out.skill = (cues().skill || 0) - (before.skill || 0);
+        // the same second: another moment does not stack a second phrase on top
+        out.stack = OC.Sound.cue('mini'); await sleep(3200);
+        // a new entry in the collection
+        const id = Object.keys(OC.Style.ITEMS).find((k) => !S.seen[k]); before = cues(); OC.Tx.run('t:disc', { get: { items: { [id]: 1 } } }, 'test'); await sleep(600); out.discover = (cues().discover || 0) - (before.discover || 0); await sleep(3200);
+        // two OCs grow closer
+        before = cues(); OC.Mind.relPair(A.id, B.id, { fam: 60, aff: 70, trust: 60 }, 't'); await sleep(300); out.relUp = (cues().relUp || 0) - (before.relUp || 0); await sleep(3200);
+        // a quarrel ends
+        OC.Store.s.life.arcs = null; const k = [A.id, B.id].sort().join('|'); OC.Arcs.state.rifts[k] = { a: A.id, b: B.id, stage: 'thaw', since: 0, startedAt: OC.Sim.now(), until: 0, thawAt: OC.Sim.now(), tries: 0, lastEnc: 0 };
+        before = cues(); OC.Arcs.reconcile(OC.Arcs.state.rifts[k], 't'); out.reconcile = (cues().reconcile || 0) - (before.reconcile || 0); await sleep(3200);
+        // a card that carries a cue by itself (claiming a reward)
+        before = cues(); OC.Stage.card({ kind: 'quest', ic: 'coin', title: '領取：測試', sub: '', sound: 'coin', cue: 'claim' }); await sleep(400); out.claim = (cues().claim || 0) - (before.claim || 0); await sleep(3200);
+        // never when the sound is off, and unknown names do nothing
+        S.settings.sound.on = false; OC.Sound.apply(); out.off = OC.Sound.cue('skill'); S.settings.sound.on = true; OC.Sound.apply(); out.unknown = OC.Sound.cue('nope');
+        out.phrases = Object.assign({}, OC.Sound.stats.sting);
+        return out;
+      });
+      check('10a 小段旋律（stinger）接到真實的事件：技能升級、圖鑑新增、兩個 OC 更親近、冷戰和解、領取獎勵各會響一次；表裡只有 win／warm／wonder', r.skill === 1 && r.discover === 1 && r.relUp === 1 && r.reconcile === 1 && r.claim === 1 && r.table.every(([, k]) => ['win', 'warm', 'wonder'].includes(k)) && r.table.length >= 9, r);
+      check('10b 三秒內只會響一次（不會疊在一起）；音效關閉或名稱不存在時不響；實際響過的旋律種類被記錄', r.stack === false && r.off === false && r.unknown === false && Object.keys(r.phrases).length >= 2, { stack: r.stack, off: r.off, unknown: r.unknown, phrases: r.phrases });
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

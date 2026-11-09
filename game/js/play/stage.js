@@ -166,9 +166,9 @@
   function makeCard(kind, o) {
     const c = o.oc && OC.Chars.get(o.oc), nm = c ? OC.Chars.name(c) : '';
     switch (kind) {
-      case 'reqDone': return { kind: 'req', ic: 'heart', title: '完成請求', sub: `${nm}：${o.req ? o.req.text : ''}`, reward: o.reward, thanks: o.thanks };
-      case 'levelup': return { kind: 'skill', ic: 'sparkle', title: `${nm}的${o.zh} Lv.${o.lv}`, sub: (o.unlocks || []).length ? '解鎖：' + o.unlocks.join('、') : '技能變熟練了' };
-      case 'aspDone': return { kind: 'asp', ic: 'star', title: `${nm}實現了夢想！`, sub: `「${o.zh}」`, reward: o.reward };
+      case 'reqDone': return { kind: 'req', cue: 'req', ic: 'heart', title: '完成請求', sub: `${nm}：${o.req ? o.req.text : ''}`, reward: o.reward, thanks: o.thanks };
+      case 'levelup': return { kind: 'skill', cue: 'skill', ic: 'sparkle', title: `${nm}的${o.zh} Lv.${o.lv}`, sub: (o.unlocks || []).length ? '解鎖：' + o.unlocks.join('、') : '技能變熟練了' };
+      case 'aspDone': return { kind: 'asp', cue: 'asp', ic: 'star', title: `${nm}實現了夢想！`, sub: `「${o.zh}」`, reward: o.reward };
       case 'aspStep': return { kind: 'asp', ic: 'flag', title: `${nm}的夢想有進展`, sub: o.zh };
       case 'aspNew': return { kind: 'asp', ic: 'flag', title: `${nm}有了新夢想`, sub: `「${o.zh}」` };
       default: return null;
@@ -183,6 +183,7 @@
     const el = h('div.p6-card.' + (o.kind || ''), { role: 'status', on: { click: () => close() } }, art, h('div.grow', null, h('b', null, o.title), o.sub ? h('div.sub', null, o.sub) : null, rw ? h('div.rw', null, rw) : null));
     wrap.append(el); requestAnimationFrame(() => el.classList.add('on'));
     if (OC.Sound) OC.Sound.play(o.sound || { quest: 'chime', ach: 'fanfare', discover: 'sparkle', skill: 'levelup', title: 'fanfare', req: 'card', asp: 'card' }[o.kind] || 'card');
+    if (OC.Sound && OC.Sound.cue) OC.Sound.cue(o.cue || (o.kind === 'discover' ? 'discover' : o.kind === 'taste' ? 'taste' : ''));   // 12.0: a phrase for the big moments
     let closed = false; const close = () => { if (closed) return; closed = true; el.classList.remove('on'); setTimeout(() => { el.remove(); showing--; pump(); }, 320); };
     setTimeout(close, o.ms || 3000);
   }

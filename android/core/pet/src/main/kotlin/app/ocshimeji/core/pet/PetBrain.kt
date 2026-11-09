@@ -334,7 +334,9 @@ class PetBrain(seed: Int = 7) {
         /** every animation key the brain can request (game action names; the game exports a frame set for each) */
         val ANIMS = listOf("idle", "walk", "run", "sit", "sleep", "jump", "fall", "climb", "hang", "peek", "drag", "happy", "pet", "eat", "surprised", "talk", "greet", "sad", "yawn", "shy", "cheer",
             // 11.0: richer little moments (the game exports these from its action library)
-            "wave", "clap", "giggle", "sigh", "sneeze", "hiccup", "aha", "bow", "spin", "wiggle")
+            "wave", "clap", "giggle", "sigh", "sneeze", "hiccup", "aha", "bow", "spin", "wiggle",
+            // 12.0: paired actions between two desktop pets (one side hugs, the other is hugged …) — see PetSocial.KINDS
+            "hug", "hugme", "highfive", "comfort", "comforted", "feedbite", "bitefed", "sidebyside", "chase", "argue", "upset", "apologize", "accept", "turnaway", "listen")
         private val HAPPY = setOf("happy", "excited", "calm", "proud", "content", "love")
         private val SAD = setOf("lonely", "down", "sad")
     }

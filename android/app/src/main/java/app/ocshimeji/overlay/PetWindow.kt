@@ -6,6 +6,8 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import app.ocshimeji.core.pet.Gestures
 import app.ocshimeji.core.pet.PetBrain
+import app.ocshimeji.core.pet.PetSocial
+import app.ocshimeji.core.pet.PetSound
 import app.ocshimeji.core.pet.PetTalk
 import org.json.JSONObject
 
@@ -18,6 +20,8 @@ import org.json.JSONObject
 class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     val brain = PetBrain(seed)
     val talk = PetTalk(seed + 1)
+    /** 12.0: when this pet makes a sound (the clips are its own voice, played by [PetSounds]) */
+    val sound = PetSound(seed + 2)
     val view = PetView(svc.uiCtx)
     private val wm = svc.wm
     private val lp = overlayParams(1, 1, 0).apply { title = "OC Shimeji pet" }
@@ -38,6 +42,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     private var autonomy = PetBrain.Allow()
     private var curKey = ""; private var clipT = 0f; private var lastFrame = -1
     private var strokes = 0; private var lastPetEvent = 0L
+    private var prevState = PetBrain.State.IDLE
     var hidden = false; private set
 
     init {
@@ -60,6 +65,9 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         talk.freq = runCatching { PetTalk.Freq.valueOf(p.optString("talk", "normal").uppercase()) }.getOrDefault(PetTalk.Freq.NORMAL)
         talk.muted = p.optBoolean("mute", false) || !g.optBoolean("bubbles", true)
         view.sprites = sprites
+        sound.on = g.optBoolean("sound", false) && !p.optBoolean("mute", false)
+        sound.volume = g.optDouble("soundVol", 0.6).toFloat().coerceIn(0f, 1f)
+        sound.available = if (sound.on) svc.sounds.load(id) else emptySet()
         view.filter = g.optString("quality", "mid") != "low"
         if (data != null) {
             data.optJSONObject("traits")?.let { t -> brain.traits = PetBrain.Traits(t.f("energy", .5f), t.f("social", .5f), t.f("curious", .5f), t.f("shy", .3f), t.f("pace", .5f)) }
@@ -109,7 +117,8 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         if (!attached) return false
         if (gestures.isDown) gestures.tick(now).forEach { handle(it, now, theme) }
         if (!paused || brain.isDragging || brain.state == PetBrain.State.FALL || brain.state == PetBrain.State.THROWN || brain.state == PetBrain.State.REACT) brain.update(dt)
-        talk.update(dt)
+        talk.update(dt); sound.update(dt); sound.quiet = svc.soundQuiet
+        if (brain.state != prevState) { stateSound(prevState, brain.state); prevState = brain.state }
         // animation timing: the OC's own clip (per-frame durations, loop mode, events)
         val sp = view.sprites
         val key = sp?.keyFor(brain.anim) ?: brain.anim
@@ -133,7 +142,22 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         }
     }
 
-    fun say(text: String, theme: PetTheme, now: Long) { if (!hidden) bubble.show(text, theme, passthrough, now) }
+    fun say(text: String, theme: PetTheme, now: Long) { if (!hidden) { bubble.show(text, theme, passthrough, now); cue(PetSound.Ev.TALK) } }
+
+    /** ask the rules (core:pet PetSound) whether a sound is due, and play it */
+    fun cue(ev: PetSound.Ev, asleep: Boolean = brain.state == PetBrain.State.SLEEP) {
+        if (hidden) return
+        sound.cue(ev, brain.mood.emotion, asleep)?.let { svc.sounds.play(id, it) }
+    }
+    /** a paired action started with another pet: the warm or the low two-tone (only the initiator plays it) */
+    fun meetingSound(kind: String) { if (!hidden) sound.meeting(kind, brain.mood.emotion)?.let { svc.sounds.play(id, it) } }
+    private fun stateSound(from: PetBrain.State, to: PetBrain.State) {
+        when {
+            to == PetBrain.State.JUMP -> cue(PetSound.Ev.JUMP)
+            to == PetBrain.State.LAND && (from == PetBrain.State.FALL || from == PetBrain.State.THROWN) -> cue(PetSound.Ev.LAND)
+            to == PetBrain.State.THROWN -> cue(PetSound.Ev.THROWN)
+        }
+    }
     fun sayCat(cat: String, now: Long, chatter: Boolean = false) { (if (chatter) talk.chatter(cat, 60f) else talk.react(cat, 4f))?.let { say(it, svc.theme, now) } }
 
     // ---------------------------------------------------------------- touch
@@ -154,10 +178,10 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     private fun handle(ev: Gestures.Ev, now: Long, theme: PetTheme) {
         svc.touched(this)
         when (ev.kind) {
-            Gestures.Kind.TAP -> { menu.hide(); brain.poke(); sayCat(if (brain.state == PetBrain.State.SLEEP) "wake" else "tap", now); haptic() }
+            Gestures.Kind.TAP -> { menu.hide(); val was = brain.state == PetBrain.State.SLEEP; brain.poke(); cue(if (was) PetSound.Ev.WAKE else PetSound.Ev.TAP, asleep = false); sayCat(if (was) "wake" else "tap", now); haptic() }
             Gestures.Kind.DOUBLE_TAP -> when (doubleTap) { "open" -> svc.openApp("petcenter"); "talk" -> sayCat("double", now); else -> Unit }
             Gestures.Kind.LONG_PRESS -> { haptic(HapticFeedbackConstants.LONG_PRESS); openMenu(theme) }
-            Gestures.Kind.STROKE -> { menu.hide(); strokes = ev.count; brain.react("pet", 1.6f); if (ev.count == 2) sayCat("pet", now) }
+            Gestures.Kind.STROKE -> { menu.hide(); strokes = ev.count; brain.react("pet", 1.6f); if (ev.count == 2) { cue(PetSound.Ev.PET); sayCat("pet", now) } }
             Gestures.Kind.DRAG_START -> if (allowDrag) { menu.hide(); bubble.hide(); grabX = ev.x - brain.x; grabY = ev.y - brain.y; sayCat("drag", now) }
             Gestures.Kind.DRAG_MOVE -> if (allowDrag) brain.drag(ev.x - grabX, ev.y - grabY)
             Gestures.Kind.DROP -> if (allowDrag && brain.isDragging) { brain.release(ev.vx, ev.vy); svc.dropped(this) }
@@ -209,7 +233,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         spent[idf] = (spent[idf] ?: 0) + 1
         val lv = f.optInt("lv", 0)
         val dur = view.sprites?.set("eat")?.clip?.seconds()?.coerceIn(1.2f, 4f) ?: 2.4f
-        brain.react("eat", dur)
+        brain.react("eat", dur); cue(PetSound.Ev.EAT)
         val now = android.os.SystemClock.uptimeMillis()
         svc.later((dur * 1000).toLong()) { brain.react(if (lv >= 1) "happy" else if (lv <= -1) "sad" else "idle", 1.4f); sayCat(if (lv >= 1) "eat_yum" else if (lv <= -1) "eat_no" else "eat_ok", now + 1) }
         PetFiles.event(svc, id, "feed", JSONObject().put("item", idf))
@@ -218,7 +242,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     private fun gift(g: JSONObject) {
         val idg = g.optString("id"); if (left(g) <= 0) return
         spent[idg] = (spent[idg] ?: 0) + 1
-        brain.react("happy", 1.8f); sayCat("gift", android.os.SystemClock.uptimeMillis())
+        brain.react("happy", 1.8f); cue(PetSound.Ev.GIFT); sayCat("gift", android.os.SystemClock.uptimeMillis())
         PetFiles.event(svc, id, "gift", JSONObject().put("item", idg))
     }
 

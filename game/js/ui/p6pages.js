@@ -25,7 +25,7 @@
 
   function claimFx(r, label) {
     if (!r.ok) { toast(r.why, 'info'); OC.Sound && OC.Sound.play('error'); return; }
-    haptic(); OC.Stage.card({ kind: 'quest', ic: 'coin', title: `領取：${label}`, sub: rewardText(r.reward || {}) + (r.dup ? '（之前已入帳）' : ''), sound: 'coin' });
+    haptic(); OC.Stage.card({ kind: 'quest', ic: 'coin', title: `領取：${label}`, sub: rewardText(r.reward || {}) + (r.dup ? '（之前已入帳）' : ''), sound: 'coin', cue: 'claim' });
   }
 
   // ======================= 日常 hub =======================
