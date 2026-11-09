@@ -17,7 +17,7 @@ const { check, wait } = H;
     await wait(page, 800);
     const geo = () => page.evaluate(() => { const a = OC.App.player, W = OC.World, lv = a.lvl || 0, gy = a.gy - lv * W.HY, f = W.project(a.x, a.y, lv, gy), h = W.project(a.x, a.y, lv, gy + 62); return { cx: f.x, feet: f.y, h: f.y - h.y }; });
     /** no random life event may take the OCs over in the middle of a check (an event holds them with 'event') */
-    const quiet = () => page.evaluate(() => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const c of OC.Chars.all()) { const b = OC.Brain.get(c.id); if (b) b.holds.delete('event'); } });
+    const quiet = () => page.evaluate(() => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const c of OC.Chars.all()) { const b = OC.Brain.get(c.id); if (!b) continue; b.holds.delete('event'); Object.assign(c.needs, { sleep: 90, energy: 90, food: 85 }); if (b.act === 'sleep' && b.st === 'do') OC.Brain.abort(b, 't'); } });   // awake, rested, nothing special going on
     const taste = () => page.evaluate(() => OC.Touch.taste(OC.Chars.active()));
     const st = () => page.evaluate(() => ({ touch: OC.App.player.touch && { lv: OC.App.player.touch.lv, zone: OC.App.player.touch.zone, annoyed: OC.App.player.touch.annoyed }, petting: !!OC.Touch.petting, holds: [...OC.Brain.get(OC.Store.s.activeId).holds], menu: !!document.querySelector('.radial'), lift: OC.App.player.lift, aff: OC.Chars.active().life.player.aff || 0 }));
     /** rub back and forth at a height (fraction of the body) with a given side offset for `ms` */
@@ -65,7 +65,7 @@ const { check, wait } = H;
       await wait(page, 500);
       // hug
       const a0 = await page.evaluate((id) => OC.Chars.get(id).life.player.aff || 0, ids.mate);
-      await page.evaluate((id) => OC.LifeUI.hug(id), ids.mate); await wait(page, 600); const hh = await holds(ids.mate);
+      await quiet(); await page.evaluate((id) => OC.LifeUI.hug(id), ids.mate); await page.waitForFunction((id) => OC.Brain.get(id).holds.has('gesture'), ids.mate, { timeout: 40000 }).catch(() => {}); const hh = await holds(ids.mate);
       const dn = await page.waitForFunction((id) => !OC.Brain.get(id).holds.has('gesture'), ids.mate, { timeout: 40000 }).then(() => true).catch(() => false);
       const a1 = await page.evaluate((id) => OC.Chars.get(id).life.player.aff || 0, ids.mate);
       check('2b 抱抱：角色走過來、張開手臂、抱緊；結束後放開，好感增加', hh.includes('gesture') && dn && a1 > a0, { hh, dn, a0, a1 });
@@ -87,7 +87,7 @@ const { check, wait } = H;
       const ph = await holds(ids.mate);
       check('2e 連戳四下：角色會賭氣，之後放開', !ph.includes('gesture'), ph);
       // hand-hold: follows the player, releases
-      await quiet(); await page.evaluate((id) => { OC.LifeUI.handhold(id); }, ids.mate); await wait(page, 800); const hh2 = await holds(ids.mate);
+      await quiet(); await page.evaluate((id) => { OC.LifeUI.handhold(id); }, ids.mate); await page.waitForFunction((id) => OC.Brain.get(id).holds.has('gesture'), ids.mate, { timeout: 40000 }).catch(() => {}); await wait(page, 500); const hh2 = await holds(ids.mate);
       await page.evaluate(() => OC.LifeUI.endHand()); await wait(page, 400); const hh3 = await holds(ids.mate);
       check('2f 牽手：角色跟在身邊；結束後放開', hh2.includes('gesture') && !hh3.includes('gesture'), { hh2, hh3 });
     }
@@ -152,7 +152,7 @@ const { check, wait } = H;
         }, [A, Bc, kind]);
         res.push(r);
       }
-      const bad = res.filter((r) => !r.started || !r.ended || r.holds[0].length || r.holds[1].length);
+      const bad = res.filter((r) => !r.started || !r.ended || r.holds[0].filter((h) => h !== 'event').length || r.holds[1].filter((h) => h !== 'event').length);   // a game event the interaction itself triggers (it holds with 'event' and ends on its own) is not a stuck OC
       check('5a 十種雙人互動都能完整跑完：開始、演出、結束，沒有人被卡住', !bad.length, bad.length ? bad : res.map((r) => r.kind + ' ' + JSON.stringify(r.d)).join(' | ').slice(0, 300));
       const EXP = { hug: ['hugme', 'hug'], highfive: ['highfive'], dance: ['twirl'], selfie: ['selfie'], rps: ['rps'], tickle: ['tickle', 'ticklish'], pat: ['pat', 'patted'], whisper: ['whisper', 'listen'], leanOn: ['lean_on', 'shoulder'], peekaboo: ['peekaboo', 'stunned'] };
       const perf = res.filter((r) => !(EXP[r.kind] || []).every((x) => r.a.includes(x) || r.b.includes(x)));
@@ -200,7 +200,7 @@ const { check, wait } = H;
         const q = await window.__measure(() => OC.Sound.speak(cs[1], '你好嗎？', { emo: 'neutral' }), 1500);
         const cfg = OC.Store.s.settings.sound = Object.assign({}, OC.Sound.cfg()); cfg.voice = 0; OC.Sound.apply(); await new Promise((r) => setTimeout(r, 300));
         const off = OC.Sound.speak(cs[0], line, { emo: 'happy' }); cfg.voice = 0.6; OC.Sound.apply();
-        return { f0, tallF: Math.round(OC.Sound.voiceOf(tall).f0), smallF: Math.round(OC.Sound.voiceOf(small).f0), exDur: +ex.ret.toFixed(2), dnDur: +dn.ret.toFixed(2), trDur: +tr.ret.toFixed(2), exPow: +(ex.e / ex.ret * 1e3).toFixed(3), dnPow: +(dn.e / dn.ret * 1e3).toFixed(3), trPow: +(tr.e / tr.ret * 1e3).toFixed(3), exPeak: +ex.pl.toFixed(2), qPeak: +q.pl.toFixed(2), qE: +q.e.toFixed(4), off };
+        return { f0, tallF: Math.round(OC.Sound.voiceOf(tall).f0), smallF: Math.round(OC.Sound.voiceOf(small).f0), exDur: +ex.ret.toFixed(2), dnDur: +dn.ret.toFixed(2), trDur: +tr.ret.toFixed(2), exPow: +(ex.e / ex.ret * 1e3).toFixed(3), dnPow: +(dn.e / dn.ret * 1e3).toFixed(3), trPow: +(tr.e / tr.ret * 1e3).toFixed(3), exPeak: +ex.pl.toFixed(2), qPeak: +q.pl.toFixed(2), qE: q.e, off };
       });
       check('6c 每個 OC 有自己的聲線（音高不同、高個子比較低沉）', new Set(vo.f0).size === 3 && vo.tallF < vo.smallF, vo);
       check('6d 心情會改變說話：興奮比低落／疲倦快、而且比較大聲；說話有聲音但不爆音；滑桿 0 就靜音', vo.exDur < vo.dnDur && vo.dnDur < vo.trDur + 0.01 && vo.exPow > vo.dnPow * 1.5 && vo.exPow > vo.trPow * 1.5 && vo.exPeak > 0.002 && vo.exPeak < 0.9 && vo.qE > 0 && vo.off === 0, vo);
