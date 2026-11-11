@@ -909,3 +909,12 @@ html[data-style="play"] .fun-bar { background: var(--balloon); color: var(--ball
 .fun-pick { flex-direction: column; min-height: 76px; padding: 8px 0; } .fun-pick b { font-size: 30px; line-height: 1; }
 .fun-bar { position: absolute; left: 50%; top: calc(var(--sat) + 104px); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 16px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--toy-2); font-size: var(--fs-m); white-space: nowrap; }
 .fun-bar .num { font-weight: 900; color: var(--alert); min-width: 44px; text-align: right; }
+
+/* 13.0 tutorial: chapter header with progress dots; the card is the cosy balloon in the default style */
+.tut-ch { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: var(--fs-s); }
+.tut-ch small { margin-left: auto; color: var(--ink-3); }
+.tut-dots { display: inline-flex; gap: 4px; } .tut-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--surface-3); }
+.tut-dots i.done { background: var(--accent); } .tut-dots i.now { background: var(--sun); box-shadow: 0 0 0 2px var(--sun-soft); }
+html[data-style="play"] .tut-card { background: var(--balloon); color: var(--balloon-ink); border-radius: 30px; box-shadow: 0 10px 30px rgba(60, 40, 10, .3); }
+html[data-style="play"] .tut-card .tut-text { color: var(--balloon-ink); font-weight: 700; } html[data-style="play"] .tut-card .tut-ch small, html[data-style="play"] .tut-card .faint { color: #A08A68; }
+html[data-style="play"] .tut-card .btn { background: #FFFDF3; color: var(--balloon-ink); box-shadow: 0 2px 0 rgba(120, 92, 52, .14); } html[data-style="play"] .tut-card .btn.primary { background: var(--balloon-mark); color: #5A4410; } html[data-style="play"] .tut-card .btn.ghost { background: transparent; box-shadow: none; }

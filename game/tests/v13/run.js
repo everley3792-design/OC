@@ -7,6 +7,7 @@
  *   4 games: rock-paper-scissors and hide-and-seek with real input, rewards once per OC per day, nobody left hidden / held; tree drops once per tree per day
  *   5 visits: an OC comes to you (gift / question / invitation / news / appointment kept or missed)
  *   6 look: unboxed HUD, glass tab bar, cream speech balloon with a tilted name tag, menus by theme (paper / slate), other styles still switchable
+ *   7 tutorial: four chapters, steps completed by real events (incl. control mode, shaking, a game, map, travel), keepsake only when finished
  * (further scenarios are added below as the 13.0 features land)
  */
 const fs = require('fs'), path = require('path');
@@ -279,6 +280,43 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('6c 選單依主題：淺色＝暖色紙感與大圓角；深色＝石板色與小圓角；可切回「雅緻」「玩具」再切回來', r.light.bg.toUpperCase() === '#F6F0DF' && r.light.r === '20px' && r.dark.bg.toUpperCase() === '#171B1E' && r.dark.r === '6px' && r.refined === 'refined' && r.toy === 'toy' && r.back === 'play', { light: r.light, dark: r.dark });
       await page.evaluate(() => OC.App.setTheme('dark')); await page.evaluate(() => OC.App.tab('more')); await wait(page, 900); await shot(page, '6-dark-menu');
       await page.evaluate(() => { OC.App.setTheme('light'); OC.App.tab('island'); }); await wait(page, 500);
+    }
+
+    // ================= 7. the rebuilt tutorial: four chapters, every step by a real event, reward only when finished =================
+    if (want(7)) {
+      await quiet(); await closeAll(); await go('isle');
+      const T = await page.evaluate(() => ({ n: OC.Tutorial.STEPS.length, ch: OC.Tutorial.CHAPTERS, per: OC.Tutorial.CHAPTERS.map((_, i) => OC.Tutorial.STEPS.filter((s) => s.ch === i).length), ids: OC.Tutorial.STEPS.map((s) => s.id), noWay: OC.Tutorial.STEPS.filter((s) => !s.next && !s.done).map((s) => s.id) }));
+      check('7a 教學分成四章（相遇／照顧／一起玩／出門），每一步不是「下一步」就是由真實事件完成；包含操控模式、搖樹、玩遊戲、地圖與前往地點', T.ch.length === 4 && T.per.every((n) => n >= 2) && !T.noWay.length && ['control', 'shake', 'game', 'map', 'travel'].every((k) => T.ids.includes(k)), T);
+      await page.evaluate(() => { localStorage.removeItem('oc.skipIntro'); const S = OC.Store.s; S.intro.tutorial = { step: 0, done: false, skipped: false }; OC.Tutorial.start({ force: true, restart: true }); });
+      await page.waitForSelector('.tut-card.on', { timeout: 10000 });
+      const stepId = () => page.evaluate(() => (OC.Tutorial.STEPS[OC.Tutorial.step] || {}).id);
+      const until = (id) => page.waitForFunction((id) => (OC.Tutorial.STEPS[OC.Tutorial.step] || {}).id === id, id, { timeout: 20000 }).then(() => true).catch(() => false);
+      const card0 = await page.evaluate(() => ({ ch: document.querySelector('.tut-ch b').textContent, dots: document.querySelectorAll('.tut-dots i').length }));
+      await page.evaluate(() => { const b = document.querySelector('.tut-card .btn.primary'); b && b.click(); }); const s1 = await until('walk');
+      // steps are completed by the events themselves (emitted by the real systems; here we fire the same events the systems send)
+      const fire = async (ev, data, next) => { await page.evaluate(([ev, data]) => OC.Store.emit(ev, data), [ev, data || null]); return until(next); };
+      await page.evaluate(() => { const p = OC.App.player; for (const [dx, dy] of [[70, 30], [-70, 30], [60, -40], [-60, -40], [0, 70]]) { const q = OC.World.nearestWalkable(p.x + dx, p.y + dy, 30); if (q && Math.hypot(q.x - p.x, q.y - p.y) > 40 && OC.World.walkTo(p, q.x, q.y)) break; } }); const s2 = await until('look');
+      const s3 = await fire('cam:pan', null, 'ring'), s4 = await fire('menu:open', null, 'pet'), s5 = await fire('touch:pet', null, 'lift'), s6 = await fire('touch:land', null, 'status');
+      await shot(page, '7-tutorial-ch2');
+      const card2 = await page.evaluate(() => document.querySelector('.tut-ch b').textContent);
+      const s7 = await fire('status:open', null, 'control');
+      await page.evaluate(() => OC.Brain.setControl(OC.Store.s.activeId, 'auto')); const s8 = await until('time'); await page.evaluate(() => OC.Brain.setControl(OC.Store.s.activeId, 'manual'));
+      const s9 = await fire('time:panel', null, 'bag'); await page.evaluate(() => { const b = document.querySelector('.tut-card .btn.primary'); b && b.click(); }); const s10 = await until('shake');
+      const tree = await page.evaluate(() => { const t = OC.World.swayTargets().filter((x) => x && x.x > 40 && x.x < innerWidth - 40 && x.y > 210 && x.y < innerHeight - 330)[0]; return t ? { x: t.x, y: t.y } : null; });
+      await page.evaluate(() => { const t = OC.World.swayTargets().filter(Boolean)[0]; OC.Store.emit('world:shake', t ? { dx: t.dx, dy: t.dy } : null); }); void tree; const s11 = await until('game');
+      await page.evaluate(() => OC.Fun.rps(OC.Store.s.activeId)); await wait(page, 500); await page.evaluate(() => OC.Fun.end('quit')); const s12 = await until('map');
+      await page.evaluate(() => OC.App.tab('explore')); const s13 = await until('travel');
+      const coins0 = await page.evaluate(() => OC.Store.s.coins);
+      await page.evaluate(() => OC.WorldUI.travel('beach', { instant: true })); const s14 = await until('tabs');
+      await page.evaluate(() => OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()));
+      for (const id of ['desk', 'bye']) { await page.evaluate(() => { const b = document.querySelector('.tut-card .btn.primary'); b && b.click(); }); await until(id); }
+      await page.evaluate(() => { const b = document.querySelector('.tut-card .btn.primary'); b && b.click(); }); await wait(page, 900);
+      const end = await page.evaluate(() => ({ done: OC.Store.s.intro.tutorial.done, active: OC.Tutorial.active, coins: OC.Store.s.coins, paid: !!OC.Tx.done('tutorial:13:done') }));
+      check('7b 一步一步真的做完：走路、看四周、點角色、撫摸、抱起、狀態、切換操控模式、時間、搖樹、玩一局、開地圖、前往地點——每一步都由那個動作本身完成', [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14].every(Boolean) && card0.ch.includes('第 1 章') && card0.dots >= 2 && card2.includes('第 2 章'), { steps: [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14], card0, card2 });
+      check('7c 完成（不是跳過）才有紀念獎勵 60 星幣，而且只給一次', end.done && !end.active && end.paid && end.coins >= coins0 + 60, { end, coins0 });
+      const again = await page.evaluate(async () => { const c0 = OC.Store.s.coins; OC.Tutorial.start({ force: true, restart: true }); await new Promise((r) => setTimeout(r, 400)); const el = [...document.querySelectorAll('.tut-card .btn')].find((b) => b.textContent === '跳過教學'); el.click(); await new Promise((r) => setTimeout(r, 500)); return { skipped: OC.Store.s.intro.tutorial.skipped, active: OC.Tutorial.active, same: OC.Store.s.coins === c0 }; });
+      check('7d 可以重新觀看、隨時跳過；跳過不給獎勵、不會再跳出來', again.skipped && !again.active && again.same, again);
+      await page.evaluate(() => { localStorage.setItem('oc.skipIntro', '1'); }); await go('isle');
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

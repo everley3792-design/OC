@@ -103,7 +103,7 @@
   const manualMode = (b) => ctlOf(b) === 'manual';
   function setControl(id, mode) {
     const c = OC.Chars.get(id); if (!c || !['manual', 'semi', 'auto'].includes(mode)) return false;
-    c.life.control = mode; OC.Chars.save && OC.Chars.save(c);
+    c.life.control = mode; OC.Chars.save && OC.Chars.save(c); OC.Store.emit('control:set', { id, mode });
     const b = brains[id]; if (b) { b.thinkAt = 0; if (mode !== 'manual') b.manualOverride = 0; }
     OC.Store.emit('control', { id, mode }); return true;
   }

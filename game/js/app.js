@@ -560,14 +560,14 @@
       const playRing = () => ring(OC.Chars.name(c), '想玩什麼？', [
         { ic: 'dice', label: '陪牠玩', main: true, off: sl || busy, run: () => L.play(id) },
         { ic: 'hand', label: '猜拳', off: sl || busy, run: () => OC.Fun.rps(id) },
-        { ic: 'eye', label: '躲貓貓', off: sl || busy, run: () => OC.Fun.hide(id) },
+        { ic: 'eye', label: '躲貓貓', off: self ? '操控中的角色不能自己躲（找別的角色玩）' : (sl || busy), run: () => OC.Fun.hide(id) },
       ]);
       ring(OC.Chars.name(c), `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, [
         { ic: 'heart', label: '親近', main: true, run: () => setTimeout(closeness, 60) },
         { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
         { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
         { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
-        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => (self || !OC.Fun ? L.play(id) : setTimeout(playRing, 60)) },
+        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => (!OC.Fun ? L.play(id) : setTimeout(playRing, 60)) },
         self ? { ic: 'eye', label: '跟拍', run: () => setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L.call(id) },
         { ic: 'person', label: '檔案', run: () => Pg.open('profile', { id }) },
         { ic: 'more', label: '更多', run: () => L.interact(id) },
