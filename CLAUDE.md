@@ -18,6 +18,7 @@
 - **10.1（0.10.1-alpha）**：修正「互動後角色卡住」（遺失的放開手勢、被取代的對話、沒回答的事件提問，加上保留的安全網）、環狀選單改成連續動作、多面體植物、逐頁打磨。驗收：`node game/tests/v10/run.js`。紀錄：`docs/v10-report.md` 後半。
 - **11.0（0.11.0-alpha）互動與生命感重做**：真正的滑動撫摸（依手指速度／身體部位／個體喜好連續累積，不是點一下）、親近環（抱抱、擊掌、戳、牽手）、`OC.Anim11` 107 個資料驅動動作（姿勢間 0.2 秒柔和過渡、情緒小動作、觸摸層）、`OC.Mind11` 多步計畫／每日目標／對他人的認知／可解釋的「想法」、`OC.Social11` 10 種雙人互動（各有互補動畫）、創角舞台（轉盤、點部位）與誕生演出、角色聲線（每個 OC 一種、隨心情改變）／立體聲定位／動作與腳步音效／音樂強度層／分層觸覺節奏、世界觸控回饋（點地面波紋、點樹搖晃落葉、跑步揚塵）、桌寵多 10 個小動作。驗收：`node game/tests/v11/run.js`。紀錄與未驗證項目：`docs/v11-report.md`。
 - **12.0（0.12.0-alpha）修正與成熟化**：修掉純文字格的灰色圓底座與作息輸入框重疊、請求可取消、技能頁與地圖重新設計、**去除 NPC（只用玩家自己的角色）**、極簡 HUD（工具把手＋小膠囊、導覽列只有圖示、閒置淡出）、**每個角色各自的操控模式（手動／半自動（預設）／全自動），狀態卡、長按 HUD 頭像、生活設定都能切換**、成熟語氣（`lines12.js` 約 480 句、預設「沉穩」；「活潑」回到舊的）與預設「雅緻」介面風格、`OC.Arcs`（情緒感染、冷戰→解凍→和解／疏遠、三人以上的聚會）、桌寵自己的聲音（`OC.PetSound` ＋ 原生 `PetSounds` ＋ core `PetSound`）與雙人桌面動作（`PetSocial.KINDS`）、`OC.Sound.cue`（過場短句接到真實事件）、3D 的接觸陰影／房間布置（`OC.Dress`）／重新建模的家具（`models12.js`）。**3D 只做了一部分：房屋、樹木、岩石的造型沒有重新建模。** 驗收：`node game/tests/v12/run.js`。紀錄（問題→原因→修正→驗證＋未驗證項目）：`docs/v12-report.md`。
+- **13.0（0.13.0-alpha）**：操控／觀察中的角色自己換地點時畫面跟過去、圖片角色的調整（翻轉／轉向／縮放／位移／裁切，繪製時套用）與 `OC.Puppet`（單張圖片自己表演所有動作＋特效）、79 個資料驅動特質（`traits13.js`，衝突提示、隨機）、新的預設介面風格（`data-style="play"`：世界裡無框、選單依主題紙感／石板、奶油色對話框）、`OC.Fun`（猜拳、躲貓貓、搖樹掉落、角色主動來訪與約定）、四章節教學、桌寵作息（`core/pet/PetRoutine`）。**桌寵原生層與各頁面版面沒有整個重寫。** 驗收：`node game/tests/v13/run.js`。紀錄：`docs/v13-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -56,6 +57,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
+  tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
   tests/v11/          run.js：11.0 驗收 1–7（撫摸、親近環、動作庫、AI 計畫、雙人互動、音訊、世界觸控回饋；音訊用音訊執行緒上的錄音節點量測）
   tests/pet/          run.js + mock-native.js：第七階段（桌寵的遊戲端：狀態、權限、影格輸出、多隻、同步、台詞、App 情境、工具、備份、重開、瀏覽器版）
@@ -76,13 +78,14 @@ node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
 node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v13/run.js [1 2 …]            # 13.0 驗收（約 12 分鐘；可用 OC_URL 指向別的連接埠）
 node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC、操控模式、極簡 HUD、成熟語氣、冷戰與聚會、過場短句、3D（約 25 分鐘）
 node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
 node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（54 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.12.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.13.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -169,6 +172,13 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **12.0 桌寵聲音**：遊戲只負責「做出這個角色自己的 14 個 WAV」（`OC.PetSound.CLIPS` 必須和 `core/pet/PetSound.kt` 的 `CLIPS` 完全一致，pet 測試 16a 會讀 Kotlin 檔比對）；播哪一個、何時播由 `PetSound`（純 Kotlin、單元測試）決定；預設關閉；原生只用 `SoundPool`，靜音／通話／螢幕關閉不出聲；不得加外部音檔。
 - **12.0 雙人桌面動作**：新的種類加在 `PetSocial.KINDS`（每個動畫必須在 `PetBrain.ANIMS` 與 `OC.PetSync.ANIMS`，台詞分類在 `LINE_CATS`）；兩隻都在地板上才開始、被抓起／跳起就取消；效果只經遊戲的 `meet` 處理（每對每天一次、不計入任務）。
 - **12.0 3D**：放在地面的東西經 `OC.Areas._h.place`（自動接觸陰影，一個地點一個 InstancedMesh；不要讓房間外殼有接觸陰影：`userData.noContact`）；純視覺的布置寫在 `OC.Dress`（不得蓋住可走區域，角落物件要 `ctx.block`）；重新建模的家具在 `models12.js`，**同 id、同占地**，大量小件要合併（`boxes()`）；雲影只在室外。
+
+- **13.0 跟隨**：操控中的角色（`b.manual`）在非手動模式可以自己換地點，但只經 `hooks.canLead()`（`App.canLead`：只有單純看著世界時）與 `hooks.lead()`（`WorldUI.travel`）；新的全螢幕互動（面板、小遊戲、演出）要加進 `canLead` 的條件。
+- **13.0 圖片角色**：取景存在 `c.appearance.frame`（flip／zoom／dx／dy／crop／faces），只在 `CharRender.draw` 套用，**不得改寫原圖或另存加工後的圖**；`OC.Puppet.active()` 決定是否由圖片表演（玩家畫了該動作就不套）；新動作不需要為圖片另外寫——沿用 `rigState` 的身體動態，必要時在 `puppet13.js` 的 `MOVES`／`OWN` 補資料。快取 key 要包含會改變畫面的時間量化。
+- **13.0 特質**：新特質只加在 `traits13.js` 的資料表（`fx.need／act／soc／emo／speed／accept` 至少一項＋台詞），鍵必須是存在的需求／活動／社交／情緒 id（v13 測試 3a 會檢查）；衝突寫一邊即可（會自動補成雙向）。
+- **13.0 介面**：預設風格是 `play`；常駐在畫面上的元件**不得**用 `backdrop-filter`（每幀成本）；HUD 不加底框；對話、提示、教學卡用 `--balloon*`；新元件三種風格、兩種主題都要能用。參考作品只取原則。
+- **13.0 OC.Fun**：小遊戲與來訪的保留用 `'game'`（`MAX_AGE.game`），每條離開路徑都要 `end()`／`leave()`；獎勵 key 固定為 `fun:<遊戲>:<oc>:<日>`、`visitgift:<oc>:<日>`、`shake:<地點>:<座標>:<日>`（結果由 key 的雜湊決定，不能靠重試改變）；台詞放 `LINES`，自訂變數經 `extra.vars`。行內註解一律用 `/* */`，不要在一行多敘述的程式後面用 `//`（已三次吃掉後半行）。
+- **13.0 桌寵作息**：新的連續動作只加在 `PetRoutine.ROUTINES`（動畫必須在 `PetBrain.ANIMS`）；導演只在寵物空閒時下指令，不改需求。
 
 ## 環境限制（實測）
 - 無法連線 `dl.google.com` / Google Maven → 無法用 AGP / 下載 Android SDK；改用離線管線（`docs/android-build.md`）。

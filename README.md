@@ -2,9 +2,15 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.12.0-alpha（12.0 修正與成熟化）
+## 目前版本 0.13.0-alpha（13.0）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.12.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.12.0-alpha-debug.apk)（Android 8.0+，targetSdk 35；sha256 同目錄）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.13.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.13.0-alpha-debug.apk)
+- 13.0：畫面跟著角色換地點、圖片角色的調整與自動表演、79 個特質（衝突提示、隨機）、新的預設介面風格、猜拳／躲貓貓／搖樹、角色主動來訪與約定、四章節教學、桌寵作息。**桌寵原生層與各頁面版面沒有整個重寫。**
+- 紀錄（含未驗證與沒做的部分）：[`docs/v13-report.md`](docs/v13-report.md)；測試：`node game/tests/v13/run.js`
+- ⚠️ 原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+
+## 0.12.0-alpha（12.0 修正與成熟化）
+
 - **12.0 新增／修正**：修掉純文字格的灰色圓底座與作息輸入框重疊；請求可取消；技能頁與地圖重新設計；**去除 NPC**；極簡 HUD；**每個角色各自的操控模式（手動／半自動（預設）／全自動），隨時可切**；成熟語氣的新台詞與「雅緻」介面風格；情緒感染、冷戰與和解、三人以上的聚會；桌寵自己的聲音與雙人桌面動作；過場短句接到真實事件；3D 接觸陰影、房間布置與重新建模的家具（**房屋／樹木／岩石的造型沒有重新建模**）。
 - 12.0 紀錄（問題→原因→修正→驗證、**未驗證與未完成項目**）：[`docs/v12-report.md`](docs/v12-report.md)；畫面：`deliverables/v12/`
 - 測試：`node game/tests/v12/run.js`（12.0 驗收）；Kotlin：`cd android && gradle -PcoreOnly=true test`
