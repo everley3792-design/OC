@@ -4,6 +4,8 @@
  *   2 picture characters: mirrored by the walking direction, the picture performs every action (motion + marks), own frames win,
  *     framing (zoom / offset / crop / flip / reset), editor controls, animated frames for the desktop pet
  *   3 traits: 80+ data-driven traits with measurable effects and own lines, symmetric contradictions shown in the editor, random traits / tastes
+ *   4 games: rock-paper-scissors and hide-and-seek with real input, rewards once per OC per day, nobody left hidden / held; tree drops once per tree per day
+ *   5 visits: an OC comes to you (gift / question / invitation / news / appointment kept or missed)
  * (further scenarios are added below as the 13.0 features land)
  */
 const fs = require('fs'), path = require('path');
@@ -159,6 +161,100 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await shot(page, '3-traits-clash');
       check('3e 編輯器：選「害羞」後「外向」「健談」變暗並標「和『害羞』衝突」、上方列出不能選的；硬點衝突的會被拒絕；「隨機」一鍵選好 3–5 個', ui.has && ui.shyOn && ui.outgoingClash && ui.tag.includes('害羞') && ui.talkClash && ui.hint.includes('外向') && ui.refused && ui.randomOn >= 3 && ui.randomOn <= 5 && !ui.anyOnClash, ui);
       await closeAll(); await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); }); await wait(page, 400);
+    }
+
+    // ================= 4. games with your characters + shaking trees =================
+    if (want(4)) {
+      await quiet(); await closeAll(); await go('isle');
+      const mate = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); OC.Brain.setControl(m, 'semi'); const b = OC.Brain.get(m); b.holds.clear(); if (b.st !== 'think') OC.Brain.abort(b, 't'); b.thinkAt = performance.now() / 1000 + 900; c.personality.traits = []; return !!OC.App.actorOf(m); }, ids);
+      // --- rock paper scissors through the real buttons, until someone has two wins
+      const coins0 = await page.evaluate(() => OC.Store.s.coins);
+      const started = await page.evaluate(([me, m]) => { const ok = OC.Fun.rps(m); return { ok, holds: [...OC.Brain.get(m).holds], st: OC.Fun.state }; }, ids);
+      await page.waitForSelector('.fun-panel.on', { timeout: 10000 });
+      let rounds = 0; while (rounds < 12) { const stt = await page.evaluate(() => OC.Fun.state); if (!stt || stt.phase === 'done') break; if (stt.phase === 'pick') { await page.click(`.fun-pick[data-pick="${['rock', 'paper', 'scissors'][rounds % 3]}"]`); rounds++; } await wait(page, 400); }
+      await page.waitForFunction(() => !OC.Fun.state, null, { timeout: 20000 }).catch(() => {});
+      const after = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m); return { state: OC.Fun.state, holds: [...OC.Brain.get(m).holds], panel: !!document.querySelector('.fun-panel'), n: OC.Fun.data.n.rps, mem: c.life.mem.recent.some((x) => x.key && x.key.startsWith('fun:rps:')), coins: OC.Store.s.coins, paid: !!OC.Tx.done('fun:rps:' + m + ':' + OC.Clock.dayKey()) }; }, ids);
+      check('4a 猜拳：用真的按鈕出拳、先贏兩次結束；結束後面板關閉、角色被放開、留下回憶；只有你贏的那天第一次有星幣（輸了沒有）', mate && started.ok && started.holds.includes('game') && rounds >= 2 && !after.state && !after.panel && !after.holds.includes('game') && after.n === 1 && after.mem && (after.paid ? after.coins === coins0 + 20 : after.coins === coins0), { rounds, after, coins0 });
+      // a second win on the same day pays nothing more (fixed key)
+      const again = await page.evaluate(async ([me, m]) => { const real = Math.random; const c0 = OC.Store.s.coins, paidBefore = !!OC.Tx.done('fun:rps:' + m + ':' + OC.Clock.dayKey()); OC.Fun.rps(m); await new Promise((r) => setTimeout(r, 300)); Math.random = () => 0.01; /* the OC throws rock every time */ for (let i = 0; i < 2; i++) { document.querySelector('.fun-pick[data-pick="paper"]').click(); await new Promise((r) => setTimeout(r, 1300)); } Math.random = real; await new Promise((r) => setTimeout(r, 2200)); return { c0, c1: OC.Store.s.coins, paidBefore, st: OC.Fun.state, wins: OC.Fun.data.n.rps }; }, ids);
+      check('4b 連贏兩拳就結束；同一天同一個角色只會給一次獎勵（再贏不會再給）', !again.st && again.wins === 2 && (again.paidBefore ? again.c1 === again.c0 : again.c1 === again.c0 + 20), again);
+      // --- hide and seek: the OC disappears, wrong bushes do nothing, the right one finds it
+      await quiet();
+      const hs = await page.evaluate(([me, m]) => { const ok = OC.Fun.hide(m); return { ok, st: OC.Fun.state }; }, ids);
+      await page.waitForFunction(() => OC.Fun.state && OC.Fun.state.phase === 'seek', null, { timeout: 15000 }).catch(() => {});
+      const seek = await page.evaluate(([me, m]) => ({ hidden: OC.App.actorOf(m).hidden, st: OC.Fun.state, bar: (document.querySelector('.fun-bar') || {}).textContent }), ids);
+      // tap a wrong one, then the right one (real taps on the 3D view)
+      const wrong = await page.evaluate(() => { const s = OC.Fun.state.spot; const t = OC.World.swayTargets().filter((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) > 20 && x.x > 40 && x.x < innerWidth - 40 && x.y > 210 && x.y < innerHeight - 190)[0]; return t ? { x: t.x, y: t.y } : null; });
+      if (wrong) { await page.mouse.click(wrong.x, wrong.y); await wait(page, 900); }
+      const mid = await page.evaluate(() => OC.Fun.state && { phase: OC.Fun.state.phase, wrong: OC.Fun.state.wrong });
+      const spot = await page.evaluate(() => { const s = OC.Fun.state.spot; const t = OC.World.swayTargets().find((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) < 2); return { x: t.x, y: t.y }; });
+      await page.mouse.click(spot.x, spot.y);
+      await page.waitForFunction(() => !OC.Fun.state, null, { timeout: 20000 }).catch(() => {});
+      const hend = await page.evaluate(([me, m]) => ({ st: OC.Fun.state, hidden: OC.App.actorOf(m).hidden, holds: [...OC.Brain.get(m).holds], bar: !!document.querySelector('.fun-bar'), n: OC.Fun.data.n.hide, paid: !!OC.Tx.done('fun:hide:' + m + ':' + OC.Clock.dayKey()) }), ids);
+      await shot(page, '4-hide-found');
+      check('4c 躲貓貓：角色真的躲起來（看不到）、有倒數；搖錯的樹只算一次沒找到，搖對的那棵就找到——角色出現、放開、第一次贏有獎勵', hs.ok && seek.hidden === true && /秒/.test(seek.bar || '') && (!wrong || (mid && mid.phase === 'seek' && mid.wrong <= 1)) && !hend.st && hend.hidden === false && !hend.holds.includes('game') && !hend.bar && hend.n === 1 && hend.paid, { seek: { hidden: seek.hidden, bar: seek.bar }, mid, hend });
+      // time runs out → it comes back by itself, no reward, nobody stuck
+      const lose = await page.evaluate(async ([me, m]) => { OC.Fun.hide(m); await new Promise((r) => setTimeout(r, 2200)); const g = OC.Fun.state; if (!g) return { ok: false }; const before = OC.Fun.data.n.hide; OC.Fun.end && 0; return { ok: true, phase: g.phase, before }; }, ids);
+      await page.evaluate(() => { /* fast-forward the clock of the game */ const t = setInterval(() => { if (!OC.Fun.state) clearInterval(t); }, 200); });
+      await page.evaluate(() => OC.Fun.end('quit')); await wait(page, 600);
+      const quit = await page.evaluate(([me, m]) => ({ st: OC.Fun.state, hidden: OC.App.actorOf(m).hidden, holds: [...OC.Brain.get(m).holds], bar: !!document.querySelector('.fun-bar') }), ids);
+      check('4d 中途不玩：角色回到畫面上、不會被留在「躲起來」或被保留的狀態', lose.ok && !quit.st && quit.hidden === false && !quit.holds.includes('game') && !quit.bar, { lose, quit });
+      // --- shaking trees: decided once per tree per day
+      const drops = await page.evaluate(() => { const T = OC.World.swayTargets().filter(Boolean), c0 = OC.Store.s.coins, n0 = OC.Fun.data.n.drops; let inv0 = JSON.stringify(OC.Store.s.inv); for (const t of T) OC.Store.emit('world:shake', { dx: t.dx, dy: t.dy }); const n1 = OC.Fun.data.n.drops, c1 = OC.Store.s.coins; for (const t of T) OC.Store.emit('world:shake', { dx: t.dx, dy: t.dy }); return { trees: T.length, first: n1 - n0, second: OC.Fun.data.n.drops - n1, gained: c1 > c0 || JSON.stringify(OC.Store.s.inv) !== inv0 }; });
+      check('4e 搖樹：有些樹今天會掉星幣或果子（約三分之一），每棵每天只決定一次——再搖同一棵不會再掉', drops.trees >= 6 && drops.first >= 1 && drops.first <= drops.trees * 0.7 && drops.second === 0 && drops.gained, drops);
+    }
+
+    // ================= 5. characters come to you: invitations, gifts, questions, news, appointments =================
+    if (want(5)) {
+      await quiet(); await closeAll(); await go('isle');
+      const prep = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m); c.life.loc = 'isle'; c.life.trip = null; OC.App.syncPresence(); OC.Brain.setControl(m, 'semi'); const b = OC.Brain.get(m); b.holds.clear(); if (b.st !== 'think') OC.Brain.abort(b, 't'); b.thinkAt = performance.now() / 1000 + 900; c.personality.traits = []; c.life.player.aff = 40; OC.Store.s.life.fun13 = null; return { can: OC.App.canLead(), who: OC.Fun.visitor() && OC.Fun.visitor().id }; }, ids);
+      check('5a 會主動來找你的是：在場、不是手動、手上沒事、和你關係不錯的角色', prep.can && prep.who === ids[1], prep);
+      const runTopic = async (topic, pick) => {
+        await quiet(); await page.evaluate(([m, topic]) => { const b = OC.Brain.get(m); b.holds.clear(); OC.Fun.visit(OC.Chars.get(m), topic); }, [ids[1], topic]);
+        const open = await page.waitForFunction(() => document.querySelector('.dlg.open') && document.querySelectorAll('.dlg .choices .btn').length >= 1 || (OC.App.dlgOpen && document.querySelector('.dlg.open')), null, { timeout: 30000 }).then(() => true).catch(() => false);
+        // tap through the lines until the choices show, then choose
+        for (let i = 0; i < 6; i++) { const n = await page.evaluate(() => document.querySelectorAll('.dlg.open .choices .btn').length); if (n) break; await page.click('.dlg.open .line'); await wait(page, 500); }
+        await wait(page, 1800);
+        const info = await page.evaluate(() => ({ who: document.querySelector('.dlg .who').textContent, line: document.querySelector('.dlg .line').textContent, choices: [...document.querySelectorAll('.dlg .choices .btn')].map((b) => b.textContent) }));
+        await page.evaluate((i) => document.querySelectorAll('.dlg .choices .btn')[i].click(), pick); await wait(page, 700);
+        for (let i = 0; i < 6; i++) { const o = await page.evaluate(() => !!document.querySelector('.dlg.open')); if (!o) break; await page.click('.dlg.open .line'); await wait(page, 450); }
+        return { open, info };
+      };
+      // a gift
+      const g0 = await page.evaluate(() => JSON.stringify(OC.Store.s.inv));
+      const gift = await runTopic('gift', 0); await wait(page, 500);
+      const g1 = await page.evaluate(([me, m]) => ({ changed: JSON.stringify(OC.Store.s.inv), key: !!OC.Tx.done('visitgift:' + m + ':' + OC.Clock.dayKey()), holds: [...OC.Brain.get(m).holds], visiting: OC.Fun.visiting }), ids);
+      await shot(page, '5-visit');
+      check('5b 送禮：牠走過來、開口（對話框是牠的名字）、你收下 → 物品真的進背包（每天一次的固定 key）、對話結束後牠被放開', gift.open && gift.info.who.length > 0 && gift.info.choices.length === 2 && g1.changed !== g0 && g1.key && !g1.holds.includes('game') && !g1.visiting, { info: gift.info, g1: { key: g1.key, holds: g1.holds } });
+      // a question: the answer is remembered
+      const ask = await runTopic('ask', 0);
+      const a1 = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m); return { answers: c.life.m13 && c.life.m13.answers, mem: c.life.mem.recent.some((x) => x.key && x.key.startsWith('ask:')) }; }, ids);
+      check('5c 提問：牠問你一個問題（2–4 個選項），你的回答被牠記住（資料＋回憶），下次會問別的', ask.open && ask.info.choices.length >= 2 && a1.answers && Object.keys(a1.answers).length === 1 && a1.mem, { info: ask.info, a1 });
+      // an invitation to play starts the game
+      const play = await runTopic('play', 0); await wait(page, 1200);
+      const p1 = await page.evaluate(() => OC.Fun.state && OC.Fun.state.game); await page.evaluate(() => OC.Fun.end('quit')); await wait(page, 500);
+      check('5d 邀你玩：答應後真的開始那個遊戲（猜拳或躲貓貓）', play.open && ['rps', 'hide'].includes(p1), { info: play.info, p1 });
+      // news about someone else
+      const gos = await runTopic('gossip', 1);
+      check('5e 分享見聞：牠會告訴你牠注意到另一個角色的近況（提到對方的名字）', gos.open && (await page.evaluate(([me, m, o]) => OC.Chars.all().filter((c) => c.id !== m).some((c) => true), ids)) && gos.info.line.length > 4, gos.info);
+      // an appointment: set → kept when you are there at that time; another one missed when the day passes
+      const date = await runTopic('date', 0);
+      const d1 = await page.evaluate(() => OC.Fun.data.dates.slice(-1)[0]);
+      check('5f 約定：牠約你明天某個時段在某個地方見；答應後記在資料裡（地點、日子、時段）', date.open && d1 && d1.state === 'set' && d1.oc === ids[1] && !!d1.place && ['morning', 'noon', 'dusk'].includes(d1.phase), { info: date.info, d1 });
+      await page.evaluate((d1) => { const S = OC.Store.s; S.settings.time = 'cycle'; }, d1).catch(() => {});
+      const kept = await (async () => {
+        await page.evaluate((d) => { d.day = OC.Sim.day(); const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = { morning: 8, noon: 12, dusk: 17 }[d.phase]; }, await page.evaluate(() => { const d = OC.Fun.data.dates.slice(-1)[0]; d.day = OC.Sim.day(); OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = { morning: 8, noon: 12, dusk: 17 }[d.phase]; return d; })).catch(() => {});
+        await go(d1.place); await quiet(); const aff0 = await page.evaluate((m) => OC.Chars.get(m).life.player.aff, ids[1]);
+        await page.evaluate(() => OC.Fun.checkDates());
+        const open = await page.waitForFunction(() => !!document.querySelector('.dlg.open'), null, { timeout: 20000 }).then(() => true).catch(() => false);
+        const r = await page.evaluate(([me, m]) => ({ state: OC.Fun.data.dates.slice(-1)[0].state, here: !!OC.App.actorOf(m), aff: OC.Chars.get(m).life.player.aff, mem: OC.Chars.get(m).life.mem.recent.concat(OC.Chars.get(m).life.mem.long).some((x) => x.key && x.key.startsWith('date:kept')) }), ids);
+        for (let i = 0; i < 5; i++) { const o = await page.evaluate(() => !!document.querySelector('.dlg.open')); if (!o) break; await page.click('.dlg.open .line'); await wait(page, 450); }
+        return Object.assign(r, { open, aff0 });
+      })();
+      check('5g 赴約：到了約定的時間你真的在那裡 → 牠也出現、開口、好感上升、記成重要回憶', kept.open && kept.state === 'kept' && kept.here && kept.aff > kept.aff0 && kept.mem, kept);
+      const missed = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m), a0 = c.life.player.aff; OC.Fun.data.dates.push({ oc: m, place: 'beach', day: OC.Sim.day() - 1, phase: 'noon', state: 'set' }); OC.Fun.checkDates(); return { state: OC.Fun.data.dates.slice(-1)[0].state, down: c.life.player.aff < a0, mem: c.life.mem.recent.some((x) => x.key && x.key.startsWith('date:missed')) }; }, ids);
+      check('5h 失約：日子過了你沒去 → 牠會失落（好感小降）並記得這件事', missed.state === 'missed' && missed.down && missed.mem, missed);
+      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 10; }); await go('isle');
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

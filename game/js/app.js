@@ -43,7 +43,7 @@
   }
   /** 10.0 safety net: an interaction hold whose owner is gone (nothing carried, no dialogue, no ring menu) is released after 2 s,
    *  so an OC can never stay frozen because some UI path forgot to let go */
-  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000, gesture: 45000, group: 120000 };
+  let wdT = 0; const orphanSince = {}, heldSince = {}; const MAX_AGE = { call: 20000, pet: 6000, play: 8000, feed: 25000, gesture: 45000, group: 120000, game: 150000 };
   function holdWatchdog() {
     const now = performance.now(); if (now - wdT < 1000) return; wdT = now;   // real time: slow frames must not stretch the guarantee
     for (const k of Object.keys(heldSince)) { const [id, r] = k.split(':'); const b = OC.Brain.brains[id]; if (!b || !b.holds.has(r)) delete heldSince[k]; }   // released normally
@@ -434,7 +434,7 @@
     if (observing) { stopObserve(); }
     const it = r.it;
     // 11.0: a tap on a tree / bush / flower patch shakes it (leaves come down, it rustles) — the OC keeps doing what it was doing
-    if (!it && !decorate && r.s && Wd.shakeAt) { const sh = Wd.shakeAt(r.s.x, r.s.y); if (sh) { Wd.shake(sh); haptic('tick'); OC.Sound && OC.Sound.play('rustle', { pan: Math.max(-0.8, Math.min(0.8, (r.s.x - innerWidth / 2) / (innerWidth / 2) * 0.8)) }); St.emit('world:shake'); return; } }
+    if (!it && !decorate && r.s && Wd.shakeAt) { const sh = Wd.shakeAt(r.s.x, r.s.y); if (sh) { Wd.shake(sh); haptic('tick'); OC.Sound && OC.Sound.play('rustle', { pan: Math.max(-0.8, Math.min(0.8, (r.s.x - innerWidth / 2) / (innerWidth / 2) * 0.8)) }); St.emit('world:shake', OC.World.swayInfo ? OC.World.swayInfo(sh) : null); return; } }
     if (!it || !['self', 'mate'].includes(it.type)) { standUp(); OC.Brain.playerAct(S().activeId); }
     if (decorate && it && it.type === 'furn') { startPlacement({ uid: it.uid }); return; }
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
@@ -556,12 +556,18 @@
         { ic: 'sparkle', label: '戳戳', off: sl || busy, run: () => L.poke(id) },
         { ic: 'users', label: '牽手', off: self ? '自己牽不了自己' : (sl || busy), run: () => L.handhold(id) },
       ]);
+      // 13.0: 玩耍 opens a ring of games you play WITH the character
+      const playRing = () => ring(OC.Chars.name(c), '想玩什麼？', [
+        { ic: 'dice', label: '陪牠玩', main: true, off: sl || busy, run: () => L.play(id) },
+        { ic: 'hand', label: '猜拳', off: sl || busy, run: () => OC.Fun.rps(id) },
+        { ic: 'eye', label: '躲貓貓', off: sl || busy, run: () => OC.Fun.hide(id) },
+      ]);
       ring(OC.Chars.name(c), `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, [
         { ic: 'heart', label: '親近', main: true, run: () => setTimeout(closeness, 60) },
         { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
         { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
         { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
-        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => L.play(id) },
+        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => (self || !OC.Fun ? L.play(id) : setTimeout(playRing, 60)) },
         self ? { ic: 'eye', label: '跟拍', run: () => setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L.call(id) },
         { ic: 'person', label: '檔案', run: () => Pg.open('profile', { id }) },
         { ic: 'more', label: '更多', run: () => L.interact(id) },
@@ -946,7 +952,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init();
+    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
@@ -1007,7 +1013,7 @@
   // ---- hooks used by the life engines (js/life/brain.js, events.js) ----
   const onScreen = (a) => { if (!a || curTab !== 'island') return false; const p = Wd.project(a.x, a.y, a.lvl); return p.x > -40 && p.x < innerWidth + 40 && p.y > -40 && p.y < innerHeight + 40; };
   let followNext = null;
-  const canLead = () => curTab === 'island' && !placing && !decorate && !dlgOpen && !paused && !document.hidden && !(OC.UI.stack && OC.UI.stack.length) && !(OC.Radial && OC.Radial.open_) && !(OC.Touch && (OC.Touch.active || OC.Touch.flying || OC.Touch.petting)) && !(OC.Stage && OC.Stage.busy) && !(OC.Events && OC.Events.current) && !(OC.Mini && OC.Mini.active) && !(OC.Tutorial && OC.Tutorial.active) && !(OC.Arcs && OC.Arcs.running);
+  const canLead = () => curTab === 'island' && !placing && !decorate && !dlgOpen && !paused && !document.hidden && !(OC.UI.stack && OC.UI.stack.length) && !(OC.Radial && OC.Radial.open_) && !(OC.Touch && (OC.Touch.active || OC.Touch.flying || OC.Touch.petting)) && !(OC.Stage && OC.Stage.busy) && !(OC.Events && OC.Events.current) && !(OC.Mini && OC.Mini.active) && !(OC.Tutorial && OC.Tutorial.active) && !(OC.Arcs && OC.Arcs.running) && !(OC.Fun && (OC.Fun.busy || OC.Fun.visiting));
   const lifeHooks = {
     say: (a, text, name, dur, o) => bubble(a, text, name, dur, o),
     depart: (id) => {
@@ -1034,6 +1040,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { rail, setStyle, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { canLead: () => canLead(), rail, setStyle, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

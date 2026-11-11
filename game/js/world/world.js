@@ -629,6 +629,8 @@
 
   OC.World = {
     get _blob() { return blobMat; },
+    /** 13.0: where a sway target (tree / bush) is, in design coordinates — the same numbers swayTargets() gives */
+    swayInfo(s) { return s && s.c ? { dx: s.c.x, dy: s.c.z * SIN } : null; },
     get cloudsVisible() { return !!(env && env.fx && env.fx.clouds && env.fx.clouds.visible); },
     get contacts() { let n = 0; if (root) root.traverse((o) => { if (o.userData && o.userData.contact) n += o.isInstancedMesh ? o.count : 1; }); return n; },
     init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H, dx: x.c.x, dy: x.c.z * SIN }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,

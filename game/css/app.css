@@ -885,3 +885,18 @@ html[data-style="play"] .dlg .who { top: -18px; padding: 6px 18px; font-size: va
 html[data-style="play"] .dlg .line { font-size: 17px; font-weight: 700; }
 html[data-style="play"] .dlg .next { color: var(--alert); }
 @media (prefers-reduced-motion: reduce) { .dlg .line .ch, .dlg .choices .btn { animation: none; } }
+
+/* 13.0 games with your characters */
+.fun-panel { position: absolute; left: calc(var(--sal) + 12px); right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + var(--tabbar-h) + 22px); z-index: 60; padding: 16px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--toy-2); transform: translateY(24px) scale(.96); opacity: 0; transition: transform var(--t-spring) var(--spring), opacity var(--t-fast); }
+.fun-panel.on { transform: none; opacity: 1; }
+.fun-score { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; font-weight: 900; font-size: var(--fs-l); font-family: var(--font-num); }
+.fun-score i { font-style: normal; font-size: var(--fs-xs); color: var(--ink-2); font-weight: 700; }
+.fun-hands { display: flex; align-items: center; justify-content: space-around; min-height: 74px; }
+.fun-hands > i { font-style: normal; font-weight: 900; color: var(--alert); }
+.fun-hand { display: grid; justify-items: center; animation: dlg-choice .3s var(--spring) both; }
+.fun-hand b { font-size: 40px; line-height: 1.1; } .fun-hand span { font-size: var(--fs-s); color: var(--ink-2); }
+.fun-msg { text-align: center; min-height: 22px; font-weight: 800; color: var(--ink-2); }
+.fun-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.fun-pick { flex-direction: column; min-height: 76px; padding: 8px 0; } .fun-pick b { font-size: 30px; line-height: 1; }
+.fun-bar { position: absolute; left: 50%; top: calc(var(--sat) + 104px); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 16px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--toy-2); font-size: var(--fs-m); white-space: nowrap; }
+.fun-bar .num { font-weight: 900; color: var(--alert); min-width: 44px; text-align: right; }
