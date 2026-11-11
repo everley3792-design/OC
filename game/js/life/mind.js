@@ -38,6 +38,7 @@
       case 'interest': m = (has(c, 'curious') ? 1.4 : 1) * (ctx.repeat ? 1.5 : 1) * (sleeping ? 0 : 1); break;
       case 'active': m = (ctx.sed ? 1.5 : 1) * (0.6 + 0.9 * p.energy / 100) * (sleeping ? 0 : 1); break;
     }
+    if (OC.Traits13) m *= OC.Traits13.decay(c, id);   // 13.0: data-driven traits
     return m;
   }
   /** personality flavour on activity gains (e.g. a bookworm enjoys reading more) */
@@ -82,6 +83,7 @@
     if (id === 'annoyed') m *= (has(c, 'stubborn') ? 1.2 : 1) * (has(c, 'gentle') ? 0.6 : 1);
     if (id === 'curious') m *= has(c, 'curious') ? 1.4 : 1;
     if (id === 'nervous') m *= 1 - 0.4 * k01(p.social);
+    if (OC.Traits13) m *= OC.Traits13.sens(c, id);
     return m;
   }
   /** add/stack an emotion. Same emotion + same cause within 20 game min only adds 30% (cooldown) */

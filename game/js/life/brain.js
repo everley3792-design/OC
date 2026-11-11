@@ -149,6 +149,7 @@
     for (const w of M().activeWishes(c)) { if (w.type === 'stars' && act === 'observe' && ph === 'night') add(0.6, '願望'); if (w.type === 'read_n' && act === 'read') add(0.3, '願望'); if (w.type === 'tend_n' && act === 'tend') add(0.3, '願望'); }
     const rec = b ? b.last.slice(0, 4).filter((x) => x === act).length : 0; if (rec) add(-0.18 * rec - (b.last[0] === act ? 0.3 : 0), '剛做過');
     if (S().life.settings.autonomy === 'lessSocial' && act === 'explore') add(0.05, '');
+    if (OC.Traits13) { const tv = OC.Traits13.act(c, act); if (tv) add(tv, '特質' + (tv > 0 && OC.Traits13.why(c, 'act', act) ? '「' + OC.Traits13.why(c, 'act', act) + '」' : '')); }   // 13.0
     return { s, why };
   }
   /** pick the best slot for a verb near the OC; → { slot, s, why } */
@@ -198,7 +199,7 @@
       s0 -= 0.3 * b.last.slice(0, 4).filter((x) => String(x).startsWith('social')).length;   // just talked a lot → do something else
       const lastS = c.life.socialAt && c.life.socialAt[oc.id]; if (lastS && Sim().now() - lastS < 45) s0 -= 0.6;
       const oe = M().dominant(oc), myE = M().dominant(c), p = c.personality;
-      const K = (kind, s, r2) => out.push({ kind: 'social', social: kind, other: oc.id, s: s + (Sim().rnd() - 0.5) * 0.08, why: [`社交 ${s0.toFixed(2)}`, r2].filter(Boolean) });
+      const K = (kind, s, r2) => out.push({ kind: 'social', social: kind, other: oc.id, s: s + (OC.Traits13 ? OC.Traits13.soc(c, kind) : 0) + (Sim().rnd() - 0.5) * 0.08, why: [`社交 ${s0.toFixed(2)}`, r2].filter(Boolean) });
       K('chat', s0, null);
       if (M().sharedInterests(c, oc).length || c.profile.hobbies.length) K('share', s0 - 0.05 + (M().sharedInterests(c, oc).length ? 0.15 : 0), '共同興趣');
       if (r.aff >= 20 && (has(c, 'gentle') || has(c, 'outgoing') || p.expression > 65)) K('compliment', s0 - 0.1, '好感');
@@ -563,6 +564,7 @@
       if (rift && rift.stage === 'cold' && kind !== 'apologize') return { ans: 'no', why: '還在冷戰', cold: true };
       const urg = M().urgent(c); if (urg && urg !== 'social' && !(kind === 'food' && urg === 'food') && !(D().SOCIAL[kind].joint === 'rest' && (urg === 'energy'))) return { ans: 'no', why: { food: '肚子太餓', sleep: '太睏了', energy: '太累了', fun: '提不起勁', comfort: '不太舒服' }[urg] || '不太方便', need: true };
       let p = 0.55 + r.aff / 140 - r.conflict / 90 + (c.personality.social - 50) / 160 + (c.needs.social < 40 ? 0.2 : 0) + (OC.Growth && OC.Growth.has(o, 'charm') ? 0.1 : 0);
+      if (OC.Traits13) p += OC.Traits13.accept(c);
       if (emo === 'annoyed') p -= 0.35; if (emo === 'down') p -= 0.1; if (emo === 'happy' || emo === 'excited') p += 0.15;
       if (has(c, 'shy') && r.type === 'stranger') p -= 0.2;
       const joint = D().SOCIAL[kind].joint;

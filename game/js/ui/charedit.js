@@ -291,7 +291,15 @@
     traits(c, x) {
       const P = c.personality, box = h('div'), MAX = 5;
       const grid = h('div.grid.c2');
-      const sync = () => [...grid.children].forEach((b) => { if (b.dataset.v) b.classList.toggle('on', P.traits.includes(b.dataset.v)); });
+      const hint = h('div.trait-hint', { role: 'status' });
+      const zhOf = (id) => (Ch().TRAITS.find((q) => q.id === id) || { zh: id }).zh;
+      // 13.0: after every change, mark the traits that contradict the selection and say which selected trait blocks them
+      const sync = () => {
+        const cl = OC.Traits13 ? OC.Traits13.clashes(P.traits) : {};
+        [...grid.children].forEach((b) => { if (!b.dataset.v) return; const on = P.traits.includes(b.dataset.v), bad = cl[b.dataset.v]; b.classList.toggle('on', on); b.classList.toggle('clash', !!bad && !on); b.title = bad ? '和「' + bad.map(zhOf).join('、') + '」衝突' : ''; const tg = b.querySelector('.clash-tag'); if (tg) tg.textContent = bad && !on ? '和「' + zhOf(bad[0]) + '」衝突' : ''; });
+        const blocked = Object.keys(cl);
+        hint.replaceChildren(P.traits.length ? h('span', null, `已選 ${P.traits.length}／${MAX}：${P.traits.map(zhOf).join('、')}`) : h('span', null, '還沒選特質'), blocked.length ? h('div.faint', null, `因為互相衝突而不能選：${blocked.slice(0, 8).map(zhOf).join('、')}${blocked.length > 8 ? '…' : ''}`) : null);
+      };
       const groups = [...new Set(Ch().TRAITS.map((t) => t.g))];
       for (const gname of groups) {
         grid.append(h('div', { style: { gridColumn: '1 / -1', fontWeight: 700, marginTop: '6px' } }, gname));
@@ -299,14 +307,15 @@
           if (P.traits.includes(t.id)) P.traits = P.traits.filter((q) => q !== t.id);
           else { const clash = (t.x || []).find((q) => P.traits.includes(q)); if (clash) { toast(`「${t.zh}」和「${Ch().TRAITS.find((q) => q.id === clash).zh}」互相矛盾`, 'info'); return; } if (P.traits.length >= MAX) { toast(`最多 ${MAX} 個特質`, 'info'); return; } P.traits.push(t.id); }
           haptic(); sync(); x.changed('personality', { shy: 'shy', outgoing: 'greet', lazy: 'sit', foodie: 'eat', sleepy: 'sleep', curious: 'surprised', cheerful: 'happy', pessimist: 'sad', stubborn: 'angry' }[t.id] || 'happy');
-        } } }, h('b', { style: { color: 'var(--ink)', fontSize: 'var(--fs-m)' } }, t.zh), t.d));
+        } } }, h('b', { style: { color: 'var(--ink)', fontSize: 'var(--fs-m)' } }, t.zh), t.d, h('i.clash-tag')));
       }
       sync();
       const custom = h('div');
       const renderC = () => custom.replaceChildren(...P.customTraits.map((t, i) => h('div.card', { style: { marginTop: '8px', padding: '10px 12px' } }, h('div.hstack', null, h('b.grow', null, t.name), h('button.icon-btn', { 'aria-label': '刪除', on: { click: () => { P.customTraits.splice(i, 1); renderC(); x.changed('personality'); } } }, icon('trash', 's'))), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, t.desc || ''))));
       renderC();
       const nm = h('input', { placeholder: '特質名稱', maxLength: 10 }), ds = h('input', { placeholder: '描述（可略過）', maxLength: 40 });
-      box.append(T('特質', `最多 ${MAX} 個，會影響行為與需求`), grid, T('自訂特質'), custom, h('div.vstack', { style: { marginTop: '8px' } }, h('div.field', null, nm), h('div.field', null, ds), h('button.btn.s', { on: { click: () => { const n = nm.value.trim(); if (!n) return; P.customTraits.push({ id: 'ct' + Date.now().toString(36), name: n, desc: ds.value.trim() }); nm.value = ds.value = ''; renderC(); x.changed('personality', 'happy'); } } }, icon('plus', 's'), '新增自訂特質')));
+      const dice = h('button.btn.s', { 'data-act': 'random-traits', on: { click: () => { if (!OC.Traits13) return; P.traits = OC.Traits13.randomTraits(); haptic(); sync(); x.changed('personality', 'happy'); } } }, icon('sparkle', 's'), '隨機');
+      box.append(h('div.hstack', null, h('div.grow', null, T('特質', `最多 ${MAX} 個，每個都會改變行為`)), dice), hint, grid, T('自訂特質'), custom, h('div.vstack', { style: { marginTop: '8px' } }, h('div.field', null, nm), h('div.field', null, ds), h('button.btn.s', { on: { click: () => { const n = nm.value.trim(); if (!n) return; P.customTraits.push({ id: 'ct' + Date.now().toString(36), name: n, desc: ds.value.trim() }); nm.value = ds.value = ''; renderC(); x.changed('personality', 'happy'); } } }, icon('plus', 's'), '新增自訂特質')));
       return box;
     },
     quirks(c, x) {
@@ -315,7 +324,17 @@
       for (const [k, d] of Object.entries(Ch().QUIRKS)) box.append(h('div', { style: { marginTop: '10px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '4px' } }, d.zh), seg(d.opts, Q[k], (v) => { Q[k] = v; if (k === 'face') c.look.mouthStyle = v; x.changed('quirks'); demo[k](); })));
       return box;
     },
+    /** 13.0: likes / dislikes / hobbies / habits / item likes / flavours — with a "random" button (never touches food preferences you set by hand) */
     tastes(c, x) {
+      const box = h('div'), FL = (OC.Items && OC.Items.FLAVORS) || {};
+      const build = () => {
+        const fl = c.tastes.flavor || {}, fav = Object.keys(fl).filter((k) => fl[k] > 0).map((k) => FL[k] || k), no = Object.keys(fl).filter((k) => fl[k] < 0).map((k) => FL[k] || k);
+        box.replaceChildren(h('div.hstack', null, h('span.grow.muted', { style: { fontSize: 'var(--fs-s)' } }, fav.length || no.length ? `口味：喜歡${fav.join('、') || '—'}${no.length ? '；不喜歡' + no.join('、') : ''}` : '口味：還沒有偏好（吃過的東西會慢慢累積）'),
+          h('button.btn.s', { 'data-act': 'random-tastes', on: { click: () => { if (!OC.Traits13) return; OC.Traits13.randomTastes(c); haptic(); x.changed('profile'); build(); } } }, icon('sparkle', 's'), '隨機')), OC.CharEdit.sections.tastesBase(c, x));
+      };
+      build(); return box;
+    },
+    tastesBase(c, x) {
       const P = c.profile, likeItems = c.tastes.likeItems, items = Object.entries(Sty().ITEMS).filter(([, it]) => it.kind !== 'clothing');
       const g = h('div.grid.c4');
       const sync = () => [...g.children].forEach((b) => { const id = b.dataset.v; b.classList.toggle('on', likeItems.includes(id)); b.style.opacity = c.tastes.dislikeItems.includes(id) ? 0.45 : 1; });
@@ -323,6 +342,7 @@
       sync();
       return h('div', null, T('喜歡的東西'), OC.UI.tagList(P.likes, () => x.changed('profile'), '例如：雨天、甜點'), T('討厭的東西'), OC.UI.tagList(P.dislikes, () => x.changed('profile'), '例如：打雷'), T('興趣'), OC.UI.tagList(P.hobbies, () => x.changed('profile'), '例如：畫畫、看書'), T('習慣'), OC.UI.tagList(P.habits, () => x.changed('profile'), '例如：睡前喝牛奶'),
         T('物品喜好', '點一下＝喜歡，再點＝討厭，再點＝取消'), g);
+      // (13.0: the random button is added by tastes13 below)
     },
     /** 8.0 speech: style, pronouns, how they call you, ending (with a rate), several catchphrases with conditions, pace,
      *  mood colouring, banned words, names for other OCs — with a live preview of several situations */

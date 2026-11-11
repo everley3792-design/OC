@@ -3,6 +3,7 @@
  *     an OC you are watching (觀察) leaves → the view goes along and keeps watching
  *   2 picture characters: mirrored by the walking direction, the picture performs every action (motion + marks), own frames win,
  *     framing (zoom / offset / crop / flip / reset), editor controls, animated frames for the desktop pet
+ *   3 traits: 80+ data-driven traits with measurable effects and own lines, symmetric contradictions shown in the editor, random traits / tastes
  * (further scenarios are added below as the 13.0 features land)
  */
 const fs = require('fs'), path = require('path');
@@ -108,6 +109,56 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       const pet = await page.evaluate(async (id) => { const c = OC.Chars.get(id); const pack = await OC.PetSync.renderSprites(c); const a = pack.manifest.anims; const distinct = (k) => new Set(a[k].frames.map((f) => pack.files[f])).size; return { eat: distinct('eat'), sleep: distinct('sleep'), happy: distinct('happy'), walkSrc: a.walk.src, eatSrc: a.eat.src }; }, pic);
       check('2g 桌寵也一樣：輸出到桌面的影格裡，沒畫過的動作（吃飯、睡覺、開心）是會動的（不是同一張圖重複）', pet.eat >= 3 && pet.sleep >= 2 && pet.happy >= 3, pet);
       await page.evaluate(([me]) => OC.Chars.setActive(me), ids); await wait(page, 600);
+    }
+
+    // ================= 3. traits: many more, each with a real effect; contradictions shown; random =================
+    if (want(3)) {
+      await quiet(); await closeAll();
+      const r = await page.evaluate(([me, mate]) => {
+        const T = OC.Chars.TRAITS, X = OC.Traits13, out = { n: T.length, new: X.NEW.length, groups: [...new Set(T.map((t) => t.g))] };
+        out.noFx = X.NEW.filter((t) => !Object.keys(t.fx).length).map((t) => t.id);
+        out.asym = T.filter((t) => t.x.some((x) => !X.byId[x].x.includes(t.id))).map((t) => t.id);
+        const D = OC.LifeData; out.badAct = []; out.badNeed = []; out.badEmo = []; out.badSoc = [];
+        for (const t of X.NEW) { for (const k of Object.keys(t.fx.act || {})) if (!D.ACTS[k]) out.badAct.push(t.id + ':' + k); for (const k of Object.keys(t.fx.need || {})) if (!D.NEEDS.find((n) => n.id === k)) out.badNeed.push(t.id + ':' + k); for (const k of Object.keys(t.fx.emo || {})) if (!D.EMOTIONS[k]) out.badEmo.push(t.id + ':' + k); for (const k of Object.keys(t.fx.soc || {})) if (!D.SOCIAL[k]) out.badSoc.push(t.id + ':' + k); }
+        out.noLines = X.NEW.filter((t) => !D.LINES.some((l) => l.c && l.c.trait === t.id)).map((t) => t.id);
+        // observable effects through the real engine functions
+        const c = OC.Chars.get(me), b = OC.Brain.get(me), keep = c.personality.traits.slice();
+        const score = (tr, act) => { c.personality.traits = tr; return OC.Brain.actScore(c, b, act).s; };
+        out.fish = +(score(['angler'], 'fish') - score([], 'fish')).toFixed(2); out.tidy = +(score(['messy'], 'tidy') - score([], 'tidy')).toFixed(2);
+        const dec = (tr, need) => { c.personality.traits = tr; const n0 = Object.assign({}, c.needs); c.needs[need] = 80; OC.Mind.tickNeeds(c, 60, {}); const d = 80 - c.needs[need]; Object.assign(c.needs, n0); return d; };
+        out.social = +(dec(['clingy'], 'social') / dec([], 'social')).toFixed(2); out.social2 = +(dec(['aloof'], 'social') / dec([], 'social')).toFixed(2);
+        const feel = (tr) => { c.personality.traits = tr; c.life.emo.list = []; c.life.emo.cd = {}; return OC.Mind.feel(c, 'nervous', 0.4, 't' + Math.random()); };
+        out.nervous = [+feel(['timid']).toFixed(2), +feel([]).toFixed(2), +feel(['calm']).toFixed(2)];
+        c.personality.traits = ['hotheaded']; const sp1 = OC.Chars.behavior(c).speed; c.personality.traits = []; out.speed = +(sp1 / OC.Chars.behavior(c).speed).toFixed(2);
+        // a line of its own
+        c.personality.traits = ['angler']; OC.Store.s.life.settings.tone = 'mature'; let own = 0; for (let i = 0; i < 300; i++) { OC.Store.s.life.said = {}; const ln = OC.Talk.pick('chat_player', c, null); if (ln && ln.line.c && ln.line.c.trait === 'angler') own++; } out.ownLines = own;
+        c.personality.traits = keep;
+        // contradictions + random
+        out.clash = X.clashes(['shy', 'lazy']); out.valid = [X.valid(['shy', 'outgoing']), X.valid(['shy', 'quiet', 'patient'])];
+        let ok = true, sizes = new Set(); for (let i = 0; i < 300; i++) { const t = X.randomTraits(); sizes.add(t.length); if (!X.valid(t) || new Set(t).size !== t.length || t.length < 3 || t.length > 5) ok = false; } out.random = { ok, sizes: [...sizes].sort() };
+        const m = OC.Chars.get(mate); OC.Taste.setPref(m, 'apple', 2); const rt = X.randomTastes(m); out.tastes = { likes: rt.likes.length, items: m.tastes.likeItems.length, dis: m.tastes.dislikeItems.length, flavors: Object.keys(m.tastes.flavor).length, lockedKept: m.tastes.food.apple && m.tastes.food.apple.lv === 2 && m.tastes.food.apple.locked === true, overlap: m.tastes.likeItems.some((i) => m.tastes.dislikeItems.includes(i)) };
+        return out;
+      }, ids);
+      check('3a 特質大量擴充（原本 32 個 → 79 個），新特質每一個都有實際效果與自己的台詞；衝突關係是雙向的；資料沒有指向不存在的活動／需求／情緒', r.n >= 75 && r.new >= 45 && !r.noFx.length && !r.asym.length && !r.badAct.length && !r.badNeed.length && !r.badEmo.length && !r.badSoc.length && !r.noLines.length, { n: r.n, new: r.new, noFx: r.noFx, asym: r.asym, bad: [r.badAct, r.badNeed, r.badEmo, r.badSoc], noLines: r.noLines });
+      check('3b 效果量得到：釣魚迷更想釣魚、隨性的不想整理、黏人的社交需求掉得快／我行我素掉得慢、膽小更容易緊張／沉穩不容易、急性子走得快、有自己的台詞', r.fish > 0.4 && r.tidy < -0.3 && r.social > 1.2 && r.social2 < 0.8 && r.nervous[0] > r.nervous[1] && r.nervous[1] > r.nervous[2] && r.speed > 1.08 && r.ownLines >= 8, { fish: r.fish, tidy: r.tidy, social: [r.social, r.social2], nervous: r.nervous, speed: r.speed, ownLines: r.ownLines });
+      check('3c 衝突：選了「害羞＋懶散」後，外向／健談／愛運動／坐不住…都標成衝突並說明是被誰擋住；隨機 300 次都沒有矛盾、3–5 個、不重複', r.clash.outgoing && r.clash.outgoing.includes('shy') && r.clash.sporty && r.clash.sporty.includes('lazy') && r.valid[0] === false && r.valid[1] === true && r.random.ok && r.random.sizes.length >= 2, { clash: Object.keys(r.clash), random: r.random });
+      check('3d 喜好與口味也能隨機：喜歡／討厭的東西、物品喜好（不重疊）、口味；你親手設定並鎖定的食物喜好不會被改掉', r.tastes.likes >= 2 && r.tastes.items === 3 && r.tastes.dis === 2 && r.tastes.flavors === 3 && r.tastes.lockedKept && !r.tastes.overlap, r.tastes);
+      // the editor: pick a trait → the contradicting tiles are marked with the reason; the random buttons work
+      await page.evaluate((id) => OC.Pages.open('charedit', { id }), ids[0]); await wait(page, 700);
+      await page.evaluate(() => { const t = [...document.querySelectorAll('[role=tab], .seg button, .chip-btn')].find((b) => b.textContent.trim() === '個性'); t && t.click(); }); await wait(page, 600);
+      const ui = await page.evaluate(async () => {
+        const tile = (id) => document.querySelector(`.tile[data-v="${id}"]`); const p = () => OC.Pages.cur && OC.Pages.cur(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        if (!tile('shy')) return { has: false };
+        for (const b of [...document.querySelectorAll('.tile.on[data-v]')]) b.click(); await sleep(100);
+        tile('shy').click(); await sleep(150);
+        const out = { has: true, shyOn: tile('shy').classList.contains('on'), outgoingClash: tile('outgoing').classList.contains('clash'), tag: tile('outgoing').querySelector('.clash-tag').textContent, talkClash: tile('talkative').classList.contains('clash'), hint: document.querySelector('.trait-hint').textContent };
+        tile('outgoing').click(); await sleep(150); out.refused = !tile('outgoing').classList.contains('on');
+        document.querySelector('[data-act=random-traits]').click(); await sleep(200); out.randomOn = document.querySelectorAll('.tile.on[data-v]').length; out.anyOnClash = !!document.querySelector('.tile.on.clash');
+        return out;
+      });
+      await shot(page, '3-traits-clash');
+      check('3e 編輯器：選「害羞」後「外向」「健談」變暗並標「和『害羞』衝突」、上方列出不能選的；硬點衝突的會被拒絕；「隨機」一鍵選好 3–5 個', ui.has && ui.shyOn && ui.outgoingClash && ui.tag.includes('害羞') && ui.talkClash && ui.hint.includes('外向') && ui.refused && ui.randomOn >= 3 && ui.randomOn <= 5 && !ui.anyOnClash, ui);
+      await closeAll(); await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); }); await wait(page, 400);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

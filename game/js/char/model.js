@@ -184,6 +184,7 @@
     const p = c.personality, q = c.quirks, k = (v) => (v - 50) / 50; // −1…1
     let speed = 62 * (1 + 0.28 * k(p.pace)) * (has(c, 'diligent') ? 1.1 : 1) * (has(c, 'lazy') ? 0.85 : 1) * (has(c, 'energetic') ? 1.1 : 1) * (has(c, 'perfectionist') ? 0.95 : 1);
     if (q.walk === 'tiptoe') speed *= 0.85; if (q.walk === 'stomp') speed *= 1.08;
+    if (OC.Traits13) speed *= OC.Traits13.speed(c);
     return {
       speed,
       bounce: { normal: 1, bouncy: 2.2, sway: 0.8, tiptoe: 0.5, stomp: 1.4 }[q.walk] * (0.8 + 0.4 * (p.energy / 100)) * (has(c, 'energetic') ? 1.3 : 1),
