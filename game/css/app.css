@@ -870,3 +870,18 @@ input[type=text]:not(.input):focus, input:not([type]):not(.input):focus, textare
 .tile.clash { opacity: .42; filter: saturate(.4); }
 .tile .clash-tag { display: block; font-style: normal; font-size: var(--fs-xs); color: var(--alert); min-height: 0; }
 .tile .clash-tag:empty { display: none; }
+
+/* 13.0 dialogue box: a name tab in the speaker's own colour, text typed out with the voice, a bouncing "next", choices that pop in */
+.dlg { --who: var(--sun); }
+.dlg .who { background: var(--who); color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, .22); }
+.dlg .line { letter-spacing: .02em; }
+.dlg .line .ch { display: inline-block; animation: dlg-ch .18s var(--ease-pop) both; }
+@keyframes dlg-ch { from { transform: translateY(5px) scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+.dlg .choices .btn { animation: dlg-choice .32s var(--spring) both; }
+.dlg .choices .btn:nth-child(2) { animation-delay: .06s; } .dlg .choices .btn:nth-child(3) { animation-delay: .12s; } .dlg .choices .btn:nth-child(4) { animation-delay: .18s; }
+@keyframes dlg-choice { from { transform: translateY(14px) scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+html[data-style="play"] .dlg { box-shadow: 0 0 0 3px var(--edge), 0 6px 0 var(--edge), var(--shadow-3); border-radius: 30px; padding: 28px 22px 20px; }
+html[data-style="play"] .dlg .who { top: -18px; padding: 6px 18px; font-size: var(--fs-l); font-weight: 900; box-shadow: 0 0 0 2px var(--edge), 0 3px 0 var(--edge); transform: rotate(-3deg); }
+html[data-style="play"] .dlg .line { font-size: 17px; font-weight: 700; }
+html[data-style="play"] .dlg .next { color: var(--alert); }
+@media (prefers-reduced-motion: reduce) { .dlg .line .ch, .dlg .choices .btn { animation: none; } }

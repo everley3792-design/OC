@@ -16,8 +16,10 @@
   let nativeSysDark = null;
   function sysDark() { if (nativeSysDark != null) return nativeSysDark; try { if (NATIVE) return NATIVE.isSystemDark(); } catch (e) { /* */ } return mq ? mq.matches : false; }
   /** 12.0 interface style: 'refined' (default) or 'toy' (the 10.0 look) */
-  function applyStyle() { document.documentElement.dataset.style = S().settings.style === 'toy' ? 'toy' : 'refined'; }
-  function setStyle(v) { S().settings.style = v === 'toy' ? 'toy' : 'refined'; St.touch('settings'); applyStyle(); }
+  const STYLES = ['play', 'refined', 'toy'];
+  /** 13.0: "樂園" (play) is the default look; a save from before 13.0 is moved to it once (the player can switch back in Settings) */
+  function applyStyle() { const st = S().settings; if (st.styleV !== 13) { st.styleV = 13; st.style = 'play'; } document.documentElement.dataset.style = STYLES.includes(st.style) ? st.style : 'play'; }
+  function setStyle(v) { S().settings.style = STYLES.includes(v) ? v : 'play'; S().settings.styleV = 13; St.touch('settings'); applyStyle(); }
   function applyTheme() { const m = S().settings.theme, dark = m === 'dark' || (m === 'system' && sysDark()); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; applyStyle(); }
   function setTheme(mode) { S().settings.theme = mode; St.touch('settings'); applyTheme(); if (NATIVE) try { NATIVE.setThemeMode(mode); } catch (e) { /* */ } }
   if (mq && mq.addEventListener) mq.addEventListener('change', applyTheme);
@@ -680,7 +682,11 @@
     if (dlgOpen) endDialogue();   // 10.0 fix: a dialogue replaced by another one never ran its done() — the OC stayed held ('dialogue') forever
     dlgOpen = { lines: lines.slice(), choices, done, i: 0, custom: !!custom, layer: { scrim: false, close: () => endDialogue() } };
     OC.UI.pushLayer(dlgOpen.layer);
-    dlg.who.textContent = who; dlg.el.classList.add('open'); renderLine();
+    dlg.who.textContent = who;
+    // 13.0: the name tab takes the speaker's own colour and the text is typed with that character's voice
+    const sp = OC.Chars.all().find((c) => OC.Chars.name(c) === who) || null; dlgOpen.speaker = sp;
+    { const TAB = ['#F2542D', '#19A7CE', '#8F6FE8', '#1FB57A', '#F0527E', '#E08A00', '#3D9BE9']; let hsh = 0; for (const ch of (sp ? sp.id : who)) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0; dlg.el.style.setProperty('--who', TAB[hsh % TAB.length]); }   // a strong colour per character (always readable with white text)
+    dlg.el.classList.add('open'); renderLine();
   }
   function renderLine() {
     const d = dlgOpen, last = d.i >= d.lines.length - 1;
@@ -689,7 +695,13 @@
     if (last && d.choices.length) dlg.choices.append(...d.choices.map((c) => h('button.btn.block', { on: { click: () => { haptic(); if (d.custom) { d.choices = []; const more = c.fx(); if (more && more.length) { d.lines.push(...more); d.i++; renderLine(); } else endDialogue(); return; } c.fx(); const reply = ['（看起來很開心）', '嘿嘿，謝謝你～', '好呀！'][Math.floor(Math.random() * 3)]; dlgOpen.choices = []; dlgOpen.lines.push(reply); dlgOpen.i++; renderLine(); } } }, c.label)));
   }
   let typeT = 0;
-  function typeLine(s) { clearInterval(typeT); let k = 0; dlg.line.textContent = ''; dlg.full = s; typeT = setInterval(() => { k += 1; dlg.line.textContent = s.slice(0, k); if (k >= s.length) clearInterval(typeT); }, S().settings.reduceMotion ? 0 : 28); }
+  function typeLine(s) {
+    clearInterval(typeT); let k = 0; dlg.line.textContent = ''; dlg.full = s; const chars = [...String(s)];
+    const sp = dlgOpen && dlgOpen.speaker;
+    if (sp && OC.Sound && OC.Sound.speak && !(dlgOpen && dlgOpen.voiced === s)) { try { OC.Sound.speak(sp, s, { emo: OC.Mind && sp.life ? OC.Mind.dominant(sp) : 'neutral', pan: 0, vol: 0.9 }); } catch (e) { /* sound is optional */ } if (dlgOpen) dlgOpen.voiced = s; }
+    if (S().settings.reduceMotion) { dlg.line.textContent = s; return; }
+    typeT = setInterval(() => { const ch = chars[k++]; if (ch == null) { clearInterval(typeT); dlg.line.textContent = s; return; } const el = document.createElement('span'); el.className = 'ch'; el.textContent = ch; dlg.line.append(el); if (k >= chars.length) { clearInterval(typeT); setTimeout(() => { if (dlg.full === s) dlg.line.textContent = s; }, 200); } }, /[，。！？、…]/.test(chars[k - 1] || '') ? 90 : 30);
+  }
   function advanceDialogue() {
     const d = dlgOpen; if (!d) return;
     if (dlg.line.textContent !== dlg.full) { clearInterval(typeT); dlg.line.textContent = dlg.full; return; }
@@ -900,6 +912,8 @@
   // ---- Phase 6 feedback: small cards (never a big panel), performances when the OC is on screen ----
   St.on('achUnlocked', (a) => OC.Stage.card({ kind: 'ach', ic: 'trophy', title: `達成成就：${a.zh}`, sub: `${a.d}・到「日常 › 成就」領取獎勵` }));
   St.on('play:questDone', (e) => OC.Stage.card({ kind: 'quest', ic: e.hidden ? 'star' : 'flag', title: e.hidden ? `發現隱藏任務：${e.q.zh}` : `任務完成：${e.q.zh}`, sub: '到「日常 › 任務」領取獎勵' }));
+  // 13.0 "got it!": the first time an item is found, the character you play holds it up for a moment (only a pose: the item is already yours)
+  St.on('inv', (e) => { if (!(e && e.first && e.n > 0 && OC.Style.ITEMS[e.id]) || !player || curTab !== 'island' || dlgOpen || (OC.Stage && OC.Stage.busy) || OC.Sim.catching) return; const a = player; if (a.act && a.act.priority > 4) return; a.overrides = Object.assign({}, a.overrides || {}, { held: e.id }); a.key = ''; if (Wd.setAction(a, 'cheer', { dur: 1.7, priority: 4 })) floatText(a, '✦', 'var(--sun)'); setTimeout(() => { if (a.overrides && a.overrides.held === e.id) { delete a.overrides.held; if (!Object.keys(a.overrides).length) a.overrides = null; a.key = ''; } }, 1800); });
   St.on('inv', (e) => { if (e && e.first && e.n > 0 && OC.Style.ITEMS[e.id]) { const it = OC.Style.ITEMS[e.id]; OC.Stage.card({ kind: 'discover', item: e.id, title: `圖鑑新增：${it.zh}`, sub: `${(OC.Items.KINDS[it.kind] || {}).zh || ''}・${OC.Items.RARITY[it.rarity || 1]}・+${OC.Shops.INCOME.find} 星幣` }); } });
   St.on('play:skillUp', (e) => OC.Stage.perform('levelup', Object.assign({}, e)));
   St.on('play:aspDone', (e) => OC.Stage.perform('aspDone', e));

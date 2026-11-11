@@ -196,7 +196,7 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
     if (want(7)) {
       const k = I['小空'];
       await page.evaluate((id) => OC.Pages.open('profile', { id, tab: 'grow' }), k); await wait(page, 700); await shot(page, '7-profile-growth');
-      const g = await page.evaluate((id) => { const c = OC.Chars.get(id); const lv = Object.keys(OC.PlayData.SKILLS).map((s) => OC.Mind.skillLv(c, s)); const shown = [...document.querySelectorAll('[data-page="profile"] .sk-tile .sk-lv b')].map((e) => +e.textContent);   // 12.0 skill book return { lv: lv.sort().join(), shown: shown.sort().join(), titles: document.querySelectorAll('[data-page="profile"] select option').length }; }, k);
+      const g = await page.evaluate((id) => { const c = OC.Chars.get(id); const lv = Object.keys(OC.PlayData.SKILLS).map((s) => OC.Mind.skillLv(c, s)); const shown = [...document.querySelectorAll('[data-page="profile"] .sk-tile .sk-lv b')].map((e) => +e.textContent); /* 12.0 skill book */ return { lv: lv.sort().join(), shown: shown.sort().join(), titles: document.querySelectorAll('[data-page="profile"] select option').length }; }, k);
       check('7a 「成長」顯示的技能等級＝角色資料（同一份）', g.lv === g.shown, `${g.shown}`);
       await page.evaluate((id) => { OC.Pages.close('profile'); OC.Pages.open('profile', { id, tab: 'mem' }); }, k); await wait(page, 700);
       const n0 = await page.evaluate(() => document.querySelectorAll('[data-page="profile"] .mem-card').length);

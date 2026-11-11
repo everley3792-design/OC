@@ -149,3 +149,60 @@ html[data-style="refined"] .hud-plate { border-radius: 14px; } html[data-style="
 html[data-style="refined"] .rail-btn, html[data-style="refined"] .hud-rail .bag-fab, html[data-style="refined"] .hud-sq { border-radius: 14px; }
 html[data-style="refined"] .hud-time, html[data-style="refined"] .hud-quest { border-radius: 12px; }
 html[data-style="refined"] .sheet { border-radius: 20px 20px 0 0; }
+
+/* ================= 13.0 "樂園" (play) style — the default =================
+ * What makes a console-game interface feel good, taken as principles only (no asset, glyph, layout or colour scheme of any other game is used):
+ *   - everything looks like a solid, friendly object: thick warm outline, a flat "block" shadow you could press down, big round corners
+ *   - one loud colour per meaning on warm paper: leaf green = go / confirm, tomato = new / careful, sunflower = reward, sky = information
+ *   - bold round type, generous size; the important word is always the biggest thing on the surface
+ *   - every press answers at once (sinks into its block shadow), every arrival bounces a little
+ * "雅緻" (12.0) and "玩具" (10.0) stay available in Settings › 介面風格. */
+html[data-style="play"] {
+  --font-ui: "Huninn", "Nunito", system-ui, "Noto Sans TC", sans-serif; --font-num: "Nunito", "Huninn", system-ui, sans-serif;
+  --r-s: 14px; --r-m: 20px; --r-l: 26px; --r-xl: 32px;
+  --hl: inset 0 0 0 0 transparent;
+  --toy: 0 0 0 2px var(--edge), 0 5px 0 var(--edge); --toy-2: 0 0 0 2px var(--edge), 0 6px 0 var(--edge), var(--shadow-2);
+  --t-spring: 520ms;
+}
+html[data-style="play"]:root:not([data-theme="dark"]) {
+  --bg: #FBF4E4; --surface: #FFFDF6; --surface-2: #F6ECD6; --surface-3: #EADDC0; --glass: rgba(255, 253, 246, .94); --hud-glass: rgba(255, 253, 246, .92);
+  --ink: #3B2F25; --ink-2: #7C6A58; --ink-3: #B7A58F; --line: rgba(88, 62, 30, .14); --line-strong: rgba(88, 62, 30, .3); --edge: #5B4632;
+  --scrim: rgba(59, 47, 37, .42);
+  --shadow-1: 0 2px 0 rgba(88, 62, 30, .08); --shadow-2: 0 10px 22px rgba(88, 62, 30, .18); --shadow-3: 0 18px 40px rgba(59, 47, 37, .3);
+  --lip: #5B4632; --lip-strong: #3B2F25;
+  --accent: #1FB57A; --on-accent: #FFFFFF; --accent-soft: #D9F5E6; --accent-lip: #0E7F52;
+  --alert: #F2542D; --on-alert: #FFFFFF; --coral: #FF8A5B; --coral-soft: #FFE6D8;
+  --teal: #19A7CE; --on-teal: #FFFFFF; --teal-soft: #D8F1F8; --teal-lip: #0F7A99;
+  --sun: #FFC533; --on-sun: #4A3508; --sun-soft: #FFF1C4; --sun-lip: #C98E00;
+  --green: #5BBF4A; --blue: #3D9BE9; --purple: #8F6FE8; --pink: #FF7FA8; --heart: #F0527E; --danger: #E5412B; --success: #1FB57A;
+  --need-food: #FF8A5B; --need-energy: #FFB52E; --need-mood: #FF7FA8; --need-social: #3D9BE9; --need-clean: #3CC79A; --need-sleep: #8F6FE8; --need-fun: #FF9F2E; --need-comfort: #C9955C; --need-interest: #19A7CE; --need-active: #5BBF4A;
+  --sky-top: #8ED6F2; --sky-mid: #C5ECF7; --sky-low: #FFF3D6; --cloud: #FFFFFF;
+}
+html[data-style="play"][data-theme="dark"] {
+  --bg: #1F2433; --surface: #2B3145; --surface-2: #343B52; --surface-3: #434B66; --glass: rgba(43, 49, 69, .95); --hud-glass: rgba(36, 42, 60, .92);
+  --ink: #FFF6E4; --ink-2: #C2BBD0; --ink-3: #8A86A0; --line: rgba(255, 246, 228, .12); --line-strong: rgba(255, 246, 228, .26); --edge: #11141E;
+  --scrim: rgba(8, 10, 18, .6);
+  --shadow-1: 0 2px 0 rgba(0, 0, 0, .25); --shadow-2: 0 10px 22px rgba(0, 0, 0, .4); --shadow-3: 0 18px 40px rgba(0, 0, 0, .55);
+  --lip: #11141E; --lip-strong: #0A0C13;
+  --accent: #3DDC97; --on-accent: #0B2A1D; --accent-soft: #1F4A3A; --accent-lip: #1B9A66;
+  --alert: #FF6B4A; --coral: #FF9A6E; --coral-soft: #4C2F2A; --teal: #46C2E6; --on-teal: #06222C; --teal-soft: #1D4250; --teal-lip: #2289A8;
+  --sun: #FFCF4D; --on-sun: #3B2A05; --sun-soft: #4A3F1E; --sun-lip: #B98B10; --heart: #FF7FA0;
+  --sky-top: #232A4A; --sky-mid: #2B3358; --sky-low: #3A3558; --cloud: #3A4266;
+}
+/* the solid-object look on the shared components */
+html[data-style="play"] .btn { font-weight: 900; letter-spacing: .02em; min-height: 48px; box-shadow: 0 0 0 2px var(--edge), 0 4px 0 var(--edge); }
+html[data-style="play"] .btn:active, html[data-style="play"] .btn.pressed { transform: translateY(4px); box-shadow: 0 0 0 2px var(--edge), 0 0 0 var(--edge); }
+html[data-style="play"] .btn.primary { box-shadow: 0 0 0 2px var(--edge), 0 4px 0 var(--edge); text-shadow: 0 1px 0 rgba(0, 0, 0, .18); }
+html[data-style="play"] .btn.primary:active { box-shadow: 0 0 0 2px var(--edge), 0 0 0 var(--edge); }
+html[data-style="play"] .btn.ghost { box-shadow: none; }
+html[data-style="play"] .card, html[data-style="play"] .tile, html[data-style="play"] .row.tap, html[data-style="play"] .list { box-shadow: 0 0 0 2px var(--edge), 0 4px 0 var(--edge); }
+html[data-style="play"] .tile.on { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent), 0 4px 0 var(--accent-lip); }
+html[data-style="play"] .tile:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--edge), 0 1px 0 var(--edge); }
+html[data-style="play"] .section-title { font-weight: 900; font-size: var(--fs-l); }
+html[data-style="play"] .sheet { border-radius: 32px 32px 0 0; box-shadow: 0 -2px 0 2px var(--edge), var(--shadow-3); }
+html[data-style="play"] .tabbar { border-radius: 26px; box-shadow: 0 0 0 2px var(--edge), 0 5px 0 var(--edge); }
+html[data-style="play"] .tab.on .tab-ink, html[data-style="play"] .tab-ink { border-radius: 18px; }
+html[data-style="play"] .hud-plate, html[data-style="play"] .hud-time, html[data-style="play"] .hud-quest, html[data-style="play"] .rail-btn, html[data-style="play"] .hud-rail .bag-fab, html[data-style="play"] .hud-sq { box-shadow: 0 0 0 2px var(--edge), 0 3px 0 var(--edge); }
+html[data-style="play"] .tag { font-weight: 800; }
+html[data-style="play"] .toast { box-shadow: 0 0 0 2px var(--edge), 0 4px 0 var(--edge); font-weight: 800; }
+html[data-style="play"] body { background-image: radial-gradient(var(--line) 1.2px, transparent 1.3px); background-size: 18px 18px; }
