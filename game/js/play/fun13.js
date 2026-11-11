@@ -199,9 +199,10 @@
   }
   function step(g) {
     vT += g; if (vT < 20) return; vT = 0;
-    try { checkDates(); if (!canVisit()) return; const F = st13(); if (S().life.settings.autonomy === 'paused' || S().life.settings.visits === false) return; if (Date.now() - (F.visitAt || 0) < 4 * 60e3) return; if (Math.random() < 0.3) visit(); } catch (e) { console.error('[fun13]', e); }
+    try { checkDates(); if (!canVisit()) return; const F = st13(); if (S().life.settings.autonomy === 'paused' || S().life.settings.visits === false) return; if (Date.now() - Math.max(F.visitAt || 0, bootAt) < 4 * 60e3) return; /* nobody drops by in the first minutes after the game opens */ if (Math.random() < 0.3) visit(); } catch (e) { console.error('[fun13]', e); }
   }
-  function init() { if (Sim().onStep) Sim().onStep(step); }
+  let bootAt = Date.now();
+  function init() { bootAt = Date.now(); if (Sim().onStep) Sim().onStep(step); }
 
   // ---- wording (data): [category, text, conditions, weight]
   const P = { voice: 'plain' }, Bv = { voice: 'bright' }, C = { voice: 'calm' }, K = { voice: 'cool' };

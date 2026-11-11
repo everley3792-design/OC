@@ -444,6 +444,7 @@
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '操控中的角色也可以自己換地點'), toggle(st.lead !== false, (v) => set('lead', v))), small('半自動／全自動時，牠想去別的地方就會自己走出去，畫面跟著牠過去（你正在看選單、佈置或對話時不會）。手動模式永遠不會自己離開。'),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色會主動來找你'), toggle(st.visits !== false, (v) => set('visits', v))), small('同一個地點的角色偶爾會走過來：送東西、問問題、邀你玩、約時間。關掉後牠們不會主動打斷你。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會向你提出請求'), toggle(st.requests !== false, (v) => set('requests', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會自己找人生目標'), toggle(st.aspAuto !== false, (v) => set('aspAuto', v))), small('關閉後不會自動產生，你仍然可以在角色檔案「成長」幫牠選。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示自言自語泡泡'), toggle(st.bubbles, (v) => set('bubbles', v))),

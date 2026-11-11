@@ -182,7 +182,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('4b 連贏兩拳就結束；同一天同一個角色只會給一次獎勵（再贏不會再給）', !again.st && again.wins === 2 && (again.paidBefore ? again.c1 === again.c0 : again.c1 === again.c0 + 20), again);
       // --- hide and seek: the OC disappears, wrong bushes do nothing, the right one finds it
       await quiet();
-      const hs = await page.evaluate(([me, m]) => { const ok = OC.Fun.hide(m); return { ok, st: OC.Fun.state }; }, ids);
+      const hs = await page.evaluate(([me, m]) => { window.__ocInputLog = []; const all = OC.World.swayTargets(); const ok = OC.Fun.hide(m); return { ok, phase: OC.Fun.state && OC.Fun.state.phase, all: all.length, on: all.filter((s) => s && s.x > 40 && s.x < innerWidth - 40 && s.y > 210 && s.y < innerHeight - 190).length, cam: OC.World.camMode && OC.World.camMode(), toast: [...document.querySelectorAll('.toast')].map((e) => e.textContent) }; }, ids);
       await page.waitForFunction(() => OC.Fun.state && OC.Fun.state.phase === 'seek', null, { timeout: 15000 }).catch(() => {});
       const seek = await page.evaluate(([me, m]) => ({ hidden: OC.App.actorOf(m).hidden, st: OC.Fun.state, bar: (document.querySelector('.fun-bar') || {}).textContent }), ids);
       // tap a wrong one, then the right one (real taps on the 3D view)
@@ -197,9 +197,9 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         await page.waitForFunction(() => !OC.Fun.state || OC.Fun.state.phase !== 'seek', null, { timeout: 8000 }).catch(() => {});
       }
       await page.waitForFunction(() => !OC.Fun.state, null, { timeout: 20000 }).catch(() => {});
-      const hend = await page.evaluate(([me, m]) => ({ st: OC.Fun.state, hidden: OC.App.actorOf(m).hidden, holds: [...OC.Brain.get(m).holds], bar: !!document.querySelector('.fun-bar'), n: OC.Fun.data.n.hide, paid: !!OC.Tx.done('fun:hide:' + m + ':' + OC.Clock.dayKey()) }), ids);
+      const hend = await page.evaluate(([me, m]) => ({ st: OC.Fun.state, hidden: OC.App.actorOf(m).hidden, holds: [...OC.Brain.get(m).holds], bar: !!document.querySelector('.fun-bar'), n: OC.Fun.data.n.hide, paid: !!OC.Tx.done('fun:hide:' + m + ':' + OC.Clock.dayKey()), log: (window.__ocInputLog || []).slice(-14), dlg: !!document.querySelector('.dialogue.on, .dlg.on'), visiting: OC.Fun.visiting, shakeNow: (() => { const s0 = OC.Fun.state && OC.Fun.state.spot; if (!s0) return null; const t = OC.World.swayTargets().find((x) => x && Math.hypot(x.dx - s0.dx, x.dy - s0.dy) < 2); return t ? { x: t.x, y: t.y, hit: !!OC.World.shakeAt(t.x, t.y) } : 'none'; })() }), ids);
       await shot(page, '4-hide-found');
-      check('4c 躲貓貓：角色真的躲起來（看不到）、有倒數；搖錯的樹只算一次沒找到，搖對的那棵就找到——角色出現、放開、第一次贏有獎勵', hs.ok && seek.hidden === true && /秒/.test(seek.bar || '') && (!wrong || (mid && mid.phase === 'seek' && mid.wrong <= 1)) && !hend.st && hend.hidden === false && !hend.holds.includes('game') && !hend.bar && hend.n === 1 && hend.paid, { seek: { hidden: seek.hidden, bar: seek.bar }, mid, hend });
+      check('4c 躲貓貓：角色真的躲起來（看不到）、有倒數；搖錯的樹只算一次沒找到，搖對的那棵就找到——角色出現、放開、第一次贏有獎勵', hs.ok && seek.hidden === true && /秒/.test(seek.bar || '') && (!wrong || (mid && mid.phase === 'seek' && mid.wrong <= 1)) && !hend.st && hend.hidden === false && !hend.holds.includes('game') && !hend.bar && hend.n === 1 && hend.paid, { hs, seek: { hidden: seek.hidden, bar: seek.bar }, mid, hend });
       // time runs out → it comes back by itself, no reward, nobody stuck
       const lose = await page.evaluate(async ([me, m]) => { OC.Fun.hide(m); await new Promise((r) => setTimeout(r, 2200)); const g = OC.Fun.state; if (!g) return { ok: false }; const before = OC.Fun.data.n.hide; OC.Fun.end && 0; return { ok: true, phase: g.phase, before }; }, ids);
       await page.evaluate(() => { /* fast-forward the clock of the game */ const t = setInterval(() => { if (!OC.Fun.state) clearInterval(t); }, 200); });
