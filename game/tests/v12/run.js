@@ -330,7 +330,7 @@ const { check, wait } = H;
       const r = await page.evaluate(async () => {
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), S = OC.Store.s, cues = () => Object.assign({}, OC.Sound.stats.cues), out = {};
         const until = async (f, ms = 25000) => { const t = performance.now(); while (!f() && performance.now() - t < ms) await sleep(150); };
-        OC.Sound.unlock(); S.settings.sound = Object.assign({}, OC.Sound.cfg(), { on: true, music: 0, amb: 0 }); OC.Sound.apply(); await sleep(300);
+        OC.Sound.unlock(); S.settings.sound = Object.assign({}, OC.Sound.cfg(), { on: true, music: 0, amb: 0 }); OC.Sound.apply(); await sleep(3300);   /* a phrase from the scenario before must not swallow the first one here (3 s cool-down) */
         const [A, B] = OC.Chars.all(); out.state = OC.Sound.state; out.table = Object.entries(OC.Sound.CUES).map(([k, v]) => [k, v[0]]);
         // a skill level-up (a real game event → the card → the phrase)
         let before = cues(); const sk = Object.keys(OC.Mind.SKILLS).sort((x, y) => OC.Mind.skillLv(A, x) - OC.Mind.skillLv(A, y))[0]; /* the lowest skill (a maxed one cannot level up) */ out.skillId = sk; OC.Mind.skill(A, sk, 4000); await until(() => (cues().skill || 0) > (before.skill || 0), 40000); out.skill = (cues().skill || 0) - (before.skill || 0); out.stage = { busy: OC.Stage.busy, queue: OC.Stage.queue };
