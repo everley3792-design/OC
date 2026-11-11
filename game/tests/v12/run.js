@@ -293,7 +293,7 @@ const { check, wait } = H;
       }, ids);
       const mdone = await page.waitForFunction(() => !OC.Arcs.running, null, { timeout: 150000 }).then(() => true).catch(() => false);
       const mend = await page.evaluate(([a, b, c]) => ({ stage: OC.Arcs.riftOf(a, b).stage, how: OC.Arcs.riftOf(a, b).how, holds: [a, b, c].map((i) => [...OC.Brain.get(i).holds]) }), ids);
-      check('9e 共同的朋友出面調解：一起坐下來談，談得攏就和好（記錄是朋友調解的），所有人都放開', med.ok && med.running && mdone && ['reconciled', 'thaw'].includes(mend.stage) && mend.holds.every((h) => !h.length), { med, mend, mdone });
+      check('9e 共同的朋友出面調解：一起坐下來談，談得攏就和好（記錄是朋友調解的），「團體」保留全部放開（和好後接著發生的事件是正常的）', med.ok && med.running && mdone && ['reconciled', 'thaw'].includes(mend.stage) && mend.holds.every((h) => !h.includes('group')), { med, mend, mdone });
       await idle(); await quiet();
       const cut = await page.evaluate(([ids]) => {
         const ok = OC.Arcs.gather('circle', ids); const hidden = OC.Brain.get(ids[2]); hidden.a.hidden = true; return new Promise((res) => setTimeout(() => { hidden.a.hidden = false; res({ ok, running: !!OC.Arcs.running, holds: ids.map((i) => [...OC.Brain.get(i).holds]) }); }, 1500));
@@ -333,7 +333,7 @@ const { check, wait } = H;
         OC.Sound.unlock(); S.settings.sound = Object.assign({}, OC.Sound.cfg(), { on: true, music: 0, amb: 0 }); OC.Sound.apply(); await sleep(300);
         const [A, B] = OC.Chars.all(); out.state = OC.Sound.state; out.table = Object.entries(OC.Sound.CUES).map(([k, v]) => [k, v[0]]);
         // a skill level-up (a real game event → the card → the phrase)
-        let before = cues(); const sk = Object.keys(OC.Mind.SKILLS).sort((x, y) => OC.Mind.skillLv(A, x) - OC.Mind.skillLv(A, y))[0];   // the lowest skill (a maxed one cannot level up) out.skillId = sk; OC.Mind.skill(A, sk, 4000); await until(() => (cues().skill || 0) > (before.skill || 0), 40000); out.skill = (cues().skill || 0) - (before.skill || 0); out.stage = { busy: OC.Stage.busy, queue: OC.Stage.queue };
+        let before = cues(); const sk = Object.keys(OC.Mind.SKILLS).sort((x, y) => OC.Mind.skillLv(A, x) - OC.Mind.skillLv(A, y))[0]; /* the lowest skill (a maxed one cannot level up) */ out.skillId = sk; OC.Mind.skill(A, sk, 4000); await until(() => (cues().skill || 0) > (before.skill || 0), 40000); out.skill = (cues().skill || 0) - (before.skill || 0); out.stage = { busy: OC.Stage.busy, queue: OC.Stage.queue };
         // the same second: another moment does not stack a second phrase on top
         out.stack = OC.Sound.cue('mini'); await sleep(3200);
         // a new entry in the collection
