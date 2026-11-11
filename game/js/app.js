@@ -774,6 +774,11 @@
     makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeMates(); spawnDailies();
     S().pos = { area: id, x: player.x, y: player.y };
     OC.WorldUI.arrived(id, o.from); syncTreeFruit(); applyPerf(); Gm.checkAch();
+    if (followNext) {   // 13.0: we came here because the character we follow led the way (or the OC we were watching left)
+      const f = followNext; followNext = null;
+      if (f.lead) { const b = OC.Brain.get(f.lead); if (b && player && player.cid === f.lead) { b.ledAt = OC.Sim.now(); if (f.act && OC.LifeData.ACTS[f.act]) { b.queued = f.act; b.thinkAt = 0; } } }
+      if (f.observe) { const c = OC.Chars.get(f.observe); if (c && c.life.trip && mates[f.observe]) OC.Brain.arrived(f.observe); setTimeout(() => { if (actorOf(f.observe)) observe(f.observe); }, 700); }
+    }
   }
   function travel(id) { OC.WorldUI.travel(id); }
 
@@ -987,9 +992,19 @@
 
   // ---- hooks used by the life engines (js/life/brain.js, events.js) ----
   const onScreen = (a) => { if (!a || curTab !== 'island') return false; const p = Wd.project(a.x, a.y, a.lvl); return p.x > -40 && p.x < innerWidth + 40 && p.y > -40 && p.y < innerHeight + 40; };
+  let followNext = null;
+  const canLead = () => curTab === 'island' && !placing && !decorate && !dlgOpen && !paused && !document.hidden && !(OC.UI.stack && OC.UI.stack.length) && !(OC.Radial && OC.Radial.open_) && !(OC.Touch && (OC.Touch.active || OC.Touch.flying || OC.Touch.petting)) && !(OC.Stage && OC.Stage.busy) && !(OC.Events && OC.Events.current) && !(OC.Mini && OC.Mini.active) && !(OC.Tutorial && OC.Tutorial.active) && !(OC.Arcs && OC.Arcs.running);
   const lifeHooks = {
     say: (a, text, name, dur, o) => bubble(a, text, name, dur, o),
-    depart: (id) => { const a = mates[id]; OC.Brain.detach(id); if (a) { Wd.removeActor(a); delete mates[id]; } },
+    depart: (id) => {
+      const a = mates[id], follow = observing === id && canLead(); OC.Brain.detach(id); if (a) { Wd.removeActor(a); delete mates[id]; }
+      // 13.0: you were following (觀察) this OC and it left for another place → go along and keep following it there
+      if (follow) { const c = OC.Chars.get(id), to = c && c.life.loc; if (to && to !== Wd.area.id && OC.Places.open(to)) { if (c.life.trip) c.life.trip.eta = OC.Sim.now(); followNext = { observe: id }; OC.UI.toast(`跟著${OC.Chars.name(c)}去${OC.Places.get(to).zh}`, 'info'); OC.WorldUI.travel(to); } }
+    },
+    /** 13.0: may the character you follow change the place by itself right now? (only while you are simply watching the world) */
+    canLead: () => canLead(),
+    /** the character you follow left for another place: the view goes there, then it starts what it wanted to do */
+    lead: (id, to, act) => { if (!canLead() || !player || player.cid !== id || !OC.Places.open(to)) return false; const c = OC.Chars.get(id); followNext = { lead: id, act }; OC.UI.toast(`${OC.Chars.name(c)}想去${OC.Places.get(to).zh}${OC.LifeData.ACTS[act] ? '・' + OC.LifeData.ACTS[act].zh : ''}`, 'info'); OC.WorldUI.travel(to); return true; },
     emote: (a, e) => { if (onScreen(a)) emote(a, e); },
     hide: () => {},
     notice: (n) => OC.LifeUI.pushNotice(n),

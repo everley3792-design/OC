@@ -431,7 +431,10 @@
   const placeActs = (pl) => { const p = OC.Places.get(pl); return p && !p.locked ? (p.acts || []) : []; };
   /** activities worth a trip: not available here (or a place the OC loves), minus the distance */
   function travelCands(c, b) {
-    if (!placeOK() || settings().travel === false || b.manual || manualMode(b)) return [];   // the character you are playing stays where you are
+    // 13.0: the character you follow may lead the way when it is not in manual mode — the view goes along (hooks.lead); it stays a while
+    // after arriving, and it only leaves while you are looking at the world (no page, sheet, dialogue or decorating in the way)
+    if (!placeOK() || settings().travel === false || manualMode(b)) return [];
+    if (b.manual && (settings().lead === false || !(hooks.canLead && hooks.canLead()) || Sim().now() - (b.ledAt || -1e9) < 120 || nowR() - b.cmdAt < 60)) return [];
     const st = settings(); if (st.autonomy === 'paused' || st.autonomy === 'restricted') return [];
     if (M().urgent(c) && M().urgent(c) !== 'social') return [];
     const cur = here(), out = [], local = new Set(); for (const o of aff) if (o.slots.some((s2) => free(s2, c.id))) o.verbs.forEach((v) => local.add(v));
@@ -470,6 +473,13 @@
   /** the OC walked out: it now lives at the destination (abstractly until the player goes there) */
   function depart(b) {
     const c = charOf(b), L = b.leaving; if (!c || !L) return;
+    if (b.manual) {   // 13.0: the character you follow walked out → the whole view follows it there, and it goes on with what it had in mind
+      b.leaving = null; b.st = 'think'; b.thinkAt = nowR() + 1.5; b.ledAt = Sim().now();
+      c.life.log.unshift({ gm: Sim().now(), text: `前往${OC.Places.get(L.to).zh}（${D().ACTS[L.act].zh}）` }); if (c.life.log.length > 40) c.life.log.length = 40;
+      dlog(b, `出發去${OC.Places.get(L.to).zh}（畫面跟著去）`);
+      if (!(hooks.lead && hooks.lead(b.id, L.to, L.act))) dlog(b, '現在不方便換地點，留在原地');
+      return;
+    }
     const from = here(), tm = OC.Places.travelMin(from, L.to), now = Sim().now();
     c.life.loc = L.to; c.life.trip = { from, to: L.to, act: L.act, eta: now + tm };
     c.life.cur = { act: L.act, abstract: true, t0: now + tm, until: now + tm + (L.act === 'sleep' ? Math.max(60, wakeAtGm(c, now + tm) - now - tm) : durOf(c, L.act)), place: 'place:' + L.to, placeZh: OC.Places.get(L.to).zh, slot: null };
