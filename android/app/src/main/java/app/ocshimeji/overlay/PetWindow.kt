@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import app.ocshimeji.core.pet.Gestures
 import app.ocshimeji.core.pet.PetBrain
+import app.ocshimeji.core.pet.PetRoutine
 import app.ocshimeji.core.pet.PetSocial
 import app.ocshimeji.core.pet.PetSound
 import app.ocshimeji.core.pet.PetTalk
@@ -22,6 +23,8 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
     val talk = PetTalk(seed + 1)
     /** 12.0: when this pet makes a sound (the clips are its own voice, played by [PetSounds]) */
     val sound = PetSound(seed + 2)
+    /** 13.0: strings single moves into routines that fit the time of day, the mood and the personality */
+    val routine = PetRoutine(seed + 3)
     val view = PetView(svc.uiCtx)
     private val wm = svc.wm
     private val lp = overlayParams(1, 1, 0).apply { title = "OC Shimeji pet" }
@@ -65,6 +68,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         talk.freq = runCatching { PetTalk.Freq.valueOf(p.optString("talk", "normal").uppercase()) }.getOrDefault(PetTalk.Freq.NORMAL)
         talk.muted = p.optBoolean("mute", false) || !g.optBoolean("bubbles", true)
         view.sprites = sprites
+        routine.enabled = g.optBoolean("routines", true)
         sound.on = g.optBoolean("sound", false) && !p.optBoolean("mute", false)
         sound.volume = g.optDouble("soundVol", 0.6).toFloat().coerceIn(0f, 1f)
         sound.available = if (sound.on) svc.sounds.load(id) else emptySet()
@@ -117,6 +121,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         if (!attached) return false
         if (gestures.isDown) gestures.tick(now).forEach { handle(it, now, theme) }
         if (!paused || brain.isDragging || brain.state == PetBrain.State.FALL || brain.state == PetBrain.State.THROWN || brain.state == PetBrain.State.REACT) brain.update(dt)
+        if (!paused && !stayPut) routine.update(brain, dt, svc.hour, svc.pairBusy(id))
         talk.update(dt); sound.update(dt); sound.quiet = svc.soundQuiet
         if (brain.state != prevState) { stateSound(prevState, brain.state); prevState = brain.state }
         // animation timing: the OC's own clip (per-frame durations, loop mode, events)

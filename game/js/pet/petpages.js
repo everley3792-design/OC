@@ -65,6 +65,7 @@
           line('觸控穿透', toggle(G.passthrough, (v) => { G.passthrough = v; changed('passthrough'); }), '開啟後手指會穿過桌寵，直接操作下面的 App（桌寵會稍微透明，這是 Android 12 以上的規定）。通知裡也可以切換。'),
           line('對話泡泡', toggle(G.bubbles, (v) => { G.bubbles = v; changed('bubbles'); })),
           line('震動回饋', toggle(G.haptics, (v) => { G.haptics = v; changed('haptics'); })),
+          line('生活作息', toggle(G.routines !== false, (v) => { G.routines = v; changed('routines'); }), '依時間、心情和個性做一連串動作：早上伸懶腰、無聊時踱步、想睡時打哈欠找地方坐下、開心時表演…關閉後只做單一的隨機動作。'),
           line('桌面音效', toggle(!!G.sound, (v) => { G.sound = v; changed('sound'); if (v) PS().syncSounds().then((k) => { toast(k ? `已為 ${k} 隻準備好牠們自己的聲音` : '音效還沒準備好（需要 Android App）', k ? 'check' : 'info'); p._sig = ''; p.refresh(p); }); else { p._sig = ''; p.refresh(p); } }),
             '用牠自己的聲音做成的小音效：點一下、被摸、跳、落地、吃東西、遇到別隻桌寵。預設關閉；手機靜音、通話中、螢幕關閉時不會出聲，也不會比你設的音量更大。'),
           G.sound ? line('音量', h('div.hstack', { style: { gap: '8px' } }, seg([['0.3', '小'], ['0.6', '中'], ['0.9', '大']], String(G.soundVol == null ? 0.6 : G.soundVol), (v) => { G.soundVol = +v; changed('soundVol'); }),

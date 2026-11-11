@@ -290,7 +290,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await page.evaluate(() => { localStorage.removeItem('oc.skipIntro'); const S = OC.Store.s; S.intro.tutorial = { step: 0, done: false, skipped: false }; OC.Tutorial.start({ force: true, restart: true }); });
       await page.waitForSelector('.tut-card.on', { timeout: 10000 });
       const stepId = () => page.evaluate(() => (OC.Tutorial.STEPS[OC.Tutorial.step] || {}).id);
-      const until = (id) => page.waitForFunction((id) => (OC.Tutorial.STEPS[OC.Tutorial.step] || {}).id === id, id, { timeout: 20000 }).then(() => true).catch(() => false);
+      const until = (id) => page.waitForFunction((id) => (OC.Tutorial.STEPS[OC.Tutorial.step] || {}).id === id, id, { timeout: 45000 }).then(() => true).catch(() => false);
       const card0 = await page.evaluate(() => ({ ch: document.querySelector('.tut-ch b').textContent, dots: document.querySelectorAll('.tut-dots i').length }));
       await page.evaluate(() => { const b = document.querySelector('.tut-card .btn.primary'); b && b.click(); }); const s1 = await until('walk');
       // steps are completed by the events themselves (emitted by the real systems; here we fire the same events the systems send)

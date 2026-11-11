@@ -251,6 +251,9 @@ class OverlayPetService : Service() {
         PetFiles.event(this, m.a, "meet", JSONObject().put("with", m.b).put("kind", m.kind))
     }
 
+    /** is this pet in a paired action with another one right now? (routines wait) */
+    fun pairBusy(id: String) = social.isBusy(id)
+
     fun later(ms: Long, r: () -> Unit) { main.postDelayed({ if (running) r() }, ms) }
 
     fun openApp(page: String) {

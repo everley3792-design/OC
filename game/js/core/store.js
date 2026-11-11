@@ -37,7 +37,7 @@
       // and sends interactions back (applied once: applied.seq watermark + OC.Tx keys pet:<event id>)
       pet: {
         v: 1, on: [], per: {}, custom: {}, exported: {},
-        global: { fps: 30, quality: 'mid', maxPets: 3, pauseScreenOff: true, cacheMB: 24, passthrough: false, bubbles: true, haptics: true, sound: false, soundVol: 0.6 },
+        global: { fps: 30, quality: 'mid', maxPets: 3, pauseScreenOff: true, cacheMB: 24, passthrough: false, bubbles: true, haptics: true, sound: false, soundVol: 0.6, routines: true },
         app: { enabled: false, useSystem: true, rules: {}, exclude: [], hide: false },
         applied: { seq: 0, day: '', n: {}, log: [] }, syncLog: [],
         tools: { todos: [], notes: [], alarms: [], pomo: { work: 25, brk: 5, auto: true, exact: false, today: 0, day: '', total: 0, active: null }, rest: { on: false, every: 60 } },

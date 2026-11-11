@@ -266,3 +266,55 @@ class PetSoundTest {
         assertEquals("meet_good", s.meeting("apologize")!!.clip); assertNull(s.meeting("nonsense"))
     }
 }
+
+/** 13.0: routines — the desktop pet's day has shape */
+class PetRoutineTest {
+    private fun brain(seed: Int = 3) = PetBrain(seed).apply { reset(1080, 2000, 200, startX = 500f) }
+    private fun run(b: PetBrain, r: PetRoutine, sec: Float, hour: Int = 12, each: () -> Unit = {}): List<String> {
+        val out = ArrayList<String>(); var t = 0f
+        while (t < sec) { b.update(1f / 30f); r.update(b, 1f / 30f, hour)?.let { out += it }; each(); t += 1f / 30f }
+        return out
+    }
+
+    @Test fun routinesOnlyUseKnownAnimations() {
+        assertTrue(PetBrain.ANIMS.containsAll(PetRoutine.ANIMS), "unknown: ${PetRoutine.ANIMS - PetBrain.ANIMS.toSet()}")
+        assertTrue(PetRoutine.ROUTINES.size >= 10); assertEquals(PetRoutine.ROUTINES.size, PetRoutine.ROUTINES.map { it.id }.toSet().size)
+    }
+
+    @Test fun theMomentDecides() {
+        val neutral = PetBrain.Mood(); val tr = PetBrain.Traits()
+        fun best(c: PetRoutine.Ctx) = PetRoutine.ROUTINES.maxByOrNull { it.fits(c) }!!.id
+        assertEquals("morning", best(PetRoutine.Ctx(7, neutral, tr, 1)))
+        assertEquals("drowsy", best(PetRoutine.Ctx(23, neutral, tr, 1)))
+        assertEquals("sulk", best(PetRoutine.Ctx(14, neutral.copy(emotion = "sad"), tr, 1)))
+        assertEquals("hungry", best(PetRoutine.Ctx(14, neutral.copy(hunger = 0.1f), tr, 1)))
+        // never the morning stretch in the afternoon, never sulking when fine
+        val c = PetRoutine.Ctx(15, neutral, tr, 1)
+        assertEquals(0f, PetRoutine.ROUTINES.first { it.id == "morning" }.fits(c)); assertEquals(0f, PetRoutine.ROUTINES.first { it.id == "sulk" }.fits(c))
+    }
+
+    @Test fun routinesRunToTheEndAndThePetStaysOnScreen() {
+        for (seed in 1..6) {
+            val b = brain(seed); val r = PetRoutine(seed); r.gap = 6f
+            val started = run(b, r, 240f, hour = 7) { assertTrue(b.anim in PetBrain.ANIMS, b.anim); assertTrue(b.x in (b.minX - b.size)..(b.maxX + b.size), "x=${b.x}") }   // peeking is half off-screen by design
+            assertTrue(started.size >= 3, "seed $seed: $started"); assertTrue(started.all { id -> PetRoutine.ROUTINES.any { it.id == id } })
+            assertTrue(started.toSet().size >= 2, "variety: $started")
+        }
+    }
+
+    @Test fun nothingWhileDraggedOrSwitchedOffOrStayingPut() {
+        val b = brain(); val r = PetRoutine(1); r.gap = 2f
+        assertTrue(run(b, r, 40f).isNotEmpty())
+        r.enabled = false; r.cancel(); assertTrue(run(b, r, 40f).isEmpty()); r.enabled = true
+        b.allow = PetBrain.Allow(level = -1); assertTrue(run(b, r, 40f).isEmpty()); b.allow = PetBrain.Allow()
+        // picked up in the middle of a routine: it is dropped, and nothing new starts while the pet is in the hand
+        val got = run(b, r, 40f); assertTrue(got.isNotEmpty())
+        var t = 0f; var any = false
+        while (t < 20f) { b.drag(300f, 400f); b.update(1f / 30f); if (r.update(b, 1f / 30f, 12) != null) any = true; t += 1f / 30f }
+        assertFalse(any); assertNull(r.current)
+        // a paired action with another pet has priority
+        b.release(); run(b, r, 6f); var s = false; t = 0f
+        while (t < 30f) { b.update(1f / 30f); if (r.update(b, 1f / 30f, 12, busy = true) != null) s = true; t += 1f / 30f }
+        assertFalse(s)
+    }
+}
