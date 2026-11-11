@@ -6,6 +6,7 @@
  *   3 traits: 80+ data-driven traits with measurable effects and own lines, symmetric contradictions shown in the editor, random traits / tastes
  *   4 games: rock-paper-scissors and hide-and-seek with real input, rewards once per OC per day, nobody left hidden / held; tree drops once per tree per day
  *   5 visits: an OC comes to you (gift / question / invitation / news / appointment kept or missed)
+ *   6 look: unboxed HUD, glass tab bar, cream speech balloon with a tilted name tag, menus by theme (paper / slate), other styles still switchable
  * (further scenarios are added below as the 13.0 features land)
  */
 const fs = require('fs'), path = require('path');
@@ -255,6 +256,29 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       const missed = await page.evaluate(([me, m]) => { const c = OC.Chars.get(m), a0 = c.life.player.aff; OC.Fun.data.dates.push({ oc: m, place: 'beach', day: OC.Sim.day() - 1, phase: 'noon', state: 'set' }); OC.Fun.checkDates(); return { state: OC.Fun.data.dates.slice(-1)[0].state, down: c.life.player.aff < a0, mem: c.life.mem.recent.some((x) => x.key && x.key.startsWith('date:missed')) }; }, ids);
       check('5h 失約：日子過了你沒去 → 牠會失落（好感小降）並記得這件事', missed.state === 'missed' && missed.down && missed.mem, missed);
       await page.evaluate(() => { OC.Store.s.settings.fixedHour = 10; }); await go('isle');
+    }
+
+    // ================= 6. the default look: the world is the interface, menus by theme, the cosy speech balloon =================
+    if (want(6)) {
+      await quiet(); await closeAll(); await go('isle');
+      const r = await page.evaluate(async () => {
+        const cs = (sel, k) => { const e = document.querySelector(sel); return e ? getComputedStyle(e)[k] : null; }, root = document.documentElement, out = { style: root.dataset.style, saved: OC.Store.s.settings.style };
+        document.getElementById('hud').classList.remove('idle');
+        out.hud = { plateBg: cs('.hud-plate', 'backgroundColor'), plateShadow: cs('.hud-plate', 'boxShadow'), timeBg: cs('.hud-time', 'backgroundColor'), ink: cs('.hud-time .num', 'color'), tabBlur: (cs('.tabbar', 'backdropFilter') || cs('.tabbar', 'webkitBackdropFilter') || '') };
+        OC.App.showDialogue(OC.Chars.name(OC.Chars.active()), ['今天的風很舒服。'], [{ label: '好啊', fx: () => [] }, { label: '晚一點', fx: () => [] }], () => {}, true); await new Promise((r2) => setTimeout(r2, 900));
+        out.dlg = { bg: cs('.dlg', 'backgroundColor'), ink: cs('.dlg .line', 'color'), tag: cs('.dlg .who', 'transform'), tagBg: cs('.dlg .who', 'backgroundColor'), pill: cs('.dlg .choices .btn', 'borderRadius'), typed: document.querySelector('.dlg .line').textContent.length };
+        OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close());
+        const theme = (t) => { OC.App.setTheme(t); return { bg: getComputedStyle(root).getPropertyValue('--bg').trim(), r: getComputedStyle(root).getPropertyValue('--r-m').trim(), ink: getComputedStyle(root).getPropertyValue('--ink').trim() }; };
+        out.light = theme('light'); out.dark = theme('dark'); OC.App.setTheme('light');
+        OC.App.setStyle('refined'); out.refined = root.dataset.style; OC.App.setStyle('toy'); out.toy = root.dataset.style; OC.App.setStyle('play'); out.back = root.dataset.style;
+        return out;
+      });
+      await shot(page, '6-default-look');
+      check('6a 預設風格：世界裡的 HUD 沒有底框（透明、沒有陰影框、白字）', r.style === 'play' && r.hud.plateBg === 'rgba(0, 0, 0, 0)' && r.hud.plateShadow === 'none' && r.hud.timeBg === 'rgba(0, 0, 0, 0)' && r.hud.ink === 'rgb(255, 255, 255)', r.hud);
+      check('6b 對話是奶油色對話框：深棕字、名牌是斜的並帶角色顏色、選項是圓角長條；文字會逐字出現', r.dlg.bg === 'rgb(255, 249, 227)' && r.dlg.ink === 'rgb(111, 84, 56)' && r.dlg.tag && r.dlg.tag !== 'none' && r.dlg.tagBg !== 'rgba(0, 0, 0, 0)' && parseFloat(r.dlg.pill) > 100 && r.dlg.typed >= 3, r.dlg);
+      check('6c 選單依主題：淺色＝暖色紙感與大圓角；深色＝石板色與小圓角；可切回「雅緻」「玩具」再切回來', r.light.bg.toUpperCase() === '#F6F0DF' && r.light.r === '20px' && r.dark.bg.toUpperCase() === '#171B1E' && r.dark.r === '6px' && r.refined === 'refined' && r.toy === 'toy' && r.back === 'play', { light: r.light, dark: r.dark });
+      await page.evaluate(() => OC.App.setTheme('dark')); await page.evaluate(() => OC.App.tab('more')); await wait(page, 900); await shot(page, '6-dark-menu');
+      await page.evaluate(() => { OC.App.setTheme('light'); OC.App.tab('island'); }); await wait(page, 500);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

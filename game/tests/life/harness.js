@@ -29,7 +29,7 @@ async function boot(page, o = {}) {
   await page.evaluate(({ n, speed, seed, travel }) => { const o = { travel };
     const S = OC.Store.s; const keys = ['kuri', 'sora', 'mochi'];
     for (let i = 1; i < n; i++) { const c = OC.Chars.fromPreset(keys[(i - 1) % 3]); if (i >= 3) c.profile.name += i; c.status.onIsland = true; OC.Chars.add(c); }
-    for (const c of OC.Chars.all()) c.life.control = 'manual';   // the legacy suites assume the played OC only moves when told to (12.0 default is 'semi'; tests/v12 covers it)
+    for (const c of OC.Chars.all()) c.life.control = c.id === S.activeId ? 'manual' : 'auto';   // the legacy suites assume the played OC only moves when told to (12.0 default is 'semi'; tests/v12 covers it)
     S.onboarded = true; OC.Sim.setMode('cycle'); OC.Sim.setSpeed(speed); OC.Sim.seed(seed);
     S.life.settings.bubbles = true; S.life.settings.travel = o.travel === true; S.life.settings.aspAuto = S.life.settings.requests = o.travel === true;   // phase 6 extras only in phase 5/6 runs (phase 4 scenarios predate them) OC.Store.persist();   // phase 4 scenarios run on the island (phase 5 tests turn travel on)
   }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42, travel: !!o.travel });
