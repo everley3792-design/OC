@@ -83,7 +83,7 @@ node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC
 node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
 node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（54 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（58 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
 #   → android/app/build/outputs/apk/debug/oc-shimeji-0.13.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）

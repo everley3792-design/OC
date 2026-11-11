@@ -71,8 +71,8 @@
 | 12.0／11.0／10.x／8.0 | `v12`、`v11`、`v10`、`v8` | RESULT_OLD |
 | 桌寵（遊戲端） | `node game/tests/pet/run.js` | RESULT_PET |
 | 第四～六階段 | `life`／`world`／`play` | RESULT_PHASES |
-| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | RESULT_KT |
-| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | RESULT_APK |
+| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | 58 個測試、0 失敗 |
+| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | 建置成功；`verifyDebugApk` 通過（v2／v3 簽章、Manifest：targetSdk 35、specialUse、無無障礙／QUERY_ALL_PACKAGES）；`aapt2 dump badging`：versionCode 17、versionName 0.13.0-alpha。**Debug 簽章，不是正式發行版；沒有在實機或模擬器上安裝執行過** |
 
 ## 五、沒做與已知問題
 - 📱 所有原生功能（桌寵、作息、音效、雙人動作、小工具、觸覺）仍未在實機驗證。
