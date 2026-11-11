@@ -131,7 +131,7 @@
     p.ctx = { level: p.lv, stage: p.stage, selected: p.ctx && p.ctx.selected, full: true, changed: (kind, react, live) => { c.updated = Date.now(); p.dirty = true; if (!live) p.hist.commit(); if (react) p.stage.react(react, 1.3); }, rebuild: () => rebuild(p) };
     p.stage.select(p.tab === 'parts' ? p.ctx.selected : null);
     p.level.style.display = ['look', 'profile'].includes(p.tab) ? '' : 'none';
-    const parts = { look: () => [S_.template(c, p.ctx), p.lv === 'detailed' ? S_.body(c, p.ctx) : null, S_.face(c, p.ctx), S_.earsTail(c, p.ctx), S_.colors(c, p.ctx), S_.outfit(c, p.ctx), S_.expressions(c, p.ctx)],
+    const parts = { look: () => [S_.image(c, p.ctx), S_.template(c, p.ctx), p.lv === 'detailed' ? S_.body(c, p.ctx) : null, S_.face(c, p.ctx), S_.earsTail(c, p.ctx), S_.colors(c, p.ctx), S_.outfit(c, p.ctx), S_.expressions(c, p.ctx)],
       parts: () => [S_.parts(c, p.ctx)], profile: () => [S_.profile(c, p.ctx)], personality: () => [S_.personality(c, p.ctx), S_.traits(c, p.ctx), S_.quirks(c, p.ctx)], tastes: () => [S_.tastes(c, p.ctx)], speech: () => [S_.speech(c, p.ctx)], anims: () => [S_.anims(Ch().get(c.id) || c, p.ctx)] };
     p.body.replaceChildren(...parts[p.tab]().filter(Boolean));
   }

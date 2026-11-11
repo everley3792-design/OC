@@ -1,6 +1,8 @@
 /* OC Shimeji 13.0 acceptance (Playwright, real pointer events). node game/tests/v13/run.js [1 2 …]   (http.server on :8765, or OC_URL)
  *   1 follow: the character you follow leads the way to another place (semi / auto), never in manual; nothing happens behind a page;
  *     an OC you are watching (觀察) leaves → the view goes along and keeps watching
+ *   2 picture characters: mirrored by the walking direction, the picture performs every action (motion + marks), own frames win,
+ *     framing (zoom / offset / crop / flip / reset), editor controls, animated frames for the desktop pet
  * (further scenarios are added below as the 13.0 features land)
  */
 const fs = require('fs'), path = require('path');
@@ -50,6 +52,62 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await shot(page, '1-followed-observed');
       check('1c 正在「觀察」的 OC 自己去了別的地方：畫面跟過去、牠就在那裡、繼續觀察牠', obs.ok && obs.bar && followed && r3.area === 'street' && r3.here && r3.bar.includes(r3.name) && r3.loc === 'street' && !r3.trip, { obs, r3 });
       await page.evaluate(() => OC.App.stopObserve()); await go('isle');
+    }
+
+    // ================= 2. picture characters: framing, facing, and the picture performs every action =================
+    if (want(2)) {
+      await quiet(); await closeAll();
+      const r = await page.evaluate(async () => {
+        const file = async (n) => new File([await (await fetch('/tests/fixtures/' + n)).blob()], n, { type: 'image/png' });
+        const c = OC.Chars.blank('import'); const doc0 = await OC.Library.spriteCharFromFiles(c, [await file('wave.png')]); await OC.Anim.preload(doc0); c.profile.name = '圖圖'; c.status.onIsland = true; OC.Chars.add(c);
+        const cv = document.createElement('canvas'); cv.width = cv.height = 260; const x = cv.getContext('2d', { willReadFrequently: true });
+        const snap = (pose, t = 1) => { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, 260, 260); const res = OC.CharRender.draw(x, c, Object.assign({ action: 'idle', at: 0.4, face: 0.8, dir: 'right', noShadow: true }, pose), 130, 225, 2.2, t); const d = x.getImageData(0, 0, 260, 260).data; let n = 0, sx = 0, x0 = 260, x1 = 0, y0 = 260, y1 = 0, hsh = 0; for (let i = 0, p = 0; i < d.length; i += 4, p++) if (d[i + 3] > 40) { const px = p % 260, py = (p / 260) | 0; n++; sx += px; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; hsh = (hsh * 31 + px * 7 + py * 13 + d[i]) | 0; } return { n, cx: sx / Math.max(1, n), x0, x1, y0, y1, h: y1 - y0, w: x1 - x0, hsh, data: d.slice(0), puppet: res.puppet, mirror: res.mirror }; };
+        const mirrorSame = (A, B) => { let same = 0, tot = 0; for (let y = 0; y < 260; y += 2) for (let px = 0; px < 260; px += 2) { const a = A.data[(y * 260 + px) * 4 + 3] > 40, b = B.data[(y * 260 + (259 - px)) * 4 + 3] > 40; if (a || b) { tot++; if (a === b) same++; } } return same / Math.max(1, tot); };
+        const same = (A, B) => { let s2 = 0, tot = 0; for (let i = 3; i < A.data.length; i += 8) { const a = A.data[i] > 40, b = B.data[i] > 40; if (a || b) { tot++; if (a === b) s2++; } } return s2 / Math.max(1, tot); };
+        const out = { id: c.id, mode: c.appearance.mode };
+        // --- facing: one picture, mirrored by the walking direction (default), never when the art is front-facing, flipped when the player says so
+        const R = snap({ face: 0.8, dir: 'right' }), L = snap({ face: -0.8, dir: 'left' });
+        out.face = { rl: +mirrorSame(R, L).toFixed(3), differ: +same(R, L).toFixed(3), mirR: R.mirror, mirL: L.mirror };
+        c.appearance.frame = { faces: 'front' }; const F1 = snap({ face: 0.8 }), F2 = snap({ face: -0.8, dir: 'left' }); out.front = +same(F1, F2).toFixed(3);
+        c.appearance.frame = { flip: true }; const FL = snap({ face: 0.8 }); out.flip = +mirrorSame(R, FL).toFixed(3); c.appearance.frame = null;
+        // --- the picture performs: every action below changes over time, differs from standing still, and draws its marks outside the picture
+        const idle = snap({});
+        out.acts = {}; for (const act of ['walk', 'eat', 'sleep', 'happy', 'sad', 'angry', 'surprised', 'talk', 'dance', 'cry', 'hug', 'giggle']) {
+          const fr = [0.05, 0.22, 0.41, 0.63, 0.88].map((at, i) => snap(Object.assign({ action: act, at }, act === 'walk' ? { walk: 1, phase: at * 4 } : {}), 1 + at));
+          const outside = Math.max(...fr.map((f) => { let n = 0; for (let i = 3, p = 0; i < f.data.length; i += 4, p++) if (f.data[i] > 40) { const py = (p / 260) | 0, px = p % 260; if (py < idle.y0 - 3 || px < idle.x0 - 4 || px > idle.x1 + 4) n++; } return n; }));
+          out.acts[act] = { frames: new Set(fr.map((f) => f.hsh)).size, vsIdle: +Math.min(...fr.map((f) => same(f, idle))).toFixed(3), outside, puppet: fr[0].puppet };
+        }
+        // --- an action the player drew plays as drawn (no puppet), the others still perform
+        const walk = []; for (let i = 1; i <= 6; i++) walk.push(await file(`walk_${i}.png`));
+        const src = await OC.Library.framesFromFiles(walk), cs = OC.Library.process(src.frames, { trim: true }), made = await OC.Library.makeAnim(cs, { name: '走路', owner: c.id, action: 'walk' }); OC.Anim.assign(c, 'walk', 'any', made.doc.id); await OC.Anim.preload(made.doc);
+        out.own = { walk: OC.CharRender.plan(c, { action: 'walk', at: 0.2, walk: 1, phase: 1, face: 0.8 }).puppet, eat: OC.CharRender.plan(c, { action: 'eat', at: 0.2, face: 0.8 }).puppet, run: OC.CharRender.plan(c, { action: 'run', at: 0.2, walk: 1, phase: 1, face: 0.8 }).puppet };
+        // --- framing: zoom, offset, crop (the feet stay on the ground), reset
+        const base = snap({});
+        c.appearance.frame = { zoom: 1.5 }; const Z = snap({}); c.appearance.frame = { dx: 20 }; const DX = snap({}); c.appearance.frame = { dy: -20 }; const DY = snap({});
+        c.appearance.frame = { crop: { t: 0.3, l: 0, r: 0, b: 0 } }; const CT = snap({}); c.appearance.frame = { crop: { t: 0, l: 0, r: 0, b: 0.25 } }; const CB = snap({}); c.appearance.frame = { crop: { t: 0, l: 0.3, r: 0, b: 0 } }; const CL = snap({});
+        c.appearance.frame = null; const back = snap({});
+        out.frame = { zoom: +(Z.h / base.h).toFixed(2), dx: Math.round(DX.cx - base.cx), dy: Math.round(DY.y1 - base.y1), cropTop: CT.y0 - base.y0, cropTopH: +(CT.h / base.h).toFixed(2), cropBottomFeet: CB.y1 - base.y1, cropBottomH: +(CB.h / base.h).toFixed(2), cropLeft: +(CL.w / base.w).toFixed(2), reset: back.hsh === base.hsh, unit: 2.2 * 50 };
+        OC.Store.touch('chars'); return out;
+      });
+      const pic = r.id;
+      check('2a 圖片角色的朝向：往左走時整張圖鏡像（往右時是原圖）；關掉「跟著轉向」（正面的圖）就不鏡像；「左右翻轉」會把圖翻過來', r.mode === 'sprite' && r.face.rl > 0.97 && r.face.differ < 0.995 && r.face.mirL === true && r.face.mirR === false && r.front > 0.995 && r.flip > 0.97, { face: r.face, front: r.front, flip: r.flip });
+      const acts = Object.entries(r.acts);
+      check('2b 只有一張圖也會表演：走路、吃飯、睡覺、開心、難過、生氣、驚訝、說話、跳舞、哭、擁抱、咯咯笑——每個動作都會隨時間變化、和站著不同', acts.every(([, v]) => v.puppet && v.frames >= 3 && v.vsIdle < 0.985), r.acts);
+      check('2c 外顯的特效畫在圖片外面：睡覺的 Zzz、開心的星星、吃飯的碎屑、生氣的青筋、驚訝的驚嘆號、哭的眼淚…（至少 8 個動作有）', acts.filter(([, v]) => v.outside > 12).length >= 8, Object.fromEntries(acts.map(([k, v]) => [k, v.outside])));
+      check('2d 玩家自己畫了「走路」之後，走路就播畫的影格（不再套木偶動作），沒畫的動作（吃飯）仍然由圖片表演；跑步沿用走路的影格', r.own.walk === false && r.own.eat === true && r.own.run === false, r.own);
+      check('2e 調整圖片：放大 150%（高度約 1.5 倍）、水平／垂直位移、裁上方（頭頂往下、變矮）、裁下方（腳仍踩在地上）、裁左邊（變窄）；重設後和原本完全一樣', Math.abs(r.frame.zoom - 1.5) < 0.12 && r.frame.dx > 14 && r.frame.dx < 30 && r.frame.dy < -14 && r.frame.cropTop > 10 && r.frame.cropTopH < 0.8 && Math.abs(r.frame.cropBottomFeet) <= 3 && r.frame.cropBottomH < 0.85 && r.frame.cropLeft < 0.85 && r.frame.reset, r.frame);
+      // the editor shows the controls for a picture character (and not for a drawn one)
+      await page.evaluate((id) => { OC.Chars.setActive(id); OC.Pages.open('charedit', { id }); }, pic); await wait(page, 900);
+      const ui = await page.evaluate(() => { const box = document.querySelector('[data-sec=image]'); if (!box) return { has: false }; const t = box.textContent; const sw = box.querySelector('[role=switch], .toggle, input[type=checkbox]'); sw && sw.click(); return { has: true, flipRow: t.includes('左右翻轉'), turn: t.includes('走路時跟著左右轉向'), zoom: t.includes('放大縮小'), crop: t.includes('裁切'), reset: t.includes('全部重設'), sliders: box.querySelectorAll('input[type=range]').length, clicked: !!sw }; });
+      await wait(page, 400);
+      const draft = await page.evaluate(() => { const box = document.querySelector('[data-sec=image]'); const p = OC.Pages.current && OC.Pages.current(); const txt = box ? box.textContent : ''; return { txt: txt.length }; });
+      await shot(page, '2-picture-adjust');
+      check('2f 編輯器裡圖片角色有「調整圖片」：左右翻轉、跟著轉向、放大縮小、水平／垂直位置、四邊裁切、全部重設（7 個滑桿）', ui.has && ui.flipRow && ui.turn && ui.zoom && ui.crop && ui.reset && ui.sliders === 7 && ui.clicked, { ui, draft });
+      await closeAll(); await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); }); await wait(page, 500);
+      // on the desktop too: the exported frames of an action the player did not draw are animated
+      const pet = await page.evaluate(async (id) => { const c = OC.Chars.get(id); const pack = await OC.PetSync.renderSprites(c); const a = pack.manifest.anims; const distinct = (k) => new Set(a[k].frames.map((f) => pack.files[f])).size; return { eat: distinct('eat'), sleep: distinct('sleep'), happy: distinct('happy'), walkSrc: a.walk.src, eatSrc: a.eat.src }; }, pic);
+      check('2g 桌寵也一樣：輸出到桌面的影格裡，沒畫過的動作（吃飯、睡覺、開心）是會動的（不是同一張圖重複）', pet.eat >= 3 && pet.sleep >= 2 && pet.happy >= 3, pet);
+      await page.evaluate(([me]) => OC.Chars.setActive(me), ids); await wait(page, 600);
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

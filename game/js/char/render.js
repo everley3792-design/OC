@@ -154,11 +154,17 @@
     if (sp) {
       const doc = sp.doc, f = OC.Anim.frameAt(doc, p.at || 0, p.speed || 1), img = OC.Anim.composite(doc, f.i);
       if (!img) return { sprite: true, doc, i: f.i, loading: true };
-      const a = doc.anchor || { x: doc.w / 2, y: doc.h * 0.9 }, k = (unitPx * RIG_H * (c.appearance.scale || 1)) / refH(c, doc);
-      const breath = 1 + (p.breath || 0) * 0.008, sq = p.squash || 1;
-      ctx.save(); ctx.translate(x + (doc.offset.x || 0) * k, y - (p.lift || 0) * unitPx + (doc.offset.y || 0) * k);
-      ctx.rotate(p.lean || 0); ctx.scale((sp.mirror ? -1 : 1) * k / Math.sqrt(sq), k * sq * breath);
+      // 13.0: the picture's framing (flip / zoom / offset / crop / which way it looks) and, when the player has not drawn this action, the
+      // picture performs it itself (OC.Puppet: lean, hop, squash + comic marks) — applied at draw time, the original is never changed
+      const P13 = OC.Puppet, fr = P13 ? P13.frameOf(c) : { zoom: 1, dx: 0, dy: 0, crop: { l: 0, t: 0, r: 0, b: 0 } }, mir = P13 ? P13.mirror(c, sp, p) : !!sp.mirror;
+      const pu = P13 && P13.active(c, sp, p) ? P13.pose(c, p, t) : null;
+      const a0 = doc.anchor || { x: doc.w / 2, y: doc.h * 0.9 }, a = { x: a0.x, y: Math.min(a0.y, doc.h * (1 - fr.crop.b)) }, kb = (unitPx * RIG_H * (c.appearance.scale || 1)) / refH(c, doc), k = kb * fr.zoom;
+      const breath = 1 + (p.breath || 0) * 0.008, sq = (p.squash || 1) * (pu ? pu.sq : 1), Hu = RIG_H * (c.appearance.scale || 1);
+      const ox = x + (doc.offset.x || 0) * k + (fr.dx / 100) * Hu * unitPx + (pu ? pu.dx * unitPx : 0), oy = y - (p.lift || 0) * unitPx + (doc.offset.y || 0) * k + (fr.dy / 100) * Hu * unitPx + (pu ? pu.dy * unitPx : 0), rot = (p.lean || 0) + (pu ? pu.rot : 0);
+      ctx.save(); ctx.translate(ox, oy);
+      ctx.rotate(rot); ctx.scale((mir ? -1 : 1) * k / Math.sqrt(sq), k * sq * breath);
       ctx.imageSmoothingEnabled = !c.appearance.pixel; ctx.imageSmoothingQuality = 'high';   // 8.0: crisp pixel art / well-filtered downscales
+      if (fr.crop.l || fr.crop.t || fr.crop.r || fr.crop.b) { ctx.beginPath(); ctx.rect(doc.w * fr.crop.l - a.x, doc.h * fr.crop.t - a.y, doc.w * (1 - fr.crop.l - fr.crop.r), doc.h * (1 - fr.crop.t - fr.crop.b)); ctx.clip(); }
       ctx.drawImage(img, -a.x, -a.y);
       // overlay (blink) — suppressed in states that already have closed eyes
       if ((p.blink || 0) > 0.5) {
@@ -166,7 +172,7 @@
         if (ov && ov.doc.category === 'overlay' && !(ov.doc.overlay.suppressIn || []).includes(p.action)) { const oi = OC.Anim.composite(ov.doc, 0); if (oi) { const oa = ov.doc.anchor || a; ctx.drawImage(oi, -oa.x, -oa.y); } }
       }
       // a held item (gift, food…) for frame animations too
-      if (p.overrides && p.overrides.held) { const ic = OC.Style.itemCanvas(p.overrides.held, 64), rh = refH(c, doc), hp = (doc.points || {}).handR || { x: a.x + rh * 0.22, y: a.y - rh * 0.32 }; ctx.save(); ctx.translate(hp.x, hp.y); const k2 = (rh * 0.32) / 64; ctx.scale(sp.mirror ? -k2 : k2, k2); ctx.drawImage(ic, -32, -40); ctx.restore(); }
+      if (p.overrides && p.overrides.held) { const ic = OC.Style.itemCanvas(p.overrides.held, 64), rh = refH(c, doc), hp = (doc.points || {}).handR || { x: a.x + rh * 0.22, y: a.y - rh * 0.32 }; ctx.save(); ctx.translate(hp.x, hp.y); const k2 = (rh * 0.32) / 64; ctx.scale(mir ? -k2 : k2, k2); ctx.drawImage(ic, -32, -40); ctx.restore(); }
       // accessories on attach points
       const parts = (c.parts || []).filter((q) => q.visible !== false && !OC.Rig.REPLACE.has(q.slot));
       if (parts.length) {
@@ -176,7 +182,8 @@
           ctx.save(); ctx.translate(pt.x + (q.x || 0) * rigK, pt.y + (q.y || 0) * rigK); ctx.rotate(((q.rot || 0) * Math.PI) / 180); ctx.scale((q.flip ? -1 : 1) * s2, s2); ctx.globalAlpha = q.opacity == null ? 1 : q.opacity; ctx.drawImage(im, -im.width / 2, -im.height / 2); ctx.restore(); }
       }
       ctx.restore();
-      return { sprite: true, doc, i: f.i, mirror: sp.mirror, done: f.done };
+      if (pu) { ctx.save(); ctx.translate(ox, oy); ctx.rotate(rot * 0.5); ctx.scale(unitPx, unitPx); P13.marks(ctx, pu, t, Hu * fr.zoom * (1 - fr.crop.t - fr.crop.b), p.face == null ? 0.4 : p.face); ctx.restore(); }
+      return { sprite: true, doc, i: f.i, mirror: mir, done: f.done, puppet: !!pu };
     }
     const s = rigState(c, p, t); s.noShadow = p.noShadow !== false;
     OC.Rig.draw(ctx, c.look, s, x, y, unitPx, t, { parts: c.parts });
@@ -187,13 +194,14 @@
     const sp = c.appearance.mode === 'sprite' || (c.actions && c.actions[p.action || 'idle']) ? spriteFor(c, p) : null;
     if (!sp) return { sprite: false };
     const f = OC.Anim.frameAt(sp.doc, p.at || 0, p.speed || 1), ready = !!OC.Anim.composite(sp.doc, f.i);
-    return { sprite: true, doc: sp.doc, i: f.i, mirror: sp.mirror, done: f.done, loading: !ready };
+    const pup = !!(OC.Puppet && OC.Puppet.active(c, sp, p));
+    return { sprite: true, doc: sp.doc, i: f.i, mirror: OC.Puppet ? OC.Puppet.mirror(c, sp, p) : sp.mirror, done: f.done, loading: !ready, puppet: pup };
   }
   const FAST = new Set(['eat', 'drink', 'greet', 'happy', 'play', 'jump', 'surprised', 'climb', 'angry', 'pet', 'sit', 'sleep', 'taste', 'yum', 'yuck', 'cheer', 'proud', 'nod', 'shake', 'receive', 'sing', 'sketch', 'dance', 'talk', 'laugh', 'cry', 'run', 'yawn', 'stretch']);
   /** cache key: repaint a billboard/portrait only when this changes */
   function key(c, p, res) {
     const tk = (p.bk != null && p.bk < 1 ? `:b${Math.round(p.bk * 5)}` : '') + (p.nudge ? `:n${Math.round(p.nudge)}` : '') + (p.touch ? `:t${p.touch.zone}${Math.round(p.touch.lv * 8)}${Math.round((p.touch.dir || 0) * 2)}${p.touch.annoyed ? 'a' : ''}` : '');
-    if (res && res.sprite) return `S${res.doc.id}:${res.doc.updated}:${res.i}:${res.mirror ? 1 : 0}:${(p.blink || 0) > 0.5 ? 1 : 0}:${res.loading ? 'L' + Math.random() : ''}:${c.updated}:${(p.lift || 0).toFixed(1)}`;
+    if (res && res.sprite) return `S${res.doc.id}:${res.doc.updated}:${res.i}:${res.mirror ? 1 : 0}:${(p.blink || 0) > 0.5 ? 1 : 0}:${res.loading ? 'L' + Math.random() : ''}:${c.updated}:${(p.lift || 0).toFixed(1)}` + (res.puppet ? `:P${p.action || 'idle'}:${!p.action || p.action === 'idle' ? Math.round((p.at || 0) * 2) : Math.round((p.at || 0) * 12)}:${p.walk > 0.05 ? Math.round(((p.phase || 0) % 2) * 6) : 'x'}:${p.touch ? p.touch.zone + Math.round(p.touch.lv * 8) : ''}${p.fx || ''}` : '');   // 13.0: a picture that performs repaints with the action's time
     const q = (v, n) => Math.round((v || 0) * n);
     const loaded = (c.parts || []).reduce((n, pt) => n + (OC.Assets.peek(pt.assetId) ? 1 : 0), 0);
     return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) || (OC.Anim11 && OC.Anim11.has(p.action)) || p.touch ? 10 : p.action === 'idle' || !p.action ? 4 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}${tk}${p.fx || ''}`;

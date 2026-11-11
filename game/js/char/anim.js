@@ -101,10 +101,10 @@
     for (const act of chain) {
       const m = c.actions && c.actions[act]; if (!m) continue;
       const pick = (d) => m[d] && get(m[d]);
-      let doc = pick(dir); if (doc) return { doc, mirror: false, action: act, dir };
-      if (OPP[dir] && pick(OPP[dir])) return { doc: pick(OPP[dir]), mirror: true, action: act, dir };
+      let doc = pick(dir); if (doc) return { doc, mirror: false, action: act, dir, slot: dir };
+      if (OPP[dir] && pick(OPP[dir])) return { doc: pick(OPP[dir]), mirror: true, action: act, dir, slot: OPP[dir] };
       doc = pick('any') || pick('front') || pick(dir === 'back' ? 'front' : 'back') || pick('left') || pick('right');
-      if (doc) return { doc, mirror: (dir === 'left' && !!m.right && !m.left && doc.id === m.right) || (dir === 'right' && !!m.left && !m.right && doc.id === m.left), action: act, dir };
+      if (doc) return { doc, mirror: (dir === 'left' && !!m.right && !m.left && doc.id === m.right) || (dir === 'right' && !!m.left && !m.right && doc.id === m.left), action: act, dir, slot: ['any', 'front', 'back', 'left', 'right'].find((k) => m[k] === doc.id) || 'any' };   // 13.0: slot → picture characters turn a one-direction picture themselves
     }
     return null;
   }

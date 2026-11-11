@@ -87,7 +87,7 @@
         }
         if (id === 'look') {
           const lv = seg([['simple', '簡易'], ['detailed', '詳細']], level, (v) => { level = v; render(); });
-          if (c.appearance.mode === 'sprite') return [h('div.card', null, h('b', null, '外觀來自你的圖片'), h('p.muted', { style: { fontSize: 'var(--fs-s)' } }, '之後可以在動畫工作室為不同動作加入更多影格，或在「部件」加上飾品。')), S_.body(c, ctx), S_.parts(c, ctx)];
+          if (c.appearance.mode === 'sprite') return [h('div.card', null, h('b', null, '外觀來自你的圖片'), h('p.muted', { style: { fontSize: 'var(--fs-s)' } }, '之後可以在動畫工作室為不同動作加入更多影格，或在「部件」加上飾品。')), S_.image(c, ctx), S_.body(c, ctx), S_.parts(c, ctx)];
           const out = [h('div.muted.center', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 6px' } }, '點點角色的耳朵、臉、身體、尾巴就能直接修改；左右拖曳可以轉一圈。'), lv, S_.template(c, ctx), S_.earsTail(c, ctx), S_.colors(c, ctx), S_.face(c, ctx), S_.outfit(c, ctx)];
           if (level === 'detailed') out.splice(2, 0, S_.body(c, ctx)), out.push(S_.parts(c, ctx));
           out.push(S_.expressions(c, ctx));

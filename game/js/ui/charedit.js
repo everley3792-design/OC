@@ -30,7 +30,7 @@
       // the eyes follow the finger / pointer
       if (st.look && now - st.look.t < 1800 && bk < 0.5) { p.lookX = Math.max(-1, Math.min(1, st.look.x)); p.overrides = Object.assign({ lookY: Math.max(-1, Math.min(1, st.look.y)) }, p.overrides || {}); }
       // now and then it does something by itself (mood / personality; only while nothing else is playing)
-      if (!st.react && !st.walk && !st.dragging && now > st.fidgetAt && OC.Anim11) { st.fidgetAt = now + 5000 + Math.random() * 5000; const c = getChar(), f = c && c.appearance.mode !== 'sprite' ? OC.Anim11.fidget(c) : null; if (f) st.react = { action: f.action, t0: now, until: now + f.dur * 1000 }; }
+      if (!st.react && !st.walk && !st.dragging && now > st.fidgetAt && OC.Anim11) { st.fidgetAt = now + 5000 + Math.random() * 5000; const c = getChar(), f = c ? OC.Anim11.fidget(c) : null;   /* 13.0: picture characters perform too (OC.Puppet) */ if (f) st.react = { action: f.action, t0: now, until: now + f.dur * 1000 }; }
       if (st.walk) { p.walk = 1; p.phase = t * 4; p.action = 'walk'; p.face = Math.sin(t * 0.6) * 0.9; p.dir = p.face > 0.5 ? 'right' : p.face < -0.5 ? 'left' : 'front'; }
       if (st.react && now < st.react.until) { p.action = st.react.action; p.at = (now - st.react.t0) / 1000; Object.assign(p, st.react.extra || {}); }
       else st.react = null;
@@ -157,6 +157,28 @@
       box.append(T('種族'), seg(Ch().SPECIES.slice(0, 4), c.profile.species, (v) => { c.profile.species = v; if (v === 'bunny') c.look.ears = 'bunny'; if (v === 'bear') c.look.ears = 'bear'; if (v === 'cat') c.look.ears = 'cat'; x.changed('look', 'surprised'); x.rebuild(); }));
       box.append(h('button.btn.block', { style: { marginTop: '12px' }, on: { click: () => { randomize(c, x.level); x.changed('look', 'surprised'); x.rebuild(); } } }, icon('dice', 's'), '隨機搭配'));
       return box;
+    },
+    /** 13.0: framing of a picture character — flip, turning with the walking direction, zoom, position, crop.
+     *  Applied when the picture is drawn; the original file is never changed, so everything here can be undone. */
+    image(c, x) {
+      if (c.appearance.mode !== 'sprite') return null;
+      const F = () => { const f = (c.appearance.frame = Object.assign({ flip: false, zoom: 1, dx: 0, dy: 0, faces: 'right' }, c.appearance.frame || {})); f.crop = Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop || {}); return f; };
+      const set = (k) => (v, live) => { F()[k] = v; x.changed('look', live ? null : 'idle'); };
+      const crop = (k) => (v, live) => { F().crop[k] = v / 100; x.changed('look', live ? null : 'idle'); };
+      const pct = (v) => Math.round(v) + '%', box = h('div', { 'data-sec': 'image' });
+      const build = () => {
+        const fr = F();
+        box.replaceChildren(T('調整圖片', '原圖不會被改動，隨時可以重設'),
+          h('div.hstack', { style: { marginBottom: '8px' } }, h('span.grow', null, '左右翻轉'), toggle(!!fr.flip, (v) => { F().flip = v; x.changed('look'); })),
+          h('div.hstack', null, h('span.grow', null, '走路時跟著左右轉向'), toggle(fr.faces !== 'front', (v) => { F().faces = v ? 'right' : 'front'; x.changed('look'); })),
+          h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 10px' } }, '開啟時，請讓圖裡的角色面向右邊——方向不對就按「左右翻轉」。正面的圖可以關掉，就不會被鏡像。'),
+          num('放大縮小', fr.zoom, 0.4, 2.5, 0.01, set('zoom'), (v) => Math.round(v * 100) + '%'), num('水平位置', fr.dx, -50, 50, 1, set('dx')), num('垂直位置', fr.dy, -50, 50, 1, set('dy')),
+          T('裁切', '從四邊往內裁掉不要的部分'),
+          num('上', fr.crop.t * 100, 0, 45, 1, crop('t'), pct), num('下', fr.crop.b * 100, 0, 45, 1, crop('b'), pct), num('左', fr.crop.l * 100, 0, 45, 1, crop('l'), pct), num('右', fr.crop.r * 100, 0, 45, 1, crop('r'), pct),
+          h('button.btn.s.ghost', { style: { marginTop: '6px' }, on: { click: () => { c.appearance.frame = null; x.changed('look'); build(); } } }, '全部重設'),
+          h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '還沒畫的動作（走路、吃飯、睡覺、開心…）圖片會自己表演：搖擺、彈跳，加上愛心、Zzz、碎屑等特效。之後在動畫工作室畫了某個動作，就改播你畫的。'));
+      };
+      build(); return box;
     },
     body(c, x) {
       const L = c.look, ch = (k) => (v, live) => { L[k] = v; x.changed('look', live ? null : 'idle'); };
