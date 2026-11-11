@@ -186,11 +186,16 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await page.waitForFunction(() => OC.Fun.state && OC.Fun.state.phase === 'seek', null, { timeout: 15000 }).catch(() => {});
       const seek = await page.evaluate(([me, m]) => ({ hidden: OC.App.actorOf(m).hidden, st: OC.Fun.state, bar: (document.querySelector('.fun-bar') || {}).textContent }), ids);
       // tap a wrong one, then the right one (real taps on the 3D view)
-      const wrong = await page.evaluate(() => { const s = OC.Fun.state.spot; const t = OC.World.swayTargets().filter((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) > 20 && x.x > 40 && x.x < innerWidth - 40 && x.y > 210 && x.y < innerHeight - 190)[0]; return t ? { x: t.x, y: t.y } : null; });
-      if (wrong) { await page.mouse.click(wrong.x, wrong.y); await wait(page, 900); }
+      const wrong = await page.evaluate(() => { if (!OC.Fun.state) return null; const s = OC.Fun.state.spot; const t = OC.World.swayTargets().filter((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) > 20 && x.x > 40 && x.x < innerWidth - 40 && x.y > 210 && x.y < innerHeight - 190)[0]; return t ? { x: t.x, y: t.y } : null; });
+      if (wrong) { await page.mouse.click(wrong.x, wrong.y); await page.waitForFunction(() => !OC.Fun.state || OC.Fun.state.wrong >= 1, null, { timeout: 12000 }).catch(() => {}); }
       const mid = await page.evaluate(() => OC.Fun.state && { phase: OC.Fun.state.phase, wrong: OC.Fun.state.wrong });
-      const spot = await page.evaluate(() => { const s = OC.Fun.state.spot; const t = OC.World.swayTargets().find((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) < 2); return { x: t.x, y: t.y }; });
-      await page.mouse.click(spot.x, spot.y);
+      /* software rendering can take seconds to process a tap: tap, wait until the game reacts, tap again only if it did not */
+      for (let k = 0; k < 3; k++) {
+        const spot = await page.evaluate(() => { if (!OC.Fun.state || OC.Fun.state.phase !== 'seek') return null; const s = OC.Fun.state.spot; const t = OC.World.swayTargets().find((x) => x && Math.hypot(x.dx - s.dx, x.dy - s.dy) < 2); return t ? { x: t.x, y: t.y } : null; });
+        if (!spot) break;
+        await page.mouse.click(spot.x, spot.y);
+        await page.waitForFunction(() => !OC.Fun.state || OC.Fun.state.phase !== 'seek', null, { timeout: 8000 }).catch(() => {});
+      }
       await page.waitForFunction(() => !OC.Fun.state, null, { timeout: 20000 }).catch(() => {});
       const hend = await page.evaluate(([me, m]) => ({ st: OC.Fun.state, hidden: OC.App.actorOf(m).hidden, holds: [...OC.Brain.get(m).holds], bar: !!document.querySelector('.fun-bar'), n: OC.Fun.data.n.hide, paid: !!OC.Tx.done('fun:hide:' + m + ':' + OC.Clock.dayKey()) }), ids);
       await shot(page, '4-hide-found');
