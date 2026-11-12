@@ -2,9 +2,10 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.13.0-alpha（13.0）
+## 目前版本 0.14.0-alpha（14.0）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.13.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.13.0-alpha-debug.apk)
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.14.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.14.0-alpha-debug.apk)
+- 14.0：整個 App 統一成一種風格「島日和」（白天／夜晚兩個調色盤）、HUD／導覽列／環狀選單重做、背包口袋格、交易紀錄、桌寵中心的桌面預覽、圖片角色用手指裁切、樹木與房屋正面重新建模、小島繪製呼叫減半、桌寵行為搬進可測試的核心（原生仍未經實機驗證）。紀錄：[`docs/v14-report.md`](docs/v14-report.md)
 - 13.0：畫面跟著角色換地點、圖片角色的調整與自動表演、79 個特質（衝突提示、隨機）、新的預設介面風格、猜拳／躲貓貓／搖樹、角色主動來訪與約定、四章節教學、桌寵作息。**桌寵原生層與各頁面版面沒有整個重寫。**
 - 紀錄（含未驗證與沒做的部分）：[`docs/v13-report.md`](docs/v13-report.md)；測試：`node game/tests/v13/run.js`
 - ⚠️ 原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
