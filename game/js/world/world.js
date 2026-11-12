@@ -654,6 +654,8 @@
     /** save / restore what the player was looking at (cinematic events return exactly there) */
     /** 13.0: glide to a zoom level without changing what the camera follows */
     zoomTo(z) { zoomGoal = clamp(z, 1.15, 3.2); },
+    /** read-only, for diagnostics and tests */
+    get scene() { return scene; },
     saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
     restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },
     screenDelta, screenToDesign, get bbRes() { return bbRes; },

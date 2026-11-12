@@ -26,6 +26,29 @@
     if (o.rx) me.rotation.x = o.rx; if (o.ry) me.rotation.y = o.ry; if (o.rz) me.rotation.z = o.rz; if (o.s) me.scale.set(...o.s);
     par.add(me); return me;
   }
+  /**
+   * 14.0 (performance): a static model is built from dozens of little meshes — one draw call each, twice with shadows. fuse() bakes the
+   * meshes that share a material (and the same shadow flags) into one mesh. Only for models nothing moves inside of (houses, stalls,
+   * benches, fences, beds…); materials stay the same objects, so night lighting of windows keeps working. The baked geometry is this
+   * model's own (not cached): the area disposes it when it unloads.
+   */
+  function fuse(g) {
+    g.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(g.matrixWorld).invert(), buckets = new Map(), m4 = new THREE.Matrix4();
+    g.traverse((o) => { if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material) || o.material.map || (o.userData && o.userData.keep)) return; const k = o.material.uuid + (o.castShadow ? 'c' : '-') + (o.receiveShadow ? 'r' : '-'); (buckets.get(k) || buckets.set(k, []).get(k)).push(o); });
+    for (const list of buckets.values()) {
+      if (list.length < 2) continue;
+      let n = 0; const parts = [];
+      for (const o of list) { let q = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); m4.multiplyMatrices(inv, o.matrixWorld); q.applyMatrix4(m4); if (!q.attributes.normal) q.computeVertexNormals(); parts.push(q); n += q.attributes.position.count; }
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3); let at = 0;
+      for (const q of parts) { pos.set(q.attributes.position.array, at * 3); nor.set(q.attributes.normal.array, at * 3); at += q.attributes.position.count; q.dispose(); }
+      const big = new THREE.BufferGeometry(); big.setAttribute('position', new THREE.BufferAttribute(pos, 3)); big.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); big.computeBoundingSphere();
+      const me = mesh(big, list[0].material, list[0].castShadow, list[0].receiveShadow);
+      for (const o of list) o.parent.remove(o);
+      g.add(me);
+    }
+    return g;
+  }
   /** rounded box (bevelled extrusion), centred */
   function rbox(w, h, d, r = 2) {
     return geo(`rb${w}|${h}|${d}|${r}`, () => {
@@ -93,8 +116,17 @@
       const fr = rng(Math.round(wx * 7 + w));
       for (let i = 0; i < 5; i++) add(g, sphere(2, 8, 6), mat([P.coral, P.yellow, '#FFFFFF', P.pink][i % 4]), wx - 6 + i * 3 + fr() - 0.5, 8 + h * 0.58 - 7.5 + fr(), d / 2 + 3.4 + fr() * 1.5, { cast: false });
     }
+    /* 14.0: remodelled front — a scalloped striped awning over the door, round caps on the ridge, a potted shrub and a little mailbox */
+    const awA = mat(roofC), awB = mat('#FFF8EA');
+    for (let k = -2; k <= 2; k++) { const st = add(g, rbox(5.6, 2.2, 13, 1), k % 2 ? awB : awA, k * 5.6, 8 + 40.5, d / 2 + 6.5, { cast: k === 0 }); st.rotation.x = 0.36; add(g, sphere(2.8, 10, 8), k % 2 ? awB : awA, k * 5.6, 8 + 37.6, d / 2 + 12.4, { cast: false }).scale.set(1, 0.7, 0.5); }
+    for (const sz of [-1, 1]) add(g, sphere(4.4, 12, 10), roofLo, 0, 8 + h + rise + 2.6, sz * (d / 2 + 10), { cast: false });
+    add(g, cyl(4.2, 3.4, 6, 12), mat('#C98C5A'), -w * 0.2, 3 + 4, d / 2 + 6.5);
+    add(g, sphere(5.4, 12, 10), mat('#5CBB4E'), -w * 0.2, 3 + 11.5, d / 2 + 6.5).scale.set(1, 0.9, 1);
+    add(g, cyl(0.9, 0.9, 13, 8), mat(P.wood), w * 0.36, 6.5, d / 2 + 7, { cast: false });
+    add(g, rbox(7, 5, 5, 2), mat(o.shutter || P.teal), w * 0.36, 14.5, d / 2 + 7);
+    add(g, rbox(0.8, 4, 2, 0.3), mat(P.coral), w * 0.36 + 4, 16.5, d / 2 + 7, { cast: false });
     g.userData.size = { w: w + 6, d: d + 6 };
-    return g;
+    return fuse(g);
   }
 
   /** market stall with striped awning */
@@ -116,7 +148,7 @@
     const sign = add(g, rbox(26, 9, 2, 2), mat(P.coral), 0, 48, 20.6, { cast: false }); sign.rotation.x = 0.22;
     add(g, ico(2.2, 0), mat('#FFFFFF'), -8, 48.6, 21.6, { cast: false }); add(g, ico(2.2, 0), mat('#FFFFFF'), 8, 48.6, 21.6, { cast: false });
     g.userData.size = { w: 66, d: 30 };
-    return g;
+    return fuse(g);
   }
 
   // ======================= nature =======================
@@ -126,13 +158,18 @@
     const g = new THREE.Group(); const r = rng(seed * 97 + 3);
     add(g, trunk(28, 3.6, 2.6), mat(P.wood), 0, 0, 0);
     const crown = new THREE.Group(); crown.position.y = 38; g.add(crown);
-    // 10.1: faceted low-poly foliage (flat shading on a coarse icosphere) — the soft toy-diorama look of the art direction
-    const FL = { p: { flatShading: true } }, leaf = mat('#5FBF4E', FL), leaf2 = mat('#72CE58', FL), leafLo = mat('#4FAA45', FL);
-    const blobs = [[0, 6, 0, 17, leaf], [-12, -1, 3, 12, leaf2], [12, 0, -2, 12.5, leaf], [0, 0, 11, 12, leaf2], [4, 13, -5, 11, leaf2], [-6, 9, -9, 10, leafLo], [8, -3, 8, 9, leafLo]];
-    for (const [x, y, z, rr2, m] of blobs) { const b = add(crown, ico(rr2, 1), m, x, y, z); b.scale.y = 0.9; b.rotation.set(r() * 3, r() * 3, 0); }
+    /* 14.0: remodelled — a plump, smooth crown in three rounded tiers (wide skirt, middle, cap), darker underneath and with a few
+     * lighter puffs on the sunny side; the same footprint, the same { group, crown, fruits } as before */
+    const leaf = mat('#5CBB4E'), leafHi = mat('#7AD25F'), leafLo = mat('#47A046');
+    const puff = sphere(10, 16, 12);
+    const tiers = [[0, -3, 0, 1.75, 1.05, leafLo], [0, 5, 0, 1.5, 1.05, leaf], [0, 14, 0, 1.08, 0.95, leaf],
+      [-11, 1, 5, 0.92, 0.85, leaf], [11, 2, -3, 0.95, 0.85, leaf], [1, 0, 12, 0.9, 0.8, leaf], [-3, 3, -11, 0.85, 0.8, leafLo],
+      [-7, 12, 6, 0.6, 0.55, leafHi], [-12, 5, 9, 0.42, 0.4, leafHi], [-2, 19, 4, 0.5, 0.42, leafHi]];
+    for (const [x, y, z, sx, sy, m] of tiers) { const b = add(crown, puff, m, x + (r() - 0.5) * 1.5, y, z + (r() - 0.5) * 1.5); b.scale.set(sx, sy, sx * 0.96); }
     const fruits = [];
     const fm = mat(fruit);
-    for (let i = 0; i < 6; i++) { const a = r() * TAU, yy = r() * 14 - 4; const f = add(crown, sphere(2.8, 12, 10), fm, Math.cos(a) * 14, yy, Math.sin(a) * 12 + 4, { cast: false }); fruits.push(f); }
+    for (let i = 0; i < 6; i++) { const a = r() * TAU, yy = r() * 14 - 4; const f = add(crown, sphere(2.8, 12, 10), fm, Math.cos(a) * 14, yy, Math.sin(a) * 12 + 4, { cast: false }); f.userData.keep = true; /* fruit is picked one by one */ fruits.push(f); }
+    fuse(crown);
     g.userData.size = { w: 14, d: 12 };
     return { group: g, crown, fruits };
   }
@@ -151,20 +188,28 @@
     const g = new THREE.Group();
     add(g, trunk(16, 3.4, 2.6), mat(P.wood));
     const crown = new THREE.Group(); g.add(crown);
-    for (let i = 0; i < 3; i++) add(crown, cone(18 - i * 4.2, 22, 8), mat(i % 2 ? '#3FA357' : '#348F4B', { p: { flatShading: true } }), 0, 22 + i * 14, 0, { ry: i * 0.4 });
+    /* 14.0: remodelled — three rounded, overlapping tiers (a turned profile with a soft lip), a small round tip */
+    const tier = lathe('cedar14', [[0, 0], [15, 0.6], [17.5, 3.2], [16.5, 6.5], [9, 16], [3.2, 22.5], [0, 23.5]], 14);
+    const cols = ['#2F8A49', '#39994F', '#45A957'];
+    for (let i = 0; i < 3; i++) { const k = 1 - i * 0.22; const t = add(crown, tier, mat(cols[i]), 0, 14 + i * 13.5, 0, { ry: i * 0.5 + seed }); t.scale.set(k, 0.95, k); }
+    add(crown, sphere(10, 16, 12), mat(cols[2]), 0, 56, 0).scale.set(0.3, 0.42, 0.3);
+    fuse(crown);
     g.userData.size = { w: 14, d: 12 };
     return { group: g, crown };
   }
   function bush(seed = 1, col = '#5DB64C') {
     const g = new THREE.Group(); const r = rng(seed * 31);
-    for (let i = 0; i < 4; i++) { const b = add(g, ico(6 + r() * 3, 1), mat(i % 2 ? col : mix(col, '#2e6a30', 0.15), { p: { flatShading: true } }), (r() - 0.5) * 12, 5 + r() * 3, (r() - 0.5) * 8); b.scale.y = 0.85; b.rotation.set(r() * 3, r() * 3, 0); }
+    /* 14.0: remodelled — smooth round puffs (one big, three leaning on it), lighter on top */
+    const lo = mix(col, '#2e6a30', 0.18), hi = mix(col, '#c8f08a', 0.22), puff = sphere(10, 16, 12);
+    for (const [x, y, z, k, m] of [[0, 5.5, 0, 0.82, col], [-6.5, 4.5, 1.5, 0.6, lo], [6.5, 4.5, -1, 0.62, col], [1, 4, 5, 0.55, lo], [-2.5, 9.5, 1.5, 0.4, hi]]) { const b = add(g, puff, mat(m), x + (r() - 0.5) * 2, y, z + (r() - 0.5) * 1.5); b.scale.set(k, k * 0.86, k * 0.92); }
     if (seed % 2) for (let i = 0; i < 5; i++) add(g, sphere(1.4, 8, 6), mat(seed % 4 === 1 ? '#FFFFFF' : P.pink), (r() - 0.5) * 14, 8 + r() * 4, 3 + r() * 4, { cast: false });
+    fuse(g);
     g.userData.size = { w: 18, d: 12 };
     return { group: g, crown: g };
   }
   function rock(s = 1, seed = 1) {
     const g = new THREE.Group();
-    const r = add(g, geo(`rock${seed % 3}`, () => { const q = new THREE.DodecahedronGeometry(8, 1); const p = q.attributes.position; const rr2 = rng(seed % 3 + 5); for (let i = 0; i < p.count; i++) { const k = 0.85 + rr2() * 0.25; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } q.computeVertexNormals(); return q; }), mat(P.stone), 0, 3.5 * s, 0);
+    const r = add(g, geo(`rock${seed % 3}`, () => { /* 14.0: remodelled — a rounder, river-worn pebble (smooth sphere pushed by a few slow waves) instead of a jagged lump */ const q = new THREE.SphereGeometry(8, 18, 12); const p = q.attributes.position; const sd = seed % 3 + 1; for (let i = 0; i < p.count; i++) { const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i); const k = 1 + 0.09 * Math.sin(X * 0.42 + sd * 1.7) + 0.08 * Math.sin(Z * 0.5 + sd * 2.9) + 0.06 * Math.sin(Y * 0.7 + sd); p.setXYZ(i, X * k, (Y < 0 ? Y * 0.55 : Y) * k, Z * k); } q.computeVertexNormals(); return q; }), mat(P.stone), 0, 3.5 * s, 0);
     r.scale.set(s, s * 0.62, s);
     g.userData.size = { w: 14 * s, d: 12 * s };
     return g;
@@ -184,6 +229,7 @@
       const c = cols[(i + seed) % 5];
       for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU; add(f, sphere(1.2, 6, 4), mat(c), Math.cos(a) * 1.3, hh + 0.4, Math.sin(a) * 1.3, { cast: false }); }
       add(f, sphere(0.9, 6, 4), mat('#FFD34D'), 0, hh + 0.7, 0, { cast: false });
+      fuse(f);   /* 14.0: a flower is 8 little meshes → 3 (stem + leaf, petals, centre); it still sways as one */
       blooms.push(f);
     }
     g.userData.size = { w, d }; g.userData.blooms = blooms;
@@ -193,7 +239,7 @@
     const g = new THREE.Group(); const m = mat('#EAD3AE');
     for (let x = -len / 2; x <= len / 2 + 0.1; x += 10) { add(g, rbox(3.2, 12, 3.2, 1.2), m, x, 6, 0); add(g, cone(2.3, 2.6, 4), m, x, 13.3, 0, { ry: Math.PI / 4 }); }
     add(g, rbox(len, 2, 1.6, 0.7), m, 0, 9, 0); add(g, rbox(len, 2, 1.6, 0.7), m, 0, 4.5, 0);
-    return g;
+    return fuse(g);
   }
   function lampPost(withLight) {
     const g = new THREE.Group();
@@ -207,7 +253,7 @@
     if (withLight) { L = new THREE.PointLight('#FFC870', 0, 140, 1.7); L.position.y = 33; g.add(L); }
     night.lamps.push({ m: capM, L });
     g.userData.size = { w: 6, d: 6 };
-    return g;
+    return fuse(g);
   }
   function bench() {
     const g = new THREE.Group(); const wM = mat('#D9A26A'), leg = mat('#6B4F3A');
@@ -215,7 +261,7 @@
     for (let i = 0; i < 2; i++) add(g, rbox(36, 3, 2, 0.8), wM, 0, 14 + i * 4.6, -6.8, { rx: -0.12 });
     for (const sx of [-15, 15]) { add(g, rbox(2.4, 9, 9, 0.8), leg, sx, 4.5, -0.5); add(g, rbox(2.4, 12, 2, 0.8), leg, sx, 14, -6.8); }
     g.userData.size = { w: 38, d: 12 };
-    return g;
+    return fuse(g);
   }
   function signpost(text) {
     const g = new THREE.Group();
@@ -241,7 +287,7 @@
     for (let k = 0; k < n; k++) { const x = -len / 2 + (k + 0.5) * (len / n); const y = 4 + Math.sin((k + 0.5) / n * Math.PI) * 3; add(g, rbox(len / n - 0.6, 2.4, wid, 0.8), k % 2 ? pl : pl2, x, y, 0); }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(1.6, 1.8, 12, 8), post, sx * (len / 2 - 2), 8, sz * (wid / 2 - 1));
     for (const sz of [-1, 1]) { const r = add(g, rbox(len - 2, 1.6, 1.6, 0.6), post, 0, 12.5, sz * (wid / 2 - 1)); }
-    return g;
+    return fuse(g);
   }
 
   // ======================= furniture (placeable) =======================
@@ -256,5 +302,5 @@
   };
   function furniture(id) { const it = OC.Style.ITEMS[id]; const g = it && it.custom && OC.Models.standee ? OC.Models.standee(it) : (FURN[id] || FURN.plant)(); g.userData.furn = id; return g; }
 
-  OC.Models = { FURN, trunk, mat, geo, mesh, add, rbox, sphere, ico, cyl, cone, lathe, house, stall, fruitTree, palm, cedar, bush, rock, flowerBed, fence, lampPost, bench, signpost, mushroom, stump, bridge, furniture, night };
+  OC.Models = { FURN, fuse, trunk, mat, geo, mesh, add, rbox, sphere, ico, cyl, cone, lathe, house, stall, fruitTree, palm, cedar, bush, rock, flowerBed, fence, lampPost, bench, signpost, mushroom, stump, bridge, furniture, night };
 })();

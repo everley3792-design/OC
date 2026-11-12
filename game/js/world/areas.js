@@ -142,17 +142,19 @@
     const cliffM = Mo.mat('#FFFFFF', { p: { map: cliffTex() } });
     root.add(slab(blobPts(ctx, TER, 1), HY - 1, HY + 1.5, [Mo.mat(P.cliff), cliffM], 0));
     root.add(slab(blobPts(ctx, TER, 1, 1), HY + 1.5, 3, [lawn, Mo.mat(P.lip)], 2));
+    const railG = new THREE.Group(); root.add(railG);   /* 14.0: the terrace railing is ~110 posts and rails of one material → one mesh */
     for (let a = 0.12; a < Math.PI - 0.12; a += 0.055) {
       const k = 1 + 0.045 * Math.sin(3 * a + TER.seed) + 0.03 * Math.sin(5 * a + TER.seed * 2.1) + 0.02 * Math.sin(8 * a + TER.seed * 0.7);
       const x = TER.cx + Math.cos(a) * (TER.rx - 7) * k, y = TER.cy + Math.sin(a) * (TER.ry - 7) * k;
       if (RAMPS.some((r) => Math.abs(x - r.xc) < r.w / 2 + 4) || Math.abs(x - WATERFALL_X) < 14) continue;
-      const p = Mo.add(root, Mo.rbox(3.4, 12, 3.4, 1.3), Mo.mat('#EAD3AE')); p.position.copy(V3(x, y, 1, 7.5));
+      const p = Mo.add(railG, Mo.rbox(3.4, 12, 3.4, 1.3), Mo.mat('#EAD3AE')); p.position.copy(V3(x, y, 1, 7.5));
       const a2 = a + 0.055, k2 = 1 + 0.045 * Math.sin(3 * a2 + TER.seed) + 0.03 * Math.sin(5 * a2 + TER.seed * 2.1) + 0.02 * Math.sin(8 * a2 + TER.seed * 0.7);
       const x2 = TER.cx + Math.cos(a2) * (TER.rx - 7) * k2, y2 = TER.cy + Math.sin(a2) * (TER.ry - 7) * k2;
       if (RAMPS.some((r) => Math.abs(x2 - r.xc) < r.w / 2 + 4) || Math.abs(x2 - WATERFALL_X) < 14 || a2 >= Math.PI - 0.12) continue;
       const A = V3(x, y, 1, 9.5), B = V3(x2, y2, 1, 9.5), mid = A.clone().add(B).multiplyScalar(0.5), len = A.distanceTo(B);
-      const rail = Mo.add(root, Mo.rbox(1.6, 1.8, 1, 0.5), Mo.mat('#EAD3AE'), 0, 0, 0, { cast: false }); rail.position.copy(mid); rail.scale.set(1, 1, len); rail.lookAt(B);
+      const rail = Mo.add(railG, Mo.rbox(1.6, 1.8, 1, 0.5), Mo.mat('#EAD3AE'), 0, 0, 0, { cast: false }); rail.position.copy(mid); rail.scale.set(1, 1, len); rail.lookAt(B);
     }
+    Mo.fuse(railG);
     // ramps: solid stone stairs with low side walls
     for (const r of RAMPS) {
       const N = 9, runZ = (RAMP_RUN - 24) / SIN;

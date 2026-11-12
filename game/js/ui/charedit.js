@@ -166,6 +166,40 @@
       const set = (k) => (v, live) => { F()[k] = v; x.changed('look', live ? null : 'idle'); };
       const crop = (k) => (v, live) => { F().crop[k] = v / 100; x.changed('look', live ? null : 'idle'); };
       const pct = (v) => Math.round(v) + '%', box = h('div', { 'data-sec': 'image' });
+      /* 14.0: crop / move / zoom straight on the picture with your fingers (the sliders below stay for fine tuning) */
+      const cropBox = () => {
+        const r = OC.CharRender.spriteFor(c, { action: 'idle' }), img = r && OC.Anim.composite(r.doc, 0);
+        if (!img) return h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, '圖片還在載入，稍後再開一次這一頁就能直接在圖上裁切。');
+        const W = 260, k = Math.min(W / r.doc.w, 260 / r.doc.h), w = Math.round(r.doc.w * k), hh = Math.round(r.doc.h * k);
+        const cv = h('canvas', { width: w * 2, height: hh * 2 }); cv.style.cssText = `width:${w}px;height:${hh}px;display:block`;
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = !c.appearance.pixel; g.drawImage(img, 0, 0, w * 2, hh * 2);
+        const rect = h('div.crop-rect'), wrap = h('div.crop-box', { style: { width: w + 'px', height: hh + 'px' }, 'aria-label': '裁切框' }, cv, rect);
+        const lay = () => { const k2 = F().crop; rect.style.left = k2.l * 100 + '%'; rect.style.top = k2.t * 100 + '%'; rect.style.right = k2.r * 100 + '%'; rect.style.bottom = k2.b * 100 + '%'; };
+        const cl = (v) => Math.max(0, Math.min(0.45, v));
+        for (const side of ['l', 't', 'r', 'b']) {
+          const hd = h('div.crop-h.' + side, { role: 'slider', 'aria-label': { l: '左邊', t: '上邊', r: '右邊', b: '下邊' }[side] });
+          let s0 = null;
+          hd.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); hd.setPointerCapture(e.pointerId); s0 = { x: e.clientX, y: e.clientY, v: F().crop[side] }; });
+          hd.addEventListener('pointermove', (e) => { if (!s0) return; const d = side === 'l' ? (e.clientX - s0.x) / w : side === 'r' ? (s0.x - e.clientX) / w : side === 't' ? (e.clientY - s0.y) / hh : (s0.y - e.clientY) / hh; F().crop[side] = cl(s0.v + d); lay(); x.changed('look', null); });
+          const end = () => { if (!s0) return; s0 = null; x.changed('look', 'idle'); build(); };
+          hd.addEventListener('pointerup', end); hd.addEventListener('pointercancel', end);
+          rect.append(hd);
+        }
+        /* inside the frame: one finger moves the character, two fingers zoom it */
+        const pts = new Map(); let m0 = null;
+        const snap = () => { const a = [...pts.values()]; m0 = { n: a.length, x: a[0].x, y: a[0].y, d: a.length > 1 ? Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) : 0, dx: F().dx, dy: F().dy, zoom: F().zoom }; };
+        rect.addEventListener('pointerdown', (e) => { e.preventDefault(); rect.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); snap(); });
+        rect.addEventListener('pointermove', (e) => {
+          if (!pts.has(e.pointerId) || !m0) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); const a = [...pts.values()], f = F();
+          if (a.length !== m0.n) { snap(); return; }
+          if (a.length > 1 && m0.d > 10) f.zoom = Math.max(0.4, Math.min(2.5, m0.zoom * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / m0.d));
+          else { f.dx = Math.max(-50, Math.min(50, m0.dx + (a[0].x - m0.x) / hh * 100)); f.dy = Math.max(-50, Math.min(50, m0.dy + (a[0].y - m0.y) / hh * 100)); }
+          x.changed('look', null);
+        });
+        const up = (e) => { if (!pts.delete(e.pointerId)) return; if (pts.size) snap(); else { m0 = null; x.changed('look', 'idle'); build(); } };
+        rect.addEventListener('pointerup', up); rect.addEventListener('pointercancel', up);
+        lay(); return wrap;
+      };
       const build = () => {
         const fr = F();
         box.replaceChildren(T('調整圖片', '原圖不會被改動，隨時可以重設'),
@@ -173,7 +207,8 @@
           h('div.hstack', null, h('span.grow', null, '走路時跟著左右轉向'), toggle(fr.faces !== 'front', (v) => { F().faces = v ? 'right' : 'front'; x.changed('look'); })),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 10px' } }, '開啟時，請讓圖裡的角色面向右邊——方向不對就按「左右翻轉」。正面的圖可以關掉，就不會被鏡像。'),
           num('放大縮小', fr.zoom, 0.4, 2.5, 0.01, set('zoom'), (v) => Math.round(v * 100) + '%'), num('水平位置', fr.dx, -50, 50, 1, set('dx')), num('垂直位置', fr.dy, -50, 50, 1, set('dy')),
-          T('裁切', '從四邊往內裁掉不要的部分'),
+          T('裁切', '拖曳四邊的把手；框內單指拖曳＝移動位置，兩指＝放大縮小'), cropBox(),
+          h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '6px 0 4px' } }, '也可以用下面的滑桿微調：'),
           num('上', fr.crop.t * 100, 0, 45, 1, crop('t'), pct), num('下', fr.crop.b * 100, 0, 45, 1, crop('b'), pct), num('左', fr.crop.l * 100, 0, 45, 1, crop('l'), pct), num('右', fr.crop.r * 100, 0, 45, 1, crop('r'), pct),
           h('button.btn.s.ghost', { style: { marginTop: '6px' }, on: { click: () => { c.appearance.frame = null; x.changed('look'); build(); } } }, '全部重設'),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '還沒畫的動作（走路、吃飯、睡覺、開心…）圖片會自己表演：搖擺、彈跳，加上愛心、Zzz、碎屑等特效。之後在動畫工作室畫了某個動作，就改播你畫的。'));
