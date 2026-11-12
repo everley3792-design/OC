@@ -30,7 +30,6 @@ const MODE = process.argv[3] || 'both';
     ['23-profile-grow', () => OC.Pages.open('profile', { id: OC.Store.s.activeId, tab: 'grow' })],
     ['24-profile-rel', () => OC.Pages.open('profile', { id: OC.Store.s.activeId, tab: 'rel' })],
     ['25-charedit', () => OC.Pages.open('charedit', { id: OC.Store.s.activeId })],
-    ['26-creator', () => OC.Creator.start()],
     ['30-workshop', () => OC.App.tab('workshop')],
     ['31-library', () => OC.Pages.open('library')],
     ['32-studio', () => OC.Pages.open('studio', { id: OC.Store.s.activeId })],
@@ -50,6 +49,7 @@ const MODE = process.argv[3] || 'both';
     ['61-petone', () => OC.Pages.open('petone', { id: OC.Store.s.activeId })],
     ['62-pettools', () => OC.Pages.open('pettools')],
     ['63-petapps', () => OC.Pages.open('petapps')],
+    ['70-creator', () => { OC.Creator.start(); /* not awaited: it resolves when the flow is closed */ }],
   ];
   const themes = MODE === 'both' ? ['light', 'dark'] : [MODE];
   for (const th of themes) {
