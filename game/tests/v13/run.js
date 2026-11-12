@@ -31,6 +31,8 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
     // ================= 1. the view follows =================
     if (want(1)) {
       await quiet(); await closeAll(); await go('home');
+      /* wait until nothing is in the way (a dialogue, an event, a gathering that happened to start while the place was loading) */
+      for (let k = 0; k < 10; k++) { if (await page.evaluate(() => OC.App.canLead())) break; await quiet(); await closeAll(); await wait(page, 1500); }
       const r1 = await page.evaluate(([me]) => {
         const S = OC.Store.s.life.settings, b = OC.Brain.get(me), c = OC.Chars.get(me); S.autonomy = 'full'; S.travel = true; S.lead = true; b.cmdAt = -1e9; b.ledAt = -1e9;
         Object.assign(c.needs, { fun: 20, interest: 20, social: 30, food: 80, sleep: 90, energy: 90, comfort: 80 });
@@ -38,7 +40,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         const manual = n('manual'), semi = n('semi'), auto = n('auto');
         OC.App.tab('char'); const behindPage = OC.Brain.travelCands(c, b).length; OC.App.tab('island');
         S.lead = false; const off = OC.Brain.travelCands(c, b).length; S.lead = true;
-        return { manual, semi, auto, behindPage, off, isManualBrain: !!b.manual };
+        return { manual, semi, auto, behindPage, off, isManualBrain: !!b.manual, canLead: OC.App.canLead(), urgent: OC.Mind.urgent(c) || null, ev: !!OC.Events.current, arcs: !!(OC.Arcs && OC.Arcs.running), stack: OC.UI.stack.length, hidden: document.hidden };
       }, ids);
       check('1a 操控中的角色：手動模式不會自己想去別的地方；半自動／全自動會；你在看別的頁面、或把設定關掉時不會', r1.isManualBrain && r1.manual === 0 && r1.semi > 0 && r1.auto > 0 && r1.behindPage === 0 && r1.off === 0, r1);
       // it really goes: the same call the AI makes (startTravel) → walks to the door → the place changes → it does what it had in mind
