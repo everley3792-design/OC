@@ -684,7 +684,7 @@
   function showDialogue(who, lines, choices, done, custom) {
     closeTray();
     if (dlgOpen) endDialogue();   // 10.0 fix: a dialogue replaced by another one never ran its done() — the OC stayed held ('dialogue') forever
-    dlgOpen = { lines: lines.slice(), choices, done, i: 0, custom: !!custom, layer: { scrim: false, close: () => endDialogue() } };
+    dlgOpen = { lines: lines.slice(), choices, done, i: 0, custom: !!custom, layer: { scrim: false, close: () => endDialogue() } }; document.body.classList.add('talking');
     OC.UI.pushLayer(dlgOpen.layer);
     dlg.who.textContent = who;
     // 13.0: the name tab takes the speaker's own colour and the text is typed with that character's voice
@@ -713,7 +713,7 @@
     if (d.choices.length) return;   // must pick a choice
     endDialogue();
   }
-  function endDialogue() { const d = dlgOpen; if (!d) return; dlgOpen = null; OC.UI.popLayer(d.layer); dlg.el.classList.remove('open'); clearInterval(typeT); d.done && d.done(); }
+  function endDialogue() { const d = dlgOpen; if (!d) return; dlgOpen = null; document.body.classList.remove('talking'); OC.UI.popLayer(d.layer); dlg.el.classList.remove('open'); clearInterval(typeT); d.done && d.done(); }
 
   // =============================== decorate / placement ===============================
   let decoEl = null;

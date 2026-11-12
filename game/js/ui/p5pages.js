@@ -277,17 +277,20 @@
       p.q = h('input.input', { type: 'search', placeholder: '搜尋名稱、類別、標籤…', 'aria-label': '搜尋', on: { input: () => p.refresh(p) } });
       p.group = 'all'; p.sort = 'kind';
       p.chips = h('div.chips.scroll.cats'); p.sortSel = h('select.input.s', { 'aria-label': '排序', on: { change: (e) => { p.sort = e.target.value; p.refresh(p); } } }, ...[['kind', '依類別'], ['name', '依名稱'], ['count', '依數量'], ['rarity', '依稀有度'], ['price', '依價格']].map(([v, t]) => h('option', { value: v }, t)));
-      p.grid = h('div.grid.c4'); p.sum = h('div.muted', { style: { fontSize: 'var(--fs-s)' } });
+      p.grid = h('div.grid.c4.pockets'); p.sum = h('div.pocket-sum');
       el.append(h('div.hstack', null, p.q, p.sortSel), p.chips, p.sum, p.grid, small('背包和快捷背包是同一份庫存。物品只能從商店、探索、活動、收成與獎勵取得。'));
     },
     refresh(p) {
-      if (same(p, [JSON.stringify(S().inv), JSON.stringify(S().favs || {}), p.q.value, p.group, p.sort].join('|'))) return;
+      if (same(p, [JSON.stringify(S().inv), JSON.stringify(S().favs || {}), p.q.value, p.group, p.sort, S().coins].join('|'))) return;
       const owned = Object.keys(S().inv).filter((id) => I(id) && St.count(id) > 0);
       const groups = [['all', '全部'], ['fav', '★ 收藏']].concat(IT().GROUPS.map(([k, zh]) => [k, zh]));
       p.chips.replaceChildren(...groups.map(([k, zh]) => { const n = k === 'all' ? owned.length : k === 'fav' ? owned.filter((id) => (S().favs || {})[id]).length : owned.filter((id) => IT().groupOf(id) === k).length; return catBtn(k, zh.replace('★ ', ''), n, p.group === k, () => { haptic('tick'); p.group = k; p.refresh(p); }); }));
       const list = IT().query(owned, { q: p.q.value, group: p.group === 'fav' ? 'all' : p.group, fav: p.group === 'fav', sort: p.sort });
-      p.sum.textContent = `${list.length} 種・共 ${list.reduce((a, id) => a + St.count(id), 0)} 個`;
-      p.grid.replaceChildren(...(list.length ? list.map((id) => h('button.tile', { on: { click: () => itemSheet(id, () => p.refresh(p)) } }, img(id, 44), h('span.ellipsis', null, I(id).zh), h('span.count', null, '×' + St.count(id)), (S().favs || {})[id] ? h('span.fav', null, '★') : null)) : [h('div.empty', { style: { gridColumn: '1 / -1' } }, owned.length ? '沒有符合的物品' : '背包是空的。搖果樹、採集、釣魚或到商店逛逛吧！')]));
+      p.sum.replaceChildren(h('b', null, `${list.length} 種`), h('span', null, `共 ${list.reduce((a, id) => a + St.count(id), 0)} 個`), h('span.pocket-coins', null, OC.UI.sticker('coin', 's'), h('b.num', null, String(S().coins))));
+      const tiles = (list.length ? list.map((id) => h('button.tile', { on: { click: () => itemSheet(id, () => p.refresh(p)) } }, img(id, 44), h('span.ellipsis', null, I(id).zh), h('span.count', null, '×' + St.count(id)), (S().favs || {})[id] ? h('span.fav', null, '★') : null)) : [h('div.empty', { style: { gridColumn: '1 / -1' } }, owned.length ? '沒有符合的物品' : '背包是空的。搖果樹、採集、釣魚或到商店逛逛吧！')]);
+      /* 14.0: the bag is a set of pockets — the empty ones are drawn too, so it reads as a bag and not as a short list */
+      if (list.length) for (let k = list.length; k < Math.max(16, Math.ceil(list.length / 4) * 4); k++) tiles.push(h('div.tile.pocket-empty', { 'aria-hidden': 'true' }));
+      p.grid.replaceChildren(...tiles);
     },
   });
 
@@ -414,11 +417,26 @@
   Pg().define('ledger', '交易紀錄', {
     sub: true,
     refresh(p, el) {
-      if (same(p, OC.Tx.log.length + ':' + (OC.Tx.log[0] ? OC.Tx.log[0].key : ''))) return;
-      const L = OC.Tx.log.slice(0, 120);
-      el.replaceChildren(small('所有星幣與物品的變化都會記錄在這裡（最近 300 筆）。'), L.length ? h('div.list', null, ...L.map((e) => { const items = (o) => Object.entries((o && o.items) || {}).map(([id, n]) => `${(I(id) || { zh: id }).zh}×${n}`).join('、'); const plus = [e.get && e.get.coins ? `+${e.get.coins} 星幣` : '', items(e.get)].filter(Boolean).join(' '), minus = [e.pay && e.pay.coins ? `-${e.pay.coins} 星幣` : '', items(e.pay) ? '−' + items(e.pay) : ''].filter(Boolean).join(' '); return row(null, e.reason || '交易', `${new Date(e.at).toLocaleString('zh-TW')}　${[plus, minus].filter(Boolean).join('　')}`); })) : card(h('span.faint', null, '還沒有交易')));
+      if (same(p, OC.Tx.log.length + ':' + (OC.Tx.log[0] ? OC.Tx.log[0].key : '') + ':' + S().coins)) return;
+      const L = OC.Tx.log.slice(0, 120), day = (t) => new Date(t).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short' }), today = day(Date.now());
+      const items = (o) => Object.entries((o && o.items) || {}).map(([id, n]) => `${(I(id) || { zh: id }).zh}×${n}`).join('、');
+      let inc = 0, out = 0; for (const e of L) if (day(e.at) === today) { inc += (e.get && e.get.coins) || 0; out += (e.pay && e.pay.coins) || 0; }
+      const kids = [h('div.card.ledger-top', null,
+        h('div.ledger-bal', null, OC.UI.sticker('coin'), h('div', null, h('small', null, '現在有'), h('b.num', null, String(S().coins)), h('small', null, ' 星幣'))),
+        h('div.ledger-day', null, h('div', null, h('small', null, '今天收入'), h('b.num.plus', null, '+' + inc)), h('div', null, h('small', null, '今天支出'), h('b.num.minus', null, '−' + out))))];
+      if (!L.length) kids.push(h('div.empty', null, '還沒有任何交易。買東西、賣東西、完成任務之後，都會記在這裡。'));
+      let cur = null, list = null;
+      for (const e of L) {
+        const d = day(e.at); if (d !== cur) { cur = d; list = h('div.list'); kids.push(h('div.section-title', null, d === today ? '今天' : d), list); }
+        const plus = [e.get && e.get.coins ? `+${e.get.coins}` : '', items(e.get)].filter(Boolean).join(' '), minus = [e.pay && e.pay.coins ? `−${e.pay.coins}` : '', items(e.pay) ? '−' + items(e.pay) : ''].filter(Boolean).join(' ');
+        list.append(h('div.ledger-row', null, h('div.grow', null, h('b', null, e.reason || '交易'), h('small', null, new Date(e.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }))),
+          h('div.ledger-amt', null, plus ? h('span.plus', null, plus) : null, minus ? h('span.minus', null, minus) : null)));
+      }
+      kids.push(small('最近 120 筆。所有星幣與物品的變化都會記在這裡。'));
+      el.replaceChildren(...kids);
     },
   });
+
 
   // ======================= food preferences (editor + profile) =======================
   const FOODS = () => Object.keys(OC.Style.ITEMS).filter((id) => IT().isFood(id) && !I(id).custom || (I(id).custom && (I(id).kind === 'food' || I(id).kind === 'drink')));

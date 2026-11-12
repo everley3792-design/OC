@@ -30,13 +30,14 @@
   // ================================================================== center
   Pg().define('petcenter', '桌寵管理', {
     sub: true,
-    build(p, el) { p.top = h('div'); p.body = h('div'); el.append(p.top, p.body); },
-    onShow(p) { clearInterval(p.timer); p.timer = setInterval(() => { if (p.el.classList.contains('open')) p.refresh(p); }, 2000); },
-    onHide(p) { clearInterval(p.timer); },
+    build(p, el) { p.desk = h('div.pet-desk', { 'aria-label': '桌面預覽' }); p.top = h('div'); p.body = h('div'); el.append(p.desk, p.top, p.body); },
+    onShow(p) { clearInterval(p.timer); p.timer = setInterval(() => { if (p.el.classList.contains('open')) p.refresh(p); }, 2000); clearInterval(p.anim); p.t0 = performance.now(); p.anim = setInterval(() => deskDraw(p), 110); },
+    onHide(p) { clearInterval(p.timer); clearInterval(p.anim); },
     refresh(p) {
       const n = N(), st = PS().status(), pm = PS().perms(), G = P().global;
       const ids = PS().on(), sig = JSON.stringify([!!n, st && [st.code, st.msg, (st.pets || []).length, st.paused], pm, ids, G, Ch().all().map((c) => c.id + c.updated), P().app.enabled, P().widget]);
       if (same(p, sig)) return;
+      desk(p, st);
       if (!n) {
         p.top.replaceChildren(card(h('div.lock-note', null, icon('lock', 's'), '桌寵是 Android 的系統懸浮視窗：需要安裝 Android App。在瀏覽器裡無法顯示在其他 App 上方。')));
         p.body.replaceChildren(T('桌面上的 OC'), pickList(p, false), h('div.list', { style: { marginTop: '12px' } }, lockedRow('paw', '啟動桌寵', '需要 Android App'), lockedRow('phone', 'App 情境對話', '需要 Android App'), lockedRow('clock', '番茄鐘與提醒', '需要 Android App（待辦與筆記可以在這裡用）')),
@@ -86,6 +87,28 @@
           row('trash', '清除桌寵資料', '收起桌寵、刪除桌面用的圖像、提醒與待同步的互動（遊戲存檔不受影響）', null, async () => { if (!(await confirm('清除桌寵資料？', '還沒同步回遊戲的桌面互動也會一起刪除。', '清除', true))) return; n.petClearAll(); P().exported = {}; St.touch('pet'); toast('已清除', 'trash'); p._sig = ''; p.refresh(p); })));
     },
   });
+  /* 14.0: the little desk at the top — the OCs you picked stand on it the way they will on the phone (a preview drawn by the game;
+   * the real pets are native windows). It shows who goes out, who is out right now, and invites you to pick someone when it is empty. */
+  function desk(p, st) {
+    const ids = PS().on(), run = !!st && (st.code === 'running' || st.code === 'paused');
+    p.deskPets = ids.map((id) => Ch().get(id)).filter(Boolean).map((c, i) => { const cv = h('canvas', { width: 176, height: 176 }); return { c, cv, i }; });
+    p.desk.classList.toggle('live', run);
+    p.desk.replaceChildren(
+      h('div.pet-desk-sky', null, h('span.tag' + (run ? '.teal' : ''), null, run ? (st.code === 'paused' ? '暫停中' : '在桌面上') : (PS().native() ? '還沒出門' : '預覽'))),
+      p.deskPets.length ? h('div.pet-desk-row', null, ...p.deskPets.map((d) => h('button.pet-desk-pet', { 'aria-label': name(d.c) + '的桌寵設定', on: { click: () => { haptic('tick'); Pg().open('petone', { id: d.c.id }); } } }, d.cv, h('small', null, name(d.c)))))
+        : h('div.pet-desk-empty', null, OC.UI.sticker('paw'), h('b', null, '桌面上還沒有人'), h('span', null, '在下面打開想帶去桌面的角色')),
+      h('div.pet-desk-floor'));
+    deskDraw(p);
+  }
+  function deskDraw(p) {
+    if (!p.deskPets || !p.el.classList.contains('open')) return;
+    const t = (performance.now() - (p.t0 || 0)) / 1000;
+    for (const d of p.deskPets) {
+      if (!d.cv.isConnected) continue;
+      const k = (t + d.i * 2.3) % 9, action = k > 7.6 ? 'greet' : 'idle';
+      OC.CharRender.portrait(d.cv, d.c, { pose: { action, at: t, blink: (t + d.i) % 3.4 < 0.14 ? 1 : 0, breath: Math.sin(t * 1.6 + d.i), mouth: 'smile' }, t });
+    }
+  }
   function widgetCard(p) {
     const W = PS().wcfg(), chars = Ch().all(), NEEDS = OC.LifeData.NEEDS;
     const pushW = () => { St.touch('pet'); PS().widget(); };
