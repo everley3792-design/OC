@@ -204,7 +204,7 @@
     if (res && res.sprite) return `S${res.doc.id}:${res.doc.updated}:${res.i}:${res.mirror ? 1 : 0}:${(p.blink || 0) > 0.5 ? 1 : 0}:${res.loading ? 'L' + Math.random() : ''}:${c.updated}:${(p.lift || 0).toFixed(1)}` + (res.puppet ? `:P${p.action || 'idle'}:${!p.action || p.action === 'idle' ? Math.round((p.at || 0) * 2) : Math.round((p.at || 0) * 12)}:${p.walk > 0.05 ? Math.round(((p.phase || 0) % 2) * 6) : 'x'}:${p.touch ? p.touch.zone + Math.round(p.touch.lv * 8) : ''}${p.fx || ''}` : '');   // 13.0: a picture that performs repaints with the action's time
     const q = (v, n) => Math.round((v || 0) * n);
     const loaded = (c.parts || []).reduce((n, pt) => n + (OC.Assets.peek(pt.assetId) ? 1 : 0), 0);
-    return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) || (OC.Anim11 && OC.Anim11.has(p.action)) || p.touch ? 10 : p.action === 'idle' || !p.action ? 4 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}${tk}${p.fx || ''}`;
+    return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) || (OC.Anim11 && OC.Anim11.has(p.action)) || p.touch ? 10 : p.action === 'idle' || !p.action ? 2 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}${tk}${p.fx || ''}`;
   }
 
   /** draw a character to fill a portrait canvas */

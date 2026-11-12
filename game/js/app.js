@@ -39,7 +39,7 @@
    * re-applied or the app restarts. Not in automated runs (software rendering is always "slow"; those have their own fixed settings). */
   let adaptLv = 0, adaptBad = 0;
   function adaptStep(fps) {   /* called every half second with the measured rate; returns true when it stepped down */
-    if (S().settings.perf !== 'balanced' || adaptLv >= 2 || paused || document.hidden) { adaptBad = 0; return false; }
+    if (S().settings.perf !== 'balanced' || adaptLv >= 3 || paused || document.hidden) { adaptBad = 0; return false; }
     if (fps < 42 && fps > 1) adaptBad++; else adaptBad = 0;
     if (adaptBad < 6) return false;   /* three seconds in a row */
     adaptBad = 0; adaptLv++; applyPerf(true); return true;
@@ -47,7 +47,7 @@
   function applyPerf(keepAdapt) {
     if (!keepAdapt) { adaptLv = 0; adaptBad = 0; }
     Q = perfOf(S().settings.perf);
-    if (adaptLv && S().settings.perf === 'balanced') { Q.ratio = Math.max(1, Q.ratio - 0.25 * adaptLv); Q.shadows = adaptLv >= 2 ? 512 : Q.shadows; Q.grass = adaptLv >= 2 ? 0.35 : Q.grass; Q.bb = adaptLv >= 2 ? 192 : Q.bb; Q.bbMax = adaptLv >= 2 ? 384 : Q.bbMax; } if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
+    if (adaptLv && S().settings.perf === 'balanced') { Q.ratio = Math.max(1, Q.ratio - 0.25 * adaptLv); Q.shadows = adaptLv >= 2 ? 512 : Q.shadows; Q.grass = adaptLv >= 2 ? 0.35 : Q.grass; Q.bb = adaptLv >= 2 ? 192 : Q.bb; Q.bbMax = adaptLv >= 2 ? 384 : Q.bbMax; if (adaptLv >= 3) { Q.shadows = 0; Q.grass = 0; Q.lights = false; Q.bb = 160; Q.bbMax = 256; } /* 14.2: the last step drops the sun's shadow pass (half of all drawing) and the grass */ } if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
     Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
     const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof); root.classList.toggle('lite', !Q.fx);   // saver: no backdrop blur (costly on weak GPUs), opaque glass instead
   }
@@ -839,14 +839,14 @@
   function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; document.documentElement.classList.toggle('joy-on', S().settings.control === 'joy'); }
 
   // =============================== main loop ===============================
-  let hudT = 0;
+  let hudT = 0, loopMs = 0, loopN = 0;
   let presT = 0, autoSaveT = 0, last = performance.now(), lastSim = performance.now(), acc = 0, fpsN = 0, fpsT = 0, saveStepT = 0, lastWx = null, holdT = 0, editing = new Set();
   function loop(now) {
     requestAnimationFrame(loop);
     if (paused) { last = now; lastSim = now; return; }
     const minDt = 1000 / (Q ? Q.fps : 60) - 1.5;
     if (now - last < minDt) return;
-    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const dt = Math.min(0.1, (now - last) / 1000); last = now; const loopT0 = performance.now();
     // render the world only while it is visible (a tab page covers it fully otherwise)
     const covered = curTab !== 'island' || OC.UI.stack.some((l) => l.close && Object.values(OC.Pages.pages).some((p) => p.layer === l));
     const ov = overlays(); if (ov && ov.style.visibility !== (covered ? 'hidden' : '')) ov.style.visibility = covered ? 'hidden' : '';   // world bubbles never show over pages
@@ -882,7 +882,8 @@
     if (OC.Mind11) OC.Mind11.update(dt);
     if (OC.Arcs) OC.Arcs.update(dt);
     if (statusEl) updateStatus();
-    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { const fps = fpsN / fpsT; fpsEl.textContent = `${Math.round(fps)} fps`; fpsN = 0; fpsT = 0; if (!navigator.webdriver && curTab === 'island' && !OC.UI.stack.length) adaptStep(fps); }
+    loopMs += performance.now() - loopT0; loopN++;
+    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { const fps = fpsN / fpsT; { const ps = Wd.perfStats ? Wd.perfStats() : null, lm = loopN ? loopMs / loopN : 0; fpsEl.textContent = ps && !fpsEl.hidden ? `${Math.round(fps)} fps｜每幀 ${lm.toFixed(1)}ms（繪製 ${ps.renderMs.toFixed(1)}）｜角色重畫 ${Math.round(ps.paints / fpsT)}/秒｜呼叫 ${ps.calls}｜×${ps.ratio.toFixed(2)}｜陰影 ${ps.shadows}｜降級 ${adaptLv}` : `${Math.round(fps)} fps`; loopMs = 0; loopN = 0; } fpsN = 0; fpsT = 0; if (!navigator.webdriver && curTab === 'island' && !OC.UI.stack.length) adaptStep(fps); }
   }
   let intT = 0, lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }

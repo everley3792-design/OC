@@ -124,14 +124,14 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         const tree = M.fruitTree('#EE4B4B', 3), crownMeshes = tree.crown.children.filter((c) => c.isMesh).length, fruitsSeparate = tree.fruits.length === 6 && tree.fruits.every((f) => f.parent === tree.crown && f.isMesh);
         const house = M.house({}), hm = []; house.traverse((o) => { if (o.isMesh) hm.push(o); });
         const lit = M.night.windows.filter((m) => hm.some((o) => o.material === m)).length;
-        const bed = M.flowerBed(34, 18, 2), bloom = bed.userData.blooms[0]; let bm = 0; bloom.traverse((o) => { if (o.isMesh) bm++; });
+        const bed = M.flowerBed(34, 18, 2), bloom = bed.userData.blooms[0]; let bm = 0; bloom.traverse((o) => { if (o.isMesh) bm++; }); let bedMeshes = 0; bed.traverse((o) => { if (o.isMesh) bedMeshes++; });
         const nan = (g) => { let bad = 0; g.traverse((o) => { if (o.isMesh) { const p = o.geometry.attributes.position.array; for (let i = 0; i < p.length; i += 97) if (!Number.isFinite(p[i])) bad++; } }); return bad; };
-        return { calls: OC.World.fx.calls, meshes, crownMeshes, fruitsSeparate, houseMeshes: hm.length, lit, bloomMeshes: bm, blooms: bed.userData.blooms.length, sway: OC.World.swayTargets().filter(Boolean).length, nan: nan(house) + nan(tree.group) + nan(M.cedar(1).group) + nan(M.bush(3).group) + nan(M.rock(1, 2)), size: [house.userData.size, tree.group.userData.size] };
+        return { calls: OC.World.fx.calls, meshes, crownMeshes, fruitsSeparate, houseMeshes: hm.length, lit, bloomMeshes: bm, bedMeshes, blooms: bed.userData.blooms.length, sway: OC.World.swayTargets().filter(Boolean).length, nan: nan(house) + nan(tree.group) + nan(M.cedar(1).group) + nan(M.bush(3).group) + nan(M.rock(1, 2)), size: [house.userData.size, tree.group.userData.size] };
       });
       await shot(page, '5-island');
-      check('5a 靜態模型依材質合併：一棟房子從 80 多個零件變成 ≤ 24 個、一朵花 ≤ 3 個、樹冠的葉子 ≤ 4 個（果實仍然一顆一顆、可以單獨採）', r.houseMeshes <= 24 && r.bloomMeshes <= 3 && r.crownMeshes - 6 <= 4 && r.fruitsSeparate, r);
-      check('5b 整個小島的繪製呼叫 ≤ 330（14.0 之前約 550；含陰影那一遍）', r.calls > 0 && r.calls <= 330, { calls: r.calls, meshes: r.meshes });
-      check('5c 合併後功能不變：窗戶的夜間發光材質還接在房子上、花還是一朵一朵會搖、可以搖的樹和草叢都還在、占地不變、沒有壞掉的頂點', r.lit >= 3 && r.blooms >= 10 && r.sway >= 20 && r.nan === 0 && r.size[0].w === 76 && r.size[1].w === 14, { lit: r.lit, blooms: r.blooms, sway: r.sway, nan: r.nan, size: r.size });
+      check('5a 靜態模型依材質合併：一棟房子從 80 多個零件變成 ≤ 24 個、一整個花圃（含所有的花）≤ 12 個、樹冠的葉子 ≤ 4 個（果實仍然一顆一顆、可以單獨採）', r.houseMeshes <= 24 && r.bloomMeshes <= 8 && r.bedMeshes <= 12 && r.crownMeshes - 6 <= 4 && r.fruitsSeparate, r);
+      check('5b 整個小島的繪製呼叫 ≤ 200（14.0 之前約 550、14.0 約 250；含陰影那一遍）', r.calls > 0 && r.calls <= 200, { calls: r.calls, meshes: r.meshes });
+      check('5c 合併後功能不變：窗戶的夜間發光材質還接在房子上、花圃的花還是會隨風搖（14.2 起整個花圃一起）、可以搖的樹和草叢都還在、占地不變、沒有壞掉的頂點', r.lit >= 3 && r.blooms >= 1 && r.sway >= 20 && r.nan === 0 && r.size[0].w === 76 && r.size[1].w === 14, { lit: r.lit, blooms: r.blooms, sway: r.sway, nan: r.nan, size: r.size });
     }
 
     // ================= 6. small things found while looking at every screen =================
@@ -183,12 +183,34 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         out.blip = [30, 30, 30, 58, 30, 30, 30, 58].map((f) => OC.App.adaptStep(f)).some(Boolean);   /* a short dip is not a slow device */
         out.slow = Array.from({ length: 6 }, () => OC.App.adaptStep(28)); out.lv1 = OC.App.adaptLevel; out.r1 = OC.World.renderer.getPixelRatio();
         Array.from({ length: 6 }, () => OC.App.adaptStep(28)); out.lv2 = OC.App.adaptLevel; out.r2 = OC.World.renderer.getPixelRatio();
-        Array.from({ length: 30 }, () => OC.App.adaptStep(20)); out.lv3 = OC.App.adaptLevel; out.r3 = OC.World.renderer.getPixelRatio();
+        Array.from({ length: 6 }, () => OC.App.adaptStep(20)); out.lv3 = OC.App.adaptLevel; out.sh3 = OC.World.perfStats().shadows; Array.from({ length: 30 }, () => OC.App.adaptStep(15)); out.lv4 = OC.App.adaptLevel; out.r3 = OC.World.renderer.getPixelRatio();
         S.perf = 'high'; OC.App.applyPerf(); out.high = Array.from({ length: 12 }, () => OC.App.adaptStep(20)).some(Boolean);
         S.perf = 'balanced'; OC.App.applyPerf(); out.reset = OC.App.adaptLevel; out.r0 = r0; out.rBack = OC.World.renderer.getPixelRatio();
         return out;
       });
-      check('7c 「平衡」會看自己的幀率：連續三秒跟不上就降一級解析度，最多降兩級、不會一直降；短暫掉幀不算；「高」不會被自動降；重新套用模式會回到原本的解析度', !ad.good && ad.lvGood === 0 && !ad.blip && ad.slow[5] === true && ad.slow.slice(0, 5).every((x) => !x) && ad.lv1 === 1 && ad.r1 <= ad.r0 && ad.lv2 === 2 && ad.r2 <= ad.r1 && ad.r2 >= 1 && ad.lv3 === 2 && ad.r3 === ad.r2 && !ad.high && ad.reset === 0 && ad.rBack === ad.r0, ad);
+      check('7c 「平衡」會看自己的幀率：連續三秒跟不上就降一級解析度，最多降三級（第三級關掉陰影與草）、不會一直降；短暫掉幀不算；「高」不會被自動降；重新套用模式會回到原本的解析度', !ad.good && ad.lvGood === 0 && !ad.blip && ad.slow[5] === true && ad.slow.slice(0, 5).every((x) => !x) && ad.lv1 === 1 && ad.r1 <= ad.r0 && ad.lv2 === 2 && ad.r2 <= ad.r1 && ad.r2 >= 1 && ad.lv3 === 3 && ad.sh3 === 0 && ad.lv4 === 3 && ad.r3 >= 1 && !ad.high && ad.reset === 0 && ad.rBack === ad.r0, ad);
+    }
+
+    // ================= 8. 14.2: character textures, paint budget, on-screen numbers =================
+    if (want(8)) {
+      await closeAll();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), out = {};
+        const S = OC.Store.s.settings; S.perf = 'balanced'; OC.App.applyPerf();
+        /* the billboard canvases are CPU-backed (uploading a GPU-backed canvas to a texture needs a read-back) */
+        const acts = OC.Chars.all().map((c) => OC.App.actorOf(c.id)).filter(Boolean);
+        out.cpuCanvas = acts.map((a) => { const at = a.c.getContext('2d').getContextAttributes ? a.c.getContext('2d').getContextAttributes() : null; return at ? at.willReadFrequently === true : null; });
+        /* never more than two repaints in one frame, and the played character is never the one that waits */
+        /* the counters that reset belong to the FPS read-out; the running totals are for this */
+        const maxPerFrame = async () => { let worst = 0; for (let k = 0; k < 4; k++) { for (const a of acts) a.key = 'stale' + Math.random(); const p0 = OC.World.perfStats(); const t0 = performance.now(); let p1 = p0; while (p1.totalFrames < p0.totalFrames + 1 && performance.now() - t0 < 15000) { await sleep(30); p1 = OC.World.perfStats(); } const fr = p1.totalFrames - p0.totalFrames; if (fr === 1) worst = Math.max(worst, p1.totalPaints - p0.totalPaints); out.frames = (out.frames || 0) + fr; } return worst; };
+        out.paintsPerFrame = await maxPerFrame(); { const ps = OC.World.perfStats(); out.keys = ['renderMs', 'calls', 'tris', 'ratio', 'shadows', 'bb'].every((k) => typeof ps[k] === 'number'); }
+        out.gpu = typeof OC.World.gpu === 'string' && OC.World.gpu.length > 0;
+        S.showFps = true; OC.App.applyPerf(); await sleep(1600); const el = document.querySelector('.fps'); out.fpsText = el.textContent; out.fpsShown = !el.hidden; out.fpsBg = getComputedStyle(el).backgroundColor;
+        S.showFps = false; OC.App.applyPerf(); await sleep(100); out.fpsHidden = el.hidden;
+        return out;
+      });
+      check('8a 角色看板的畫布是 CPU 畫布（上傳成貼圖時不用從 GPU 讀回）；一幀最多重畫兩個角色', r.cpuCanvas.length >= 2 && r.cpuCanvas.every((x) => x === true) && r.paintsPerFrame <= 2.01 && r.frames >= 2, { cpu: r.cpuCanvas, perFrame: r.paintsPerFrame, frames: r.frames });
+      check('8b 打開「顯示 FPS」會看到一條看得清楚的數字：幀率、每幀時間（其中繪製多少）、角色重畫次數、繪製呼叫、解析度倍率、陰影、降級；關掉就消失', r.fpsShown && /fps｜每幀 [\d.]+ms（繪製 [\d.]+）｜角色重畫 \d+\/秒｜呼叫 \d+｜×[\d.]+｜陰影 \d+｜降級 \d/.test(r.fpsText) && r.fpsBg !== 'rgba(0, 0, 0, 0)' && r.fpsHidden && r.keys && r.gpu, { text: r.fpsText, bg: r.fpsBg });
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

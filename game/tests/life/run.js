@@ -23,7 +23,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
   const { browser, page, errors } = await H.launch();
   try {
     // ================= 1. three OCs, different personalities =================
-    if (want(1) || want(3) || want(4) || want(5) || want(6) || want(7) || want(8) || want(9)) await H.boot(page, { chars: 3, seed: 7 });
+    if (want(1) || want(3) || want(4) || want(5) || want(6) || want(7) || want(8) || want(9)) await H.boot(page, { chars: 3, seed: 7, hour: 10 });
     if (want(1)) {
       const I = await ids(page);
       const r = await page.evaluate((I) => {
@@ -52,7 +52,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
 
     // ================= 2. tired / hungry → full activity flow =================
     if (want(2)) {
-      await H.boot(page, { chars: 3, seed: 11 });
+      await H.boot(page, { chars: 3, seed: 11, hour: 10 });
       const I = await ids(page);
       // hungry at noon
       await setHour(page, 12);
@@ -76,7 +76,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       const e1 = await advance(page, 120).then(() => page.evaluate((id) => OC.Chars.get(id).needs.energy, I['小空']));
       check('2d 睡覺期間精力恢復', e1 > sl.e0 + 10, `${Math.round(sl.e0)} → ${Math.round(e1)}`);
       await page.screenshot({ path: path.join(SHOTS, '2-sleep.png') });
-      await H.boot(page, { chars: 3, seed: 7 });
+      await H.boot(page, { chars: 3, seed: 7, hour: 10 });
     }
 
     // ================= 3. meeting, chatting, joint activity, relationship & memory =================
@@ -183,7 +183,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
 
     // ================= 6. multi-OC movement / furniture / social without problems =================
     if (want(6)) {
-      await H.boot(page, { chars: 6, seed: 5 });
+      await H.boot(page, { chars: 6, seed: 5, hour: 10 });
       await setHour(page, 15); await wait(page, 1500);   // let the jump settle (activities ended by the clock jump finish on the next step)
       const r = await page.evaluate(async () => {
         const out = { overlap: 0, teleport: 0, stuck: 0, endless: 0, samples: 0, worst: [] };
@@ -208,7 +208,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       check('6b 靜止時沒有重疊', r.overlap === 0, `${r.overlap} 次（${r.samples} 個取樣）`);
       check('6c 沒有卡住、沒有無限活動', r.stuck === 0 && r.endless === 0, r);
       await page.screenshot({ path: path.join(SHOTS, '6-six-ocs.png') });
-      await H.boot(page, { chars: 3, seed: 7 });
+      await H.boot(page, { chars: 3, seed: 7, hour: 10 });
     }
 
     // ================= 7. interruptions: call, drag, editor =================
@@ -289,7 +289,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
 
     // ================= 10. save & restart =================
     if (want(10)) {
-      await H.boot(page, { chars: 3, seed: 3 });
+      await H.boot(page, { chars: 3, seed: 3, hour: 10 });
       await setHour(page, 13);
       await wait(page, 6000);
       // make sure one OC is in the middle of a long activity when the game is closed (reading on the nearest seat)
@@ -314,7 +314,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
 
     // ================= 11. long offline & background resume =================
     if (want(11)) {
-      await H.boot(page, { chars: 3, seed: 9 });
+      await H.boot(page, { chars: 3, seed: 9, hour: 10 });
       const inv0 = await page.evaluate(() => { OC.Sim.setMode('real'); OC.Store.persist(); OC.Store.s.life.lastReal = Date.now() - 30 * 3600 * 1000; localStorage.setItem('oc.save.v1', JSON.stringify(OC.Store.s)); OC.Store.persist = () => {}; OCApp.lifecycle = () => {}; return JSON.stringify(OC.Store.s.inv); });
       await page.reload(); await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       const off = await page.evaluate(() => ({ o: OC.Store.s.life.offline, needs: OC.Chars.all().map((c) => Math.round(Math.min(...OC.Mind.NEED_IDS.map((k) => c.needs[k])))), sum: OC.Chars.all().map((c) => c.life.mem.recent.filter((m) => m.text.startsWith('你不在的時候')).length), ev: OC.Store.s.life.ev.log.length, inv: JSON.stringify(OC.Store.s.inv) }));
@@ -332,7 +332,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     if (want(12)) {
       for (const [w, hh] of [[360, 800], [412, 915]]) {
         await page.setViewportSize({ width: w, height: hh });
-        await H.boot(page, { chars: 6, seed: 2 });
+        await H.boot(page, { chars: 6, seed: 2, hour: 10 });
         await wait(page, 5000);
         const r = await page.evaluate(() => ({ over: document.documentElement.scrollWidth > innerWidth + 1, hud: [...document.querySelectorAll('#hud button, #hud .chip')].filter((e) => e.offsetParent).length, mates: Object.keys(OC.App.mates).length }));
         await page.screenshot({ path: path.join(SHOTS, `12-portrait-${w}.png`) });
@@ -351,7 +351,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
     // ================= engine checks: dialogue data, cooldowns, determinism =================
     if (want(13)) {
       await page.setViewportSize({ width: 393, height: 852 });
-      await H.boot(page, { chars: 3, seed: 4 });
+      await H.boot(page, { chars: 3, seed: 4, hour: 10 });
       const r = await page.evaluate(() => {
         const c = OC.Chars.all()[1], o = OC.Chars.all()[2];
         const bad = OC.Talk.validate('{"format":"x"}'), broken = OC.Talk.validate('{oops'), newer = OC.Talk.validate({ format: 'ocshimeji-life', version: 99, lines: [] });

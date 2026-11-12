@@ -19,6 +19,7 @@
 
   let R, canvas, scene, cam, env, area = null, root = null;
   let lampsLit = false, frameN = 0;
+  let paintsLeft = 2; const stats = { paints: 0, paintSkips: 0, renderMs: 0, frames: 0, totalPaints: 0, totalFrames: 0 };
   let area0Room = false, outdoorZoom = 1.9, W = 360, H = 640, zoom = 1.9, camX = 300, camY = 470, panX = 0, panY = 0, follow = true;
   // 8.0 camera: yaw (rotation around the vertical axis, limited), modes, scripted shots
   //   classic = fixed 2.5D (yaw 0, follows the played OC) · follow = follows the selected OC (rotation allowed)
@@ -118,7 +119,11 @@
   function actor(o) {
     // o.char(): the character record (a roster OC, or a creator preset)
     const a = Object.assign({ x: 0, y: 0, lvl: 0, gy: 0, path: null, speed: 62, face: 0.3, back: 0, tFace: 0.3, tBack: 0, walk: 0, phase: 0, blinkT: 2 + Math.random() * 3, blink: 0, t: 0, lift: 0, squash: 1, key: '', dir: 'front', act: null, turnT: 0, lastMirror: false, sc: 1 }, o);
-    const res = bbRes, c = OC.makeCanvas(res, res), tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+    /* 14.2 (performance): the character's canvas is uploaded to a WebGL texture every time its pose changes. A GPU-backed 2D canvas has
+     * to be read back from the GPU for that (tens of milliseconds on a phone, several times a second per character). Asking for a
+     * CPU-backed canvas up front makes the upload a plain copy. */
+    const res = bbRes, c = OC.makeCanvas(res, res); c.getContext('2d', { willReadFrequently: true });
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
     const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false }));
     m.renderOrder = 2;
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeBlob(), transparent: true, depthWrite: false, fog: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
@@ -167,6 +172,9 @@
     a.isSprite = pl.sprite;
     const key = OC.CharRender.key(ch, p, pl);
     if (key === a.key) return;
+    /* 14.2: at most two characters are redrawn (and uploaded) in one frame; the others wait for the next one — the one you play never waits */
+    if (paintsLeft <= 0 && a.key && !a.player && !a.touch) { stats.paintSkips++; return; }
+    paintsLeft--; stats.paints++; stats.totalPaints++;
     a.key = key;
     const r = a.c.width, x = a.c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, r, r);
     if (a.pixel === undefined) pixelFilter(a);
@@ -638,7 +646,8 @@
     /* the sun's shadow map is redrawn every frame only in 'high'; otherwise every other frame (half the shadow cost, one frame of lag nobody sees) */
     if (env.sun && env.sun.shadow) { frameN++; env.sun.shadow.autoUpdate = false; env.sun.shadow.needsUpdate = !!quality.soft || frameN % 2 === 0 || frameN < 4; }
     if (area.bg) scene.background.set(OC.mix(area.bg, '#14202E', envCur.night * 0.7)); else scene.background.set(envCur.sea);
-    R.render(scene, cam);
+    { const t0 = performance.now(); R.render(scene, cam); stats.renderMs += performance.now() - t0; stats.frames++; stats.totalFrames++; }
+    paintsLeft = 2;
   }
 
   OC.World = {
@@ -670,6 +679,9 @@
     zoomTo(z) { zoomGoal = clamp(z, 1.15, 3.2); },
     /** read-only, for diagnostics and tests */
     get scene() { return scene; },
+    /** 14.2 diagnostics: character redraws / uploads and main-thread render time since the last call (the counters reset) */
+    perfStats() { const o = { paints: stats.paints, paintSkips: stats.paintSkips, renderMs: stats.frames ? stats.renderMs / stats.frames : 0, frames: stats.frames, calls: R ? R.info.render.calls : 0, tris: R ? R.info.render.triangles : 0, ratio: R ? R.getPixelRatio() : 0, shadows: quality.shadows || 0, bb: bbRes, totalPaints: stats.totalPaints, totalFrames: stats.totalFrames }; stats.paints = stats.paintSkips = stats.renderMs = stats.frames = 0; return o; },
+    get gpu() { try { const gl = R.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)) : 'unknown'; } catch (e2) { return 'unknown'; } },
     saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
     restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },
     screenDelta, screenToDesign, get bbRes() { return bbRes; },

@@ -228,18 +228,22 @@
     add(g, rbox(w, 3, d, 1.4), mat('#8C6A4E'), 0, 1.5, 0);
     for (let i = 0; i < Math.round((w + d) / 4.5); i++) { const t = i / Math.round((w + d) / 4.5), per = 2 * (w + d), p = t * per; let x, z; if (p < w) { x = -w / 2 + p; z = -d / 2; } else if (p < w + d) { x = w / 2; z = -d / 2 + p - w; } else if (p < 2 * w + d) { x = w / 2 - (p - w - d); z = d / 2; } else { x = -w / 2; z = d / 2 - (p - 2 * w - d); } add(g, ico(2.4, 0), mat(i % 2 ? P.stone : '#DAD3C5'), x, 2.2, z); }
     const stems = mat('#4E9E46'), cols = [P.coral, P.yellow, '#FFFFFF', P.pink, P.purple];
-    const blooms = [];
+    /* 14.2 (performance): every flower used to be its own little group of meshes so each could sway by itself — 160 draw calls for the
+     * four beds of the island, a third of everything drawn. The flowers of a bed are now one cluster (one mesh per colour) that leans
+     * in the wind together, and the stone border is baked into the bed. */
+    const cluster = new THREE.Group(); cluster.position.y = 3; g.add(cluster);
     for (let i = 0; i < Math.round(w * d / 30); i++) {
       const x = (r() - 0.5) * (w - 6), z = (r() - 0.5) * (d - 6), hh = 4 + r() * 3;
-      const f = new THREE.Group(); f.position.set(x, 3, z); g.add(f);
+      const f = new THREE.Group(); f.position.set(x, 0, z); cluster.add(f);
       add(f, cyl(0.4, 0.4, hh, 4), stems, 0, hh / 2, 0, { cast: false });
       const lv = add(f, sphere(1.6, 6, 4), stems, 0.9, hh * 0.4, 0, { cast: false }); lv.scale.set(1, 0.4, 0.6);
       const c = cols[(i + seed) % 5];
       for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU; add(f, sphere(1.2, 6, 4), mat(c), Math.cos(a) * 1.3, hh + 0.4, Math.sin(a) * 1.3, { cast: false }); }
       add(f, sphere(0.9, 6, 4), mat('#FFD34D'), 0, hh + 0.7, 0, { cast: false });
-      fuse(f);   /* 14.0: a flower is 8 little meshes → 3 (stem + leaf, petals, centre); it still sways as one */
-      blooms.push(f);
     }
+    fuse(cluster); cluster.traverse((o) => { if (o.isMesh) o.userData.keep = true; });
+    const blooms = [cluster];
+    fuse(g);
     g.userData.size = { w, d }; g.userData.blooms = blooms;
     return g;
   }

@@ -85,9 +85,9 @@ class MainActivity : Activity() {
             return
         }
         web.setBackgroundColor(bg)
-        // 14.1: keep the game's renderer at foreground priority while it is on screen (a deprioritised renderer stutters), and make the
-        // hardware layer explicit. Both are hints: a device that refuses them still works.
-        runCatching { web.setLayerType(View.LAYER_TYPE_HARDWARE, null) }
+        // 14.1: keep the game's renderer at foreground priority while it is on screen (a deprioritised renderer stutters). A hint: a device
+        // that refuses it still works. (14.2: the explicit hardware layer added in 14.1 is gone again — the default is what Chromium is
+        // tuned for; forcing a layer makes the whole WebView render into an extra texture first.)
         runCatching { if (android.os.Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true) }
         web.overScrollMode = View.OVER_SCROLL_NEVER
         with(web.settings) {
