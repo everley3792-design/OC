@@ -86,12 +86,12 @@
 
 | 項目 | 指令 | 結果 |
 |---|---|---|
-| 12.0 驗收 | `node game/tests/v12/run.js`（11 個情境） | RESULT_V12 |
-| 11.0／10.x／8.0 | `node game/tests/v11/run.js`、`v10`、`v8` | RESULT_OLD |
-| 桌寵（遊戲端） | `node game/tests/pet/run.js`（17 個情境） | RESULT_PET |
-| 第四～六階段回歸 | `life` / `world` / `play` | RESULT_PHASES |
-| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | RESULT_KT |
-| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | RESULT_APK |
+| 12.0 驗收 | `node game/tests/v12/run.js`（11 個情境） | 最後一輪完整執行 44/45（10a 在整套執行時失敗，單獨重跑情境 10 為 3/3）；見 `docs/v13-report.md` 第四節（12.0 的回歸與 13.0 一起跑，數字相同） |
+| 11.0／10.x／8.0 | `node game/tests/v11/run.js`、`v10`、`v8` | 見 `docs/v13-report.md` 第四節（12.0 的回歸與 13.0 一起跑，數字相同） |
+| 桌寵（遊戲端） | `node game/tests/pet/run.js`（17 個情境） | 見 `docs/v13-report.md` 第四節（12.0 的回歸與 13.0 一起跑，數字相同） |
+| 第四～六階段回歸 | `life` / `world` / `play` | 見 `docs/v13-report.md` 第四節（12.0 的回歸與 13.0 一起跑，數字相同） |
+| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | 58 個測試、0 失敗 |
+| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | 12.0 沒有另外出 APK；內容包含在 `oc-shimeji-0.13.0-alpha-debug.apk`（Debug 簽章，未在實機或模擬器上執行） |
 
 測試期間不修改 `game/`（上一輪的教訓：頁面重載會讀到半途改動的檔案）。軟體渲染約 2 fps，條件一律「等到成立」而不是固定等待。
 

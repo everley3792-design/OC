@@ -36,7 +36,9 @@ const { check, wait } = H;
     }
     if (want(2)) {
       await quiet();
-      const p = await scr(ids.mate); await page.mouse.move(p.x, p.y); await page.mouse.down(); await wait(page, 1000);
+      /* 12.0: companions live on their own now — keep this one still, or the press lands where it was a moment ago */
+      await page.evaluate((id) => { OC.Brain.setControl(id, 'manual'); const b = OC.Brain.get(id); if (b.st !== 'think') OC.Brain.abort(b, 't'); const a = OC.App.actorOf(id); if (a) a.path = null; }, ids.mate); await wait(page, 1200);
+      const p = await scr(ids.mate); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.waitForFunction((id) => OC.Brain.get(id).holds.has('drag'), ids.mate, { timeout: 8000 }).catch(() => {});
       const lifted = await holds(ids.mate);
       // the finger-up never arrives; the next touch starts somewhere else
       await page.evaluate(() => { const c = document.getElementById('world'); c.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, isPrimary: true, clientX: 40, clientY: 640, bubbles: true })); c.dispatchEvent(new PointerEvent('pointerup', { pointerId: 9, isPrimary: true, clientX: 40, clientY: 640, bubbles: true })); });
