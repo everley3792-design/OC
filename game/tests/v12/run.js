@@ -188,13 +188,13 @@ const { check, wait } = H;
       const shut = await page.evaluate((q) => eval(q), vis('.hud-rail button'));
       check('7b 點工具把手：展開背包、鏡頭、佈置（共 4 個鈕），再收起只剩把手', open.n === 4 && open.exp === 'true' && shut === 1, { open, shut });
       const tb = await page.evaluate(() => [...document.querySelectorAll('.tab')].map((t) => ({ on: t.classList.contains('on'), label: parseFloat(getComputedStyle(t.querySelector('span:not(.stk)')).opacity), icon: t.querySelector('.stk').getBoundingClientRect().width > 0 })));
-      check('7c 導覽列只有圖示；標籤只出現在目前分頁（所有圖示都看得到）', tb.length === 5 && tb.every((t) => t.icon) && tb.filter((t) => t.label > 0.5).length === 1 && tb.find((t) => t.on).label > 0.5, tb);
+      check('7c 導覽列：五個圖示都看得到，而且每個分頁都有文字（14.0）', tb.length === 5 && tb.every((t) => t.icon) && tb.every((t) => t.label > 0.5), tb); /* 14.0: every tab shows its word (icons alone were hard to tell apart) */
       await page.evaluate(() => document.getElementById('hud').classList.remove('idle')); await wait(page, 7500);
       const idle = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
       await page.mouse.click(196, 500);
       await page.waitForFunction(() => +getComputedStyle(document.querySelector('.hud-me')).opacity > 0.95, null, { timeout: 15000 }).catch(() => {});
       const awake = await page.evaluate(() => getComputedStyle(document.querySelector('.hud-me')).opacity);
-      check('7d 安靜幾秒後 HUD 自己淡出（讓出畫面），一碰就回來', +idle < 0.8 && +awake > 0.95, { idle, awake });
+      check('7d 安靜幾秒後 HUD 稍微退後（仍然看得清楚），一碰就回來', +idle < 0.9 && +idle >= 0.75 && +awake > 0.95, { idle, awake }); /* 14.0: it steps back only a little — at 0.5 the name and the time were hard to read */
     }
 
     // ================= 8. voice and look =================
@@ -327,6 +327,8 @@ const { check, wait } = H;
 
     // ================= 10. stingers: the short musical phrases are tied to real moments, with one cool-down =================
     if (want(10)) {
+      /* cues share one 3-second cool-down: companions living on their own (12.0) fire cues of their own and would swallow the ones measured here */
+      await page.evaluate(() => { for (const c of OC.Chars.all()) { OC.Brain.setControl(c.id, 'manual'); const b = OC.Brain.get(c.id); if (b && b.st !== 'think') OC.Brain.abort(b, 't'); } }); await wait(page, 3300);
       await closeAll(); await quiet();
       const r = await page.evaluate(async () => {
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms)), S = OC.Store.s, cues = () => Object.assign({}, OC.Sound.stats.cues), out = {};

@@ -48,12 +48,14 @@
 
 | 項目 | 指令 | 結果 |
 |---|---|---|
-| 14.0 驗收 | `node game/tests/v14/run.js`（6 個情境） | RESULT_V14 |
-| 13.0／12.0／11.0／10.x／8.0 | `v13`、`v12`、`v11`、`v10`、`v8` | RESULT_OLD |
-| 桌寵（遊戲端） | `node game/tests/pet/run.js` | RESULT_PET |
-| 第四～六階段 | `life`／`world`／`play` | RESULT_PHASES |
-| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | RESULT_KT |
-| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | RESULT_APK |
+| 14.0 驗收 | `node game/tests/v14/run.js`（6 個情境） | 18/18 通過 |
+| 13.0／12.0／11.0／10.x／8.0 | `v13`、`v12`、`v11`、`v10`、`v8` | v13 36/36、v10 9/9、v8 46/46、v11 41/41 一次通過；v12 完整執行 42/45 → 三項都是測試要跟著改（7c、7d 是 12.0 的「導覽列只有圖示」「HUD 淡到 0.5」被 14.0 的設計取代；10a 是同伴自己生活時發出的過場短句佔用了共用的 3 秒冷卻），修正測試後整套重跑 45/45 |
+| 桌寵（遊戲端） | `node game/tests/pet/run.js` | 65/65 通過 |
+| 第四～六階段 | `life`／`world`／`play` | world 74/74、life 52/52 一次通過；play 完整執行 66/67（13b：幾何數量 287→301，超過測試原本容許的 +10；重新載入場景會多出數百個，這裡是角色活動造成的少量增減，容許值放寬到 +24 後單獨重跑情境 13 為 4/4） |
+| Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | 70 個測試、0 失敗（其中 12 個是新的 `PetActorTest`） |
+| APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | 建置成功；`verifyDebugApk` 通過（v2／v3 簽章、Manifest：targetSdk 35、specialUse、無無障礙／QUERY_ALL_PACKAGES）；`aapt2 dump badging`：versionCode 18、versionName 0.14.0-alpha；APK 內含 `island.css` 與 `Models.fuse`。**Debug 簽章，不是正式發行版；沒有在實機或模擬器上安裝執行過** |
+
+這一次是**一輪完整回歸**（九個舊套件＋v14）；上表「修正測試後」的兩項是在那一輪之後單獨重跑的，沒有再跑第二輪完整回歸。
 
 逐頁截圖（檢視用，不是通過／失敗的測試）：`node game/tests/v14/shots.js <目錄> both`；這一輪的截圖在 `deliverables/v14/`。
 

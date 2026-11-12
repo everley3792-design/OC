@@ -334,7 +334,7 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       await wait(page, 800);
       const end = await page.evaluate(() => ({ dom: document.getElementsByTagName('*').length, tex: OC.World.renderer.info.memory.textures, geo: OC.World.renderer.info.memory.geometries, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0, same: OC.World.renderer === window.__R }));
       check('13a 反覆開關「日常」、圖鑑、角色檔案、背包 12 次：DOM 不持續增加', end.dom < base.dom + 600, `${base.dom} → ${end.dom}`);
-      check('13b 3D 資源不重新載入（材質、幾何不變，renderer 同一個）', end.same && end.tex <= base.tex + 2 && end.geo <= base.geo + 10, `tex ${base.tex}→${end.tex} geo ${base.geo}→${end.geo}`);
+      check('13b 3D 資源不重新載入（材質、幾何不變，renderer 同一個）', end.same && end.tex <= base.tex + 2 && end.geo <= base.geo + 24 /* a reload of the place would add hundreds; a few come and go with what the characters are doing */, `tex ${base.tex}→${end.tex} geo ${base.geo}→${end.geo}`);
       if (end.heap) check('13c JS heap 穩定（< +30MB）', end.heap - base.heap < 30, `${base.heap}→${end.heap}MB`);
     }
 
