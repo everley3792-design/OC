@@ -31,8 +31,11 @@ async function boot(page, o = {}) {
     for (let i = 1; i < n; i++) { const c = OC.Chars.fromPreset(keys[(i - 1) % 3]); if (i >= 3) c.profile.name += i; c.status.onIsland = true; OC.Chars.add(c); }
     for (const c of OC.Chars.all()) c.life.control = c.id === S.activeId ? 'manual' : 'auto';   // the legacy suites assume the played OC only moves when told to (12.0 default is 'semi'; tests/v12 covers it)
     S.onboarded = true; OC.Sim.setMode('cycle'); OC.Sim.setSpeed(speed); OC.Sim.seed(seed);
+    /* the cycle clock starts from the device's time of day: a run in the evening found everyone eating or asleep and failed where a morning run passed.
+     * Every run now starts at the same game hour (10:00 of the next game day, so the clock never goes backwards). */
+    { const c = S.life.clock; c.gm = (Math.floor((c.gm || 0) / 1440) + 1) * 1440 + (o.hour == null ? 10 : o.hour) * 60; }
     S.life.settings.bubbles = true; S.life.settings.visits = o.visits === true; /* 13.0: characters dropping by on their own would hold them ('game') and open a dialogue in the middle of a scenario */ S.life.settings.travel = o.travel === true; S.life.settings.aspAuto = S.life.settings.requests = o.travel === true;   // phase 6 extras only in phase 5/6 runs (phase 4 scenarios predate them) OC.Store.persist();   // phase 4 scenarios run on the island (phase 5 tests turn travel on)
-  }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42, travel: !!o.travel });
+  }, { n: o.chars || 3, speed: o.speed || 10, seed: o.seed || 42, travel: !!o.travel, hour: o.hour == null ? null : o.hour });
   await page.waitForTimeout(400);
   return page;
 }
