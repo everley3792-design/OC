@@ -1,11 +1,11 @@
 <resources>
     <!-- must match the game background token (bg) so launch to web has no flash -->
-    <color name="oc_bg">#F6F4FC</color>
-    <color name="oc_accent">#7378F0</color>
+    <color name="oc_bg">#F7F1DE</color>
+    <color name="oc_accent">#23B5A0</color>
     <!-- home-screen widget (light) -->
-    <color name="widget_bg">#F5FFFFFF</color>
-    <color name="widget_fg">#3F3B5E</color>
-    <color name="widget_sub">#7A769C</color>
+    <color name="widget_bg">#F7FFFCF0</color>
+    <color name="widget_fg">#6B5440</color>
+    <color name="widget_sub">#8C7654</color>
     <color name="widget_btn_fg">#FFFFFF</color>
-    <color name="widget_track">#1A50488C</color>
+    <color name="widget_track">#21785C34</color>
 </resources>

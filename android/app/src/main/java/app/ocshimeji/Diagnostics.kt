@@ -83,7 +83,7 @@ object Diagnostics {
         Log.e(TAG, full)
         val d = act.resources.displayMetrics.density
         fun px(v: Int) = (v * d).toInt()
-        val ink = Color.parseColor("#3F3B5E"); val bg = Color.parseColor("#F6F4FC")
+        val ink = Color.parseColor("#6B5440"); val bg = Color.parseColor("#F7F1DE")
         val root = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg); setPadding(px(20), px(48), px(20), px(24)) }
         root.addView(TextView(act).apply { text = title; textSize = 20f; setTextColor(ink); typeface = Typeface.DEFAULT_BOLD })
         root.addView(TextView(act).apply { text = message; textSize = 15f; setTextColor(ink); setPadding(0, px(8), 0, px(12)) })
@@ -91,7 +91,7 @@ object Diagnostics {
         root.addView(ScrollView(act).apply { addView(detailView) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         fun button(label: String, primary: Boolean, fn: () -> Unit) = Button(act).apply {
             text = label; isAllCaps = false; textSize = 15f
-            if (primary) { setBackgroundColor(Color.parseColor("#7378F0")); setTextColor(Color.WHITE) }
+            if (primary) { setBackgroundColor(Color.parseColor("#23B5A0")); setTextColor(Color.WHITE) }
             setOnClickListener(View.OnClickListener { fn() })
         }
         val buttons = LinearLayout(act).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, px(12), 0, 0) }

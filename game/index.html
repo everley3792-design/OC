@@ -46,8 +46,8 @@
       try { if (window.OCNative && OCNative.bootFailed) { OCNative.bootFailed(title, msg, detail); return; } } catch (x) {}
       var show = function () {
         var b = document.getElementById('boot'); if (!b) { b = document.createElement('div'); b.id = 'boot'; document.body.appendChild(b); }
-        b.className = ''; b.style.cssText = 'position:absolute;inset:0;z-index:200;background:#F6F4FC;color:#3F3B5E;padding:48px 20px;overflow:auto;font:15px sans-serif;display:block';
-        b.innerHTML = '<h2 style="margin:0 0 8px">' + title + '</h2><p>' + msg + '</p><pre style="white-space:pre-wrap;font-size:11px;background:#ECEAF7;padding:12px;border-radius:12px"></pre>';
+        b.className = ''; b.style.cssText = 'position:absolute;inset:0;z-index:200;background:#F7F1DE;color:#6B5440;padding:48px 20px;overflow:auto;font:15px sans-serif;display:block';
+        b.innerHTML = '<h2 style="margin:0 0 8px">' + title + '</h2><p>' + msg + '</p><pre style="white-space:pre-wrap;font-size:11px;background:#F3EBD2;padding:12px;border-radius:12px"></pre>';
         b.getElementsByTagName('pre')[0].textContent = detail;
       };
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();

@@ -19,6 +19,7 @@
 - **11.0（0.11.0-alpha）互動與生命感重做**：真正的滑動撫摸（依手指速度／身體部位／個體喜好連續累積，不是點一下）、親近環（抱抱、擊掌、戳、牽手）、`OC.Anim11` 107 個資料驅動動作（姿勢間 0.2 秒柔和過渡、情緒小動作、觸摸層）、`OC.Mind11` 多步計畫／每日目標／對他人的認知／可解釋的「想法」、`OC.Social11` 10 種雙人互動（各有互補動畫）、創角舞台（轉盤、點部位）與誕生演出、角色聲線（每個 OC 一種、隨心情改變）／立體聲定位／動作與腳步音效／音樂強度層／分層觸覺節奏、世界觸控回饋（點地面波紋、點樹搖晃落葉、跑步揚塵）、桌寵多 10 個小動作。驗收：`node game/tests/v11/run.js`。紀錄與未驗證項目：`docs/v11-report.md`。
 - **12.0（0.12.0-alpha）修正與成熟化**：修掉純文字格的灰色圓底座與作息輸入框重疊、請求可取消、技能頁與地圖重新設計、**去除 NPC（只用玩家自己的角色）**、極簡 HUD（工具把手＋小膠囊、導覽列只有圖示、閒置淡出）、**每個角色各自的操控模式（手動／半自動（預設）／全自動），狀態卡、長按 HUD 頭像、生活設定都能切換**、成熟語氣（`lines12.js` 約 480 句、預設「沉穩」；「活潑」回到舊的）與預設「雅緻」介面風格、`OC.Arcs`（情緒感染、冷戰→解凍→和解／疏遠、三人以上的聚會）、桌寵自己的聲音（`OC.PetSound` ＋ 原生 `PetSounds` ＋ core `PetSound`）與雙人桌面動作（`PetSocial.KINDS`）、`OC.Sound.cue`（過場短句接到真實事件）、3D 的接觸陰影／房間布置（`OC.Dress`）／重新建模的家具（`models12.js`）。**3D 只做了一部分：房屋、樹木、岩石的造型沒有重新建模。** 驗收：`node game/tests/v12/run.js`。紀錄（問題→原因→修正→驗證＋未驗證項目）：`docs/v12-report.md`。
 - **13.0（0.13.0-alpha）**：操控／觀察中的角色自己換地點時畫面跟過去、圖片角色的調整（翻轉／轉向／縮放／位移／裁切，繪製時套用）與 `OC.Puppet`（單張圖片自己表演所有動作＋特效）、79 個資料驅動特質（`traits13.js`，衝突提示、隨機）、新的預設介面風格（`data-style="play"`：世界裡無框、選單依主題紙感／石板、奶油色對話框）、`OC.Fun`（猜拳、躲貓貓、搖樹掉落、角色主動來訪與約定）、四章節教學、桌寵作息（`core/pet/PetRoutine`）。**桌寵原生層與各頁面版面沒有整個重寫。** 驗收：`node game/tests/v13/run.js`。紀錄：`docs/v13-report.md`。
+- **14.0（0.14.0-alpha）統一風格與打磨**：整個 App **只有一種介面風格**「島日和」（奶油紙、暖棕字、薄荷綠＝可按、陽光黃＝已選；白天／夜晚是同一套設計的兩個調色盤；風格切換已移除）、HUD 小膠囊、彩色導覽列、背包口袋格、交易紀錄（餘額／今日／分日）、桌寵中心的「桌面」預覽、圖片角色用手指直接裁切／移動／縮放、樹／杉樹／灌木／岩石／房屋正面重新建模、**靜態模型依材質合併（`Models.fuse`，小島繪製呼叫 557 → 約 250）**、**桌寵行為全部搬進 `core/pet/PetActor`（純 Kotlin、有單元測試），原生視窗只負責顯示**、新增「去睡一下／叫醒」。**原生層仍未經實機驗證。** 驗收：`node game/tests/v14/run.js`；逐頁檢視：`node game/tests/v14/shots.js`。紀錄：`docs/v14-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -27,6 +28,7 @@
 game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
+  css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
   js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（任務/成就/目標規則；12.0 起沒有居民）
   js/life/            data.js（需求/情緒/活動/社交/習慣規則/台詞/事件資料）sim.js（固定步長排程器＋遊戲時鐘＋離線補算）mind.js（需求/情緒/回憶/紀錄/關係/願望/技能/作息/成長）
@@ -57,13 +59,14 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
+  tests/v14/          run.js：14.0 驗收 1–6（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正）；shots.js：逐頁截圖（淺色＋深色，檢視用）
   tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
   tests/v11/          run.js：11.0 驗收 1–7（撫摸、親近環、動作庫、AI 計畫、雙人互動、音訊、世界觸控回饋；音訊用音訊執行緒上的錄音節點量測）
   tests/pet/          run.js + mock-native.js：第七階段（桌寵的遊戲端：狀態、權限、影格輸出、多隻、同步、台詞、App 情境、工具、備份、重開、瀏覽器版）
   tests/fixtures/     匯入測試素材（PNG 序列、GIF、APNG、WebP、Sprite Sheet、ZIP、損壞檔；不打包進 APK）
   js/app.js           外殼：開機、主題、效能模式、HUD、導覽、快速背包、互動、對話、佈置、桌寵輸出、OCApp 原生掛鉤
-android/              Gradle 專案。app（WebView 外殼 + bridge + overlay/ 多隻桌寵 + tools/ 提醒 + widget/ 小工具）；core:*（純 Kotlin；core:pet = PetBrain、Gestures、AnimClip、PetTalk、AppContext、PetSocial）
+android/              Gradle 專案。app（WebView 外殼 + bridge + overlay/ 多隻桌寵 + tools/ 提醒 + widget/ 小工具）；core:*（純 Kotlin；core:pet = PetActor（14.0：一隻桌寵的全部行為）、PetBrain、Gestures、AnimClip、PetTalk、AppContext、PetSocial、PetSound、PetRoutine）
   tools/framework-extras/  離線 aapt 用的框架屬性包（只有 foregroundServiceType；不打包進 APK）
 prototype/            第一階段原型（凍結）
 docs/                 phase2-report、roadmap、design-system、ui-components、art-guidelines、android-build、architecture …
@@ -78,14 +81,16 @@ node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
 node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v14/run.js [1 2 …]            # 14.0 驗收（約 3 分鐘）
+node game/tests/v14/shots.js <輸出目錄> both   # 逐頁截圖（淺色＋深色；用眼睛檢查用）
 node game/tests/v13/run.js [1 2 …]            # 13.0 驗收（約 12 分鐘；可用 OC_URL 指向別的連接埠）
 node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC、操控模式、極簡 HUD、成熟語氣、冷戰與聚會、過場短句、3D（約 25 分鐘）
 node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
 node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（58 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（70 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.13.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.14.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -94,7 +99,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **座標**：遊戲邏輯一律用設計座標 (x, y, 層)；3D 由 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°` 對應。點擊螢幕＝設計座標（不用射線），一律經 `World.screenToDesign` / `screenDelta`（含鏡頭旋轉的反算）；碰撞框是「螢幕上直立」的。看板角色 `rotation.y = yaw` 面向鏡頭。可行走/層級/地面高度寫成解析函式（`OC.Areas.*`）。
 - **角色**是 2D 看板：只在量化姿勢改變時重畫紋理；呼吸/彈跳用網格變換。轉身用連續的 `face`/`back` 平滑趨近，不可瞬間翻轉。
 - **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
-- **10.0 Design System**（`docs/design-system.md`）：表面一律「白瓷＋模具邊」（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（長春花紫）＝可按／已選取，`--alert`＝紅點／新東西，`--sun`＝星幣／獎勵；按下用 `--t-press` 下沉、放開用 `--spring` 彈回，大面積（頁面、表單）用 `--spring-soft`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`（原創、48 格、左上光源），小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。
+- **14.0 Design System「島日和」**（`docs/design-system.md`、`css/tokens.css` 開頭）：**只有一種風格**，不要再加 `data-style` 或風格選項；白天／夜晚兩個調色盤的圓角、形狀、元件必須相同。表面＝奶油紙＋下緣薄邊（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（薄荷綠）＝可按，`--sun`（陽光黃）＝已選取／星幣／獎勵，`--alert`＝紅點／新東西；字一律用 `--ink*`（暖棕／奶油，不用純黑純白）；對話、提示、教學卡用 `--balloon*`；標題前的小葉子用 `--leaf`。新的全域外觀寫在 `css/island.css`（最後載入）。按下用 `--t-press` 下沉、放開用 `--spring`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`，小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。常駐在畫面上的元件**不得**用 `backdrop-filter`（每幀成本）。HUD 是有底的小膠囊（看得清楚），不蓋住畫面中間。參考作品只取原則，不得使用其素材。
 - 世界調色（`html.grade`、`html.dof`、`--glow-*`）由效能模式決定：高＝調色＋景深、平衡＝調色、省電＝都關；景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
 - 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個操作元件（名牌、天氣時間、右側工具列 3 個、任務卡；通知鈴只在有通知時出現；導覽列另計），不要在 HUD 重複已有的入口（設定在「日常」、互動＝點你的 OC）。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
 - **新遊戲不得自動加入玩家沒選的角色**：角色只由玩家建立、匯入或明確加入（12.0 起連居民／NPC 系統都已移除）。
@@ -166,7 +171,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 
 - **12.0 無 NPC**：沒有居民系統；所有社交、關係、請求都只涉及玩家自己建立／匯入的角色。存檔載入／匯入時刪除 `npcs`，不要再加回來。
 - **12.0 操控模式**：每個角色一個 `c.life.control`（`manual`／`semi`（預設）／`auto`），只經 `OC.Brain.setControl(id, mode)` 改；`Brain.manualMode(b)` 為真時 AI 不挑活動、不被邀請（`Mind11.shape`、`Arcs` 的聚會也跳過）。新的互動保留要能在切換模式時被放開。測試 harness 預設把角色設成手動。
-- **12.0 語氣與風格**：新台詞只加到 `lines12.js`（資料，短、具體、不用波浪號與疊驚嘆號；`m:true`），由 `Talk.toneW` 依 `life.settings.tone`（`mature` 預設／`playful`）加權；介面風格是 `html[data-style]`（`refined` 預設／`toy`），新元件仍只用 tokens，兩種風格都要能用。
+- **12.0 語氣**：新台詞只加到 `lines12.js`（資料，短、具體、不用波浪號與疊驚嘆號；`m:true`），由 `Talk.toneW` 依 `life.settings.tone`（`mature` 預設／`playful`）加權。（介面風格切換在 14.0 移除。）
 - **12.0 OC.Arcs**：所有邏輯跑在 `Sim.onStep`（遊戲分鐘）；聚會的保留用 `'group'`，結束／被打斷／超時／看門狗（`MAX_AGE.group`）都要放開所有人；冷戰只影響 AI 分數與邀請回應，**不自動改關係類型**；玩家固定（`fixed`）的關係與 `lockRel` 不被捲入；沒有獎勵、不送進度事件。`Mind.relPair` 是唯一改關係的入口。
 - **12.0 過場短句**：只用 `OC.Sound.cue(名稱)`（`Sound.CUES` 一張表、3 秒冷卻、離線補算與音效關閉時不響）；新事件加進表，不要直接呼叫 `stinger`。
 - **12.0 桌寵聲音**：遊戲只負責「做出這個角色自己的 14 個 WAV」（`OC.PetSound.CLIPS` 必須和 `core/pet/PetSound.kt` 的 `CLIPS` 完全一致，pet 測試 16a 會讀 Kotlin 檔比對）；播哪一個、何時播由 `PetSound`（純 Kotlin、單元測試）決定；預設關閉；原生只用 `SoundPool`，靜音／通話／螢幕關閉不出聲；不得加外部音檔。
@@ -176,7 +181,6 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **13.0 跟隨**：操控中的角色（`b.manual`）在非手動模式可以自己換地點，但只經 `hooks.canLead()`（`App.canLead`：只有單純看著世界時）與 `hooks.lead()`（`WorldUI.travel`）；新的全螢幕互動（面板、小遊戲、演出）要加進 `canLead` 的條件。
 - **13.0 圖片角色**：取景存在 `c.appearance.frame`（flip／zoom／dx／dy／crop／faces），只在 `CharRender.draw` 套用，**不得改寫原圖或另存加工後的圖**；`OC.Puppet.active()` 決定是否由圖片表演（玩家畫了該動作就不套）；新動作不需要為圖片另外寫——沿用 `rigState` 的身體動態，必要時在 `puppet13.js` 的 `MOVES`／`OWN` 補資料。快取 key 要包含會改變畫面的時間量化。
 - **13.0 特質**：新特質只加在 `traits13.js` 的資料表（`fx.need／act／soc／emo／speed／accept` 至少一項＋台詞），鍵必須是存在的需求／活動／社交／情緒 id（v13 測試 3a 會檢查）；衝突寫一邊即可（會自動補成雙向）。
-- **13.0 介面**：預設風格是 `play`；常駐在畫面上的元件**不得**用 `backdrop-filter`（每幀成本）；HUD 不加底框；對話、提示、教學卡用 `--balloon*`；新元件三種風格、兩種主題都要能用。參考作品只取原則。
 - **13.0 OC.Fun**：小遊戲與來訪的保留用 `'game'`（`MAX_AGE.game`），每條離開路徑都要 `end()`／`leave()`；獎勵 key 固定為 `fun:<遊戲>:<oc>:<日>`、`visitgift:<oc>:<日>`、`shake:<地點>:<座標>:<日>`（結果由 key 的雜湊決定，不能靠重試改變）；台詞放 `LINES`，自訂變數經 `extra.vars`。行內註解一律用 `/* */`，不要在一行多敘述的程式後面用 `//`（已三次吃掉後半行）。
 - **13.0 桌寵作息**：新的連續動作只加在 `PetRoutine.ROUTINES`（動畫必須在 `PetBrain.ANIMS`）；導演只在寵物空閒時下指令，不改需求。
 
@@ -184,3 +188,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 無法連線 `dl.google.com` / Google Maven → 無法用 AGP / 下載 Android SDK；改用離線管線（`docs/android-build.md`）。
 - Maven Central 偶爾 429；`--max-workers=1` 重試。GitHub raw 被封鎖；字體由 Google Fonts 取得。
 - 沒有 Android 模擬器或實機：只能驗證到「APK 建置、簽章、內容正確」與「遊戲在 Chromium 手機模擬中正常」。
+
+- **14.0 靜態模型合併**：沒有東西會在裡面動的模型（房屋、攤位、長椅、柵欄、燈柱、橋）在建好後 `return fuse(g)`（依材質＋陰影旗標合併成少數幾個 mesh）；會單獨動或單獨顯示的子物件要標 `userData.keep`（例如果實），有貼圖（`material.map`）的不合併（合併只保留位置與法線）。花是每朵各自 `fuse`（仍然一朵一朵搖）。新增大量同材質的小零件時，放進一個 Group 再 `Mo.fuse()`（例如露台欄杆）。v14 測試 5 會檢查零件數、繪製呼叫 ≤ 330、夜間窗戶材質仍接在房子上。
+- **14.0 桌寵架構**：一隻桌寵「決定做什麼」的邏輯只寫在 `core/pet/PetActor.kt`（輸入：指標樣本、每幀 tick、選單 key；輸出：`Out` 指令），並補單元測試；`overlay/PetWindow.kt` 只把設定 JSON 轉成 actor 的屬性、執行 `Out`（泡泡、音效、觸覺、事件、選單、收起、開啟遊戲），**不得**在視窗層再寫行為判斷。選單項目加在 `PetActor.mainMenu()`／`menu(key)`。原生泡泡與選單的顏色在 `PetTheme.of()`，要和 tokens 的白天／夜晚一致。
+- **14.0 圖片裁切框**（`charedit.js` 的 `cropBox`）：只改 `c.appearance.frame`（草稿），四邊上限 45%；拖曳中 `x.changed('look', null)`、放開才記入復原紀錄。
