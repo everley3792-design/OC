@@ -29,6 +29,7 @@ import app.ocshimeji.R
 import app.ocshimeji.core.pet.AnimClip
 import app.ocshimeji.core.pet.AppContext
 import app.ocshimeji.core.pet.PetSocial
+import app.ocshimeji.core.pet.PetStage
 import app.ocshimeji.widget.PetWidget
 import org.json.JSONArray
 import org.json.JSONObject
@@ -55,7 +56,9 @@ class OverlayPetService : Service() {
      *  add windows from a Service; it also gives the views the display's real configuration), the service itself before */
     lateinit var uiCtx: Context; private set
     private val pets = LinkedHashMap<String, PetWindow>()
-    private val social = PetSocial()
+    /** 14.1: what the pets do together (pairs, pacing, announcements) is decided in core:pet — this service only carries it out */
+    private val stage = PetStage()
+    private val social get() = stage.social
     /** 12.0: the desktop pets' own sounds (core:pet PetSound decides when; this plays the clips) */
     val sounds by lazy { PetSounds(this) }
     var soundQuiet = true; private set
@@ -160,11 +163,12 @@ class OverlayPetService : Service() {
         for (i in 0 until list.length()) { val p = list.optJSONObject(i) ?: continue; val id = p.optString("id"); if (id.isNotEmpty() && id !in removedThisSession && want.size < maxPets) want[id] = p }
         if (want.isEmpty() && list.length() == 0) want["legacy"] = JSONObject().put("id", "legacy").put("name", "OC")  // pre-0.7 export
         // remove pets no longer wanted
-        for (id in pets.keys.toList()) if (id !in want) { pets.remove(id)?.detach() }
+        for (id in pets.keys.toList()) if (id !in want) { stage.remove(id); pets.remove(id)?.detach() }
         val data = cfg.optJSONObject("data") ?: JSONObject()
         var seed = 1
         for ((id, p) in want) {
             val w = pets.getOrPut(id) { PetWindow(this, id, (SystemClock.uptimeMillis() % 9973).toInt() + seed * 31) }
+            if (stage[id] == null) stage.add(w.actor)
             seed++
             val sprites = if (id == "legacy") PetSprites.legacy(this) else PetSprites.load(this, id)
             w.configure(p, data.optJSONObject(id), global, sprites, screenW, screenH, insetTop, insetBottom)
@@ -190,8 +194,7 @@ class OverlayPetService : Service() {
     private val frame = object : Choreographer.FrameCallback {
         override fun doFrame(nowNs: Long) {
             if (!looping) return
-            val resting = pets.values.all { it.brain.isResting } && !pets.values.any { it.brain.isDragging }
-            val cap = when { paused -> 10; resting -> 15; else -> fpsCap }
+            val cap = stage.frameCap(paused, fpsCap)
             val interval = 1_000_000_000L / cap
             if (lastFrameNs == 0L || nowNs - lastFrameNs >= interval - 2_000_000L) {
                 val dt = if (lastFrameNs == 0L) 0f else ((nowNs - lastFrameNs) / 1e9f).coerceAtMost(0.1f)
@@ -199,7 +202,7 @@ class OverlayPetService : Service() {
                 val t0 = System.nanoTime(); val now = SystemClock.uptimeMillis()
                 if (now - quietAt > 1500) { quietAt = now; soundQuiet = !screenOn || (global.optBoolean("sound", false) && sounds.quiet()) }
                 for (w in pets.values) w.frame(dt, now, screenW, insetTop, paused, theme)
-                if (!paused && pets.size > 1) for (m in social.step(pets.map { PetSocial.Member(it.key, it.value.brain) }, dt)) meeting(m, now)
+                run(stage.step(dt, paused), now)
                 frames++; frameNsSum += System.nanoTime() - t0
                 if (now - fpsWindowStart > 2000) { measuredFps = frames * 1000f / (now - fpsWindowStart).coerceAtLeast(1); fpsWindowStart = now; avgFrameMs = if (frames > 0) frameNsSum / 1e6f / frames else 0f; frames = 0; frameNsSum = 0; housekeeping() }
             }
@@ -234,23 +237,15 @@ class OverlayPetService : Service() {
         val hide = hit.excluded && app.hideOverExcluded
         if (hide != appHidden) { appHidden = hide; for (w in pets.values) w.setHidden(hide) }
         val cat = hit.category ?: return
-        if (paused) return
-        val w = pets.values.firstOrNull { it.actor.talk.has("app_$cat") } ?: return
-        w.sayCat("app_$cat", SystemClock.uptimeMillis(), chatter = true)
+        run(stage.appContext(cat, paused), SystemClock.uptimeMillis())
     }
 
     // ---------------------------------------------------------------- interactions
 
-    private fun meeting(m: PetSocial.Meeting, now: Long) {
-        val a = pets[m.a] ?: return; val b = pets[m.b] ?: return
-        val cat = PetSocial.KINDS[m.kind]?.lines ?: "friend"
-        a.sayCat(cat, now); main.postDelayed({ b.sayCat(cat, SystemClock.uptimeMillis()) }, 1200)
-        a.meetingSound(m.kind)   // 12.0: the warm or the low two-tone, once per meeting
-        PetFiles.event(this, m.a, "meet", JSONObject().put("with", m.b).put("kind", m.kind))
-    }
+    private fun run(cmds: List<PetStage.Cmd>, now: Long) { for (c in cmds) pets[c.pet]?.carry(c.out, now) }
 
     /** is this pet in a paired action with another one right now? (routines wait) */
-    fun pairBusy(id: String) = social.isBusy(id)
+    fun pairBusy(id: String) = stage.pairBusy(id)
 
     fun later(ms: Long, r: () -> Unit) { main.postDelayed({ if (running) r() }, ms) }
 
@@ -260,23 +255,12 @@ class OverlayPetService : Service() {
     }
 
     fun removePet(id: String) {
-        removedThisSession += id; pets.remove(id)?.detach()
+        removedThisSession += id; stage.remove(id); pets.remove(id)?.detach()
         if (pets.isEmpty()) stopEverything("all pets put away") else { notifyUpdate(); writeStatus() }
     }
 
     /** "test on desktop": the first two pets walk to each other and play a paired action (12.0) */
-    fun testPair(kind: String) {
-        val l = pets.values.toList(); if (l.size < 2 || PetSocial.KINDS[kind] == null) return
-        val a = l[0]; val b = l[1]
-        b.brain.goTo(a.brain.x + a.sizePx * 0.7f * (if (b.brain.x >= a.brain.x) 1 else -1))
-        fun tryStart(left: Int) {
-            if (!running) return
-            val m = social.start(kind, PetSocial.Member(a.id, a.brain), PetSocial.Member(b.id, b.brain))
-            if (m != null) { meeting(m, SystemClock.uptimeMillis()); return }
-            if (left > 0) later(500) { tryStart(left - 1) }
-        }
-        later(900) { tryStart(20) }
-    }
+    fun testPair(kind: String) { stage.testPair(kind) }
 
     /** "test on desktop": play an animation on a pet right now */
     fun test(oc: String, anim: String) {
@@ -291,13 +275,7 @@ class OverlayPetService : Service() {
     }
 
     /** a reminder / pomodoro fired → the pet says it (the notification is posted separately) */
-    fun announce(cat: String, text: String?) {
-        val w = pets.values.firstOrNull() ?: return
-        val now = SystemClock.uptimeMillis()
-        val line = w.actor.talk.react(cat, 0f)
-        w.brain.react(if (cat == "timer_done") "cheer" else "greet", 2f)
-        w.say(listOfNotNull(text, line).joinToString("\n").ifBlank { "⏰" }, now)
-    }
+    fun announce(cat: String, text: String?) { run(stage.announce(cat, text), SystemClock.uptimeMillis()) }
 
     fun setPaused(p: Boolean) {
         paused = p
@@ -355,7 +333,7 @@ class OverlayPetService : Service() {
         running = false
         looping = false; Choreographer.getInstance().removeFrameCallback(frame)
         main.removeCallbacksAndMessages(null)
-        for (w in pets.values) w.detach(); pets.clear()
+        for (w in pets.values) w.detach(); pets.clear(); stage.clear()
         screenReceiver?.let { runCatching { unregisterReceiver(it) } }; screenReceiver = null
         usage = null
         if (why.isNotEmpty() && lastStatusCode !in setOf("revoked", "blocked", "no-permission")) status("stopped", why)

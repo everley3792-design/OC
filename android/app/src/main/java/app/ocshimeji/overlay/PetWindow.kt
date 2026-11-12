@@ -112,7 +112,8 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         return view.show(brain, set, f)
     }
 
-    /** carry out what the actor decided */
+    /** carry out what the actor (or the stage, for things pets do together) decided */
+    fun carry(o: PetActor.Out, now: Long) = run(listOf(o), now)
     private fun run(outs: List<PetActor.Out>, now: Long) {
         for (o in outs) when (o) {
             is PetActor.Out.Say -> if (!hidden) bubble.show(o.text, svc.theme, passthrough, now)

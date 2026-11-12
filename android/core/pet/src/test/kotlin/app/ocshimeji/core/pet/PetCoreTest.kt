@@ -476,3 +476,75 @@ class PetActorTest {
         assertTrue(said >= 1)
     }
 }
+
+/** 14.1: what the pets do together, without Android */
+class PetStageTest {
+    private fun actor(id: String, x: Float): PetActor {
+        val a = PetActor(id, id.hashCode() and 0xff)
+        a.brain.reset(1080, 2000, 200, startX = x)
+        a.talk.pools = mapOf("friend" to listOf("嗨"), "hug" to listOf("抱一下"), "app_game" to listOf("在玩遊戲？"), "timer_done" to listOf("時間到"), "comfort_d" to listOf("沒事的"), "quarrel" to listOf("哼"), "sorry" to listOf("對不起"))
+        repeat(40) { a.tick(0.05f, it * 50L, 12, paused = false, pairBusy = false, bubbleShowing = true, quiet = false) }
+        return a
+    }
+
+    @Test fun `frame pacing follows what the pets are doing`() {
+        val s = PetStage(); val a = actor("a", 300f); s.add(a)
+        a.menu("stay")                                                    // sits still
+        assertEquals(15, s.frameCap(paused = false, cap = 60))
+        assertEquals(10, s.frameCap(paused = true, cap = 60))
+        a.brain.react("happy", 2f)                                        // doing something
+        assertEquals(60, s.frameCap(paused = false, cap = 60))
+        assertEquals(30, s.frameCap(paused = false, cap = 30))
+    }
+
+    @Test fun `a tested paired action walks them together, then both speak, one event, one after the other`() {
+        val s = PetStage(); val a = actor("a", 300f); val b = actor("b", 700f); s.add(a); s.add(b)
+        val kind = PetSocial.KINDS.keys.first()
+        assertTrue(s.testPair(kind)); assertFalse(s.testPair("no-such-kind"))
+        val cmds = ArrayList<PetStage.Cmd>(); var t = 0L
+        repeat(600) {                                                     // 30 s at most
+            t += 50
+            a.tick(0.05f, t, 12, false, s.pairBusy("a"), true, false); b.tick(0.05f, t, 12, false, s.pairBusy("b"), true, false)
+            cmds += s.step(0.05f, paused = false)
+        }
+        val meets = cmds.filter { it.out is PetActor.Out.Event && (it.out as PetActor.Out.Event).type == "meet" }
+        assertTrue(meets.isNotEmpty(), "the paired action started")
+        val first = meets.first(); val ev = first.out as PetActor.Out.Event
+        assertEquals("a", first.pet); assertEquals("b", ev.data["with"]); assertEquals(kind, ev.data["kind"])
+        val says = cmds.filter { it.out is PetActor.Out.Say }
+        val ia = cmds.indexOfFirst { it.pet == "a" && it.out is PetActor.Out.Say }; val ib = cmds.indexOfFirst { it.pet == "b" && it.out is PetActor.Out.Say }
+        assertTrue(ia >= 0 && ib >= 0 && says.size >= 2, "both speak")
+        assertTrue(ib > ia, "the other one answers after the first")
+    }
+
+    @Test fun `nothing happens between pets while paused, and a removed pet is forgotten`() {
+        val s = PetStage(); val a = actor("a", 300f); val b = actor("b", 380f); s.add(a); s.add(b)
+        s.testPair(PetSocial.KINDS.keys.first())
+        val cmds = ArrayList<PetStage.Cmd>()
+        repeat(200) { cmds += s.step(0.05f, paused = true) }
+        assertTrue(cmds.none { it.out is PetActor.Out.Event })
+        s.remove("b"); assertEquals(1, s.size)
+        repeat(200) { cmds += s.step(0.05f, paused = false) }
+        assertTrue(cmds.none { it.out is PetActor.Out.Event })           // alone: no meeting, and the pending test was dropped
+        assertFalse(s.testPair(PetSocial.KINDS.keys.first()))
+    }
+
+    @Test fun `an app-context line comes from the first pet that has one, never while paused`() {
+        val s = PetStage(); val a = actor("a", 300f); val b = actor("b", 700f)
+        a.talk.pools = a.talk.pools - "app_game"; s.add(a); s.add(b)
+        var t = 0L; repeat(4000) { t += 50; b.tick(0.05f, t, 12, false, false, true, false) }   // it is a spontaneous line: it keeps the pet's own talking gap
+        assertTrue(s.appContext("game", paused = true).isEmpty())
+        val c = s.appContext("game", paused = false)
+        assertEquals("b", c.first().pet); assertEquals(PetActor.Out.Say("在玩遊戲？"), c.first { it.out is PetActor.Out.Say }.out)
+        assertTrue(s.appContext("music", paused = false).isEmpty())       // nobody has a line for that
+    }
+
+    @Test fun `a reminder is said by the first pet with its own line, and it cheers`() {
+        val s = PetStage(); assertTrue(s.announce("timer_done", "番茄鐘結束").isEmpty())
+        val a = actor("a", 300f); s.add(a)
+        val c = s.announce("timer_done", "番茄鐘結束")
+        assertEquals(listOf(PetStage.Cmd("a", PetActor.Out.Say("番茄鐘結束\n時間到"))), c)
+        a.tick(0.016f, 0, 12, false, false, true, false); assertEquals("cheer", a.brain.anim)
+        assertEquals(PetActor.Out.Say("⏰"), s.announce("no_such", null).first().out)
+    }
+}
