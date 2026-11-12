@@ -160,6 +160,37 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('6c 沒有空白的彩色膠囊；標籤的字和底色分得開（看得到字）', r.emptyPills === 0 && r.tags.length >= 2 && r.tags.every((t) => t.d >= 0.2), { empty: r.emptyPills, tags: r.tags });
     }
 
+    // ================= 7. 14.1 performance: nothing expensive runs every frame in the compositor =================
+    if (want(7)) {
+      await closeAll();
+      await page.evaluate(() => OC.WorldUI.travel('isle', { instant: true })); await page.waitForFunction(() => OC.World.area && OC.World.area.id === 'isle', null, { timeout: 40000 });
+      const lights = () => page.evaluate(() => { let n = 0; OC.World.scene.traverse((o) => { if (o.isPointLight && o.visible) n++; }); return n; });
+      const set = (hour, perf) => page.evaluate(([hour, perf]) => { const S = OC.Store.s.settings; S.time = 'fixed'; S.fixedHour = hour; S.weather = 'clear'; S.perf = perf; OC.App.applyPerf(); }, [hour, perf]);
+      const r = {};
+      for (const perf of ['high', 'balanced', 'saver']) { await set(12, perf); await wait(page, 700); r[perf] = await page.evaluate(() => { const cs = (id, k) => getComputedStyle(document.getElementById(id))[k]; return { filter: cs('world', 'filter'), blend: cs('world-glow', 'mixBlendMode'), soft: OC.World.renderer.shadowMap.type === THREE.PCFSoftShadowMap, check: OC.World.renderer.debug.checkShaderErrors }; }); }
+      await set(12, 'balanced'); await page.waitForFunction(() => { let n = 0; OC.World.scene.traverse((o) => { if (o.isPointLight && o.visible) n++; }); return n === 0; }, null, { timeout: 60000 }).catch(() => {});
+      const day = await lights();
+      await set(23, 'balanced'); await page.waitForFunction(() => { let n = 0; OC.World.scene.traverse((o) => { if (o.isPointLight && o.visible) n++; }); return n > 0; }, null, { timeout: 60000 }).catch(() => {});
+      const night = await lights();
+      await set(23, 'saver'); await wait(page, 1200); const saverNight = await lights();
+      await set(12, 'balanced'); await wait(page, 500);
+      check('7a 3D 畫布上沒有 CSS 濾鏡、光暈層沒有混合模式（三種效能模式都一樣）——調色改在著色器裡做；不再每次編譯都向驅動要錯誤紀錄', ['high', 'balanced', 'saver'].every((k) => r[k].filter === 'none' && r[k].blend === 'normal' && r[k].check === false) && /ocL/.test(await page.evaluate(() => THREE.ShaderChunk.tonemapping_fragment)), r);
+      check('7b 柔邊陰影只在「高」；白天路燈的點光源完全關掉（不是亮度 0），晚上才打開；「省電」晚上也不開', r.high.soft && !r.balanced.soft && !r.saver.soft && day === 0 && night >= 1 && saverNight === 0, { day, night, saverNight });
+      /* the frame-rate watcher (it is switched off in automated runs — software rendering is always slow — so its rule is driven by hand) */
+      const ad = await page.evaluate(() => {
+        const S = OC.Store.s.settings, out = {}; S.perf = 'balanced'; OC.App.applyPerf(); const r0 = OC.World.renderer.getPixelRatio();
+        out.good = Array.from({ length: 20 }, () => OC.App.adaptStep(58)).some(Boolean); out.lvGood = OC.App.adaptLevel;
+        out.blip = [30, 30, 30, 58, 30, 30, 30, 58].map((f) => OC.App.adaptStep(f)).some(Boolean);   /* a short dip is not a slow device */
+        out.slow = Array.from({ length: 6 }, () => OC.App.adaptStep(28)); out.lv1 = OC.App.adaptLevel; out.r1 = OC.World.renderer.getPixelRatio();
+        Array.from({ length: 6 }, () => OC.App.adaptStep(28)); out.lv2 = OC.App.adaptLevel; out.r2 = OC.World.renderer.getPixelRatio();
+        Array.from({ length: 30 }, () => OC.App.adaptStep(20)); out.lv3 = OC.App.adaptLevel; out.r3 = OC.World.renderer.getPixelRatio();
+        S.perf = 'high'; OC.App.applyPerf(); out.high = Array.from({ length: 12 }, () => OC.App.adaptStep(20)).some(Boolean);
+        S.perf = 'balanced'; OC.App.applyPerf(); out.reset = OC.App.adaptLevel; out.r0 = r0; out.rBack = OC.World.renderer.getPixelRatio();
+        return out;
+      });
+      check('7c 「平衡」會看自己的幀率：連續三秒跟不上就降一級解析度，最多降兩級、不會一直降；短暫掉幀不算；「高」不會被自動降；重新套用模式會回到原本的解析度', !ad.good && ad.lvGood === 0 && !ad.blip && ad.slow[5] === true && ad.slow.slice(0, 5).every((x) => !x) && ad.lv1 === 1 && ad.r1 <= ad.r0 && ad.lv2 === 2 && ad.r2 <= ad.r1 && ad.r2 >= 1 && ad.lv3 === 2 && ad.r3 === ad.r2 && !ad.high && ad.reset === 0 && ad.rBack === ad.r0, ad);
+    }
+
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
   await browser.close();

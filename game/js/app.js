@@ -27,15 +27,27 @@
   function perfOf(mode) {
     const c = S().settings.custom;
     switch (mode) {
-      case 'high': return { ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, bbMax: 768, lights: true, grade: true, dof: true };
+      case 'high': return { soft: true, ratio: Math.min(DPR, 2), shadows: 2048, fx: true, grass: 1, fps: 60, bb: 320, bbMax: 768, lights: true, grade: true, dof: true };
       case 'saver': return { ratio: 1, shadows: 0, fx: false, grass: 0, fps: 30, bb: 192, bbMax: 256, lights: false, grade: false, dof: false };
-      case 'custom': return { ratio: Math.min(DPR, c.scale), shadows: c.shadows === 'off' ? 0 : c.shadows === 'high' ? 2048 : 1024, fx: c.fx, grass: c.grass ? 0.8 : 0, fps: c.fps, bb: c.scale >= 1.75 ? 320 : c.scale >= 1.25 ? 256 : 192, bbMax: c.scale >= 1.75 ? 768 : c.scale >= 1.25 ? 512 : 256, lights: c.shadows !== 'off' };
+      case 'custom': return { soft: c.shadows === 'high', ratio: Math.min(DPR, c.scale), shadows: c.shadows === 'off' ? 0 : c.shadows === 'high' ? 2048 : 1024, fx: c.fx, grass: c.grass ? 0.8 : 0, fps: c.fps, bb: c.scale >= 1.75 ? 320 : c.scale >= 1.25 ? 256 : 192, bbMax: c.scale >= 1.75 ? 768 : c.scale >= 1.25 ? 512 : 256, lights: c.shadows !== 'off' };
       default: return { ratio: Math.min(DPR, 1.5), shadows: 1024, fx: true, grass: 0.6, fps: 60, bb: 256, bbMax: 512, lights: true, grade: true, dof: false };
     }
   }
   let Q = null;
-  function applyPerf() {
-    Q = perfOf(S().settings.perf); if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
+  /* 14.1: in 'balanced' the game watches its own frame rate and steps the resolution down (and the shadow map with it) when the device
+   * cannot keep up, instead of staying slow. It only ever steps down, at most twice, and starts again from the top when the mode is
+   * re-applied or the app restarts. Not in automated runs (software rendering is always "slow"; those have their own fixed settings). */
+  let adaptLv = 0, adaptBad = 0;
+  function adaptStep(fps) {   /* called every half second with the measured rate; returns true when it stepped down */
+    if (S().settings.perf !== 'balanced' || adaptLv >= 2 || paused || document.hidden) { adaptBad = 0; return false; }
+    if (fps < 42 && fps > 1) adaptBad++; else adaptBad = 0;
+    if (adaptBad < 6) return false;   /* three seconds in a row */
+    adaptBad = 0; adaptLv++; applyPerf(true); return true;
+  }
+  function applyPerf(keepAdapt) {
+    if (!keepAdapt) { adaptLv = 0; adaptBad = 0; }
+    Q = perfOf(S().settings.perf);
+    if (adaptLv && S().settings.perf === 'balanced') { Q.ratio = Math.max(1, Q.ratio - 0.25 * adaptLv); Q.shadows = adaptLv >= 2 ? 512 : Q.shadows; Q.grass = adaptLv >= 2 ? 0.35 : Q.grass; Q.bb = adaptLv >= 2 ? 192 : Q.bb; Q.bbMax = adaptLv >= 2 ? 384 : Q.bbMax; } if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
     Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
     const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof); root.classList.toggle('lite', !Q.fx);   // saver: no backdrop blur (costly on weak GPUs), opaque glass instead
   }
@@ -77,7 +89,7 @@
   function live(canvas, fn) { lives.push({ canvas, fn, blinkAt: performance.now() + 2000, t0: performance.now() }); }
   let lastLive = 0;
   function drawLives(now) {
-    if (now - lastLive < 66) return; lastLive = now;
+    if (now - lastLive < 120) return; lastLive = now;
     for (const L of lives) {
       if (!L.canvas.isConnected || L.canvas.offsetParent === null) continue;
       const o = L.fn(); if (!o || !o.char) continue;
@@ -416,11 +428,11 @@
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.t += dt; if (f.t > f.dur) { f.el.remove(); floats.splice(i, 1); continue; }
       const p = f.a ? Wd.project(f.a.x, f.a.y, f.a.lvl, (f.a.gy - f.a.lvl * Wd.HY) + f.up) : Wd.project(f.pos.x, f.pos.y, f.pos.lvl, f.up);
-      f.x = p.x; f.y = p.y; f.el.style.left = p.x + 'px'; f.el.style.top = p.y + 'px'; f.el.style.visibility = f.a && f.a.hidden ? 'hidden' : '';
+      f.x = p.x; f.y = p.y; { const hid = !!(f.a && f.a.hidden); if (Math.abs(p.x - (f.px || -9e9)) > 0.4 || Math.abs(p.y - (f.py || -9e9)) > 0.4) { f.px = p.x; f.py = p.y; f.el.style.left = p.x + 'px'; f.el.style.top = p.y + 'px'; } if (hid !== f.hid) { f.hid = hid; f.el.style.visibility = hid ? 'hidden' : ''; } }   /* 14.1: write styles only when the bubble actually moved */
     }
     // speech bubbles never cover each other: push the later one up
     const bs = floats.filter((f) => f.keep).sort((x, y) => x.y - y.y);
-    for (let i = 0; i < bs.length; i++) { const f = bs[i]; f.h = f.h || f.el.offsetHeight || 30; f.w = f.w || f.el.offsetWidth || 80; for (let j = 0; j < i; j++) { const g = bs[j]; if (Math.abs(g.x - f.x) < (g.w + f.w) / 2 && Math.abs(g.y - f.y) < (g.h + f.h) / 2 + 4) { g.y = f.y - (g.h + f.h) / 2 - 6; g.el.style.top = g.y + 'px'; } } }
+    for (let i = 0; i < bs.length; i++) { const f = bs[i]; f.h = f.h || f.el.offsetHeight || 30; f.w = f.w || f.el.offsetWidth || 80; for (let j = 0; j < i; j++) { const g = bs[j]; if (Math.abs(g.x - f.x) < (g.w + f.w) / 2 && Math.abs(g.y - f.y) < (g.h + f.h) / 2 + 4) { g.y = f.y - (g.h + f.h) / 2 - 6; g.py = g.y; g.el.style.top = g.y + 'px'; } } }
   }
 
   // =============================== interactions ===============================
@@ -827,6 +839,7 @@
   function applyControl() { if (joy) joy.hidden = curTab !== 'island' || S().settings.control !== 'joy'; document.documentElement.classList.toggle('joy-on', S().settings.control === 'joy'); }
 
   // =============================== main loop ===============================
+  let hudT = 0;
   let presT = 0, autoSaveT = 0, last = performance.now(), lastSim = performance.now(), acc = 0, fpsN = 0, fpsT = 0, saveStepT = 0, lastWx = null, holdT = 0, editing = new Set();
   function loop(now) {
     requestAnimationFrame(loop);
@@ -862,14 +875,14 @@
       if (player.path || player.joy) S().pos = { area: Wd.area.id, x: player.x, y: player.y };
     }
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
-    if (hud.name) updateHUD();
+    if (hud.name && now - hudT > 200) { hudT = now; updateHUD(); }   /* 14.1: the HUD text changes a few times a minute — building its key 60 times a second was wasted work */
     updateGlow(dt);
     holdWatchdog();
     OC.LifeUI.tick(dt);
     if (OC.Mind11) OC.Mind11.update(dt);
     if (OC.Arcs) OC.Arcs.update(dt);
     if (statusEl) updateStatus();
-    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps`; fpsN = 0; fpsT = 0; }
+    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { const fps = fpsN / fpsT; fpsEl.textContent = `${Math.round(fps)} fps`; fpsN = 0; fpsT = 0; if (!navigator.webdriver && curTab === 'island' && !OC.UI.stack.length) adaptStep(fps); }
   }
   let intT = 0, lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }
@@ -1038,6 +1051,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { adaptStep, get adaptLevel() { return adaptLv; }, canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

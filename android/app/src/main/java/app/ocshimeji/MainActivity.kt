@@ -85,6 +85,10 @@ class MainActivity : Activity() {
             return
         }
         web.setBackgroundColor(bg)
+        // 14.1: keep the game's renderer at foreground priority while it is on screen (a deprioritised renderer stutters), and make the
+        // hardware layer explicit. Both are hints: a device that refuses them still works.
+        runCatching { web.setLayerType(View.LAYER_TYPE_HARDWARE, null) }
+        runCatching { if (android.os.Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true) }
         web.overScrollMode = View.OVER_SCROLL_NEVER
         with(web.settings) {
             javaScriptEnabled = true

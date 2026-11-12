@@ -667,10 +667,10 @@ html.cinema #overlays::before { top: 0; } html.cinema #overlays::after { bottom:
 @media (max-width: 360px) { .hud-plate { min-width: 140px; } .hud-quest { width: calc(100vw - 104px); } }
 
 /* ===================== 10.0 world grade: colour, sun glow, tilt-shift depth of field ===================== */
-html.grade #world { filter: saturate(1.2) contrast(1.06); }
-#world-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; display: none; transition: opacity 1.6s var(--ease-out), background 1.6s var(--ease-out); mix-blend-mode: soft-light;
+/* 14.1: the grade itself is done in the shaders now (world.js) — no CSS filter on the canvas (it cost a full-screen pass every frame) */
+#world-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; display: none; transition: opacity 1.6s var(--ease-out), background 1.6s var(--ease-out); /* 14.1: a plain translucent layer — a blend mode forces an off-screen pass over the whole view */
   background: radial-gradient(120% 70% at 88% -6%, var(--glow-c, #FFE3B0) 0%, transparent 62%); }
-html.grade #world-glow { display: block; opacity: var(--glow-a, 0); }   /* a blend layer costs a full-screen pass: only when grading is on */
+html.grade #world-glow { display: block; opacity: calc(var(--glow-a, 0) * 0.42); }   /* a blend layer costs a full-screen pass: only when grading is on */
 /* a diorama look: the far edge and the very near edge go slightly soft (only with effects on; never on the HUD) */
 #world-dof { position: absolute; inset: 0; pointer-events: none; display: none; }
 #world-dof i { position: absolute; left: 0; right: 0; -webkit-backdrop-filter: blur(2.4px); backdrop-filter: blur(2.4px); }

@@ -18,6 +18,7 @@
   const BB_W = 120 * RIG_UNIT, BB_H = BB_W / COS, FEET = 0.9;
 
   let R, canvas, scene, cam, env, area = null, root = null;
+  let lampsLit = false, frameN = 0;
   let area0Room = false, outdoorZoom = 1.9, W = 360, H = 640, zoom = 1.9, camX = 300, camY = 470, panX = 0, panY = 0, follow = true;
   // 8.0 camera: yaw (rotation around the vertical axis, limited), modes, scripted shots
   //   classic = fixed 2.5D (yaw 0, follows the played OC) · follow = follows the selected OC (rotation allowed)
@@ -479,6 +480,9 @@
     if (def.room) { yaw = 0; yawGoal = null; }   // rooms are built for the front view
     // rooms fit the screen width; outdoor places keep the player's own zoom
     if (def.room) { if (!area0Room) outdoorZoom = zoom; zoom = clamp(W / (def.room.x1 - def.room.x0 + 40), 1.1, 2.4); area0Room = true; } else { if (area0Room) zoom = outdoorZoom; area0Room = false; }
+    /* 14.1: compile every shader of the place now (behind the travel fade) instead of the first time each thing is drawn; both lamp
+     * states, so dusk and dawn only swap programs that already exist */
+    try { const Ls = OC.Models.night.lamps.filter((l) => l.L); R.compile(scene, cam); Ls.forEach((l) => { l.L.visible = !l.L.visible; }); R.compile(scene, cam); Ls.forEach((l) => { l.L.visible = lampsLit && quality.lights !== false; }); } catch (e) { /* precompiling is only an optimisation */ }
     return ctx;
   }
 
@@ -542,8 +546,13 @@
   // ====================== main ======================
   function init(cv, opt = {}) {
     canvas = cv; hooks = opt.hooks || {};
+    /* 14.1 (performance): the colour grade used to be a CSS filter on this canvas — a full-screen filter pass in the compositor every
+     * frame, very slow in a phone's WebView. It now lives in the shaders (a few instructions at the end of every built-in material),
+     * so it costs next to nothing and is the same in every performance mode. */
+    if (!THREE.ShaderChunk.__ocGrade) { THREE.ShaderChunk.__ocGrade = true; THREE.ShaderChunk.tonemapping_fragment += '\n{ float ocL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ); gl_FragColor.rgb = mix( vec3( ocL ), gl_FragColor.rgb, 1.2 ); gl_FragColor.rgb = max( ( gl_FragColor.rgb - 0.18 ) * 1.06 + 0.18, 0.0 ); }\n'; }
     R = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false });
-    R.outputColorSpace = THREE.SRGBColorSpace; R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+    R.debug.checkShaderErrors = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
+    R.outputColorSpace = THREE.SRGBColorSpace; R.shadowMap.enabled = true; R.shadowMap.type = quality.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     scene = new THREE.Scene(); scene.background = new THREE.Color(OC.Style.P.sea);
     cam = new THREE.OrthographicCamera(-180, 180, 320, -320, 1, 4000);
     env = OC.Env.create(scene); env.setShadows(quality.shadows);
@@ -565,6 +574,7 @@
     quality = Object.assign({}, q);
     if (quality.fx === false) { leaves = []; puffs = []; if (leafMesh) { leafMesh.count = 0; puffMesh.count = 0; } }   // effects off: nothing already in the air stays
     R.setPixelRatio(q.ratio); R.setSize(W, H, false);
+    { const type = q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap; if (R.shadowMap.type !== type) { R.shadowMap.type = type; R.shadowMap.needsUpdate = true; scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true)); }); } }
     if (shChanged) {
       const was = R.shadowMap.enabled; R.shadowMap.enabled = !!q.shadows;
       env.setShadows(q.shadows);
@@ -572,7 +582,7 @@
     }
     env.setQuality(q);
     if (grassMesh) grassMesh.count = Math.round(grassMax * q.grass);
-    OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = q.lights !== false; });
+    OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = lampsLit && q.lights !== false; });
     if (bbChanged) { bbRes = bbTarget(); actors.forEach(resizeActorCanvas); }
   }
   let last = 0, envCur = null, camTarget = null;
@@ -623,6 +633,10 @@
     const n = envCur.night;
     OC.Models.night.windows.forEach((m) => { m.emissiveIntensity = n * 1.25; });
     OC.Models.night.lamps.forEach((l) => { const on = l.furn ? (hooks.lampOn ? hooks.lampOn(l.furn) : true) : true; l.m.emissiveIntensity = on ? n * 1.5 : 0; if (l.L) l.L.intensity = on ? n * 900 : 0; });
+    /* 14.1: by day the lamp lights are switched off entirely — a light of intensity 0 is still computed for every pixel of every lit surface */
+    { const lit = lampsLit ? n > 0.02 : n > 0.05; if (lit !== lampsLit) { lampsLit = lit; OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = lit && quality.lights !== false; }); } }
+    /* the sun's shadow map is redrawn every frame only in 'high'; otherwise every other frame (half the shadow cost, one frame of lag nobody sees) */
+    if (env.sun && env.sun.shadow) { frameN++; env.sun.shadow.autoUpdate = false; env.sun.shadow.needsUpdate = !!quality.soft || frameN % 2 === 0 || frameN < 4; }
     if (area.bg) scene.background.set(OC.mix(area.bg, '#14202E', envCur.night * 0.7)); else scene.background.set(envCur.sea);
     R.render(scene, cam);
   }
