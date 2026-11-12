@@ -319,8 +319,14 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
 
     // ================= 13. repeated page switching: no leaks, no re-loading =================
     if (want(13)) {
-      const base = await page.evaluate(() => ({ dom: document.getElementsByTagName('*').length, tex: OC.World.renderer.info.memory.textures, geo: OC.World.renderer.info.memory.geometries, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0 }));
+      /* pages are built once and kept: open every one of them once first, so what is measured is growth from repeating, not the first build */
       const k = I['小空'];
+      for (let i = 0; i < 4; i++) {
+        await page.evaluate(([id, i]) => { OC.App.tab('more'); const P = OC.Pages.pages.more; P.tab = ['quests', 'req', 'ach', 'coll'][i % 4]; P._sig = ''; P.refresh(P); OC.App.tab('island'); OC.Pages.open('collection'); OC.Pages.close('collection'); OC.Pages.open('profile', { id, tab: i % 2 ? 'grow' : 'mem' }); OC.Pages.close('profile'); OC.Pages.open('bag'); OC.Pages.close('bag'); }, [k, i]);
+        await wait(page, 150);
+      }
+      await wait(page, 600);
+      const base = await page.evaluate(() => ({ dom: document.getElementsByTagName('*').length, tex: OC.World.renderer.info.memory.textures, geo: OC.World.renderer.info.memory.geometries, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0 }));
       for (let i = 0; i < 12; i++) {
         await page.evaluate(([id, i]) => { OC.App.tab('more'); const P = OC.Pages.pages.more; P.tab = ['quests', 'req', 'ach', 'coll'][i % 4]; P._sig = ''; P.refresh(P); OC.App.tab('island'); OC.Pages.open('collection'); OC.Pages.close('collection'); OC.Pages.open('profile', { id, tab: i % 2 ? 'grow' : 'mem' }); OC.Pages.close('profile'); OC.Pages.open('bag'); OC.Pages.close('bag'); }, [k, i]);
         await wait(page, 150);
