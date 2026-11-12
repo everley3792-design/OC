@@ -52,18 +52,20 @@
     if (Math.hypot(p.x - walk0.x, p.y - walk0.y) > 30) fire('walk');
     if (Math.abs(OC.World.zoom - zoom0) > 0.2) { zoom0 = OC.World.zoom; fire('cam:zoom'); }
   }
+  let pend = -1;
   function fire(e) {
-    const s = STEPS[cur]; if (!s || !s.done || !s.done(e)) return;
+    const s = STEPS[cur]; if (pend === cur || !s || !s.done || !s.done(e)) return; /* a second matching event while the tick is showing must not skip the next step */
+    pend = cur; const from = cur;
     OC.Sound && OC.Sound.play('sparkle'); OC.UI.haptic('confirm');
     const a = A().player; if (a) A().floatText(a, '✓', 'var(--success)');
-    setTimeout(() => show(cur + 1), 700);
+    setTimeout(() => { if (cur === from && pend === from) show(from + 1); }, 700);
   }
   function build() {
     ui = { card: h('div.tut-card', { role: 'status', 'aria-live': 'polite' }), ring: h('div.tut-ring') };
     document.getElementById('app').append(ui.card, ui.ring);
   }
   function show(i) {
-    if (!ui) return;
+    pend = -1; if (!ui) return;
     if (i >= STEPS.length) { finish(false); return; }
     cur = i; st().step = i; St.touch('intro');
     const s = STEPS[i], c = OC.Chars.active();
@@ -92,6 +94,7 @@
     stop();
   }
   function stop(silent) {
+    pend = -1;
     clearInterval(pollT); off.forEach((f) => f && f()); off = [];
     if (ui) { const u = ui; ui = null; u.card.classList.remove('on'); u.ring.classList.remove('on'); setTimeout(() => { u.card.remove(); u.ring.remove(); }, silent ? 0 : 300); }
     walk0 = null; zoom0 = null; area0 = null; cur = -1;
