@@ -101,3 +101,11 @@ body.talking #hud .hud-quest { opacity: 0; pointer-events: none; transition: opa
 .crop-h.l, .crop-h.r { top: 50%; width: 10px; height: 44px; margin-top: -22px; cursor: ew-resize; } .crop-h.l { left: 3px; } .crop-h.r { right: 3px; }
 .crop-h.t, .crop-h.b { left: 50%; height: 10px; width: 44px; margin-left: -22px; cursor: ns-resize; } .crop-h.t { top: 3px; } .crop-h.b { bottom: 3px; }
 :root[data-theme="dark"] .tab .stk { filter: saturate(.8) opacity(.82); } :root[data-theme="dark"] .tab.on .stk { filter: none; }
+
+/* ---- workshop: a board of tool tiles ---- */
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tool-tile { display: grid; justify-items: start; align-content: start; gap: 3px; min-height: 104px; padding: 12px 14px 12px; border-radius: var(--r-l); background: var(--surface); box-shadow: var(--hl), var(--toy); text-align: left; transition: transform var(--t-spring) var(--spring); }
+.tool-tile:active { transform: translateY(2px) scale(.97); transition-duration: var(--t-press); }
+.tool-tile .stk { width: 38px; height: 38px; margin-bottom: 2px; }
+.tool-tile b { font-size: var(--fs-m); color: var(--ink); } .tool-tile small { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.4; }
+.tool-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 84px; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; } .tool-grid > :last-child:nth-child(odd) .stk { grid-row: span 2; margin: 0; }

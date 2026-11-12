@@ -152,16 +152,20 @@
   Pg().define('workshop', '工坊', {
     build(p, el) {
       const card = (ic, title, desc, fn, primary) => h('div.card', { style: { marginTop: '10px' } }, h('div.hstack', null, h('span', { style: { width: '44px', height: '44px', borderRadius: '14px', display: 'grid', placeItems: 'center', background: 'var(--accent-soft)', color: 'var(--accent)', flex: 'none' } }, icon(ic)), h('div.grow', null, h('b', null, title), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, desc))), primary ? h('button.btn.primary.block', { style: { marginTop: '10px' }, on: { click: fn } }, icon('plus', 's'), primary) : null);
+      const tool = (stk, title, desc, fn) => h('button.tool-tile', { on: { click: () => { OC.UI.haptic('tick'); fn(); } } }, OC.UI.sticker(stk), h('b', null, title), h('small', null, desc));
       p.anims = h('div');
       el.append(card('film', '逐格動畫工作室', '為 OC 做待機、走路、吃飯……任何動作，直接在小島與桌寵播放', () => OC.Studio.open({ charId: Ch().active().id }), '新動畫'),
-        h('div.list', { style: { marginTop: '12px' } },
-          row('brush', '繪畫工坊', '畫角色、五官、服裝、飾品或動畫影格', null, () => OC.Paint.open({ owner: Ch().active().id })),
-          row('image', '素材庫', '管理所有圖片：重新命名、取代、複製、刪除', null, () => Pg().open('library')),
-          row('upload', '匯入圖片／動畫', 'PNG、JPEG、WebP、GIF、APNG、多張連續圖、Sprite Sheet、ZIP', null, async () => { await OC.Library.importDialog({ owner: Ch().active().id, purpose: 'anim' }); p.refresh(p); }),
-          row('download', '匯入角色／動作包', '.ocpack', null, async () => { await OC.Library.importPackFile(); p.refresh(p); }),
-          row('layers', '匯出備份', '選擇要匯出的角色、動作與遊戲進度', null, () => backupSheet()),
-          row('cart', '工坊商品', '把畫好或匯入的圖片做成食物、家具、服飾、玩具…上架到商店', null, () => Pg().open('products')),
-          row('paw', '桌寵', '讓 OC 出現在手機桌面上', null, () => Pg().open('petcenter'))),
+        /* 14.1: the tools are a board of tiles in three groups (make · bring in / take out · put to use) instead of one long list */
+        T('創作'), h('div.tool-grid', null,
+          tool('brush', '繪畫工坊', '畫角色、五官、服裝、飾品、影格', () => OC.Paint.open({ owner: Ch().active().id })),
+          tool('camera', '素材庫', '所有圖片：改名、取代、複製、刪除', () => Pg().open('library'))),
+        T('匯入與匯出'), h('div.tool-grid', null,
+          tool('sparkle', '匯入圖片／動畫', 'PNG、GIF、APNG、WebP、連續圖、ZIP', async () => { await OC.Library.importDialog({ owner: Ch().active().id, purpose: 'anim' }); p.refresh(p); }),
+          tool('gift', '匯入角色包', '.ocpack（角色或動作）', async () => { await OC.Library.importPackFile(); p.refresh(p); }),
+          tool('book', '匯出備份', '角色、動作與遊戲進度', () => backupSheet())),
+        T('拿去用'), h('div.tool-grid', null,
+          tool('shop', '工坊商品', '把圖片做成食物、家具、服飾，上架到商店', () => Pg().open('products')),
+          tool('paw', '桌寵', '讓 OC 出現在手機桌面上', () => Pg().open('petcenter'))),
         T('動畫作品'), p.anims);
     },
     refresh(p) {

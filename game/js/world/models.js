@@ -73,9 +73,13 @@
     const wallM = mat(o.wall || '#FFF4DE'), trimM = mat(o.trim || '#FFFFFF'), stoneM = mat('#D9C7A6'), roofM = mat(roofC), roofLo = mat(mix(roofC, '#5a2010', 0.2));
     // stone plinth + walls
     add(g, rbox(w + 6, 8, d + 6, 3), stoneM, 0, 4, 0);
-    add(g, rbox(w, h, d, 4), wallM, 0, 8 + h / 2, 0);
-    // corner trims
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, rbox(5, h, 5, 1.6), trimM, sx * (w / 2 - 1.5), 8 + h / 2, sz * (d / 2 - 1.5));
+    /* 14.1: remodelled body — softer walls, round corner posts with a cap, a band under the eaves, arches over the door and windows */
+    add(g, rbox(w, h, d, 8), wallM, 0, 8 + h / 2, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(g, cyl(3.2, 3.6, h, 12), trimM, sx * (w / 2 - 2), 8 + h / 2, sz * (d / 2 - 2)); add(g, sphere(4, 10, 8), trimM, sx * (w / 2 - 2), 8 + h + 0.5, sz * (d / 2 - 2), { cast: false }).scale.set(1, 0.6, 1); }
+    add(g, rbox(w + 2, 4, d + 2, 2), trimM, 0, 8 + h - 2, 0, { cast: false });
+    { const arch = (x, y, r, m) => { const a2 = add(g, cyl(r, r, 2.6, 18), m, x, y, d / 2 + 0.7, { rx: Math.PI / 2, cast: false }); a2.scale.set(1, 1, 0.62); return a2; };
+      arch(0, 8 + 36, 11.5, trimM); arch(0, 8 + 35.2, 8.6, mat(o.door || P.wood));
+      for (const sx of [-1, 1]) arch(sx * (w * 0.31), 8 + h * 0.58 + 8.2, 8.8, trimM); }
     // gable roof: two bevelled slabs + ridge + shingle bands
     const run = w / 2 + 8, rise = 30, len = Math.hypot(run, rise), ang = Math.atan2(rise, run);
     const slabG = rbox(len, 5, d + 18, 2.4);
@@ -135,10 +139,14 @@
     const woodM = mat('#D9A26A'), woodLo = mat('#B07E4B');
     add(g, rbox(64, 18, 26, 3), mat('#FFF4DC'), 0, 9, 2);
     add(g, rbox(66, 3, 28, 1.4), woodM, 0, 19.5, 2);
-    for (const [px, pz] of [[-30, 14], [30, 14], [-30, -12], [30, -12]]) add(g, cyl(1.6, 1.8, 54, 8), mat('#FFFFFF'), px, 27, pz);
+    /* 14.1: remodelled — sturdier round posts with caps, a plump scalloped awning, a cloth skirt on the counter, a barrel and two hanging lanterns */
+    for (const [px, pz] of [[-30, 14], [30, 14], [-30, -12], [30, -12]]) { add(g, cyl(2.1, 2.4, 54, 10), mat('#FFFFFF'), px, 27, pz); add(g, sphere(3, 10, 8), mat(P.coral), px, 59 + (pz < 0 ? 4 : -3), pz, { cast: false }); }
+    for (let i = 0; i < 8; i++) add(g, rbox(8.2, 13, 1.2, 0.6), mat(i % 2 ? '#FFF4DC' : P.teal), -28.7 + i * 8.2, 11.5, 15.4, { cast: false });
+    add(g, cyl(6.5, 5.6, 13, 14), woodLo, 39, 6.5, 6); add(g, cyl(6.9, 6.9, 1.4, 14), mat('#8A5A33'), 39, 4, 6, { cast: false }); add(g, cyl(6.9, 6.9, 1.4, 14), mat('#8A5A33'), 39, 10, 6, { cast: false });
+    { const lm = mat('#FFF6D8', { p: { emissive: new THREE.Color('#FFCF73'), emissiveIntensity: 0 } }); night.windows.push(lm); for (const lx of [-24, 24]) { add(g, cyl(0.4, 0.4, 5, 6), woodLo, lx, 47.5, 19, { cast: false }); add(g, sphere(2.8, 10, 8), lm, lx, 43.5, 19, { cast: false }).scale.set(1, 1.2, 1); } }
     const roof = new THREE.Group(); roof.position.set(0, 56, 2); roof.rotation.x = 0.22; g.add(roof);
     for (let i = 0; i < 8; i++) add(roof, rbox(8.6, 2.4, 38, 1), mat(i % 2 ? '#FFFFFF' : P.teal), -30 + i * 8.6, 0, 0);
-    for (let i = 0; i < 8; i++) { const c = add(roof, cyl(4.3, 4.3, 2.4, 12, 1), mat(i % 2 ? '#FFFFFF' : P.teal), -30 + i * 8.6, -0.1, 19, { rx: Math.PI / 2, cast: false }); c.scale.set(1, 1, 0.9); }
+    for (let i = 0; i < 8; i++) { const c = add(roof, sphere(4.3, 12, 8), mat(i % 2 ? '#FFFFFF' : P.teal), -30 + i * 8.6, -0.6, 19.4, { cast: false }); c.scale.set(1, 0.85, 0.5); }
     // crates of fruit
     for (const [cx, col] of [[-18, '#EE4B4B'], [0, '#FF9A3C'], [18, '#FFB3A7']]) {
       add(g, rbox(15, 7, 11, 1.2), woodLo, cx, 24.5, 4);
@@ -282,11 +290,15 @@
   }
   function stump() { const g = new THREE.Group(); add(g, cyl(6, 7, 7, 12), mat(P.wood), 0, 3.5, 0); add(g, cyl(5.6, 5.6, 0.6, 12), mat('#F2D3A4'), 0, 7.2, 0, { cast: false }); g.userData.size = { w: 14, d: 12 }; return g; }
   function bridge(len = 46, wid = 24) {
-    const g = new THREE.Group(); const pl = mat('#D9A26A'), pl2 = mat('#C88F58'), post = mat(P.woodLo);
-    const n = Math.round(len / 5.4);
-    for (let k = 0; k < n; k++) { const x = -len / 2 + (k + 0.5) * (len / n); const y = 4 + Math.sin((k + 0.5) / n * Math.PI) * 3; add(g, rbox(len / n - 0.6, 2.4, wid, 0.8), k % 2 ? pl : pl2, x, y, 0); }
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(1.6, 1.8, 12, 8), post, sx * (len / 2 - 2), 8, sz * (wid / 2 - 1));
-    for (const sz of [-1, 1]) { const r = add(g, rbox(len - 2, 1.6, 1.6, 0.6), post, 0, 12.5, sz * (wid / 2 - 1)); }
+    const g = new THREE.Group(); const pl = mat('#D9A26A'), pl2 = mat('#C88F58'), post = mat(P.woodLo), cap = mat('#FFF4DC');
+    const n = Math.round(len / 5.4), hump = (t) => 4 + Math.sin(t * Math.PI) * 3;
+    for (let k = 0; k < n; k++) { const x = -len / 2 + (k + 0.5) * (len / n); add(g, rbox(len / n - 0.6, 2.4, wid, 1.1), k % 2 ? pl : pl2, x, hump((k + 0.5) / n), 0); }
+    /* 14.1: remodelled — the handrail follows the hump of the bridge (five round posts with pale caps a side, rails in short segments) */
+    for (const sz of [-1, 1]) {
+      const pts = [];
+      for (let k = 0; k <= 4; k++) { const t = k / 4, x = -len / 2 + 2 + t * (len - 4), y = hump(t); pts.push([x, y]); add(g, cyl(1.5, 1.8, 11, 10), post, x, y + 5, sz * (wid / 2 - 1)); add(g, sphere(2.1, 10, 8), cap, x, y + 11, sz * (wid / 2 - 1), { cast: false }); }
+      for (let k = 0; k < 4; k++) { const [x0, y0] = pts[k], [x1, y1] = pts[k + 1], L = Math.hypot(x1 - x0, y1 - y0); for (const up of [8.6, 4.6]) { const r = add(g, cyl(0.75, 0.75, L, 8), post, (x0 + x1) / 2, (y0 + y1) / 2 + up, sz * (wid / 2 - 1), { cast: up > 6 }); r.rotation.z = Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2; } }
+    }
     return fuse(g);
   }
 
