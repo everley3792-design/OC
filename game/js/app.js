@@ -16,10 +16,8 @@
   let nativeSysDark = null;
   function sysDark() { if (nativeSysDark != null) return nativeSysDark; try { if (NATIVE) return NATIVE.isSystemDark(); } catch (e) { /* */ } return mq ? mq.matches : false; }
   /** 12.0 interface style: 'refined' (default) or 'toy' (the 10.0 look) */
-  const STYLES = ['play', 'refined', 'toy'];
-  /** 13.0: "樂園" (play) is the default look; a save from before 13.0 is moved to it once (the player can switch back in Settings) */
-  function applyStyle() { const st = S().settings; if (st.styleV !== 13) { st.styleV = 13; st.style = 'play'; } document.documentElement.dataset.style = STYLES.includes(st.style) ? st.style : 'play'; }
-  function setStyle(v) { S().settings.style = STYLES.includes(v) ? v : 'play'; S().settings.styleV = 13; St.touch('settings'); applyStyle(); }
+  /* 14.0: one style for the whole app — the old style setting is gone (saves that still carry it are simply ignored) */
+  function applyStyle() { const st = S().settings; delete st.style; delete st.styleV; delete document.documentElement.dataset.style; }
   function applyTheme() { const m = S().settings.theme, dark = m === 'dark' || (m === 'system' && sysDark()); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; applyStyle(); }
   function setTheme(mode) { S().settings.theme = mode; St.touch('settings'); applyTheme(); if (NATIVE) try { NATIVE.setThemeMode(mode); } catch (e) { /* */ } }
   if (mq && mq.addEventListener) mq.addEventListener('change', applyTheme);
@@ -1040,6 +1038,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { canLead: () => canLead(), rail, setStyle, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();
