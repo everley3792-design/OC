@@ -20,6 +20,7 @@
 - **12.0（0.12.0-alpha）修正與成熟化**：修掉純文字格的灰色圓底座與作息輸入框重疊、請求可取消、技能頁與地圖重新設計、**去除 NPC（只用玩家自己的角色）**、極簡 HUD（工具把手＋小膠囊、導覽列只有圖示、閒置淡出）、**每個角色各自的操控模式（手動／半自動（預設）／全自動），狀態卡、長按 HUD 頭像、生活設定都能切換**、成熟語氣（`lines12.js` 約 480 句、預設「沉穩」；「活潑」回到舊的）與預設「雅緻」介面風格、`OC.Arcs`（情緒感染、冷戰→解凍→和解／疏遠、三人以上的聚會）、桌寵自己的聲音（`OC.PetSound` ＋ 原生 `PetSounds` ＋ core `PetSound`）與雙人桌面動作（`PetSocial.KINDS`）、`OC.Sound.cue`（過場短句接到真實事件）、3D 的接觸陰影／房間布置（`OC.Dress`）／重新建模的家具（`models12.js`）。**3D 只做了一部分：房屋、樹木、岩石的造型沒有重新建模。** 驗收：`node game/tests/v12/run.js`。紀錄（問題→原因→修正→驗證＋未驗證項目）：`docs/v12-report.md`。
 - **13.0（0.13.0-alpha）**：操控／觀察中的角色自己換地點時畫面跟過去、圖片角色的調整（翻轉／轉向／縮放／位移／裁切，繪製時套用）與 `OC.Puppet`（單張圖片自己表演所有動作＋特效）、79 個資料驅動特質（`traits13.js`，衝突提示、隨機）、新的預設介面風格（`data-style="play"`：世界裡無框、選單依主題紙感／石板、奶油色對話框）、`OC.Fun`（猜拳、躲貓貓、搖樹掉落、角色主動來訪與約定）、四章節教學、桌寵作息（`core/pet/PetRoutine`）。**桌寵原生層與各頁面版面沒有整個重寫。** 驗收：`node game/tests/v13/run.js`。紀錄：`docs/v13-report.md`。
 - **14.0（0.14.0-alpha）統一風格與打磨**：整個 App **只有一種介面風格**「島日和」（奶油紙、暖棕字、薄荷綠＝可按、陽光黃＝已選；白天／夜晚是同一套設計的兩個調色盤；風格切換已移除）、HUD 小膠囊、彩色導覽列、背包口袋格、交易紀錄（餘額／今日／分日）、桌寵中心的「桌面」預覽、圖片角色用手指直接裁切／移動／縮放、樹／杉樹／灌木／岩石／房屋正面重新建模、**靜態模型依材質合併（`Models.fuse`，小島繪製呼叫 557 → 約 250）**、**桌寵行為全部搬進 `core/pet/PetActor`（純 Kotlin、有單元測試），原生視窗只負責顯示**、新增「去睡一下／叫醒」。**原生層仍未經實機驗證。** 驗收：`node game/tests/v14/run.js`；逐頁檢視：`node game/tests/v14/shots.js`。紀錄：`docs/v14-report.md`。
+- **14.1（0.14.1-alpha）修正卡頓**：調色從「畫布上的 CSS 濾鏡」改到著色器、光暈層不用混合模式、白天關掉路燈點光源、陰影每兩幀更新且只有「高」用柔邊、載入地點時預先編譯著色器、「平衡」會自動降解析度、HUD／泡泡只在改變時寫 DOM；`core/pet/PetStage`（多隻桌寵一起做的事）；房屋主體／攤位／橋重新建模；工坊改成工具方格。**手機上是否還卡沒有驗證。** 紀錄：`docs/v14.1-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -59,7 +60,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
-  tests/v14/          run.js：14.0 驗收 1–6（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正）；shots.js：逐頁截圖（淺色＋深色，檢視用）
+  tests/v14/          run.js：14.x 驗收 1–7（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正、14.1 效能）；shots.js：逐頁截圖（淺色＋深色，檢視用）
   tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
   tests/v11/          run.js：11.0 驗收 1–7（撫摸、親近環、動作庫、AI 計畫、雙人互動、音訊、世界觸控回饋；音訊用音訊執行緒上的錄音節點量測）
@@ -88,9 +89,9 @@ node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC
 node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
 node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（70 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
+cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.14.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.14.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -100,7 +101,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **角色**是 2D 看板：只在量化姿勢改變時重畫紋理；呼吸/彈跳用網格變換。轉身用連續的 `face`/`back` 平滑趨近，不可瞬間翻轉。
 - **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
 - **14.0 Design System「島日和」**（`docs/design-system.md`、`css/tokens.css` 開頭）：**只有一種風格**，不要再加 `data-style` 或風格選項；白天／夜晚兩個調色盤的圓角、形狀、元件必須相同。表面＝奶油紙＋下緣薄邊（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（薄荷綠）＝可按，`--sun`（陽光黃）＝已選取／星幣／獎勵，`--alert`＝紅點／新東西；字一律用 `--ink*`（暖棕／奶油，不用純黑純白）；對話、提示、教學卡用 `--balloon*`；標題前的小葉子用 `--leaf`。新的全域外觀寫在 `css/island.css`（最後載入）。按下用 `--t-press` 下沉、放開用 `--spring`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`，小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。常駐在畫面上的元件**不得**用 `backdrop-filter`（每幀成本）。HUD 是有底的小膠囊（看得清楚），不蓋住畫面中間。參考作品只取原則，不得使用其素材。
-- 世界調色（`html.grade`、`html.dof`、`--glow-*`）由效能模式決定：高＝調色＋景深、平衡＝調色、省電＝都關；景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
+- **不得在 3D 畫布（`#world`）或蓋住整個畫面的常駐元素上用 CSS `filter`、`mix-blend-mode`、`backdrop-filter`**（每一幀一次全螢幕離屏合成，手機 WebView 上非常慢——14.1 的教訓）。世界調色寫在著色器裡（`world.js` 對 `THREE.ShaderChunk.tonemapping_fragment` 的補丁，所有模式都有）；`html.grade` 只控制光暈層（一般半透明層）；`html.dof` 的景深是唯一的例外，只在「高」。景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
 - 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個操作元件（名牌、天氣時間、右側工具列 3 個、任務卡；通知鈴只在有通知時出現；導覽列另計），不要在 HUD 重複已有的入口（設定在「日常」、互動＝點你的 OC）。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
 - **新遊戲不得自動加入玩家沒選的角色**：角色只由玩家建立、匯入或明確加入（12.0 起連居民／NPC 系統都已移除）。
 - 開場／教學：自動化測試設 `localStorage['oc.skipIntro']='1'`（harness 預設）；`OC.Intro`、`OC.Tutorial` 的進度存在 `S.intro`。教學步驟必須由真實事件完成（`St.emit('menu:open' | 'touch:pet' | 'touch:land' | 'status:open' | 'time:panel' | 'cam:*')`）。
@@ -192,3 +193,5 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **14.0 靜態模型合併**：沒有東西會在裡面動的模型（房屋、攤位、長椅、柵欄、燈柱、橋）在建好後 `return fuse(g)`（依材質＋陰影旗標合併成少數幾個 mesh）；會單獨動或單獨顯示的子物件要標 `userData.keep`（例如果實），有貼圖（`material.map`）的不合併（合併只保留位置與法線）。花是每朵各自 `fuse`（仍然一朵一朵搖）。新增大量同材質的小零件時，放進一個 Group 再 `Mo.fuse()`（例如露台欄杆）。v14 測試 5 會檢查零件數、繪製呼叫 ≤ 330、夜間窗戶材質仍接在房子上。
 - **14.0 桌寵架構**：一隻桌寵「決定做什麼」的邏輯只寫在 `core/pet/PetActor.kt`（輸入：指標樣本、每幀 tick、選單 key；輸出：`Out` 指令），並補單元測試；`overlay/PetWindow.kt` 只把設定 JSON 轉成 actor 的屬性、執行 `Out`（泡泡、音效、觸覺、事件、選單、收起、開啟遊戲），**不得**在視窗層再寫行為判斷。選單項目加在 `PetActor.mainMenu()`／`menu(key)`。原生泡泡與選單的顏色在 `PetTheme.of()`，要和 tokens 的白天／夜晚一致。
 - **14.0 圖片裁切框**（`charedit.js` 的 `cropBox`）：只改 `c.appearance.frame`（草稿），四邊上限 45%；拖曳中 `x.changed('look', null)`、放開才記入復原紀錄。
+- **14.1 效能規則**：(1) 亮度 0 的光仍然要算——不用的光設 `visible = false`（路燈：`lampsLit`，白天關）；改變「看得見的光的數量」會換著色器，所以兩種狀態都在 `loadArea` 結尾用 `R.compile` 先編好。(2) `R.debug.checkShaderErrors = false`，不要打開。(3) 陰影貼圖只有 `quality.soft`（「高」）每幀更新＋柔邊，其餘每兩幀＋硬邊。(4) 主迴圈裡每幀執行的東西不得無條件寫 DOM 或組長字串：先比對再寫（HUD 每 200 ms、泡泡位置變了才寫）。(5) 「平衡」的自動降解析度在 `app.js` 的 `adaptStep`（只降不升、最多兩級、自動化執行時關閉）；新的效能模式欄位要同時在 `perfOf` 與這裡處理。v14 測試 7 檢查這些。
+- **14.1 桌寵**：多隻一起做的事（幀率節流、雙人動作、測試雙人、App 情境、提醒播報）只寫在 `core/pet/PetStage.kt` 並補單元測試；`OverlayPetService` 只呼叫 `stage.frameCap/step/appContext/announce/testPair` 並把回傳的 `Cmd` 交給對應的 `PetWindow.carry()`。
