@@ -231,5 +231,5 @@
   ];
   const D = OC.LifeData; if (D && D.LINES) LINES.forEach((x, i) => D.LINES.push({ id: 'f13_' + i, cat: x[0], text: x[1], c: x[2] || null, w: x[3] || 1, m: true }));
 
-  OC.Fun = { init, rps, hide, visit, visitor, pickTopic, checkDates, step, end, QUESTIONS, TOPICS, get state() { return cur ? { game: cur.game, id: cur.id, phase: cur.phase, you: cur.you, oc: cur.oc, round: cur.round, left: cur.left, spot: cur.spot ? { x: cur.spot.x, y: cur.spot.y, dx: cur.spot.dx, dy: cur.spot.dy } : null, wrong: cur.wrong, result: cur.result } : null; }, get visiting() { return visiting ? { id: visiting.id, topic: visiting.topic } : null; }, get busy() { return busy(); }, get data() { return st13(); } };
+  OC.Fun = { init, rps, hide, visit, visitor, pickTopic, checkDates, step, end, QUESTIONS, TOPICS, get state() { return cur ? { game: cur.game, id: cur.id, phase: cur.phase, you: cur.you, oc: cur.oc, round: cur.round, left: cur.left, spot: cur.spot ? { x: cur.spot.x, y: cur.spot.y, dx: cur.spot.dx, dy: cur.spot.dy } : null, wrong: cur.wrong, result: cur.result } : null; }, get visiting() { return visiting ? { id: visiting.id, topic: visiting.topic } : null; }, get busy() { return busy(); }, get seeking() { return !!cur && cur.game === 'hide' && cur.phase === 'seek'; }, get data() { return st13(); } };
 })();

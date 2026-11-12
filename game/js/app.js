@@ -434,7 +434,7 @@
     if (observing) { stopObserve(); }
     const it = r.it;
     // 11.0: a tap on a tree / bush / flower patch shakes it (leaves come down, it rustles) — the OC keeps doing what it was doing
-    if (!it && !decorate && r.s && Wd.shakeAt) { const sh = Wd.shakeAt(r.s.x, r.s.y); if (sh) { Wd.shake(sh); haptic('tick'); OC.Sound && OC.Sound.play('rustle', { pan: Math.max(-0.8, Math.min(0.8, (r.s.x - innerWidth / 2) / (innerWidth / 2) * 0.8)) }); St.emit('world:shake', OC.World.swayInfo ? OC.World.swayInfo(sh) : null); return; } }
+    if ((!it || (OC.Fun && OC.Fun.seeking)) && !decorate && r.s && Wd.shakeAt) { /* 13.0: while you are looking for a hiding character, a tree standing on a garden bed or next to a bench still shakes */ const sh = Wd.shakeAt(r.s.x, r.s.y); if (sh) { Wd.shake(sh); haptic('tick'); OC.Sound && OC.Sound.play('rustle', { pan: Math.max(-0.8, Math.min(0.8, (r.s.x - innerWidth / 2) / (innerWidth / 2) * 0.8)) }); St.emit('world:shake', OC.World.swayInfo ? OC.World.swayInfo(sh) : null); return; } }
     if (!it || !['self', 'mate'].includes(it.type)) { standUp(); OC.Brain.playerAct(S().activeId); }
     if (decorate && it && it.type === 'furn') { startPlacement({ uid: it.uid }); return; }
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
