@@ -235,13 +235,11 @@ class OverlayPetService : Service() {
         if (hide != appHidden) { appHidden = hide; for (w in pets.values) w.setHidden(hide) }
         val cat = hit.category ?: return
         if (paused) return
-        val w = pets.values.firstOrNull { it.talk.has("app_$cat") } ?: return
+        val w = pets.values.firstOrNull { it.actor.talk.has("app_$cat") } ?: return
         w.sayCat("app_$cat", SystemClock.uptimeMillis(), chatter = true)
     }
 
     // ---------------------------------------------------------------- interactions
-    fun touched(w: PetWindow) { if (paused) { /* touching a paused pet still reacts, it does not resume autonomy */ } }
-    fun dropped(w: PetWindow) { /* reserved for future "thrown" memory; the game is told nothing — no reward for throwing */ }
 
     private fun meeting(m: PetSocial.Meeting, now: Long) {
         val a = pets[m.a] ?: return; val b = pets[m.b] ?: return
@@ -289,16 +287,16 @@ class OverlayPetService : Service() {
             "jump" -> w.brain.jump(0f)
             else -> w.brain.react(anim, dur * if (w.view.sprites?.set(anim)?.clip?.loop == AnimClip.Loop.LOOP) 2 else 1)
         }
-        w.say("▶ $anim", theme, SystemClock.uptimeMillis())
+        w.say("▶ $anim", SystemClock.uptimeMillis())
     }
 
     /** a reminder / pomodoro fired → the pet says it (the notification is posted separately) */
     fun announce(cat: String, text: String?) {
         val w = pets.values.firstOrNull() ?: return
         val now = SystemClock.uptimeMillis()
-        val line = w.talk.react(cat, 0f)
+        val line = w.actor.talk.react(cat, 0f)
         w.brain.react(if (cat == "timer_done") "cheer" else "greet", 2f)
-        w.say(listOfNotNull(text, line).joinToString("\n").ifBlank { "⏰" }, theme, now)
+        w.say(listOfNotNull(text, line).joinToString("\n").ifBlank { "⏰" }, now)
     }
 
     fun setPaused(p: Boolean) {

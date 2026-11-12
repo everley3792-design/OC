@@ -17,8 +17,9 @@ import android.widget.TextView
 /** colours for native overlay UI, following the app's theme setting (light / dark / system) */
 data class PetTheme(val bg: Int, val fg: Int, val sub: Int, val accent: Int, val line: Int) {
     companion object {
-        fun of(dark: Boolean) = if (dark) PetTheme(0xF023253F.toInt(), 0xFFEEEBFF.toInt(), 0xFFB3AFD6.toInt(), 0xFF9A9EFF.toInt(), 0x33FFFFFF)
-        else PetTheme(0xF5FFFFFF.toInt(), 0xFF3F3B5E.toInt(), 0xFF7A769C.toInt(), 0xFF7378F0.toInt(), 0x2250488C)
+        /* 14.0: the same paper as the game — cream with brown ink by day, lamplit teal-navy with cream ink at night */
+        fun of(dark: Boolean) = if (dark) PetTheme(0xF52A3943.toInt(), 0xFFF6EED8.toInt(), 0xFFBFC3B0.toInt(), 0xFF5FD6C0.toInt(), 0x3DF6EED8)
+        else PetTheme(0xF7FFF9E3.toInt(), 0xFF6F5438.toInt(), 0xFF97815F.toInt(), 0xFF23B5A0.toInt(), 0x42785C34)
     }
 }
 
@@ -47,7 +48,7 @@ class Bubble(private val ctx: Context, private val wm: WindowManager) {
         val t = TextView(ctx).apply {
             this.text = text; setTextColor(theme.fg); textSize = 13f; maxWidth = (220 * d).toInt(); maxLines = 4; ellipsize = TextUtils.TruncateAt.END
             setPadding((12 * d).toInt(), (8 * d).toInt(), (12 * d).toInt(), (8 * d).toInt())
-            background = GradientDrawable().apply { cornerRadius = 16 * d; setColor(theme.bg); setStroke((1 * d).toInt().coerceAtLeast(1), theme.line) }
+            background = GradientDrawable().apply { cornerRadius = 20 * d; setColor(theme.bg); setStroke((1 * d).toInt().coerceAtLeast(1), theme.line) }
             setOnClickListener { hide() }
         }
         val p = overlayParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, if (passthrough) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0)

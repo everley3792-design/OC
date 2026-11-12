@@ -162,6 +162,9 @@ class PetBrain(seed: Int = 7) {
     /** stop autonomous moves (paused pet): sit down where it is */
     fun settle() { if (onFloor && state != State.REACT) set(State.SIT, 3600f) }
 
+    /** 14.0: lie down and sleep where it is, until something wakes it (the player's "take a nap") */
+    fun nap() { if (onFloor && state != State.REACT) set(State.SLEEP, 3600f) }
+
     private fun g() = sz * 9f
 
     // ------------------------------------------------------------------ update

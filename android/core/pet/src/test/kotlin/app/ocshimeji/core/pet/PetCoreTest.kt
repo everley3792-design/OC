@@ -318,3 +318,161 @@ class PetRoutineTest {
         assertFalse(s)
     }
 }
+
+/** 14.0: the whole behaviour of one desktop pet, without Android */
+class PetActorTest {
+    private fun actor(): PetActor {
+        val a = PetActor("a", 5)
+        a.brain.reset(1080, 2000, 200)
+        a.name = "麻糬"
+        a.talk.pools = mapOf("tap" to listOf("嗯？"), "wake" to listOf("醒了"), "pet" to listOf("舒服"), "drag" to listOf("哇"), "idle" to listOf("今天不錯"), "gift" to listOf("謝謝"),
+            "eat_yum" to listOf("好吃"), "eat_no" to listOf("不太行"), "eat_ok" to listOf("還行"), "double" to listOf("在"))
+        repeat(40) { a.tick(0.05f, it * 50L, 12, paused = false, pairBusy = false, bubbleShowing = true, quiet = false) }   // lands on the floor
+        return a
+    }
+    private fun PetActor.tap(t: Long): List<PetActor.Out> { val x = brain.x + 50; val y = brain.y + 50; return pointer(PetActor.Ptr.DOWN, x, y, t) + pointer(PetActor.Ptr.UP, x, y, t + 60) }
+
+    @Test fun `a tap makes it react, speak and buzz, and closes the menu`() {
+        val a = actor()
+        val out = a.tap(10_000)
+        assertTrue(out.any { it is PetActor.Out.Say && it.text == "嗯？" })
+        assertTrue(out.any { it is PetActor.Out.Haptic })
+        assertTrue(out.any { it == PetActor.Out.HideMenu })
+        assertEquals(PetBrain.State.REACT, a.brain.state)
+        assertTrue(out.none { it is PetActor.Out.Event })          // a tap is not something the game hears about
+    }
+
+    @Test fun `a muted pet reacts but says nothing`() {
+        val a = actor(); a.talk.muted = true
+        val out = a.tap(10_000)
+        assertTrue(out.none { it is PetActor.Out.Say })
+        assertEquals(PetBrain.State.REACT, a.brain.state)
+    }
+
+    @Test fun `a hidden pet says and plays nothing`() {
+        val a = actor(); a.hidden = true; a.sound.on = true
+        val out = a.tap(10_000)
+        assertTrue(out.none { it is PetActor.Out.Say || it is PetActor.Out.Play })
+    }
+
+    @Test fun `long press opens the menu with everything the player can do`() {
+        val a = actor()
+        val x = a.brain.x + 50; val y = a.brain.y + 50
+        a.pointer(PetActor.Ptr.DOWN, x, y, 1000)
+        val out = a.tick(0.016f, 1600, 12, false, false, true, false)
+        val menu = out.filterIsInstance<PetActor.Out.Menu>().single()
+        assertEquals("麻糬", menu.title)
+        assertEquals(listOf("pet", "food", "gift", "talk", "nap", "stay", "remove", "open"), menu.items.map { it.key })
+        assertFalse(menu.items.first { it.key == "food" }.enabled)   // nothing in the bag
+        assertTrue(out.any { it is PetActor.Out.Haptic && it.long })
+    }
+
+    @Test fun `petting is reported once per session and at most every 15 seconds`() {
+        val a = actor()
+        fun stroke(t0: Long): List<PetActor.Out> {
+            val x = a.brain.x + 50; val y = a.brain.y + 50; val out = ArrayList<PetActor.Out>()
+            out += a.pointer(PetActor.Ptr.DOWN, x, y, t0)
+            var t = t0
+            repeat(6) { i -> t += 40; out += a.pointer(PetActor.Ptr.MOVE, x + (if (i % 2 == 0) 14 else -14), y, t) }
+            out += a.pointer(PetActor.Ptr.UP, x, y, t + 40)
+            return out
+        }
+        val first = stroke(20_000)
+        assertEquals(1, first.count { it is PetActor.Out.Event && it.type == "pet" })
+        assertTrue(first.any { it is PetActor.Out.Say && it.text == "舒服" })
+        assertEquals(0, stroke(24_000).count { it is PetActor.Out.Event })      // too soon
+        assertEquals(1, stroke(40_000).count { it is PetActor.Out.Event })
+    }
+
+    @Test fun `feeding spends from the snapshot, tells the game once, and reacts by taste after eating`() {
+        val a = actor()
+        a.stock(listOf(PetActor.Stock("apple", "蘋果", 1, lv = 2), PetActor.Stock("leek", "韭菜", 2, lv = -2)), emptyList(), stamp = 1)
+        val sub = a.menu("food").filterIsInstance<PetActor.Out.Menu>().single()
+        assertEquals(listOf("food:apple", "food:leek"), sub.items.map { it.key })
+        assertEquals("最愛", sub.items[0].sub); assertEquals("討厭", sub.items[1].sub)
+        val out = a.menu("food:apple")
+        assertEquals(listOf(PetActor.Out.Event("feed", mapOf("item" to "apple"))), out.filterIsInstance<PetActor.Out.Event>())
+        a.tick(0.016f, 16, 12, false, false, true, false)
+        assertEquals("eat", a.brain.anim)
+        assertTrue(a.menu("food:apple").isEmpty())                               // the only apple is already spent
+        assertEquals(listOf("food:leek"), a.menu("food").filterIsInstance<PetActor.Out.Menu>().single().items.map { it.key })
+        // after the eating animation it says how it was
+        val later = ArrayList<PetActor.Out>(); var t = 0L
+        repeat(80) { t += 50; later += a.tick(0.05f, t, 12, false, false, true, false) }
+        assertTrue(later.any { it is PetActor.Out.Say && it.text == "好吃" })
+        // a new snapshot from the game (it applied the event) starts the count again
+        a.stock(listOf(PetActor.Stock("apple", "蘋果", 3, lv = 2)), emptyList(), stamp = 2)
+        assertEquals(3, a.left(a.foods[0]))
+    }
+
+    @Test fun `a gift is thanked and reported`() {
+        val a = actor()
+        a.stock(emptyList(), listOf(PetActor.Stock("shell", "貝殼", 1)), 1)
+        val out = a.menu("gift:shell")
+        assertTrue(out.any { it is PetActor.Out.Say && it.text == "謝謝" })
+        assertTrue(out.any { it is PetActor.Out.Event && it.type == "gift" && it.data["item"] == "shell" })
+        assertTrue(a.menu("gift:shell").isEmpty())
+    }
+
+    @Test fun `stay here stops it from wandering, free again lets it go`() {
+        val a = actor()
+        a.menu("stay"); assertTrue(a.stayPut); assertEquals(-1, a.brain.allow.level)
+        val x0 = a.brain.x; var t = 0L
+        repeat(1200) { t += 50; a.tick(0.05f, t, 12, false, false, true, false) }     // a minute
+        assertEquals(x0, a.brain.x, 0.5f)
+        assertEquals("自由活動", a.mainMenu().items.first { it.key == "stay" }.label)
+        a.menu("stay"); assertFalse(a.stayPut); assertEquals(1, a.brain.allow.level)
+    }
+
+    @Test fun `take a nap keeps it asleep until it is woken by the menu or a tap`() {
+        val a = actor()
+        a.menu("nap"); assertTrue(a.napping); assertEquals(PetBrain.State.SLEEP, a.brain.state)
+        var t = 0L
+        repeat(2400) { t += 50; a.tick(0.05f, t, 12, false, false, true, false) }     // two minutes: still asleep (a normal sleep ends within one)
+        assertEquals(PetBrain.State.SLEEP, a.brain.state)
+        assertEquals("叫醒牠", a.mainMenu().items.first { it.key == "nap" }.label)
+        val out = a.tap(t + 1000)
+        assertFalse(a.napping)
+        assertTrue(out.any { it is PetActor.Out.Say && it.text == "醒了" })
+        repeat(120) { t += 50; a.tick(0.05f, t, 12, false, false, true, false) }      // the same line is not repeated within a few seconds
+        a.menu("nap"); assertTrue(a.napping)
+        assertTrue(a.menu("nap").any { it is PetActor.Out.Say && it.text == "醒了" }); assertFalse(a.napping)
+    }
+
+    @Test fun `dragging can be switched off, and a throw tells the game nothing`() {
+        val a = actor()
+        fun drag(): List<PetActor.Out> {
+            val x = a.brain.x + 50; val y = a.brain.y + 50; val out = ArrayList<PetActor.Out>()
+            out += a.pointer(PetActor.Ptr.DOWN, x, y, 5000); out += a.pointer(PetActor.Ptr.MOVE, x + 200, y - 300, 5100); out += a.pointer(PetActor.Ptr.MOVE, x + 260, y - 380, 5140); out += a.pointer(PetActor.Ptr.UP, x + 300, y - 420, 5180)
+            return out
+        }
+        a.allowDrag = false
+        val x0 = a.brain.x; drag(); assertEquals(x0, a.brain.x, 0.01f); assertFalse(a.brain.isDragging)
+        a.allowDrag = true
+        val out = drag()
+        assertTrue(out.any { it is PetActor.Out.Say && it.text == "哇" })
+        assertTrue(out.none { it is PetActor.Out.Event })
+        assertTrue(a.brain.state == PetBrain.State.THROWN || a.brain.state == PetBrain.State.FALL)
+    }
+
+    @Test fun `double tap follows the setting, remove and open are passed to the window`() {
+        val a = actor()
+        fun dbl(t: Long) = a.tap(t) + a.tap(t + 150)
+        assertTrue(dbl(10_000).any { it == PetActor.Out.Open("petcenter") })
+        a.doubleTap = "talk"; assertTrue(dbl(30_000).any { it is PetActor.Out.Say && it.text == "在" })
+        a.doubleTap = "none"; assertTrue(dbl(50_000).none { it is PetActor.Out.Open })
+        assertEquals(listOf<PetActor.Out>(PetActor.Out.Remove), a.menu("remove"))
+        assertEquals(listOf<PetActor.Out>(PetActor.Out.Open("petcenter")), a.menu("open"))
+    }
+
+    @Test fun `it only talks by itself when nothing is showing and it is not paused`() {
+        val a = actor(); a.talk.freq = PetTalk.Freq.OFTEN
+        var said = 0; var t = 0L
+        repeat(3000) { t += 50; said += a.tick(0.05f, t, 12, paused = true, pairBusy = false, bubbleShowing = false, quiet = false).count { it is PetActor.Out.Say } }
+        assertEquals(0, said)
+        repeat(3000) { t += 50; said += a.tick(0.05f, t, 12, paused = false, pairBusy = false, bubbleShowing = true, quiet = false).count { it is PetActor.Out.Say } }
+        assertEquals(0, said)
+        repeat(3000) { t += 50; said += a.tick(0.05f, t, 12, paused = false, pairBusy = false, bubbleShowing = false, quiet = false).count { it is PetActor.Out.Say } }
+        assertTrue(said >= 1)
+    }
+}
