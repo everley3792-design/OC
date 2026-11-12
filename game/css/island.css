@@ -31,7 +31,8 @@
 
 /* ---- the bottom bar: a cream tray, every sticker in colour, a sunny blob under the one you are on ---- */
 .tabbar { background: var(--hud-glass); border-radius: 30px; box-shadow: 0 3px 0 var(--lip), var(--shadow-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.tab { color: var(--ink-2); border-radius: 22px; letter-spacing: .04em; gap: 1px; }
+.tab { color: var(--ink-2); border-radius: 22px; letter-spacing: .04em; gap: 1px; min-height: 48px; }
+.tabbar { height: auto; min-height: var(--tabbar-h); align-items: stretch; }
 .tab .stk { width: 30px; height: 30px; filter: saturate(.75) opacity(.8); }
 .tab > span:not(.stk) { max-height: 14px; opacity: 1; font-size: 10.5px; font-weight: 800; }
 .tab.on { color: var(--on-sun); }
@@ -89,7 +90,7 @@
 .section-title { white-space: nowrap; align-items: baseline; }
 .section-title small { white-space: normal; min-width: 0; text-align: right; line-height: 1.35; }
 /* while someone is talking, the quest pill steps aside (the balloon needs the room) */
-body.talking .hud-quest { opacity: 0; pointer-events: none; transition: opacity var(--t-fast); }
+body.talking #hud .hud-quest { opacity: 0; pointer-events: none; transition: opacity var(--t-fast); }
 
 /* ---- picture character: crop / move / zoom straight on the picture ---- */
 .crop-box { position: relative; margin: 6px auto 4px; border-radius: var(--r-s); overflow: hidden; touch-action: none; user-select: none;
@@ -97,5 +98,6 @@ body.talking .hud-quest { opacity: 0; pointer-events: none; transition: opacity 
 .crop-rect { position: absolute; box-shadow: 0 0 0 999px var(--scrim), inset 0 0 0 2.5px var(--sun); border-radius: 4px; touch-action: none; cursor: move; }
 .crop-h { position: absolute; background: var(--sun); box-shadow: 0 2px 0 var(--sun-lip); border-radius: var(--r-pill); touch-action: none; }
 .crop-h::after { content: ""; position: absolute; inset: -18px; }     /* a 48dp target around a slim handle */
-.crop-h.l, .crop-h.r { top: 50%; width: 10px; height: 44px; margin-top: -22px; cursor: ew-resize; } .crop-h.l { left: -5px; } .crop-h.r { right: -5px; }
-.crop-h.t, .crop-h.b { left: 50%; height: 10px; width: 44px; margin-left: -22px; cursor: ns-resize; } .crop-h.t { top: -5px; } .crop-h.b { bottom: -5px; }
+.crop-h.l, .crop-h.r { top: 50%; width: 10px; height: 44px; margin-top: -22px; cursor: ew-resize; } .crop-h.l { left: 3px; } .crop-h.r { right: 3px; }
+.crop-h.t, .crop-h.b { left: 50%; height: 10px; width: 44px; margin-left: -22px; cursor: ns-resize; } .crop-h.t { top: 3px; } .crop-h.b { bottom: 3px; }
+:root[data-theme="dark"] .tab .stk { filter: saturate(.8) opacity(.82); } :root[data-theme="dark"] .tab.on .stk { filter: none; }

@@ -278,13 +278,13 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close());
         const theme = (t) => { OC.App.setTheme(t); return { bg: getComputedStyle(root).getPropertyValue('--bg').trim(), r: getComputedStyle(root).getPropertyValue('--r-m').trim(), ink: getComputedStyle(root).getPropertyValue('--ink').trim() }; };
         out.light = theme('light'); out.dark = theme('dark'); OC.App.setTheme('light');
-        OC.App.setStyle('refined'); out.refined = root.dataset.style; OC.App.setStyle('toy'); out.toy = root.dataset.style; OC.App.setStyle('play'); out.back = root.dataset.style;
+        out.oneStyle = !root.dataset.style && typeof OC.App.setStyle === 'undefined';
         return out;
       });
       await shot(page, '6-default-look');
-      check('6a 預設風格：世界裡的 HUD 沒有底框（透明、沒有陰影框、白字）', r.style === 'play' && r.hud.plateBg === 'rgba(0, 0, 0, 0)' && r.hud.plateShadow === 'none' && r.hud.timeBg === 'rgba(0, 0, 0, 0)' && r.hud.ink === 'rgb(255, 255, 255)', r.hud);
+      check('6a 世界裡的 HUD 是幾個小的奶油色膠囊（14.0：有底、棕色字、沒有背景模糊）', r.hud.plateBg !== 'rgba(0, 0, 0, 0)' && r.hud.timeBg !== 'rgba(0, 0, 0, 0)' && r.hud.ink !== 'rgb(255, 255, 255)', r.hud);
       check('6b 對話是奶油色對話框：深棕字、名牌是斜的並帶角色顏色、選項是圓角長條；文字會逐字出現', r.dlg.bg === 'rgb(255, 249, 227)' && r.dlg.ink === 'rgb(111, 84, 56)' && r.dlg.tag && r.dlg.tag !== 'none' && r.dlg.tagBg !== 'rgba(0, 0, 0, 0)' && parseFloat(r.dlg.pill) > 100 && r.dlg.typed >= 3, r.dlg);
-      check('6c 選單依主題：淺色＝暖色紙感與大圓角；深色＝石板色與小圓角；可切回「雅緻」「玩具」再切回來', r.light.bg.toUpperCase() === '#F6F0DF' && r.light.r === '20px' && r.dark.bg.toUpperCase() === '#171B1E' && r.dark.r === '6px' && r.refined === 'refined' && r.toy === 'toy' && r.back === 'play', { light: r.light, dark: r.dark });
+      check('6c 白天與夜晚是同一套設計的兩個調色盤：淺色＝奶油紙、深色＝燈下的深青，圓角相同；只有一種風格', r.light.bg.toUpperCase() === '#F7F1DE' && r.light.r === '20px' && r.dark.bg.toUpperCase() === '#1F2B33' && r.dark.r === '20px' && r.oneStyle, { light: r.light, dark: r.dark, one: r.oneStyle });
       await page.evaluate(() => OC.App.setTheme('dark')); await page.evaluate(() => OC.App.tab('more')); await wait(page, 900); await shot(page, '6-dark-menu');
       await page.evaluate(() => { OC.App.setTheme('light'); OC.App.tab('island'); }); await wait(page, 500);
     }

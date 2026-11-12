@@ -210,9 +210,9 @@ const { check, wait } = H;
         return { mature, playful, newLines: lines.length, cats: cats.size, childishNew: lines.filter((l) => /～|！{2,}/.test(l.text)).length, defaults: S.life.settings.tone, tutBang: tut.filter((x) => /！/.test(x)).length };
       });
       check('8a 預設是沉穩語氣：新台詞（約 300 句、30 多個分類）占大多數，幼稚的用語（～、疊驚嘆號、語助詞）變得很少；切到「活潑」才回到舊的比例', t.newLines >= 280 && t.cats >= 30 && t.mature.mature >= 0.6 && t.mature.childish <= 0.1 && t.playful.childish > t.mature.childish * 2 && t.childishNew === 0 && t.defaults === 'mature', t);
-      await page.evaluate(() => OC.App.setStyle('refined')); /* 13.0: the default is another style now; 12.0's refined look is still there */
-      const st = await page.evaluate(() => { const r = document.documentElement; const refined = r.dataset.style; const rm = getComputedStyle(r).getPropertyValue('--r-m').trim(), font = getComputedStyle(r).getPropertyValue('--font-ui').trim().slice(0, 12); OC.App.setStyle('toy'); const toy = { style: r.dataset.style, rm: getComputedStyle(r).getPropertyValue('--r-m').trim() }; OC.App.setStyle('refined'); const names = OC.Chars.all().map((c) => [c.speech.style, c.speech.ending]); return { refined, rm, font, toy, names, saved: OC.Store.s.settings.style }; });
-      check('8b 介面風格預設「雅緻」（小圓角、系統字體），可切到「玩具」再切回；預設範本的口癖不再是「喵～」', st.refined === 'refined' && st.rm === '12px' && st.toy.style === 'toy' && st.toy.rm === '18px' && st.saved === 'refined' && !st.names.some(([s2, e]) => s2 === 'cute' || /～/.test(e || '')), st);
+      /* 14.0: there is one style now (the style setting is gone); what stays from 12.0 is that the preset characters do not talk in baby-talk */
+      const st = await page.evaluate(() => { const r = document.documentElement; return { attr: r.dataset.style || null, api: typeof OC.App.setStyle, names: OC.Chars.all().map((c) => [c.speech.style, c.speech.ending]), saved: OC.Store.s.settings.style || null }; });
+      check('8b 介面只有一種風格（14.0 起沒有風格切換）；預設範本的口癖不再是「喵～」', st.attr === null && st.api === 'undefined' && st.saved === null && !st.names.some(([s2, e]) => s2 === 'cute' || /～/.test(e || '')), st);
     }
 
     // ================= 9. arcs: contagion, cold war → thaw → make up / drift, gatherings of three or more =================
