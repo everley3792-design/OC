@@ -652,6 +652,8 @@
     /** scripted shot: ease the camera to a design point / zoom / yaw (null = end, back to the current mode) */
     shot(o) { if (!o) { shot = null; panX = panY = 0; return; } shot = Object.assign({ speed: 1.6 }, o); if (o.zoom) zoomGoal = clamp(o.zoom, 1.0, 3.2); if (o.yaw != null) yawGoal = clamp(o.yaw, -YAW_MAX, YAW_MAX); if (o.instant) { camX = o.x; camY = o.y; panX = panY = 0; if (o.zoom) { zoom = clamp(o.zoom, 1.0, 3.2); zoomGoal = null; } if (o.yaw != null) { yaw = o.yaw; yawGoal = null; } } },
     /** save / restore what the player was looking at (cinematic events return exactly there) */
+    /** 13.0: glide to a zoom level without changing what the camera follows */
+    zoomTo(z) { zoomGoal = clamp(z, 1.15, 3.2); },
     saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
     restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },
     screenDelta, screenToDesign, get bbRes() { return bbRes; },

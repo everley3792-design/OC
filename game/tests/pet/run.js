@@ -158,9 +158,9 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
         const lc = OC.PetSync.renderLines(OC.Chars.get(a), []);
         OC.PetSync.one(a).mute = true; OC.PetSync.one(a).talk = 'rare'; OC.PetSync.push('t6');
         const p = __mock.config.pets.find((x) => x.id === a);
-        return { a: la.tap, b: lb.tap, idleA: la.idle, idleB: lb.idle, cats: Object.keys(la).length, custom: lc.tap.includes('我自己寫的台詞！'), said: said0 === JSON.stringify(OC.Store.s.life.said), mute: p.mute, talk: p.talk };
+        return { differ: Object.keys(la).filter((k) => JSON.stringify(la[k]) !== JSON.stringify(lb[k])).length, a: la.tap, b: lb.tap, idleA: la.idle, idleB: lb.idle, cats: Object.keys(la).length, custom: lc.tap.includes('我自己寫的台詞！'), said: said0 === JSON.stringify(OC.Store.s.life.said), mute: p.mute, talk: p.talk };
       }, [A, B]);
-      check('6a 台詞由對話引擎依個性／聲線產生（兩隻 OC 說法不同）', JSON.stringify(r.a) !== JSON.stringify(r.b) && r.cats >= 20, { a: r.a, b: r.b });
+      check('6a 台詞由對話引擎依個性／聲線產生（兩隻 OC 說法不同）', r.differ >= 3 && r.cats >= 20, { differ: r.differ, cats: r.cats, a: r.a, b: r.b } /* 12.0: the preset characters may share a voice, so one short category (tap) can come out the same; what must differ is the set as a whole */);
       check('6b 玩家自訂台詞會加入；預覽不會改動遊戲的對話紀錄', r.custom && r.said);
       check('6c 頻率與靜音設定送到原生', r.mute === true && r.talk === 'rare');
       await openPage(page, 'petone', { id: A }); await page.tap('text=預覽'); await wait(page, 500); await shot(page, '6-lines-preview');

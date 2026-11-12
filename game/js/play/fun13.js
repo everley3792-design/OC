@@ -22,7 +22,7 @@
   const busy = () => !!cur;
   function begin(game, id) { if (cur) return false; const b = B().get(id), a = A().actorOf(id); if (!b || !a || a.hidden) { toast('牠現在不在這裡', 'info'); return false; } B().hold(id, 'game'); cur = { game, id, t0: performance.now() }; return true; }
   function end(result) {
-    if (!cur) return; const g = cur; cur = null; B().unhold(g.id, 'game'); if (g.el) g.el.remove(); if (g.timer) clearInterval(g.timer); if (g.off) g.off();
+    if (!cur) return; const g = cur; cur = null; B().unhold(g.id, 'game'); if (g.el) g.el.remove(); if (g.zoom0 && W().zoomTo) W().zoomTo(g.zoom0); if (g.timer) clearInterval(g.timer); if (g.off) g.off();
     const a = A().actorOf(g.id); if (a && a.hidden && g.game === 'hide') a.hidden = false;
     St.emit('fun:end', { game: g.game, id: g.id, result });
   }
@@ -72,26 +72,31 @@
   }
 
   // =============================================================================== hide and seek
+  const onScr = (s) => s && s.x > 40 && s.x < innerWidth - 40 && s.y > 210 && s.y < innerHeight - 190;   /* on screen and clear of the HUD */
+  const targets = () => (W().swayTargets ? W().swayTargets() : []).filter(Boolean);
   function hide(id) {
-    const c = Ch().get(id), spots = (W().swayTargets ? W().swayTargets() : []).filter((s) => s && s.x > 40 && s.x < innerWidth - 40 && s.y > 210 && s.y < innerHeight - 190);   // on screen and clear of the HUD
-    if (!c) return false; if (spots.length < 3) { toast('這裡沒有地方可以躲（去有樹或草叢的地方）', 'info'); return false; }
+    const c = Ch().get(id), all = targets();
+    if (!c) return false; if (all.length < 3) { toast('這裡沒有地方可以躲（去有樹或草叢的地方）', 'info'); return false; }
     if (!begin('hide', id)) return false;
-    const g = cur, a = A().actorOf(id), spot = spots[Math.floor(Math.random() * spots.length)];
-    Object.assign(g, { spot, left: 45, wrong: 0, phase: 'count', found: false });
+    const g = cur, a = A().actorOf(id);
+    /* zoomed in so far that hardly any tree is in view: pull back for the game, and go back to that zoom afterwards */
+    if (all.filter(onScr).length < 3 && W().zoomTo && W().saveView) { g.zoom0 = W().saveView().zoom; W().zoomTo(1.15); }
+    let spot = null;
+    Object.assign(g, { spot: null, left: 45, wrong: 0, phase: 'count', found: false });
     const bar = h('div.fun-bar', { role: 'status' }); g.el = bar; document.getElementById('app').append(bar);
     const show = () => bar.replaceChildren(h('b', null, g.phase === 'count' ? `${nm(c)}去躲了…` : `找找${nm(c)}躲在哪`), g.phase === 'seek' ? h('span.num', null, `${Math.ceil(g.left)} 秒`) : null, h('button.btn.s', { on: { click: () => finish(false, true) } }, '不玩了'));
     bubble(id, 'hide_start'); show();
-    const hideAt = setTimeout(() => { if (cur !== g) return; a.hidden = true; a.path = null; g.phase = 'seek'; show(); OC.Sound && OC.Sound.play('pop'); }, 1600);
+    const hideAt = setTimeout(() => { if (cur !== g) return; const now = targets(), vis = now.filter(onScr), pool = vis.length ? vis : now.slice().sort((p, q) => Math.hypot(p.dx - a.x, p.dy - a.y) - Math.hypot(q.dx - a.x, q.dy - a.y)).slice(0, 6); spot = g.spot = pool[Math.floor(Math.random() * pool.length)]; /* picked when it actually hides: the view may have moved since the game was started */ a.hidden = true; a.path = null; g.phase = 'seek'; show(); OC.Sound && OC.Sound.play('pop'); }, 1600);
     const onShake = (e) => {
-      if (cur !== g || g.phase !== 'seek' || !e) return;
+      if (cur !== g || g.phase !== 'seek' || !e || !spot) return;
       if (Math.hypot(e.dx - spot.dx, e.dy - spot.dy) < 8) finish(true); else { g.wrong++; if (g.wrong % 3 === 0) hint(); }
     };
-    const hint = () => { const sh = W().shakeAt(spot.x, spot.y); if (sh) W().shake(sh); OC.Sound && OC.Sound.play('giggle'); };
+    const hint = () => { if (!spot) return; const t = targets().find((x) => Math.hypot(x.dx - spot.dx, x.dy - spot.dy) < 2) || spot; /* where it is on screen now, not where it was */ const sh = W().shakeAt(t.x, t.y); if (sh) W().shake(sh); OC.Sound && OC.Sound.play('giggle'); };
     St.on('world:shake', onShake); g.off = () => { clearTimeout(hideAt); if (St.off) St.off('world:shake', onShake); else g.dead = true; };
     g.timer = setInterval(() => { if (cur !== g || g.phase !== 'seek') return; g.left -= 0.5; show(); if (Math.abs(g.left - 20) < 0.01 || Math.abs(g.left - 8) < 0.01) hint(); if (g.left <= 0) finish(false); }, 500);
     function finish(found, quit) {
       if (cur !== g || g.phase === 'done') return; g.phase = 'done'; g.found = found; clearInterval(g.timer);
-      const p = W().nearestWalkable(spot.dx, spot.dy + 14, 40) || { x: a.x, y: a.y }; a.x = p.x; a.y = p.y; a.hidden = false; a.key = '';
+      const p = (spot && W().nearestWalkable(spot.dx, spot.dy + 14, 40)) || { x: a.x, y: a.y }; a.x = p.x; a.y = p.y; a.hidden = false; a.key = '';
       act(id, found ? 'surprised' : 'proud', 1.6); bubble(id, quit ? 'fun_quit' : found ? 'hide_found' : 'hide_fail');
       if (!quit) settle(c, 'hide', found ? 1 : -1, '躲貓貓');
       setTimeout(() => { if (cur === g) end(quit ? 'quit' : found ? 'win' : 'lose'); }, 1400);
