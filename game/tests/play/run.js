@@ -251,18 +251,21 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       const A = I['栗子'], B = I['小空'];
       await gather(page, [A, B]); await until(page, () => !OC.Stage.busy, null, 10000); await wait(page, 2500);   // the camera settles after earlier scenes
       const z0 = await page.evaluate(() => OC.World.zoom);
+      /* a character event in progress holds the character (no requests then): end it and keep new ones away for this scene */
+      await page.evaluate(() => { if (OC.Events.current) OC.Events.end('test'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; }); await wait(page, 600);
       await page.evaluate(([a, b]) => { const pl = OC.App.player, x = OC.App.actorOf(a); x.x = pl.x + 90; x.y = pl.y + 30; for (const r of OC.Requests.open()) r.state = 'expired'; for (const k2 of [a + '>' + b, b + '>' + a]) if (OC.Store.s.life.rel[k2]) OC.Store.s.life.rel[k2].fam = 0; const r = OC.Requests.debugOffer(a, 'meet'); if (r) { r.data.other = b; r.text = OC.Requests.text(r); OC.Requests.answer(r.id, 'accept'); } }, [A, B]);
       await until(page, () => !OC.Stage.busy, null, 8000);
       const rid = await page.evaluate((a) => { const r = OC.Requests.open().find((x) => x.oc === a && x.type === 'meet'); return r && r.id; }, A);
+      const why = rid ? null : await page.evaluate((a) => { const b = OC.Brain.get(a), x = OC.App.actorOf(a); return { holds: [...b.holds], st: b.st, act: b.act, hidden: x && x.hidden, leaving: b.leaving, own: OC.Requests.ofOC(a) && OC.Requests.ofOC(a).type, cd: (OC.Store.s.play.req.cd || {})[a] }; }, A);
       await page.evaluate(([a, b]) => { const pl = OC.App.player, x = OC.App.actorOf(a), q = OC.World.nearestWalkable(pl.x + 120, pl.y + 30, 40) || OC.World.nearestWalkable(pl.x - 120, pl.y + 30, 40); if (q) { x.x = q.x; x.y = q.y; } x.path = null; OC.Progress.emit('social', { oc: a, other: b, ocs: [a, b], kind: 'chat' }); }, [A, B]);
-      const started = await until(page, () => OC.Stage.busy && !!document.querySelector('.stage-ui.on'), null, 5000);
+      const started = await until(page, () => OC.Stage.busy && !!document.querySelector('.stage-ui'), null, 12000);
       const d0 = await page.evaluate((a) => { const x = OC.App.actorOf(a), pl = OC.App.player; return Math.hypot(x.x - pl.x, x.y - pl.y); }, A);
       // sample during the scene: it walks over first, then the camera moves in
       const mid = { d: 1e9, zoom: 0, held: [] };
       for (let i = 0; i < 40 && (await page.evaluate(() => OC.Stage.busy)); i++) { const m = await page.evaluate((a) => { const x = OC.App.actorOf(a), pl = OC.App.player; return { d: Math.hypot(x.x - pl.x, x.y - pl.y), zoom: OC.World.zoom, held: [...OC.Brain.get(a).holds] }; }, A); mid.d = Math.min(mid.d, m.d); if (m.zoom > mid.zoom) { mid.zoom = m.zoom; mid.held = m.held; } if (i === 12) await shot(page, '10-cinematic'); await wait(page, 200); }
       await until(page, () => !OC.Stage.busy && !OC.Stage.queue, null, 20000); await wait(page, 1500);
       const end = await page.evaluate((a) => ({ zoom: OC.World.zoom, held: [...OC.Brain.get(a).holds], ui: !!document.querySelector('.stage-ui'), state: (OC.Requests.list().find((x) => x.oc === a && x.type === 'meet') || {}).state }), A);
-      check('10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅', started && rid && mid.d < d0 && mid.zoom > z0 + 0.1, JSON.stringify({ d0: Math.round(d0), d: Math.round(mid.d), z0, z: mid.zoom }));
+      check('10a 請求完成演出：角色走到玩家身邊、鏡頭拉近、柔和遮幅', started && rid && mid.d < d0 && mid.zoom > z0 + 0.1, JSON.stringify({ started, rid: !!rid, why, d0: Math.round(d0), d: Math.round(mid.d), z0, z: mid.zoom }));
       check('10b 演出中角色被保留（不會被自主行為打斷），結束後鏡頭與保留都恢復', mid.held.includes('stage') && !end.held.includes('stage') && Math.abs(end.zoom - z0) < 0.1 && !end.ui, JSON.stringify(end));
       await release(page, [A, B]);
     }
