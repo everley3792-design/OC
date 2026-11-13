@@ -182,7 +182,7 @@
       // lavender field (pick a sprig: the same flower bed interaction as the isle)
       const rows = []; for (let i = 0; i < 5; i++) rows.push([70 + i * 4, 560 + i * 26, 200 + i * 4, 560 + i * 26]);
       lavenderField(ctx, rows); ctx.block(140, 612, 136, 60);
-      for (const [i, y] of [[0, 600], [1, 650]]) ctx.interact({ type: 'bed', id: 'hill_lav' + i, x: 140, y, hit: { w: 120, h: 30, d: 10 }, at: { x: 140, y: y + (i ? 46 : -52) }, label: '薰衣草田' });
+      for (const [i, y] of [[0, 600], [1, 650]]) ctx.interact({ type: 'bed', id: 'hill_lav' + i, item: 'lavender', x: 140, y, hit: { w: 120, h: 30, d: 10 }, at: { x: 140, y: y + (i ? 46 : -52) }, label: '薰衣草田' });
       // picnic blanket (lie down) and kites over the hilltop
       const pc = picnic(); place(ctx, pc, 440, 610, 0, 1.5);
       ctx.interact({ type: 'towel', x: 440, y: 612, hit: { w: 40, h: 26, d: 10 }, at: { x: 440, y: 630 }, label: '野餐墊' });

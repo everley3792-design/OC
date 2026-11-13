@@ -476,7 +476,7 @@
     switch (it.type) {
       case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
       case 'tree': { const left = treeReadyIn(it); return { title: it.label || '果樹', sub: left <= 0 ? '果實成熟了' : `還要約 ${Math.ceil(left)} 分鐘長出果實`, stk: 'apple', verb: '搖一搖', run: () => goThen(it.at.x, it.at.y, () => shakeTree(it)) }; }
-      case 'bed': return { title: it.label || '花圃', sub: '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => goThen(it.at.x, it.at.y, () => pickFlower(it)) };
+      case 'bed': return { title: it.label || '花圃', sub: it.item ? `可以摘一束${(Sty.ITEMS[it.item] || {}).zh || '花'}` : '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => goThen(it.at.x, it.at.y, () => pickFlower(it)) };
       case 'bench': return { title: it.label || '長椅', sub: '坐下來休息', stk: 'sofa', verb: '坐下', run: () => goThen(it.at.x, it.at.y, () => sit(it.seat)) };
       case 'home': return { title: '我的家', sub: '走進去', stk: 'home', verb: '進去', run: () => goThen(it.at.x, it.at.y, () => travel('home')) };
       case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => goThen(it.at.x, it.at.y, () => tab('explore')) };
@@ -554,8 +554,8 @@
   function pickFlower(it) {
     face(player, 0, -1); const k = it.id, last = S().world.trees[k] || 0, left = 8 - (Date.now() - last) / 60000;
     if (left > 0) { toast(`花還沒長好，約 ${Math.ceil(left)} 分鐘後再來`, 'leaf'); return; }
-    S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { flower: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick', 1, { item: 'flower' });
-    floatAt(it.x, it.y, it.lvl || 0, '+1 小雛菊'); haptic();
+    const fl = it.item || 'flower'; S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { [fl]: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick', 1, { item: fl });
+    floatAt(it.x, it.y, it.lvl || 0, `+1 ${Sty.ITEMS[fl].zh}`); haptic();
   }
   function spawnDailies() {
     const day = OC.Clock.dayKey(), area = Wd.area;
