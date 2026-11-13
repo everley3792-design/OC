@@ -88,6 +88,75 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('1g 設定「點一下就做」打開後回到一點就做（沒有動作卡）；預設是關的', q && (!bench2 || (!qs.pick && (qs.walking || qs.sitting))), qs);
     }
 
+    // ================= 2. the action queue =================
+    if (want(2)) {
+      await closeAll();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), id = OC.Store.s.activeId, out = {};
+        OC.Queue.clear(id); const b = OC.Brain.get(id); if (b.st === 'do' || b.st === 'go') OC.Brain.abort(b, 't'); b.queued = null;
+        out.adds = [OC.Queue.add(id, 'read'), OC.Queue.add(id, 'stretch'), OC.Queue.add(id, 'rest'), OC.Queue.add(id, 'nap'), OC.Queue.add(id, 'eat'), OC.Queue.add(id, 'stretch')];
+        out.unknown = OC.Queue.add(id, 'no-such-act');
+        await sleep(1400); out.list = OC.Queue.list(id).map((x) => x.act + ':' + x.state);
+        out.chips = [...document.querySelectorAll('.q-chip')].map((e) => e.textContent.trim());
+        out.chipH = document.querySelector('.q-chip') ? document.querySelector('.q-chip').getBoundingClientRect().height : 0;
+        /* cancel the second waiting one through its chip (a real click on the HUD) */
+        const third = [...document.querySelectorAll('.q-chip')][2]; third && third.click(); await sleep(700);
+        out.afterCancel = OC.Queue.list(id).map((x) => x.act);
+        /* cancel what it is doing / about to do */
+        OC.Queue.cancel(id, -1); await sleep(300); out.afterCur = OC.Queue.list(id).map((x) => x.act + ':' + x.state);
+        /* the next one is handed to the engine when it is free */
+        const t0 = performance.now(); while (performance.now() - t0 < 20000) { OC.Sim.advance(1); await sleep(150); const l = OC.Queue.list(id); if (l.length && l[0].i === -1) break; }
+        out.handed = OC.Queue.list(id).map((x) => x.act + ':' + x.state);
+        out.saved = JSON.stringify(OC.Chars.get(id).life.q15);
+        OC.Queue.clear(id); OC.Queue.cancel(id, -1); await sleep(300);
+        out.cleared = OC.Queue.list(id).length; out.hidden = document.querySelector('.hud-queue').hidden;
+        return out;
+      });
+      check('2a 安排的動作會排成清單：第一個馬上開始，後面的依序等候，最多 4 個在等；不存在的動作不能排', r.adds[0] === 'now' && r.adds.slice(1, 5).every((x) => x === 'queued') && r.adds[5] === false && r.unknown === false && r.list.length === 5 && /^read:/.test(r.list[0]) && r.list.slice(1).every((x) => /:waiting$/.test(x)), { adds: r.adds, list: r.list });
+      check('2b 清單顯示在左上（目前的那一個標 ▶、其餘標號碼），每一項點一下就取消（膠囊 34 px 高，點擊範圍向外延伸到 48）', r.chips.length === 5 && /^▶/.test(r.chips[0]) && /^2/.test(r.chips[1]) && r.afterCancel.join() === 'read,stretch,nap,eat' && r.chipH >= 30, { chips: r.chips, afterCancel: r.afterCancel, h: r.chipH });
+      check('2c 取消正在做的那一個後，清單裡的下一個會在牠有空時自動交給牠（仍經過生活引擎）；清單存在角色身上；清空後 HUD 的清單收起', !r.afterCur.some((x) => /^read:/.test(x)) && /^stretch:(next|going|doing)$/.test(r.handed[0] || '') && r.saved.startsWith('[') && r.cleared === 0 && r.hidden === true, { afterCur: r.afterCur, handed: r.handed, saved: r.saved });
+    }
+
+    // ================= 3. the pocket phone =================
+    if (want(3)) {
+      await closeAll(); await page.evaluate(() => OC.App.tab('more')); await wait(page, 1000);
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), out = {};
+        const apps = [...document.querySelectorAll('.phone-app')]; out.apps = apps.map((b) => b.textContent); out.minH = Math.min(...apps.map((b) => b.getBoundingClientRect().height));
+        out.bar = (document.querySelector('.phone-bar') || {}).textContent || ''; out.on = (document.querySelector('.phone-app.on') || {}).textContent;
+        apps.find((b) => b.dataset.v === 'ach').click(); await sleep(500); out.onAfter = (document.querySelector('.phone-app.on') || {}).textContent; out.tab = OC.Pages.pages.more.tab;
+        apps.find((b) => b.dataset.v === 'bag').click(); await sleep(700); out.bagOpen = OC.Pages.pages.bag.el.classList.contains('open');
+        return out;
+      });
+      await shot(page, '3-phone'); await closeAll();
+      check('3a 「日常」是口袋手機：狀態列（時間、星幣）＋ App 方格（任務、請求、成就、圖鑑、拍照、相簿、地圖、背包、商店、帳本…）；App 觸控高度 ≥ 48', r.apps.length >= 14 && ['任務', '請求', '成就', '圖鑑', '拍照', '相簿', '地圖', '背包', '商店', '帳本', '設定'].every((k) => r.apps.some((a) => a.includes(k))) && /\d{1,2}:\d{2}/.test(r.bar) && r.minH >= 48, { apps: r.apps, bar: r.bar, h: r.minH });
+      check('3b 任務類 App 在手機下方直接打開（被選的 App 有標記）；其他 App 打開自己的頁面', r.on === '任務' && r.onAfter === '成就' && r.tab === 'ach' && r.bagOpen, r);
+    }
+
+    // ================= 4. photo mode and the album =================
+    if (want(4)) {
+      await closeAll();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), vis = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e).visibility : null; }, out = {};
+        OC.Store.s.photos = []; OC.Photo.open(); await sleep(600);
+        out.hud = vis('#hud'); out.tab = vis('.tabbar'); out.bar = !!document.querySelector('.photo-bar');
+        [...document.querySelectorAll('.photo-chips .chip-btn')].find((b) => b.textContent === '黑白').click(); await sleep(200);
+        out.preview = document.getElementById('world').style.filter;
+        await sleep(400); document.querySelector('.photo-shutter').click();
+        const t0 = performance.now(); while (!OC.Store.s.photos.length && performance.now() - t0 < 20000) await sleep(100);
+        const x = OC.Store.s.photos[0]; out.saved = !!x; out.meta = x && { filter: x.filter, frame: x.frame, place: x.place };
+        out.inSave = JSON.stringify(OC.Store.s.photos).length < 400;   /* only ids and labels in the save, never the image */
+        if (x) { const img = await OC.Assets.image(x.id); const c = document.createElement('canvas'); c.width = 24; c.height = 24; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 24, 24); const d = g.getImageData(0, 0, 24, 24).data; let grey = 0, n = 0; for (let i = 0; i < d.length; i += 4) { n++; if (Math.abs(d[i] - d[i + 1]) < 6 && Math.abs(d[i + 1] - d[i + 2]) < 6) grey++; } out.greyShare = +(grey / n).toFixed(2); out.size = [img.width, img.height]; }
+        OC.Photo.close(); await sleep(300); out.hudBack = vis('#hud'); out.filterGone = document.getElementById('world').style.filter === '';
+        OC.Pages.open('album'); await sleep(900); out.cells = document.querySelectorAll('.album-cell').length;
+        return out;
+      });
+      await shot(page, '4-album'); await closeAll();
+      check('4a 拍照模式隱藏所有 HUD 與導覽列，下方有濾鏡、相框與快門；選濾鏡時畫面先預覽', r.hud === 'hidden' && r.tab === 'hidden' && r.bar && /grayscale/.test(r.preview), r);
+      check('4b 按快門：照片存進素材庫（存檔裡只有 id 與標籤，不放圖片），濾鏡真的畫進照片裡（黑白 → 幾乎全是灰階）；離開後 HUD 回來、畫面上的預覽濾鏡拿掉', r.saved && r.meta.filter === 'mono' && r.inSave && r.greyShare >= 0.95 && r.size[0] > 100 && r.hudBack === 'visible' && r.filterGone, { meta: r.meta, grey: r.greyShare, size: r.size, back: r.hudBack });
+      check('4c 相簿頁列出拍過的照片', r.cells === 1, { cells: r.cells });
+    }
+
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
   await browser.close();
