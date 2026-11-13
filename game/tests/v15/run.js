@@ -24,9 +24,10 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await closeAll();
       const bench = await find('bench'), out = { bench: !!bench };
       if (bench) {
+        out.before = await page.evaluate(() => { const p = OC.App.player, b = OC.Brain.get(OC.Store.s.activeId); window.__ocInputLog = []; return { path: !!(p && p.path), st: b && b.st, act: b && b.act }; });
         await page.touchscreen.tap(bench.x, bench.y);
         await page.waitForFunction(() => OC.Pick.open_, null, { timeout: 10000 }).catch(() => {});
-        out.afterTap = await state(); await wait(page, 1500); out.later = await state();
+        out.afterTap = await state(); out.log = await page.evaluate(() => { const b = OC.Brain.get(OC.Store.s.activeId); return { input: window.__ocInputLog, st: b && b.st, act: b && b.act, why: OC.Brain.log.filter((l) => l.who === OC.Store.s.activeId).slice(0, 2).map((l) => l.text) }; }); await wait(page, 1500); out.later = await state();
         await shot(page, '1-pick-card');
         /* a second, immediate tap on the same spot (the classic accidental double tap) lands where the card's button is not yet armed */
         const btn = await page.evaluate(() => { const b = document.querySelector('.pick-acts .btn'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height }; });
@@ -42,7 +43,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         await page.waitForFunction(() => { const p = OC.App.player; return p && (p.path || p.mode === 'sit'); }, null, { timeout: 10000 }).catch(() => {});
         out.afterPress = await state();
       }
-      check('1a 點一下長椅：只出現動作卡（名稱＋「坐下」），角色沒有走過去、沒有坐下；等一下也不會自己開始', out.bench && out.afterTap.pick && /bench/.test(out.afterTap.key) && out.afterTap.verb === '坐下' && !out.afterTap.walking && !out.afterTap.sitting && out.later.pick && !out.later.walking && !out.later.sitting, { tap: out.afterTap, later: out.later });
+      check('1a 點一下長椅：只出現動作卡（名稱＋「坐下」），角色沒有走過去、沒有坐下；等一下也不會自己開始', out.bench && out.afterTap.pick && /bench/.test(out.afterTap.key) && out.afterTap.verb === '坐下' && !out.afterTap.walking && !out.afterTap.sitting && out.later.pick && !out.later.walking && !out.later.sitting, { tap: out.afterTap, later: out.later, before: out.before, log: out.log });
       check('1b 點別的地方：動作卡收起來，什麼都沒發生（也不會因為這一下而走過去）', out.bench && !out.dismissed.pick && !out.dismissed.sitting && out.dismissed.stack === 0, out.dismissed);
       check('1c 卡片剛出現的 0.35 秒內按鈕不接受按壓（防止同一根手指誤觸）；之後按「坐下」才真的走過去坐；按鈕高度 ≥ 48', out.bench && out.early.armedAtClick === false && out.early.stillOpen === true && (out.afterPress.walking || out.afterPress.sitting) && !out.afterPress.pick && out.btn && out.btn.h >= 48, { early: out.early, after: out.afterPress, btn: out.btn });
 
