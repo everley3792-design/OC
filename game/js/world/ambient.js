@@ -41,7 +41,7 @@
       out.glint = { im, p: Array.from({ length: 28 }, () => ({ x: 0, y: 0, ph: Math.random() * 6.3, sp: 1.2 + Math.random() * 1.6, ok: false })) };
     }
     /* 15.5: summer festival fireworks — bursts of 28 sparks high over the view at night, outdoors; one InstancedMesh with per-spark colours */
-    { const g = new THREE.SphereGeometry(1.6, 6, 4), m = new THREE.MeshBasicMaterial({ color: '#FFFFFF', fog: false, transparent: true, depthWrite: false });
+    { const g = new THREE.SphereGeometry(2.4, 6, 4), m = new THREE.MeshBasicMaterial({ color: '#FFFFFF', fog: false, transparent: true, depthWrite: false });
       const im = new THREE.InstancedMesh(g, m, 84); im.frustumCulled = false; im.count = 0; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(84 * 3), 3); out.group.add(im);
       out.fw = { im, bursts: [], t: 1 }; }
     return out;
@@ -49,11 +49,11 @@
   const FW_COLS = ['#FF8FA3', '#FFD166', '#9AD7F5', '#C9B6FF', '#B5F2A5', '#FFFFFF'];
   function fireworks(dt, Wd, show) {
     const F = built.fw; if (!F) return; if (!show) { F.im.count = 0; F.bursts.length = 0; return; }
-    F.t -= dt; if (F.t <= 0 && F.bursts.length < 3) { F.t = 1.6 + Math.random() * 1.8; const c = Wd.camCenter; F.bursts.push({ x: c.x + (Math.random() - 0.5) * 260, y: c.y - 120 - Math.random() * 120, h: 150 + Math.random() * 60, age: 0, col: new THREE.Color(FW_COLS[Math.floor(Math.random() * FW_COLS.length)]) }); OC.Sound && OC.Sound.play && OC.Sound.play('pop', { vol: 0.2 }); }
+    F.t -= dt; if (F.t <= 0 && F.bursts.length < 3) { F.t = 1.6 + Math.random() * 1.8; const c = Wd.camCenter; F.bursts.push({ x: c.x + (Math.random() - 0.5) * 240, y: c.y - 60 - Math.random() * 80, h: 70 + Math.random() * 50, age: 0, col: new THREE.Color(FW_COLS[Math.floor(Math.random() * FW_COLS.length)]) }); OC.Sound && OC.Sound.play && OC.Sound.play('pop', { vol: 0.2 }); }
     let n = 0; const col = new THREE.Color();
     for (const b of F.bursts) {
       b.age += dt; const k = Math.min(1, b.age / 0.6), fade = Math.max(0, 1 - Math.max(0, b.age - 0.6) / 1.2);
-      for (let i = 0; i < 28 && n < 84; i++, n++) { const a = (i / 28) * Math.PI * 2, r = 44 * (1 - Math.pow(1 - k, 3)); dq.position.copy(Wd.V3(b.x + Math.cos(a) * r, b.y, 0, b.h + Math.sin(a) * r - b.age * b.age * 10)); dq.rotation.set(0, 0, 0); dq.scale.setScalar(Math.max(0.01, fade)); dq.updateMatrix(); F.im.setMatrixAt(n, dq.matrix); col.copy(b.col).multiplyScalar(0.4 + 0.6 * fade); F.im.setColorAt(n, col); }
+      for (let i = 0; i < 28 && n < 84; i++, n++) { const a = (i / 28) * Math.PI * 2, r = 38 * (1 - Math.pow(1 - k, 3)); dq.position.copy(Wd.V3(b.x + Math.cos(a) * r, b.y, 0, b.h + Math.sin(a) * r - b.age * b.age * 10)); dq.rotation.set(0, 0, 0); dq.scale.setScalar(Math.max(0.01, fade)); dq.updateMatrix(); F.im.setMatrixAt(n, dq.matrix); col.copy(b.col).multiplyScalar(0.4 + 0.6 * fade); F.im.setColorAt(n, col); }
     }
     F.bursts = F.bursts.filter((b) => b.age < 1.8); F.im.count = n; F.im.instanceMatrix.needsUpdate = true; if (F.im.instanceColor) F.im.instanceColor.needsUpdate = true;
   }

@@ -102,7 +102,7 @@
     for (const sh of ['food', 'furniture', 'clothes', 'gift', 'mill']) { const d = OC.Shops.deal(sh); if (d) out.deals.push({ shop: OC.Shops.SHOPS[sh].zh, item: d }); }
     out.bdays = birthdays(now).filter((x) => x.days <= 14);
     /* 15.5: today's festival, last night's dreams, declarations in progress */
-    out.fest = OC.Life15 ? OC.Life15.festival(now) : null;
+    out.fest = OC.Life15 ? OC.Life15.festival() : null;
     out.dreams = OC.Life15 ? OC.Chars.all().map((c) => ({ c, d: OC.Life15.st(c).dreams[0] })).filter((x) => x.d && x.d.day >= Sim().day() - 1).slice(0, 3) : [];
     out.decls = OC.Life15 ? OC.Chars.all().map((c) => ({ c, q: OC.Life15.st(c).decl })).filter((x) => x.q && !x.q.done && !x.q.failed) : [];
     out.rating = rating(); out.room = roomScore('home');

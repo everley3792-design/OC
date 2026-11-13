@@ -129,7 +129,13 @@
   };
   /** today's festival (weekends: Saturday and Sunday) or null */
   let festMemo = null;
-  function festival(d) { if (!d) { const k = Math.floor(Date.now() / 30000); if (festMemo && festMemo.k === k) return festMemo.v; const v = festival(new Date()); festMemo = { k, v }; return v; } const w = d.getDay(); let force = false; try { force = new URLSearchParams(location.search).get('fest') === '1'; } catch (e) { /* no location */ } if (w !== 0 && w !== 6 && !force) return null;   /* ?fest=1 previews a festival day (tests, screenshots) */ const se = (OC.World && OC.World.season) || OC.Clock.season(d); return Object.assign({ season: se, date: OC.Clock.dayKey(d) }, FEST[se]); }
+  /** a festival on a date: weekends of each season. Called with no date = today, where ?fest=1 / the chosen season (settings, ?season=) apply;
+   *  with a date = the calendar only (month → season, Saturday / Sunday) */
+  function festival(d) {
+    if (!d) { const k = Math.floor(Date.now() / 30000); if (festMemo && festMemo.k === k) return festMemo.v; const now = new Date(); let force = false; try { force = new URLSearchParams(location.search).get('fest') === '1'; } catch (e) { /* no location */ }
+      const w0 = now.getDay(), v = (w0 === 0 || w0 === 6 || force) ? Object.assign({ season: (OC.World && OC.World.season) || OC.Clock.season(now), date: OC.Clock.dayKey(now) }, FEST[(OC.World && OC.World.season) || OC.Clock.season(now)]) : null; festMemo = { k, v }; return v; }
+    const w = d.getDay(); if (w !== 0 && w !== 6) return null; const m = d.getMonth() + 1, se = m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter';
+    return Object.assign({ season: se, date: OC.Clock.dayKey(d) }, FEST[se]); }
   function festGift() {
     const f = festival(); if (!f) return null; const k = `fest:${f.id}:${f.date}`;
     if (S().ledger && S().ledger.keys && S().ledger.keys[k]) return null;
