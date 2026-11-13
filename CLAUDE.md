@@ -26,6 +26,7 @@
 - **15.1（0.15.1-alpha）逐頁重新設計（第一批）**：角色頁＝晴日公寓（每人一間房、空房間＝新增）、檔案＝島民護照、家裡的牆壁與地板（`S().surfaces`，佈置模式）、商店購買畫面＝試衣間（用副本試穿）、設定的區塊方格、創角第一步的大卡片；修正 15.0 防誤觸擋住「點外面關閉」。地圖、桌寵中心、設計亭、創角大舞台還沒做。紀錄：`docs/v15.1-report.md`。
 - **15.2（0.15.2-alpha）兩個新地點與島上生活**：開放**風車丘**（風車磨坊商店、薰衣草田、野餐墊、草原蚱蜢）與**彩虹遊樂園**（星光舞台演唱會小遊戲、摩天輪、旋轉木馬、套圈圈、點心攤）（`js/world/areas15.js`）；打工（`OC.Jobs`）、島報／房間評分／小島評價／生日（`OC.Island`）。夢境、宣言、連續劇、願望與恐懼、人生階段、季節活動未做。紀錄：`docs/v15.2-report.md`。
 - **15.3（0.15.3-alpha）視覺與動態打磨**：季節（`OC.Clock.season()`；色調烤進著色器、角色不套；`OC.Ambient` 的花瓣／落葉／雪與海面閃光）、雲朵轉場、遊樂園燈泡接夜晚燈光、遊樂園音樂盒與風車聲、逐頁檢查。地圖、桌寵中心、設計亭、創角大舞台、季節活動未做。紀錄：`docs/v15.3-report.md`。
+- **15.4（0.15.4-alpha）剩下的頁面**：創角大舞台＋分類列、設計亭（`OC.Design`：12×12 圖樣穿在上衣，`look.pattern = 'design:<id>'`，資料在 `S().designs`）、地圖路線與路程、桌寵中心三個分頁。紀錄：`docs/v15.4-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -100,7 +101,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.3-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.4-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -218,3 +219,4 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **15.2 島報**只能寫真的資料（回憶、帳本、天氣、特價、生日、評價）；房間評分的等級獎勵由玩家在島報領取（key `room:<地點>:<級>`）；生日蛋糕 key `bday:<角色>:<年>`；小島評價只讀資料，**不得**呼叫 `Mind.rel()`（會建立新的關係紀錄）。
 - **15.3 季節**：`OC.Clock.season()`（`settings.season` 或日期；`?season=` 可預覽）只在 `World.init` 讀一次，色調寫進 `tonemapping_fragment`（`#ifndef OC_CHAR`）；**不要在遊戲中途改 ShaderChunk**（內建材質的程式快取不會跟著換）。看板角色的材質一定要有 `defines.OC_CHAR`。飄落物與海面閃光在 `OC.Ambient`（各一個 InstancedMesh，特效關閉／室內／減少動態時不顯示）。
 - **15.3 轉場**：`WorldUI.travel` 的雲朵只在轉場期間存在（不是常駐元素），結束時移除；減少動態時用原本的淡出淡入。夜晚會亮的材質一律放進 `OC.Models.night.windows`（每次載入地點都會清空，要在建場景時重新加入）。
+- **15.4 設計亭**（`js/ui/design15.js`）：圖樣是 144 個調色盤索引（不是圖片），存在 `S().designs`；草稿 `S().designDraft`；預覽用暫時的 `__draft`（離開時刪除）。**從外面關閉（`layer.close`，例如換分頁、返回鍵）不可以再跳確認視窗**——關閉的程式會一直關最上層，確認一跳出來就被關掉、又再問一次，會無限迴圈吃光記憶體（15.4 的教訓）；只有設計亭自己的返回鍵才問。新的全螢幕工具也要遵守。格子不要用全域已有的類別名稱（`.empty` 會帶進 padding）。

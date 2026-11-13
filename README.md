@@ -2,9 +2,10 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.15.3-alpha（15.3）
+## 目前版本 0.15.4-alpha（15.4）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.15.3-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.15.3-alpha-debug.apk)
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.15.4-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.15.4-alpha-debug.apk)
+- 15.4：創角大舞台、設計亭（畫圖樣穿在衣服上）、地圖路線與路程、桌寵中心三分頁。紀錄：[`docs/v15.4-report.md`](docs/v15.4-report.md)
 - 15.3：季節（依日期或自選；樹葉草地的顏色、花瓣／落葉／雪）、海面閃光、雲朵轉場、遊樂園夜晚燈光、遊樂園與風車丘的聲音、逐頁檢查。紀錄：[`docs/v15.3-report.md`](docs/v15.3-report.md)
 - 15.2：開放**風車丘**與**彩虹遊樂園**（磨坊、薰衣草田、演唱會、摩天輪、旋轉木馬、套圈圈、點心攤）、打工、島報、房間評分、小島評價、生日。紀錄：[`docs/v15.2-report.md`](docs/v15.2-report.md)
 - 15.1：晴日公寓（角色頁）、島民護照、家裡的牆壁與地板、商店試衣間、設定區塊方格、創角大卡片。紀錄：[`docs/v15.1-report.md`](docs/v15.1-report.md)
