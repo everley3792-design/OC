@@ -150,3 +150,18 @@ body.talking #hud .hud-quest { opacity: 0; pointer-events: none; transition: opa
 @keyframes mark-bob { 50% { top: -25px; } }
 html.cinema .ctl-mark, body.talking .ctl-mark { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .ctl-mark i { animation: none; } }
+
+/* ---- 15.0 the pocket phone (the 日常 tab): a device with a status bar and a home screen of apps ---- */
+.phone { margin: 0 auto 14px; max-width: 420px; padding: 10px 10px 14px; border-radius: 30px; background: var(--surface); box-shadow: var(--hl), 0 4px 0 var(--lip), var(--shadow-2); }
+.phone-bar { display: flex; align-items: center; gap: 8px; padding: 2px 10px 10px; font-size: var(--fs-s); color: var(--ink-2); }
+.phone-bar > b { color: var(--ink); font-size: var(--fs-l); }
+.phone-coins { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px 2px 4px; border-radius: var(--r-pill); background: var(--sun-soft); color: var(--on-sun); } .phone-coins .stk { width: 20px; height: 20px; }
+.phone-apps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 4px; padding: 12px 6px 4px; border-radius: 22px; background: linear-gradient(180deg, var(--sky-top), var(--sky-mid)); }
+.phone-app { display: grid; justify-items: center; gap: 3px; min-height: 64px; color: var(--ink); }
+.phone-ic { position: relative; width: 48px; height: 48px; border-radius: 15px; display: grid; place-items: center; background: var(--surface); box-shadow: 0 3px 0 var(--lip), var(--shadow-1); transition: transform var(--t-spring) var(--spring); }
+.phone-ic .stk { width: 32px; height: 32px; }
+.phone-ic .badge { position: absolute; top: -5px; right: -5px; }
+.phone-app small { font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.phone-app.on .phone-ic { box-shadow: inset 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip); transform: translateY(-2px); }
+.phone-app:active .phone-ic { transform: scale(.9); transition-duration: var(--t-press); }
+@media (max-width: 360px) { .phone-apps { grid-template-columns: repeat(4, 1fr); } }

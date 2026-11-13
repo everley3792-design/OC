@@ -76,28 +76,30 @@
   Pg().define('more', '日常', {
     build(p, el) {
       p.tab = 'quests';
-      p.head = h('div'); p.tabs = seg([['quests', '任務'], ['req', '請求'], ['ach', '成就'], ['coll', '圖鑑']], 'quests', (v) => { p.tab = v; p._sig = ''; p.refresh(p); });
-      p.body = h('div'); p.other = h('div');
-      el.append(p.head, h('div', { style: { margin: '10px 0' } }, p.tabs), p.body, T('其他'), p.other);
+      /* 15.0 「口袋手機」: the hub is a little phone — a status bar, a home screen of apps (with red badges), and the open app below it.
+       * Task-type apps (任務 / 請求 / 成就 / 圖鑑) open in place; the others open their own page. */
+      p.head = h('div'); p.tabs = h('div.phone-apps', { role: 'tablist', 'aria-label': '口袋手機' });
+      p.body = h('div.phone-screen'); p.other = h('div');
+      el.append(h('div.phone', null, p.head, p.tabs), p.body);
+      p.el.classList.add('phone-page');
     },
     refresh(p) {
       const qc = OC.Quests.claimable(), ac = OC.Achieve.claimable(), ro = OC.Requests.open().length;
       const sig = [p.tab, p.achCat, JSON.stringify(S().play.q.list.map((x) => [x.key, x.prog.n, x.done, x.claimed])), JSON.stringify(S().play.q.chal), Object.keys(S().ach).length, JSON.stringify(S().play.ach), OC.Requests.list().map((r) => r.id + r.state).join(), S().coins, Object.keys(S().seen).length].join('|');
       if (same(p, sig)) return;
-      p.tabs.querySelectorAll('button').forEach((b) => { const n = { quests: qc, req: ro, ach: ac }[b.dataset.v]; b.querySelector('.badge') && b.querySelector('.badge').remove(); if (n) b.append(h('span.badge', null, n)); });
-      p.head.replaceChildren(h('div.hub-head', null, h('span.stk-pad', null, OC.UI.sticker(OC.Clock.phase() === 'night' ? 'moon' : 'sun')), h('div.grow', null, h('b', null, new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })), small('今天想做什麼都可以 — 任務只是靈感。')), h('div.hub-coins', null, OC.UI.sticker('coin', 's'), h('b.num', null, S().coins.toLocaleString()))));
+      const todo = S().pet.tools.todos.filter((t) => !t.done).length;
+      const APPS = [
+        ['quests', '任務', 'flag', qc, null], ['req', '請求', 'chat', ro, null], ['ach', '成就', 'trophy', ac, null], ['coll', '圖鑑', 'collection', 0, null],
+        ['camera', '拍照', 'camera', 0, () => (OC.Photo ? OC.Photo.open() : toast('拍照模式還沒準備好', 'info'))], ['map', '地圖', 'compass', 0, () => OC.App.tab('explore')],
+        ['bag', '背包', 'bag', 0, () => Pg().open('bag')], ['shop', '商店', 'shop', 0, () => Pg().open('shop', { shop: 'general' })],
+        ['ledger', '帳本', 'coin', 0, () => Pg().open('ledger')], ['goals', '小島目標', 'star', 0, () => Pg().open('goals')],
+        ['products', '工坊商品', 'gift', 0, () => Pg().open('products')], ['pet', '桌寵', 'paw', 0, () => Pg().open('petcenter')],
+        ['tools', '提醒待辦', 'clock', todo, () => Pg().open('pettools')], ['settings', '設定', 'gear', 0, () => Pg().open('settings')], ['about', '關於', 'info', 0, () => Pg().open('about')]];
+      p.tabs.replaceChildren(...APPS.map(([k, zh, stk, n, fn]) => h('button.phone-app' + (p.tab === k ? '.on' : ''), { role: fn ? 'button' : 'tab', 'aria-selected': fn ? null : String(p.tab === k), 'data-v': k, 'aria-label': zh + (n ? `（${n}）` : ''),
+        on: { click: () => { haptic('tick'); if (fn) { fn(); return; } p.tab = k; p._sig = ''; p.refresh(p); } } }, h('span.phone-ic', null, OC.UI.sticker(stk), n ? h('span.badge', null, n > 9 ? '9+' : n) : null), h('small', null, zh))));
+      p.head.replaceChildren(h('div.phone-bar', null, h('b.num', null, OC.Clock.label().time), h('span', null, new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short' })), h('span.grow'), h('span.phone-coins', null, OC.UI.sticker('coin', 's'), h('b.num', null, S().coins.toLocaleString()))));
       p.body.replaceChildren(p.tab === 'quests' ? questsTab(p) : p.tab === 'req' ? reqTab(p) : p.tab === 'ach' ? achTab(p) : collTab());
-      const Gm = OC.Game;
-      p.other.replaceChildren(h('div.list', null,
-        row('bag', '背包', `${Object.values(S().inv).reduce((a, b) => a + b, 0)} 件物品`, null, () => Pg().open('bag')),
-        row('cart', '晴日雜貨攤', '其他商店在晴日商店街', null, () => Pg().open('shop', { shop: 'general' })),
-        row('cart', '工坊商品', `${Object.keys((S().custom || {}).items || {}).length} 件`, null, () => Pg().open('products')),
-        row('coin', '交易紀錄', `${S().coins.toLocaleString()} 星幣`, null, () => Pg().open('ledger')),
-        row('target', '小島目標', (Gm.GOALS.find((g) => g.id === S().goal) || { zh: '尚未選擇' }).zh, null, () => Pg().open('goals')),
-        row('paw', '桌寵管理', OC.PetSync.native() ? '手機桌面上的 OC' : '需要 Android App', null, () => Pg().open('petcenter')),
-        row('clock', '番茄鐘・提醒・待辦', `${S().pet.tools.todos.filter((t) => !t.done).length} 件待辦`, null, () => Pg().open('pettools')),
-        row('gear', '設定', '主題、效能、聲音、時間天氣、操作、資料', null, () => Pg().open('settings')),
-        row('info', '關於', null, null, () => Pg().open('about'))));
+      /* the phone's home screen above replaces the old 「其他」 list */
     },
   });
   Pg().define('ach', '成就', { sub: true, build(p, el) { p.box = h('div'); el.append(p.box); }, refresh(p) { if (same(p, [p.achCat, Object.keys(S().ach).length, JSON.stringify(S().play.ach)].join('|'))) return; p.box.replaceChildren(achTab(p)); } });
