@@ -27,11 +27,11 @@ const { check, wait } = H;
       await open(); await wait(page, 300); const h1 = await holds(ids.mate);
       await page.evaluate(() => document.querySelector('.radial').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); await wait(page, 400); const h2 = await holds(ids.mate);
       await open(); await wait(page, 300); await page.evaluate(() => OC.UI.back()); await wait(page, 400); const h3 = await holds(ids.mate);
-      await open(); await wait(page, 300); await page.evaluate(() => [...document.querySelectorAll('.radial-btn')].find((b) => b.textContent === '檔案').click());
+      await open(); await wait(page, 450); /* 15.0: the buttons of a ring that has just opened wait 0.35 s */ await page.evaluate(() => [...document.querySelectorAll('.radial-btn')].find((b) => b.textContent === '檔案').click());
       const prof = await page.waitForFunction(() => !!document.querySelector('[data-page="profile"].open'), null, { timeout: 5000 }).then(() => true).catch(() => false); const h4 = await holds(ids.mate); await page.evaluate(() => OC.UI.back());
       check('1a 打開環狀選單時 OC 會停下來注意你（menu hold）', h1.includes('menu'), h1);
       check('1b 點外面、返回鍵、選擇動作：三種關法都會放開 OC', !h2.includes('menu') && !h3.includes('menu') && !h4.includes('menu') && prof, { h2, h3, h4, prof });
-      const anim = await page.evaluate(async (id) => { OC.App.menuFor({ type: 'mate', id }, OC.App.screenOf(OC.App.actorOf(id))); await new Promise((r) => setTimeout(r, 50)); const bs = [...document.querySelectorAll('.radial-btn')]; const d = bs.map((b) => getComputedStyle(b).transitionDelay.split(',')[0]); const halo = !!document.querySelector('.radial-halo'); OC.Radial.close(true); return { d, halo }; }, ids.mate);
+      const anim = await page.evaluate(async (id) => { OC.App.menuFor({ type: 'mate', id }, OC.App.screenOf(OC.App.actorOf(id))); await new Promise((r) => setTimeout(r, 50)); const bs = [...[...document.querySelectorAll('.radial')].pop().querySelectorAll('.radial-btn')];   /* only the ring just opened (an earlier one may still be fading out) */ const d = bs.map((b) => getComputedStyle(b).transitionDelay.split(',')[0]); const halo = !!document.querySelector('.radial-halo'); OC.Radial.close(true); return { d, halo }; }, ids.mate);
       check('1c 選單有依序展開（每個按鈕不同延遲）與光暈', anim.halo && new Set(anim.d).size === anim.d.length, anim);
     }
     if (want(2)) {

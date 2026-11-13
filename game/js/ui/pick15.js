@@ -44,7 +44,7 @@
       } } }, a.label))));
     const dot = h('div.pick-dot', { 'aria-hidden': 'true' });
     const el = h('div.pick', null, dot, card);
-    el.addEventListener('pointerdown', (e) => { if (e.target === el) { if (!armed(card)) return; close('outside'); } });
+    el.addEventListener('pointerdown', (e) => { if (e.target === el) close('outside'); });   /* a new finger outside always puts it away; only its buttons wait */
     document.getElementById('app').append(el);
     guard(card);
     const layer = { scrim: false, close: () => close('back') }; OC.UI.pushLayer(layer);

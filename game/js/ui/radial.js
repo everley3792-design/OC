@@ -55,7 +55,7 @@
       ring.append(b);
     });
     el.append(ring);
-    el.addEventListener('pointerdown', (e) => { if (e.target === el && (!OC.Pick || OC.Pick.armed(el))) close(); });
+    el.addEventListener('pointerdown', (e) => { if (e.target === el) close(); });   /* a NEW finger outside always closes (the guard is only for the buttons)*/
     document.getElementById('app').append(el); if (OC.Pick) OC.Pick.guard(el);
     const layer = { scrim: false, close: () => close() }; OC.UI.pushLayer(layer);
     cur = { el, layer, target: o.target || null, onClose: o.onClose || null, raf: 0, picking: false };
