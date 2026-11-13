@@ -174,6 +174,7 @@
         /* 14.1: the tools are a board of tiles in three groups (make · bring in / take out · put to use) instead of one long list */
         T('創作'), h('div.tool-grid', null,
           tool('brush', '繪畫工坊', '畫角色、五官、服裝、飾品、影格', () => OC.Paint.open({ owner: Ch().active().id })),
+          tool('shirt', '設計亭', '畫 12×12 的圖樣，穿在角色的衣服上', () => OC.Design.open()),
           tool('camera', '素材庫', '所有圖片：改名、取代、複製、刪除', () => Pg().open('library'))),
         T('匯入與匯出'), h('div.tool-grid', null,
           tool('sparkle', '匯入圖片／動畫', 'PNG、GIF、APNG、WebP、連續圖、ZIP', async () => { await OC.Library.importDialog({ owner: Ch().active().id, purpose: 'anim' }); p.refresh(p); }),

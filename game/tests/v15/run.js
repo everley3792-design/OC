@@ -9,7 +9,7 @@ const SHOTS = process.env.OC_SHOTS || path.join(__dirname, '..', '..', '..', 'de
 fs.mkdirSync(SHOTS, { recursive: true });
 const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') });
 (async () => {
-  const { browser, page, errors } = await H.launch();
+  const { browser, ctx, page, errors } = await H.launch();
   try {
     await H.boot(page, { chars: 3, seed: 15, quickTap: false });
     await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 10; S.settings.weather = 'clear'; if (OC.Events.current) OC.Events.end('t'); S.life.ev.lastAny = Date.now() + 3.6e6; S.play.req.nextAt = 1e12; });
@@ -356,6 +356,60 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await closeAll();
       check('8e 設定的「世界」區有季節選擇（依日期／春夏秋冬），選了會記住', st.has && st.v === 'winter', st);
       await go('isle');
+    }
+
+    // ================= 9. 15.4: creator big stage, design kiosk, map route, pet centre tabs =================
+    if (want(9)) {
+      await closeAll();
+      /* creator: the look step is a big stage with a rail of categories, one at a time; tapping a body zone switches the category */
+      await page.evaluate(() => { OC.Creator.start(); }); await wait(page, 900);
+      await page.evaluate(() => [...document.querySelectorAll('.cr-choice')][1].click()); await wait(page, 500);
+      await page.evaluate(() => document.querySelector('.creator > .btn.primary').click()); await wait(page, 1000);
+      const cr = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const out = { big: document.querySelector('.creator').classList.contains('cr-big'), cats: [...document.querySelectorAll('.cr-cat')].map((b) => b.dataset.cat), panels: document.querySelectorAll('.cr-panel').length, first: document.querySelector('.cr-panel').dataset.cat };
+        document.querySelector('.cr-cat[data-cat="face"]').click(); await sleep(400); out.face = document.querySelector('.cr-panel').dataset.cat; out.on = document.querySelector('.cr-cat.on').dataset.cat;
+        const st = document.querySelector('.creator .cr-stage'); out.stageH = st ? Math.round(st.getBoundingClientRect().height) : 0; return out; });
+      await shot(page, '9-creator-stage');
+      await page.evaluate(() => { const x = document.querySelector('.creator'); if (x) x.remove(); OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); }); await wait(page, 400);
+      check('9a 創角的外觀是大舞台＋分類列（範本、耳朵尾巴、顏色、臉、服裝…），一次只顯示一類，點分類就換', cr.big && ['template', 'earsTail', 'colors', 'face', 'outfit', 'expressions'].every((k) => cr.cats.includes(k)) && cr.panels === 1 && cr.first === 'template' && cr.face === 'face' && cr.on === 'face' && cr.stageH > 250, cr);
+      /* the design kiosk: draw with a real finger (a stroke across cells), fill, undo / redo, save, wear */
+      await page.evaluate(() => { delete OC.Store.s.designDraft; OC.Design.open(); }); await wait(page, 900);
+      const g = await page.evaluate(() => { const a = document.querySelectorAll('.dz-cell'); const r0 = a[0].getBoundingClientRect(), r1 = a[143].getBoundingClientRect(); return { x: r0.left, y: r0.top, cw: (r1.right - r0.left) / 12 }; });
+      const c2 = (i, j) => [g.x + g.cw * (i + 0.5), g.y + g.cw * (j + 0.5)];
+      await page.evaluate(() => [...document.querySelectorAll('.dz-sw')][2].click());
+      await page.touchscreen.tap(...c2(0, 0)); await wait(page, 300);
+      await page.mouse.move(...c2(1, 5)); await page.mouse.down(); await page.mouse.move(...c2(10, 5), { steps: 3 }); await page.mouse.up(); await wait(page, 400);
+      const dz1 = await page.evaluate(() => OC.Design.open_.state);
+      await page.evaluate(() => [...document.querySelectorAll('.dz-tools .icon-btn')][0].click()); await wait(page, 200);
+      const dzUndo = await page.evaluate(() => OC.Design.open_.state.px);
+      await page.evaluate(() => [...document.querySelectorAll('.dz-tools .icon-btn')][1].click()); await wait(page, 200);
+      const dzRedo = await page.evaluate(() => OC.Design.open_.state.px);
+      await shot(page, '9-design');
+      await page.evaluate(() => [...document.querySelectorAll('.onb.design .btn.primary')].pop().click()); await wait(page, 800);
+      const dz2 = await page.evaluate(() => ({ pat: OC.Chars.active().look.pattern, designs: Object.keys(OC.Store.s.designs).filter((k) => k !== '__draft'), draft: !!OC.Store.s.designDraft }));
+      const row5 = dz1.px.slice(60, 72);
+      check('9b 設計亭：手指畫一筆連續的線（快速移動也不會斷）、單點一格；可以復原／重做；儲存後角色穿上（look.pattern＝design:…），草稿清掉', dz1.px[0] === '2' && /^2{10}/.test(row5.slice(1)) && dzUndo.slice(61, 71) === '0000000000' && dzRedo === dz1.px && dz2.designs.length === 1 && dz2.pat === 'design:' + dz2.designs[0] && !dz2.draft, { row5, px0: dz1.px[0], undoRow: dzUndo.slice(60, 72), dz2 });
+      /* leaving with unsaved strokes asks; the draft comes back next time */
+      await page.touchscreen.tap(...c2(5, 9)); await wait(page, 300);
+      const ask = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('.onb.design .icon-btn').click(); await sleep(500); const d = [...document.querySelectorAll('.sheet')].find((x) => x.textContent.includes('離開設計亭')); return { asked: !!d, text: d ? d.textContent.slice(0, 40) : '' }; });
+      await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((x) => x.textContent === '離開'); if (b) b.click(); }); await wait(page, 500);
+      const back = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const gone = !document.querySelector('.onb.design'); OC.Design.open(); await sleep(700); const st = OC.Design.open_.state; return { gone, px: st.px[9 * 12 + 5], draft: !!OC.Store.s.designDraft }; });
+      await closeAll(); await page.evaluate(() => { const x = document.querySelector('.onb.design'); if (x) x.remove(); });
+      check('9c 沒儲存就離開會先問；草稿自動保存，下次打開還在', ask.asked && back.gone && back.px === '2' && back.draft, { ask, back });
+      /* the world shows the design on the shirt */
+      const worn = await page.evaluate(() => { const c = OC.Chars.active(), cv = OC.Design.canvasOf(c.look.pattern.slice(7)); return !!cv && cv.width === 12; });
+      check('9d 穿上的圖樣由角色繪製使用（12×12，畫在衣服上）', worn, worn);
+      /* map: picking a place shows the route from where you are and the travel time on the button */
+      await page.evaluate(() => OC.App.tab('explore')); await wait(page, 800);
+      await page.tap('.map-pin[aria-label="苔光森林"]'); await wait(page, 600);
+      const mp = await page.evaluate(() => ({ on: document.querySelector('.map-route').classList.contains('on'), eta: document.querySelector('.map-eta').textContent, btn: (document.querySelector('[data-page="explore"] .card .btn.primary') || {}).textContent, min: OC.Places.travelMin(OC.World.area.id, 'forest') }));
+      await shot(page, '9-map-route'); await page.evaluate(() => OC.App.tab('island'));
+      check('9e 地圖：選一個地點會畫出從你所在地出發的路線，並標出路程（和真的移動時間一致）', mp.on && mp.eta === `約 ${mp.min} 分鐘` && mp.btn.includes(`約 ${mp.min} 分鐘`), mp);
+      /* closing the kiosk from outside (changing tab) with unsaved strokes: no question, no hang, the draft is kept */
+      const ext = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); OC.Design.open(); await sleep(600); const cell = document.querySelectorAll('.dz-cell')[30], r = cell.getBoundingClientRect(); const ev = (t) => cell.parentNode.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 7, clientX: r.x + 3, clientY: r.y + 3 }));
+        ev('pointerdown'); ev('pointerup'); await sleep(300); const t0 = performance.now(); for (let k = 0; k < 8 && OC.UI.stack.length; k++) OC.UI.back(); OC.App.tab('char'); await sleep(600); OC.App.tab('island');
+        return { ms: Math.round(performance.now() - t0), open: !!document.querySelector('.onb.design') && document.querySelector('.onb.design').style.opacity !== '0', sheets: [...document.querySelectorAll('.sheet')].filter((x) => x.textContent.includes('離開設計亭')).length, draft: !!OC.Store.s.designDraft, stack: OC.UI.stack.length }; });
+      check('9g 從外面關掉設計亭（返回鍵、換分頁）時不會反覆詢問、不會卡住，草稿還在', !ext.open && ext.sheets === 0 && ext.draft && ext.ms < 5000, ext);
+      /* the pet centre's tabs are checked by the pet suite (it runs with the mock Android app): tests/pet scenario 18 */
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));

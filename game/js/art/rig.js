@@ -160,6 +160,7 @@
       if (L.pattern === 'star') V.icon(ctx, 'star', fx * 3, bodyY + 2, 7, rgba('#ffffff', 0.85));
       if (L.pattern === 'dots') { ctx.fillStyle = rgba('#ffffff', 0.7); for (let k = -2; k <= 2; k++) for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.arc(fx * 2 + k * 3.6 + (j % 2) * 1.8, bodyY + j * 3.4, 0.9, 0, TAU); ctx.fill(); } }
       if (L.pattern === 'heart') V.icon(ctx, 'heart', fx * 3, bodyY + 2, 7, rgba('#ffffff', 0.85));
+      if (typeof L.pattern === 'string' && L.pattern.startsWith('design:') && OC.Design) OC.Design.drawOnShirt(ctx, L.pattern.slice(7), fx * 2, bodyY + 1, bw * 1.7, bh * 1.7);   /* 15.4: a pattern drawn in the design kiosk */
       ctx.restore();
       ctx.fillStyle = L.fur; ctx.beginPath(); ctx.moveTo(-4 + fx * 2, bodyY - bh + 1.5); ctx.lineTo(fx * 2, bodyY - bh + 5); ctx.lineTo(4 + fx * 2, bodyY - bh + 1.5); ctx.closePath(); ctx.fill();
     } else if (back < 0.5) { ctx.fillStyle = rgba(L.furPattern === 'belly' ? L.patternCol : '#ffffff', L.furPattern === 'belly' ? 1 : 0.85); ellipse(ctx, fx * 3, bodyY + 2 * (L.bodyH || 1), 6 * (L.bodyW || 1) * (1 - Math.abs(fx) * 0.3), 5.5 * (L.bodyH || 1)); ctx.fill(); }

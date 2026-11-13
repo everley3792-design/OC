@@ -289,3 +289,48 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 #fade.clouds .travel-label { position: relative; z-index: 1; }
 .travel-stk { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--surface); box-shadow: var(--toy); animation: pop-in var(--t-spring) var(--spring); }
 .travel-stk .stk, .travel-stk svg { width: 40px; height: 40px; }
+
+/* ---- 15.4 創角大舞台: a lit stage, a rail of category stickers, one category at a time ---- */
+.creator.cr-big .cr-stage { position: relative; border-radius: var(--r-l); background: radial-gradient(60% 46% at 50% 88%, var(--sun-soft) 0 55%, transparent 56%), radial-gradient(70% 90% at 50% 0%, var(--surface) 0, var(--surface-2) 70%); box-shadow: var(--toy); overflow: hidden; }
+.creator.cr-big .cr-stage::before { content: ""; position: absolute; left: 50%; top: -20%; width: 70%; height: 120%; transform: translateX(-50%); background: linear-gradient(180deg, color-mix(in srgb, var(--sun) 22%, transparent), transparent 75%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); pointer-events: none; }
+.cr-rail { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.cr-rail::-webkit-scrollbar { display: none; }
+.cr-cat { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; min-height: var(--touch); padding: 8px 6px 6px; border-radius: var(--r-m); background: var(--surface); box-shadow: var(--toy); color: var(--ink-2); scroll-snap-align: start; transition: transform var(--t-press); }
+.cr-cat:active { transform: translateY(2px); }
+.cr-cat.on { background: var(--sun-soft); color: var(--ink); box-shadow: 0 0 0 2.5px var(--sun), var(--toy); }
+.cr-cat-ic .stk, .cr-cat-ic svg { width: 30px; height: 30px; }
+.cr-cat small { font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.cr-panel { animation: pop-in var(--t-base) var(--ease-out); }
+
+/* ---- 15.4 設計亭 the design kiosk ---- */
+.onb.design { display: flex; flex-direction: column; background: var(--bg); }
+.dz-top { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: center; }
+.dz-top canvas { max-width: 150px; height: auto; }
+.dz-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); flex: none; gap: 2px; padding: 6px; border-radius: var(--r-m); background: var(--surface-3); width: min(100%, 360px); align-self: center; touch-action: none; box-shadow: var(--toy); }
+.dz-cell { display: block; min-width: 0; aspect-ratio: 1; border-radius: 3px; background: var(--surface); }
+.dz-cell.dz-none { background: repeating-conic-gradient(var(--surface) 0 25%, var(--surface-2) 0 50%) 0 0 / 8px 8px; }
+.dz-pal { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.dz-sw { width: 40px; height: 40px; min-width: var(--touch); min-height: var(--touch); border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 2px var(--line-strong), var(--toy); }
+.dz-sw[data-i="0"] { background: repeating-conic-gradient(var(--surface) 0 25%, var(--surface-3) 0 50%) 0 0 / 10px 10px; }
+.dz-sw.on { box-shadow: 0 0 0 3px var(--sun), var(--toy); }
+.dz-tools { gap: 6px; flex-wrap: wrap; justify-content: center; }
+.dz-saved { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.dz-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: var(--r-s); background: var(--surface); box-shadow: var(--toy); }
+.dz-item canvas { width: 48px; height: 48px; border-radius: 8px; image-rendering: pixelated; }
+.dz-item.on { box-shadow: 0 0 0 2.5px var(--sun), var(--toy); }
+.dz-item small { font-size: var(--fs-xs); color: var(--ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- 15.4 map: the route to the picked place, with its travel time ---- */
+.map-route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity var(--t-base); }
+.map-route.on { opacity: 1; }
+.map-route path { fill: none; stroke: var(--sun); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 2.2 2.6; vector-effect: non-scaling-stroke; stroke-width: 5px; animation: route-run 1.2s linear infinite; filter: none; }
+@keyframes route-run { to { stroke-dashoffset: -9.6; } }
+.map-eta { position: absolute; transform: translate(-50%, -50%); padding: 3px 10px; border-radius: var(--r-pill); background: var(--sun); color: var(--on-sun); font-size: var(--fs-xs); font-weight: 800; box-shadow: 0 2px 0 var(--sun-lip); pointer-events: none; opacity: 0; transition: opacity var(--t-base); white-space: nowrap; }
+.map-eta.on { opacity: 1; }
+.tag.sun { background: var(--sun-soft); color: var(--ink); }
+
+/* ---- 15.4 pet centre: a phone home screen behind the pets, three tabs ---- */
+.pet-desk { border-radius: 30px; border: 6px solid var(--surface-3); box-shadow: inset 0 0 0 2px var(--line), var(--toy-2); }
+.pet-desk-apps { position: absolute; left: 22px; right: 22px; top: 40px; display: grid; grid-template-columns: repeat(6, 30px); justify-content: space-between; gap: 10px; opacity: .45; pointer-events: none; }
+.pet-desk-apps i { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 2px 0 var(--lip); }
+.pet-tabs { margin: 12px 0 4px; }

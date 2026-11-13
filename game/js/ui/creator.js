@@ -11,7 +11,7 @@
   function start(o = {}) {
     return new Promise((resolve) => {
       let c = Ch().blank('custom'); c.profile.name = '';
-      let method = null, step = 0, level = 'simple', finished = false;
+      let method = null, step = 0, level = 'simple', finished = false, lookCat = 'template';
       const el = h('div.onb.creator', { role: 'dialog', 'aria-label': '建立角色' });
       const dots = h('div.dots'), stepTitle = h('h2', { style: { margin: '0', flex: 1, fontSize: 'var(--fs-xl)' } });
       const backBtn = h('button.icon-btn', { 'aria-label': '上一步', on: { click: () => go(step - 1) } }, icon('back'));
@@ -28,10 +28,14 @@
       /** tapping a body part on the stage jumps to that part's options (ears → 耳朵, head → 眼睛, body → 上衣, tail → 尾巴, feet → 比例與體型) */
       function focusSection(z) {
         if (STEPS[step].id !== 'look') return;
+        /* 15.4: on the big stage the rail switches to that part's category */
+        const cat = { ears: 'earsTail', tail: 'earsTail', head: 'face', body: 'outfit', feet: level === 'detailed' ? 'body' : 'colors' }[z];
+        if (cat && c.appearance.mode !== 'sprite') { lookCat = cat; render(); return; }
         const keys = { ears: ['耳朵'], head: ['眼睛', '嘴巴', '臉頰'], body: ['上衣', '顏色'], tail: ['尾巴'], feet: ['比例與體型', '顏色'] }[z] || [];
         for (const k of keys) { const t = [...body.querySelectorAll('.section-title')].find((x) => x.textContent.includes(k)); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); return; } }
       }
       stage.el.style.maxHeight = '30vh'; stage.canvas.style.maxHeight = '28vh'; stage.canvas.style.width = 'auto';
+      stage.el.classList.add('cr-stage');
       const ctx = { get level() { return level; }, stage, selected: null, changed: (kind, reactAction) => { c.updated = Date.now(); if (reactAction && typeof reactAction === 'string') stage.react(reactAction, 1.3); }, rebuild: () => render(), full: false };
       const STEPS = [
         { id: 'method', t: '你想怎麼開始？' },
@@ -58,6 +62,9 @@
         dots.replaceChildren(...STEPS.map((_, i) => h('i', { class: i === step ? 'on' : '' })));
         next.replaceChildren(...(s.id === 'debut' ? [icon('sparkle', 's'), '登場！'] : ['下一步']));
         stageBox.replaceChildren(s.id === 'method' ? h('div.center', { style: { margin: '4px 0 8px' } }, h('div.logo', { style: { fontSize: o.first ? '34px' : '24px' } }, 'OC ', h('b', null, 'Shimeji')), o.first ? h('p.muted', { style: { margin: '6px 0 0' } }, '創造你的原創角色，讓他住進小島與手機桌面。') : null) : stage.el);
+        /* 15.4: the look step gets the big stage (taller, spotlight floor) */
+        const big = s.id === 'look' && c.appearance.mode !== 'sprite'; el.classList.toggle('cr-big', big);
+        stage.el.style.maxHeight = big ? '40vh' : '30vh'; stage.canvas.style.maxHeight = big ? '38vh' : '28vh'; stage.canvas.style.height = big ? '36vh' : '';
         stage.restart();
         body.replaceChildren(...build(s.id));
       }
@@ -90,10 +97,13 @@
         if (id === 'look') {
           const lv = seg([['simple', '簡易'], ['detailed', '詳細']], level, (v) => { level = v; render(); });
           if (c.appearance.mode === 'sprite') return [h('div.card', null, h('b', null, '外觀來自你的圖片'), h('p.muted', { style: { fontSize: 'var(--fs-s)' } }, '之後可以在動畫工作室為不同動作加入更多影格，或在「部件」加上飾品。')), S_.image(c, ctx), S_.body(c, ctx), S_.parts(c, ctx)];
-          const out = [h('div.muted.center', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 6px' } }, '點點角色的耳朵、臉、身體、尾巴就能直接修改；左右拖曳可以轉一圈。'), lv, S_.template(c, ctx), S_.earsTail(c, ctx), S_.colors(c, ctx), S_.face(c, ctx), S_.outfit(c, ctx)];
-          if (level === 'detailed') out.splice(2, 0, S_.body(c, ctx)), out.push(S_.parts(c, ctx));
-          out.push(S_.expressions(c, ctx));
-          return out;
+          /* 15.4 「創角大舞台」: a big lit stage on top, a rail of category stickers, one category at a time (no long scroll) */
+          const CATS = [['template', '範本', 'sparkle'], ['earsTail', '耳朵尾巴', 'paw'], ['colors', '顏色', 'brush'], ['face', '臉', 'eye'], ['outfit', '服裝', 'shirt']]
+            .concat(level === 'detailed' ? [['body', '體型', 'person'], ['parts', '部件', 'star']] : []).concat([['expressions', '表情', 'heart']]);
+          if (!CATS.some((k) => k[0] === lookCat)) lookCat = 'template';
+          const rail = h('div.cr-rail', { role: 'tablist', 'aria-label': '外觀分類' }, ...CATS.map(([k, zh, stk]) => h('button.cr-cat' + (k === lookCat ? '.on' : ''), { role: 'tab', 'aria-selected': String(k === lookCat), 'data-cat': k, on: { click: () => { haptic('tick'); lookCat = k; render(); } } }, h('span.cr-cat-ic', null, OC.UI.sticker(stk)), h('small', null, zh))));
+          return [h('div.hstack', { style: { gap: '8px', alignItems: 'center' } }, h('div.grow', null, lv)), rail, h('div.cr-panel', { 'data-cat': lookCat }, S_[lookCat](c, ctx)),
+            h('div.muted.center', { style: { fontSize: 'var(--fs-xs)', margin: '8px 0 0' } }, '點角色的耳朵、臉、身體、尾巴會跳到那一類；左右拖曳可以轉一圈。')];
         }
         if (id === 'profile') { ctx.full = level === 'detailed'; return [S_.profile(c, ctx)]; }
         if (id === 'personality') return [S_.personality(c, ctx)];

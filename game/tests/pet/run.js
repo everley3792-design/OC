@@ -358,6 +358,17 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
       check('17d 兩隻以上在桌面時才有「測試雙人互動」；選一種會真的傳給原生（hug）；只有一隻時不顯示', t1 && items.length >= 8 && sent.includes('hug') && !t2, { t1, items, sent, t2 });
     }
 
+    // 18. 15.4: the pet centre is split into three tabs; the desk preview is a phone home screen
+    if (want(18)) {
+      const tabs = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); await sleep(300); OC.Pages.open('petcenter'); await sleep(1500);
+        const vis = () => [...document.querySelectorAll('[data-page="petcenter"] .section-title')].filter((t) => !t.hidden && t.offsetParent).map((t) => t.textContent.slice(0, 6));
+        const btn = (t) => [...document.querySelectorAll('.pet-tabs button')].find((b) => b.textContent === t);
+        const out = { hidden: document.querySelector('.pet-tabs').hidden, apps: document.querySelectorAll('.pet-desk-apps i').length }; btn('桌面').click(); await sleep(400); out.desk = vis();
+        btn('互動與效能').click(); await sleep(400); out.set = vis(); btn('權限與工具').click(); await sleep(400); out.tools = vis(); btn('桌面').click(); return out; });
+      await page.screenshot({ path: path.join(SHOTS, '18-petcenter-tabs.png') });
+      check('18 桌寵中心分成三頁（桌面／互動與效能／權限與工具），每頁只顯示自己的區塊；桌面預覽是手機主畫面', !tabs.hidden && tabs.desk.some((t) => t.startsWith('桌面上的')) && !tabs.desk.some((t) => t.startsWith('權限')) && tabs.set.some((t) => t.startsWith('互動')) && tabs.set.some((t) => t.startsWith('效能')) && tabs.tools.some((t) => t.startsWith('權限')) && tabs.apps >= 8, tabs);
+    }
+
     check('全程沒有 JavaScript 錯誤', errors.length === 0, errors.slice(0, 5));
   } catch (e) {
     console.error(e); check('執行中斷', false, String(e && e.stack || e));

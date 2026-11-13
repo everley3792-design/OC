@@ -101,6 +101,9 @@
     build(p, el) {
       p.map = h('div.map-wrap'); const cv = h('canvas', { width: 720, height: 720 }); p._cv = cv; p._ph = OC.Clock.phase(OC.Clock.hour()); p.map.append(cv, h('div.map-waves'), h('div.map-title', null, h('b', null, '晴日群島'), h('span', null, '探索進度 ' + Object.keys(S().places.visited).length + ' 處')), h('div.map-fog')); drawWorld(cv, p._ph);
       p.pins = {}; for (const [id, pl] of Object.entries(PL().P)) { if (!pl.map) continue; const pin = h('button.map-pin' + (pl.locked ? '.locked' : ''), { style: { left: pl.map.x * 100 + '%', top: pl.map.y * 100 + '%' }, 'aria-label': pl.zh, on: { click: () => { p.sel = id; p.refresh(p); } } }, h('div.pin', { style: { '--c': pl.col } }, icon(pl.icon, 's')), h('label', null, pl.zh), h('div.pin-ocs')); p.map.append(pin); p.pins[id] = pin; }
+      /* 15.4: the route from where you are to the place you picked (dashed, moving) with the travel time on it */
+      p.route = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); p.route.setAttribute('viewBox', '0 0 100 100'); p.route.setAttribute('preserveAspectRatio', 'none'); p.route.setAttribute('class', 'map-route'); p.route.innerHTML = '<path d=""/>';
+      p.eta = h('div.map-eta'); p.map.append(p.route, p.eta);
       p.info = h('div', { style: { marginTop: '12px' } }); p.who = h('div');
       el.append(p.map, p.info, p.who);
     },
@@ -109,6 +112,10 @@
       if (same(p, [p.sel, cur, OC.Clock.weather(), OC.Clock.phase(OC.Clock.hour()), Object.keys(S().places.visited).length, Object.keys(S().seen).length, OC.Chars.all().map((c) => { const w = where(c); return c.id + w.pl + w.tr + OC.LifeUI.doingText(c); }).join()].join('|'))) return;
       { const ph = OC.Clock.phase(OC.Clock.hour()); if (ph !== p._ph) { p._ph = ph; drawWorld(p._cv, ph); } const t = p.map.querySelector('.map-title span'); if (t) t.textContent = '探索進度 ' + Object.keys(S().places.visited).length + ' 處'; }
       for (const [id, pin] of Object.entries(p.pins)) { pin.classList.toggle('on', id === p.sel); pin.classList.toggle('here', id === curTop); const ocs = OCS_AT(id).concat(Object.entries(PL().P).filter(([, q]) => q.parent === id).flatMap(([k]) => OCS_AT(k))); pin.querySelector('.pin-ocs').replaceChildren(...ocs.slice(0, 4).map((c) => h('i', { title: name(c) }, name(c).slice(0, 1)))); }
+      { const a = PL().get(curTop), b = PL().get(p.sel), path = p.route.firstChild;
+        if (a && b && a.map && b.map && p.sel !== curTop) { const ax = a.map.x * 100, ay = a.map.y * 100, bx = b.map.x * 100, by = b.map.y * 100, mx = (ax + bx) / 2, my = Math.min(ay, by) - 12; path.setAttribute('d', `M${ax},${ay} Q${mx},${my} ${bx},${by}`); p.route.classList.add('on');
+          const t = PL().travelMin(cur, p.sel); p.eta.textContent = `約 ${t} 分鐘`; p.eta.style.left = (ax + 2 * mx + bx) / 4 + '%'; p.eta.style.top = (ay + 2 * my + by) / 4 + '%'; p.eta.classList.add('on'); }
+        else { p.route.classList.remove('on'); p.eta.classList.remove('on'); } }
       const subs = [p.sel].concat(Object.entries(PL().P).filter(([, q]) => q.parent === p.sel).map(([k]) => k));
       p.info.replaceChildren(...subs.map((id) => placeCard(id, cur)));
       p.who.replaceChildren(T('大家在哪裡', `${OC.Chars.all().filter((c) => c.status.onIsland).length} 位`), h('div.list', null, ...OC.Chars.all().filter((c) => c.status.onIsland).map((c) => { const w = where(c), P0 = PL().get(w.pl); const d = OC.LifeUI.doingText(c); return row(av(c), `${name(c)}${c.id === S().activeId ? '（操控中）' : ''}`, `${w.tr ? '正在前往' : '在'}${P0 ? P0.zh : '?'}${d && !w.tr ? '・' + d : ''}`, w.pl !== cur && c.id !== S().activeId && P0 && !P0.locked ? h('button.btn', { on: { click: () => OC.WorldUI.travel(w.pl) } }, '前往') : null); })));
@@ -124,7 +131,7 @@
       h('div.chips', { style: { marginTop: '8px' } }, ...pl.facilities.map((f) => h('span.tag', null, f))),
       specials(id).length ? h('div', { style: { marginTop: '8px' } }, ...specials(id).map((t) => small('✦ ' + t))) : null,
       ocs.length ? h('div', { style: { marginTop: '8px', fontSize: 'var(--fs-s)' } }, '在這裡：', ocs.map(name).join('、')) : null,
-      !here ? h('button.btn.primary.block', { style: { marginTop: '12px' }, on: { click: () => OC.WorldUI.travel(id) } }, icon('compass', 's'), `前往${pl.zh}`) : null);
+      !here ? h('button.btn.primary.block', { style: { marginTop: '12px' }, on: { click: () => OC.WorldUI.travel(id) } }, icon('compass', 's'), `前往${pl.zh}`, h('small', { style: { marginLeft: '6px', opacity: 0.85 } }, `（約 ${PL().travelMin(cur, id)} 分鐘）`)) : h('div.tag.sun', { style: { marginTop: '10px' } }, icon('flag', 's'), '你在這裡'));
   }
 
   Pg().define('more', '更多', {
