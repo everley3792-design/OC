@@ -93,6 +93,15 @@
     plush: F('小熊布偶', 'gift', { price: 200, sell: 70, use: { mood: 14, comfort: 6 }, rarity: 2, tags: ['cute'], d: '抱起來軟綿綿的布偶。', src: ['禮品店'], art: { t: 'plush', a: '#C9A46A' } }),
     giftbox: F('緞帶禮盒', 'gift', { price: 120, sell: 40, use: { mood: 12 }, d: '裝著小驚喜的禮盒。', src: ['禮品店'], art: { t: 'giftbox', a: '#F48FB1', b: '#FFC93C' } }),
     letter: F('手寫信紙', 'gift', { price: 30, sell: 10, use: { mood: 8, social: 6 }, d: '寫下想說的話送給朋友。', src: ['禮品店'], art: { t: 'letter', a: '#FFF7EC', b: '#F26B5B' } }),
+    // ---- 15.2: Windmill Hill & Rainbow Fair ----
+    b_hopper: F('草原蚱蜢', 'bug', { sell: 45, rarity: 1, d: '在風車丘的草叢裡蹦蹦跳跳。', src: ['觀察捕捉（風車丘）'], art: { t: 'beetle', a: '#7CC66A' } }),
+    pinwheel: F('小風車', 'toy', { price: 70, sell: 25, use: { fun: 14, mood: 4 }, d: '迎著風就會轉。風車磨坊做的。', src: ['風車磨坊'], art: { t: 'pinwheel', a: '#F26B5B', b: '#FFC93C' } }),
+    lavender: F('薰衣草束', 'gift', { price: 90, sell: 35, use: { comfort: 10, mood: 6 }, tags: ['flower'], d: '曬乾的薰衣草，放在枕邊很好睡。', src: ['風車磨坊', '風車丘薰衣草田'], art: { t: 'herb', a: '#A58BE0' } }),
+    cotton_candy: food('彩虹棉花糖', { price: 60, sell: 20, use: { food: 6, fun: 10, mood: 6 }, flavor: { sweet: 3 }, texture: 'soft', cat: 'snack', d: '一口咬下去就化了。', src: ['遊樂園點心攤'], art: { t: 'cotton', a: '#F9C4DA' } }),
+    popcorn: food('焦糖爆米花', { price: 55, sell: 18, use: { food: 10, fun: 6 }, flavor: { sweet: 1, salty: 1 }, texture: 'crunchy', cat: 'snack', d: '甜甜鹹鹹，停不下來。', src: ['遊樂園點心攤'], art: { t: 'popcorn', a: '#F26B5B' } }),
+    soda_float: drink('冰淇淋汽水', { price: 75, sell: 28, use: { food: 4, fun: 8, energy: 4 }, flavor: { sweet: 2, fresh: 1 }, temp: 'cold', cat: 'drink', d: '汽水上面浮著一球香草冰淇淋。', src: ['遊樂園點心攤'], art: { t: 'glass', a: '#7FD8C4' } }),
+    prize_bear: F('套圈圈熊熊', 'gift', { sell: 60, rarity: 2, use: { mood: 12, comfort: 6 }, tags: ['cute'], d: '套圈圈套中瓶子換來的獎品。', src: ['遊樂園套圈圈'], art: { t: 'plush', a: '#F2D28B' } }),
+    prize_star: F('閃亮星星徽章', 'gift', { sell: 90, rarity: 3, use: { mood: 16 }, d: '套圈圈全中才拿得到的徽章。', src: ['遊樂園套圈圈（全中）'], art: { t: 'gem', a: '#F7C83F' } }),
     // ---- furniture ----
     sofa: F('雲朵沙發', 'furniture', { price: 420, sell: 150, fp: [2, 1], sit: true, seats: 2, d: '兩個人可以一起坐的沙發。', src: ['家具店'], art: { t: 'sofa', a: '#9FD3FF' } }),
     desk: F('小書桌', 'furniture', { price: 320, sell: 110, fp: [2, 1], verbs: ['study', 'read'], d: 'OC 會在這裡讀書、寫字。', src: ['家具店'], art: { t: 'desk', a: '#D9A26A' } }),

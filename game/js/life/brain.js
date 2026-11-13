@@ -45,6 +45,12 @@
       if (it.type === 'forage') add({ id: 'forage:' + it.i, kind: 'forage', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['forage'], slots: [{ i: 0, x: it.at.x, y: it.at.y, ax: it.at.x, ay: it.at.y, fx: 0, back: 1 }] });
       if (it.type === 'bookshelf') add({ id: 'shelf@' + it.x, kind: 'bookshelf', zh: '書櫃', x: it.x, y: it.y, lvl: L, verbs: ['read'], slots: [-12, 12].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
       if (it.type === 'towel') add({ id: 'towel@' + it.x, kind: 'towel', zh: '沙灘毛巾', x: it.x, y: it.y, lvl: L, verbs: ['nap', 'rest'], slots: [{ i: 0, x: it.x, y: it.y, ax: it.at.x, ay: it.at.y, seatY: 0.5, fx: 0, back: 0, lie: true }] });
+      /* 15.2: Rainbow Fair — carousel carriages (ride), the Ferris wheel and the stage to watch, the ring-toss booth to play at */
+      if (it.type === 'ride') add({ id: 'ride@' + it.x, kind: 'ride', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['ride'], slots: it.seats.map(([sx, sy], i) => ({ i, x: sx, y: sy, ax: sx, ay: it.at.y, seatY: 12, fx: 0, back: 0 })) });
+      if (it.type === 'wheel' || it.type === 'stage') add({ id: it.type + '@' + it.x, kind: it.type, zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['view'], slots: [-18, 0, 18].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y + 6, ax: it.at.x + dx, ay: it.at.y + 6, fx: 0, back: 1 })) });
+      /* 15.2: part-time jobs behind the café counter, the mill and the fair snack stand */
+      if ((it.type === 'counter' && it.shop === 'cafe') || (it.type === 'shop' && (it.shop === 'mill' || it.shop === 'fair'))) add({ id: 'job:' + it.shop, kind: 'job', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['work'], slots: [{ i: 0, x: it.at.x + 22, y: it.at.y - 6, ax: it.at.x + 22, ay: it.at.y - 6, fx: 0, back: 1 }] });
+      if (it.type === 'toss') add({ id: 'toss@' + it.x, kind: 'toss', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['play'], slots: [-12, 12].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
       if (it.type === 'bed') add({ id: it.id, kind: 'flowers', zh: '花圃', x: it.x, y: it.y, lvl: L, verbs: ['tend', 'view'], slots: [-10, 10].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: -dx / 12, back: 1 })) });
     }
     for (const f of W.furn) {
@@ -226,6 +232,7 @@
     for (const act of Object.keys(D().ACTS)) {
       if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
+      if (A.cmdOnly && b.queued !== act) continue;   /* 15.2: e.g. a part-time shift happens only when the player asks for it */
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
       if (manualIdle && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;   // manual: only what an urgent need asks for
       const sc = actScore(c, b, act); let target = null, ts = 0;
@@ -518,7 +525,7 @@
       if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
       const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
-      let list = here2.filter((x) => D().ACTS[x] && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
+      let list = here2.filter((x) => D().ACTS[x] && !D().ACTS[x].cmdOnly && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
       if (placeOK() && !o.offline && settings().travel !== false && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);

@@ -377,7 +377,7 @@
     for (const P of puffs) { if (m >= PUFF_N) break; const q = P.t / P.life; _o3.position.copy(P.p); _o3.quaternion.copy(cam.quaternion); _o3.scale.setScalar(P.r * (0.5 + q * 1.6) * (1 - q * q)); _o3.updateMatrix(); puffMesh.setMatrixAt(m, _o3.matrix); puffMesh.setColorAt(m, P.c); m++; }
     puffMesh.count = m; puffMesh.instanceMatrix.needsUpdate = true; if (puffMesh.instanceColor) puffMesh.instanceColor.needsUpdate = true;
   }
-  const DUST = { isle: '#DDE5C6', forest: '#CBD6B2', beach: '#F2E4BA', street: '#E8E0D2' };
+  const DUST = { isle: '#DDE5C6', forest: '#CBD6B2', beach: '#F2E4BA', street: '#E8E0D2', hill: '#DDE5C6', fair: '#E8E0D2' };
 
   // ====================== furniture ======================
   function furnRect(f) { const it = OC.Style.ITEMS[f.id] || {}; const fp = it.fp || [1, 1], sc = f.sc || 1; const rot = (f.rot || 0) % 2; const w = (rot ? fp[1] : fp[0]) * 18 * sc, d = (rot ? fp[0] : fp[1]) * 18 * SIN * sc; return { x: f.x, y: f.y, w, h: d }; }

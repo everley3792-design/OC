@@ -188,5 +188,107 @@
     function fail() { OC.Places.critterDone(it.area, it.i, at.slot); close(); OC.WorldUI.refreshVisuals(); toast(`${I(sp).zh}跑掉了…`, 'leaf'); M().feel(c, 'confused', 0.2, I(sp).zh + '跑掉了'); }
   }
 
-  OC.Mini = { fishing, cooking, cookGame, critter, RECIPES, ingredients, close, get active() { return !!cur; }, get state() { return cur ? Object.assign({ rect: cur.cv.getBoundingClientRect().toJSON() }, cur.dbg || {}) : null; } };
+  // ======================= 15.2: Rainbow Fair =======================
+  const today = () => Sim().day();
+  /** concert on the open-air stage: notes slide down three lanes; tap the lane as a note crosses the line.
+   *  Paid once per OC per game day (key concert:<oc>:<day>); later shows still count for skills, memories and the progress bus. */
+  function concert(it) {
+    const c = me(), P = A().player; if (!c || !P) return;
+    OC.World.setAction(P, 'sing', { priority: 7 }); P.tFace = 0; P.tBack = 0;
+    const g = panel('星光舞台：演唱會', '音符碰到線的時候，按那一條線');
+    const lv = M().skillLv(c, 'music'), win = 0.11 + Math.min(0.05, lv * 0.006) + (OC.Chars.has(c, 'outgoing') ? 0.01 : 0), speed = 0.42;
+    const r = OC.rng(OC.hash(today() * 3.3 + c.id.length) * 1e6), notes = [];
+    for (let i = 0, t = 1.4; i < 24; i++) { t += 0.55 + r() * 0.5; notes.push({ t, lane: Math.floor(r() * 3), st: 0 }); }
+    const endT = notes[notes.length - 1].t + 1.2; let hit = 0, perfect = 0, combo = 0, best = 0, done = false, flash = [0, 0, 0], tNow = 0;
+    const laneOf = (e) => { const rc = g.cv.getBoundingClientRect(); return Math.max(0, Math.min(2, Math.floor(((e.clientX - rc.left) / rc.width) * 3))); };
+    g.onDown = (e) => {
+      if (done) return; const ln = laneOf(e); flash[ln] = 0.18; tNow = (performance.now() - g.t0) / 1000;   /* judge at the moment of the press, not the last frame */
+      let bestN = null, bd = 9; for (const n of notes) if (!n.st && n.lane === ln) { const d = Math.abs(n.t - tNow); if (d < bd) { bd = d; bestN = n; } }
+      if (bestN && bd < win) { bestN.st = bd < win * 0.45 ? 2 : 1; hit++; if (bestN.st === 2) perfect++; combo++; best = Math.max(best, combo); haptic(); OC.Sound && OC.Sound.play('chime'); if (combo % 6 === 0) OC.World.setAction(P, 'dance', { dur: 1.2, priority: 7 }); }
+      else { combo = 0; }
+    };
+    g.onEnd = (why) => { if (why === 'cancel' && !done) { toast('表演中斷了', 'info'); } };
+    const crowd = Object.values(A().mates || {}); crowd.forEach((a) => OC.World.setAction(a, 'clap', { dur: 30, priority: 5 }));
+    loop((dt, t) => {
+      tNow = t; const x = g.x, W = 600; x.clearRect(0, 0, W, 240);
+      x.fillStyle = '#3A2B4E'; x.beginPath(); x.roundRect(0, 0, W, 240, 24); x.fill();
+      for (let l = 0; l < 3; l++) { x.fillStyle = flash[l] > 0 ? 'rgba(247,200,63,.35)' : 'rgba(255,255,255,.06)'; x.fillRect(l * 200 + 8, 8, 184, 224); flash[l] = Math.max(0, flash[l] - dt); }
+      x.fillStyle = '#F7C83F'; x.fillRect(16, 196, 568, 6);
+      for (const n of notes) {
+        if (!n.st && tNow - n.t > win) { n.st = -1; combo = 0; }
+        if (n.st) continue; const y = 196 - (n.t - tNow) * speed * 400; if (y < -20) continue;
+        x.fillStyle = ['#F26B5B', '#7FD8C4', '#A58BE0'][n.lane]; x.beginPath(); x.arc(n.lane * 200 + 100, y, 16, 0, Math.PI * 2); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.arc(n.lane * 200 + 95, y - 5, 5, 0, Math.PI * 2); x.fill();
+      }
+      x.fillStyle = '#fff'; x.font = 'bold 26px sans-serif'; x.fillText(`${hit}/${notes.length}　連擊 ${combo}`, 24, 38);
+      g.dbg = { t0: g.t0, t: tNow, hit, perfect, combo, done, notes: notes.map((n) => ({ t: n.t, lane: n.lane, st: n.st })), win };
+      if (t > endT && !done) { done = true; finish(); }
+    });
+    function finish() {
+      const sc = (hit + perfect * 0.5) / (notes.length * 1.5), stars = sc >= 0.8 ? 3 : sc >= 0.5 ? 2 : sc >= 0.2 ? 1 : 0;
+      close(); crowd.forEach((a) => OC.World.setAction(a, stars ? 'cheerup' : 'idle', { dur: 1.6, priority: 5 }));
+      if (!stars) { toast('有點緊張，下次再上台吧', 'info'); M().feel(c, 'down', 0.15, '演唱會不太順'); return; }
+      const pay = 30 + stars * 30 + crowd.length * 10;
+      const rr = OC.Tx.run(`concert:${c.id}:${today()}`, { get: { coins: pay } }, `星光舞台演唱會（${'★'.repeat(stars)}）`, { stars });
+      St.stat('concerts'); OC.Sound && OC.Sound.play('fanfare');
+      if (OC.Progress) OC.Progress.emit('concert', { oc: c.id, stars, place: 'fair', near: [c.id].concat(Object.keys(A().mates || {})) });
+      reward(c, { skill: 'music', xp: 3 + stars * 2, feel: [stars === 3 ? 'proud' : 'happy', 0.35 + stars * 0.12, '開了演唱會'], mem: { imp: stars === 3 ? 0.75 : 0.5, text: `在星光舞台開了演唱會（${'★'.repeat(stars)}${crowd.length ? `，有 ${crowd.length} 位朋友在台下` : ''}）`, key: 'concert:' + c.id + ':' + today() } });
+      OC.World.setAction(A().player, stars === 3 ? 'jump' : 'bow', { dur: 1.6, priority: 6 }); if (stars === 3) OC.World.jump(A().player);
+      toast(`演唱會 ${'★'.repeat(stars)}　最高連擊 ${best}` + (rr.ok ? `　+${pay} 星幣` : '（今天的演出費已經領過了）'), 'sparkle');
+    }
+  }
+  /** ring toss: three rings, 20 coins a game; tap when the swinging marker is over a bottle. Prizes by hits. */
+  const TOSS_COST = 20, BOTTLES = [0.14, 0.28, 0.42, 0.56, 0.7, 0.84];
+  function toss(it) {
+    const c = me(), P = A().player; if (!c || !P) return;
+    if (OC.Store.s.coins < TOSS_COST) { toast(`要 ${TOSS_COST} 星幣才能玩`, 'info'); return; }
+    const pay = OC.Tx.run(OC.Tx.uid('toss'), { pay: { coins: TOSS_COST } }, '套圈圈（3 個圈）'); if (!pay.ok) { toast(pay.why[0], 'info'); return; }
+    OC.World.setAction(P, 'wave', { priority: 7 }); P.tBack = 1;
+    const g = panel('套圈圈', '標記停在瓶子上的時候點一下，把圈丟出去');
+    const lv = M().skillLv(c, 'sport'); let m = 0.1, dir = 1, left = 3, hits = 0, flying = null, landed = [], done = false;
+    const sp = 0.75 - Math.min(0.25, lv * 0.03), tol = 0.035 + (OC.Chars.has(c, 'diligent') ? 0.006 : 0);
+    g.onDown = () => { if (flying || done || left <= 0) return; flying = { x: m, t: 0 }; left--; OC.Sound && OC.Sound.play('whoosh'); };
+    g.onEnd = (why) => { if (why === 'cancel' && !done) toast('圈還沒丟完，錢不會退喔', 'info'); };
+    loop((dt) => {
+      const x = g.x; x.clearRect(0, 0, 600, 240); x.fillStyle = css('--surface-2'); x.beginPath(); x.roundRect(0, 0, 600, 240, 24); x.fill();
+      x.fillStyle = '#D9A26A'; x.fillRect(20, 150, 560, 14);
+      BOTTLES.forEach((b, i) => { x.fillStyle = ['#7FD8C4', '#F29AB4', '#F7C83F', '#62B5E5'][i % 4]; x.beginPath(); x.roundRect(20 + b * 560 - 10, 100, 20, 50, 6); x.fill(); x.fillRect(20 + b * 560 - 4, 84, 8, 18); });
+      for (const l of landed) { x.strokeStyle = l.hit ? '#F26B5B' : 'rgba(120,92,52,.5)'; x.lineWidth = 5; x.beginPath(); x.ellipse(20 + l.x * 560, l.hit ? 104 : 170, 16, 6, 0, 0, Math.PI * 2); x.stroke(); }
+      if (!flying && !done && left > 0) { m += dir * dt * sp; if (m > 0.95 || m < 0.05) { dir *= -1; m = Math.max(0.05, Math.min(0.95, m)); } x.fillStyle = '#F26B5B'; x.beginPath(); x.moveTo(20 + m * 560, 60); x.lineTo(20 + m * 560 - 10, 40); x.lineTo(20 + m * 560 + 10, 40); x.closePath(); x.fill(); }
+      if (flying) { flying.t += dt * 2.4; const y = 220 - Math.sin(Math.min(1, flying.t) * Math.PI) * 150 - flying.t * 60; x.strokeStyle = '#F26B5B'; x.lineWidth = 5; x.beginPath(); x.ellipse(20 + flying.x * 560, Math.max(104, y), 16, 6, 0, 0, Math.PI * 2); x.stroke();
+        if (flying.t >= 1) { const hit = BOTTLES.some((b) => Math.abs(b - flying.x) < tol); if (hit) { hits++; haptic(); OC.Sound && OC.Sound.play('chime'); } landed.push({ x: flying.x, hit }); flying = null; if (left <= 0) { done = true; setTimeout(finish, 500); } } }
+      x.fillStyle = css('--ink'); x.font = 'bold 26px sans-serif'; x.fillText(`剩 ${left} 個圈　套中 ${hits}`, 24, 34);
+      g.dbg = { m, left, hits, flying: !!flying, bottles: BOTTLES, tol, done };
+    });
+    function finish() {
+      if (!cur) return; close();
+      const prize = hits >= 3 ? 'prize_star' : hits === 2 ? 'prize_bear' : hits === 1 ? 'popcorn' : null;
+      St.stat('toss'); if (OC.Progress) OC.Progress.emit('toss', { oc: c.id, hits, place: 'fair' });
+      if (!prize) { toast('一個都沒套中……再來一次？', 'info'); M().feel(c, 'confused', 0.15, '套圈圈沒中'); return; }
+      const r = OC.Tx.run('toss:' + pay.entry.key, { get: { items: { [prize]: 1 } } }, `套圈圈獎品：${I(prize).zh}`);
+      reward(c, { skill: 'sport', xp: 1 + hits, feel: [hits >= 3 ? 'excited' : 'happy', 0.25 + hits * 0.12, '套中了' + hits + '個'] });
+      OC.World.setAction(A().player, hits >= 3 ? 'jump' : 'happy', { dur: 1.4, priority: 6 }); if (hits >= 3) OC.World.jump(A().player);
+      toast(`套中 ${hits} 個！獎品：${I(prize).zh}`, 'sparkle'); if (r.firsts && r.firsts.length) OC.WorldUI.discovered(r.firsts);
+    }
+  }
+  /** Ferris wheel: the played OC goes up in a cabin (hidden from the ground; that cabin shows a light) for one turn */
+  let riding = null;
+  function wheel(it) {
+    const c = me(), P = A().player, fw = OC.World.area && OC.World.area.wheel; if (!c || !P || !fw || riding) return;
+    const cabin = fw.cabins.reduce((a, b) => { const ya = Math.sin(a.userData.a + fw.wheel.rotation.z), yb = Math.sin(b.userData.a + fw.wheel.rotation.z); return yb < ya ? b : a; });
+    OC.Brain.hold(c.id, 'activity'); P.hidden = true; cabin.userData.flag.visible = true; OC.Sound && OC.Sound.play('chime');
+    riding = { c, P, cabin, at: Date.now() };
+    toast(`${OC.Chars.name(c)}搭上摩天輪了（亮著的那一節）`, 'sparkle');
+    const end = () => {
+      if (!riding) return; const R = riding; riding = null;
+      R.cabin.userData.flag.visible = false; R.P.hidden = false; OC.Brain.unhold(R.c.id, 'activity');
+      if (OC.World.area && OC.World.area.id === 'fair') OC.World.setAction(R.P, 'happy', { dur: 1.4, priority: 6 });
+      M().feel(R.c, 'happy', 0.4, '搭了摩天輪'); OC.Store.needs && R.c.id === S().activeId && OC.Store.needs({ fun: 12, mood: 8 });
+      M().remember(R.c, { type: 'activity', imp: 0.5, place: 'place:fair', text: '搭摩天輪，從最高的地方看到整座島', key: `wheel:${R.c.id}:${today()}` });
+      if (OC.Progress) OC.Progress.emit('ride', { oc: R.c.id, kind: 'wheel', place: 'fair' });
+    };
+    setTimeout(end, 14000);
+  }
+  const wheelRiding = () => !!riding;
+
+  OC.Mini = { fishing, cooking, cookGame, critter, concert, toss, wheel, wheelRiding, TOSS_COST, RECIPES, ingredients, close, get active() { return !!cur; }, get state() { return cur ? Object.assign({ rect: cur.cv.getBoundingClientRect().toJSON() }, cur.dbg || {}) : null; } };
 })();

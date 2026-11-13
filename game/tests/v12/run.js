@@ -106,7 +106,7 @@ const { check, wait } = H;
         S.settings.fixedHour = 10; OC.Pages.open('explore'); await new Promise((r) => setTimeout(r, 1800));
         return { pins: pins.length, outside, hit, dayPx, nightPx, locked: [...document.querySelectorAll('.map-pin.locked')].length };
       });
-      check('4a 地圖：每個圖釘都在地圖範圍內、不被左上角標題牌擋住；未開放的小島仍標示（鎖）', mp.pins === 6 && !mp.outside.length && !mp.hit.length && mp.locked === 2, mp);
+      check('4a 地圖：每個圖釘都在地圖範圍內、不被左上角標題牌擋住（15.2 起風車丘與遊樂園已開放，沒有鎖住的釘）', mp.pins === 6 && !mp.outside.length && !mp.hit.length && mp.locked === 0, mp);
       check('4b 地圖依時段重畫（白天與夜晚的畫面不同）', mp.dayPx !== mp.nightPx, { dayPx: mp.dayPx, nightPx: mp.nightPx });
       await page.evaluate(() => OC.App.tab('island')); await wait(page, 400);
     }

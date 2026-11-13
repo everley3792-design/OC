@@ -468,7 +468,7 @@
     if (S().settings.quickTap) { d.run(); return; }
     const at = it.at || it.drop || it, lv = Wd.levelAt(at.x, at.y);
     OC.Pick.show({ key: it.type + ':' + (it.id || it.shop || it.to || ''), title: d.title, sub: d.sub, stk: d.stk, x: (r.s || {}).x || 0, y: (r.s || {}).y || 0,
-      track: () => Wd.project(at.x, at.y, lv, 18), actions: [{ label: d.verb, primary: true, run: d.run, off: d.off }] });
+      track: () => Wd.project(at.x, at.y, lv, 18), actions: [{ label: d.verb, primary: true, run: d.run, off: d.off }].concat(d.extra || []) });
   }
   /** what a thing in the world is called and what one press on its card does (the same actions as before 15.0, now behind a button) */
   function describe(it) {
@@ -482,7 +482,7 @@
       case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => goThen(it.at.x, it.at.y, () => tab('explore')) };
       case 'travelHome': return { title: '回晴日島', sub: '離開這裡', stk: 'island', verb: '回去', run: () => goThen(it.at.x, it.at.y, () => travel('isle')) };
       case 'exit': return { title: `往${zh(it.to)}`, sub: '離開這裡', stk: 'walk', verb: '前往', run: () => OC.WorldUI.tap(it) };
-      case 'shop': case 'counter': return { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); } };
+      case 'shop': case 'counter': { const base = { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); } }; const jp = OC.Jobs && OC.Jobs.placeOfShop[it.shop]; if (jp && (it.type === 'counter' || it.shop !== 'cafe')) { const me = OC.Chars.active(), paid = me && OC.Jobs.paidToday(me.id, jp); base.extra = [{ label: paid ? '打工（今天已領過）' : '打工一班', run: () => { if (!OC.Queue) return; const r = OC.Queue.add(S().activeId, 'work'); toast(r === 'queued' ? '排進清單：打工' : r ? `${OC.Chars.name(me)}去打工了（約 30–40 分鐘${paid ? '；今天的工資已經領過' : ''}）` : '清單滿了，先取消一項', 'coin'); } }]; } return base; }
       case 'fishing': return { title: it.label || '釣魚點', sub: '甩竿試試', stk: 'fish', verb: '釣魚', run: () => OC.WorldUI.tap(it) };
       case 'stove': return { title: it.label || '爐台', sub: '做一道料理', stk: 'apple', verb: '做料理', run: () => OC.WorldUI.tap(it) };
       case 'plot': return { title: it.label || '菜園', sub: '播種、澆水、收成', stk: 'seed', verb: '照顧菜園', run: () => OC.WorldUI.tap(it) };
@@ -490,6 +490,10 @@
       case 'critter': return { title: it.label || '小生物', sub: it.critter ? '輕輕靠近' : '牠跑掉了', stk: 'leaf', verb: '靠近看看', run: () => OC.WorldUI.tap(it) };
       case 'bookshelf': return { title: it.label || '書架', sub: '挑一本書', stk: 'book', verb: '看書', run: () => OC.WorldUI.tap(it) };
       case 'towel': return { title: it.label || '沙灘巾', sub: '躺下來曬太陽', stk: 'sun', verb: '躺一下', run: () => OC.WorldUI.tap(it) };
+      case 'ride': return { title: it.label || '旋轉木馬', sub: '坐進前面的馬車，轉一圈', stk: 'star', verb: '坐一圈', run: () => OC.WorldUI.tap(it) };
+      case 'wheel': return { title: it.label || '摩天輪', sub: '搭一圈，從高處看整座遊樂園', stk: 'star', verb: '搭一圈', run: () => OC.WorldUI.tap(it) };
+      case 'stage': return { title: it.label || '舞台', sub: '開一場演唱會（跟著節奏按）', stk: 'music', verb: '上台表演', run: () => OC.WorldUI.tap(it) };
+      case 'toss': return { title: it.label || '套圈圈', sub: '一次 3 個圈，20 星幣', stk: 'gift', verb: '玩一局', run: () => OC.WorldUI.tap(it) };
       default: return { title: it.label || '這個東西', sub: null, stk: 'hand', verb: '使用', run: () => OC.WorldUI.tap(it) };
     }
   }
@@ -1010,7 +1014,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init();
+    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
@@ -1071,7 +1075,7 @@
   // ---- hooks used by the life engines (js/life/brain.js, events.js) ----
   const onScreen = (a) => { if (!a || curTab !== 'island') return false; const p = Wd.project(a.x, a.y, a.lvl); return p.x > -40 && p.x < innerWidth + 40 && p.y > -40 && p.y < innerHeight + 40; };
   let followNext = null;
-  const canLead = () => curTab === 'island' && !placing && !decorate && !dlgOpen && !paused && !document.hidden && !(OC.UI.stack && OC.UI.stack.length) && !(OC.Radial && OC.Radial.open_) && !(OC.Touch && (OC.Touch.active || OC.Touch.flying || OC.Touch.petting)) && !(OC.Stage && OC.Stage.busy) && !(OC.Events && OC.Events.current) && !(OC.Mini && OC.Mini.active) && !(OC.Tutorial && OC.Tutorial.active) && !(OC.Arcs && OC.Arcs.running) && !(OC.Fun && (OC.Fun.busy || OC.Fun.visiting));
+  const canLead = () => curTab === 'island' && !placing && !decorate && !dlgOpen && !paused && !document.hidden && !(OC.UI.stack && OC.UI.stack.length) && !(OC.Radial && OC.Radial.open_) && !(OC.Touch && (OC.Touch.active || OC.Touch.flying || OC.Touch.petting)) && !(OC.Stage && OC.Stage.busy) && !(OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding()) && !(OC.Events && OC.Events.current) && !(OC.Mini && OC.Mini.active) && !(OC.Tutorial && OC.Tutorial.active) && !(OC.Arcs && OC.Arcs.running) && !(OC.Fun && (OC.Fun.busy || OC.Fun.visiting));
   const lifeHooks = {
     say: (a, text, name, dur, o) => bubble(a, text, name, dur, o),
     depart: (id) => {

@@ -59,10 +59,10 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
 
     // ================= 1. map / travel / return =================
     if (want(1)) {
-      const order = ['street', 'cafe', 'street', 'library', 'street', 'beach', 'forest', 'isle', 'home', 'isle'];
+      const order = ['street', 'cafe', 'street', 'library', 'street', 'beach', 'forest', 'hill', 'fair', 'isle', 'home', 'isle'];
       const seen = [];
       for (const to of order) { const ok = await travel(page, to); const st = await page.evaluate(() => ({ id: OC.World.area.id, p: !!OC.App.player, walk: OC.World.walkable(OC.App.player.x, OC.App.player.y), n: OC.World.interacts.length + OC.World.furn.filter((f) => f.it).length })); seen.push([to, ok && st.p && st.walk, st.n]); if (!(ok && st.p && st.walk)) console.log('  1a detail', to, ok, JSON.stringify(st), await page.evaluate(() => JSON.stringify({ x: OC.App.player.x, y: OC.App.player.y, near: OC.World.nearestWalkable(OC.App.player.x, OC.App.player.y, 10) }))); if (['street', 'beach', 'cafe', 'home'].includes(to) && !fs.existsSync(path.join(SHOTS, `1-${to}.png`))) { await wait(page, 700); await shot(page, `1-${to}`); } }
-      check('1a 依序前往 商店街→咖啡廳→商店街→圖書館→海灘→森林→島→家→島，每次都到得了且玩家站在可走的位置', seen.every((s) => s[1]), seen.map((s) => s[0] + (s[1] ? '✓' : '✗')).join(' '));
+      check('1a 依序前往 商店街→咖啡廳→商店街→圖書館→海灘→森林→風車丘→遊樂園→島→家→島，每次都到得了且玩家站在可走的位置', seen.every((s) => s[1]), seen.map((s) => s[0] + (s[1] ? '✓' : '✗')).join(' '));
       check('1b 每個開放地點都有可互動物件（沒有空場景）', seen.every((s) => s[2] >= 3), seen.map((s) => `${s[0]}:${s[2]}`).join(' '));
       const same = await page.evaluate(() => OC.World.renderer === window.__R && OC.Sim.running !== false);
       check('1c 切換地點不重建渲染器（同一個 WebGL context）', same);
@@ -72,8 +72,8 @@ const info = (page) => page.evaluate(() => { const i = OC.World.renderer.info; r
       await page.tap('[data-page="explore"] .card .btn.primary', { timeout: 10000 });
       const viaMap = await until(page, () => OC.World.area.id === 'beach', null, 10000);
       check('1d 從世界地圖點選地點→「前往」即可抵達', viaMap);
-      const locked = await page.evaluate(() => { OC.WorldUI.travel('fair'); return OC.World.area.id; });
-      check('1e 未開放的地點（彩虹遊樂園）明確標示且無法進入', locked === 'beach' && await page.evaluate(() => !!document.querySelector('.map-pin.locked')));
+      const locked = await page.evaluate(() => { OC.WorldUI.travel('nowhere'); return OC.World.area.id; });
+      check('1e 不存在的地點無法進入；15.2 起風車丘與遊樂園已開放（地圖上沒有鎖住的釘）', locked === 'beach' && await page.evaluate(() => !document.querySelector('.map-pin.locked') && OC.Places.open('hill') && OC.Places.open('fair')));
       await travel(page, 'isle');
     }
 

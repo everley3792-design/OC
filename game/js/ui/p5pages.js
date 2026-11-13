@@ -43,7 +43,7 @@
     const palm = (px, py, s) => { x.strokeStyle = '#8A6A44'; x.lineWidth = 3 * s; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + 5 * s, py - 14 * s, px + 2 * s, py - 24 * s); x.stroke(); x.fillStyle = '#2F9C58'; for (let i = 0; i < 5; i++) { const a = -2.6 + i * 0.6; x.beginPath(); x.ellipse(px + 2 * s + Math.cos(a) * 9 * s, py - 24 * s + Math.sin(a) * 5 * s, 10 * s, 3.4 * s, a, 0, 7); x.fill(); } };
     const boat = (px, py, ang) => { x.save(); x.translate(px, py); x.rotate(ang); x.fillStyle = 'rgba(0,50,90,.2)'; x.beginPath(); x.ellipse(2, 6, 14, 4, 0, 0, 7); x.fill(); x.fillStyle = '#FFFDF6'; x.beginPath(); x.moveTo(-1, -18); x.lineTo(11, 0); x.lineTo(-1, 0); x.closePath(); x.fill(); x.fillStyle = '#FFE1A8'; x.beginPath(); x.moveTo(-3, -14); x.lineTo(-3, 0); x.lineTo(-11, 0); x.closePath(); x.fill(); x.fillStyle = '#C0583F'; x.beginPath(); x.moveTo(-13, 1); x.lineTo(13, 1); x.lineTo(9, 7); x.lineTo(-9, 7); x.closePath(); x.fill(); x.restore(); };
     // --- routes first (under the islands)
-    const c0 = P.isle.map, routes = ['street', 'forest', 'beach'].filter((id) => P[id] && !P[id].locked);
+    const c0 = P.isle.map, routes = ['street', 'forest', 'beach', 'hill', 'fair'].filter((id) => P[id] && !P[id].locked);
     x.setLineDash([2, 13]); x.lineCap = 'round'; x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 6;
     const curve = (a, b, t) => { const mx = (a.x + b.x) / 2 * W, my = Math.min(a.y, b.y) * H - 44; return [(1 - t) * (1 - t) * a.x * W + 2 * (1 - t) * t * mx + t * t * b.x * W, (1 - t) * (1 - t) * a.y * H + 2 * (1 - t) * t * my + t * t * b.y * H]; };
     for (const id of routes) { const p = P[id].map; x.beginPath(); x.moveTo(c0.x * W, c0.y * H); x.quadraticCurveTo((c0.x + p.x) / 2 * W, Math.min(c0.y, p.y) * H - 44, p.x * W, p.y * H); x.stroke(); }
@@ -59,7 +59,7 @@
       x.strokeStyle = 'rgba(255,255,255,.95)'; x.lineWidth = 5; path(blob(cx, cy, rx, ry, seed, 1.12)); x.stroke(); x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 2.5; x.setLineDash([6, 9]); path(blob(cx, cy, rx, ry, seed, 1.19)); x.stroke(); x.setLineDash([]);
       // sand, then the shaded land
       g = x.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry); g.addColorStop(0, '#FBEBB9'); g.addColorStop(1, '#EBCF8B'); x.fillStyle = g; path(blob(cx, cy, rx, ry, seed, 1.06)); x.fill();
-      const land = id === 'beach' ? ['#F8E6AE', '#E8C97F'] : id === 'street' ? ['#E6D8C0', '#C9B592'] : id === 'forest' ? ['#58B068', '#2C7A47'] : ['#8CD472', '#4EA64B'];
+      const land = id === 'hill' ? ['#A9DC86', '#62AE55'] : id === 'fair' ? ['#F3E3C6', '#D9C29A'] : id === 'beach' ? ['#F8E6AE', '#E8C97F'] : id === 'street' ? ['#E6D8C0', '#C9B592'] : id === 'forest' ? ['#58B068', '#2C7A47'] : ['#8CD472', '#4EA64B'];
       g = x.createRadialGradient(cx - rx * 0.35, cy - ry * 0.45, 8, cx, cy, rx); g.addColorStop(0, land[0]); g.addColorStop(1, land[1]); x.fillStyle = p.locked ? '#BDC8D6' : g; path(blob(cx, cy, rx, ry, seed, 0.9)); x.fill();
       x.fillStyle = 'rgba(255,255,255,.16)'; x.beginPath(); x.ellipse(cx - rx * 0.3, cy - ry * 0.35, rx * 0.4, ry * 0.22, -0.3, 0, 7); x.fill();
       x.restore();
@@ -68,6 +68,8 @@
       if (id === 'isle') { tree(cx - 78, cy - 22, 1); tree(cx - 56, cy - 36, 0.9); tree(cx + 70, cy - 30, 1.1, '#2F9B52', '#4FB868'); house(cx - 28, cy - 6, 1.1, '#FFF4DE', '#F26B5B'); house(cx + 36, cy + 12, 1, '#FFF4DE', '#F4B83A'); x.fillStyle = '#B98A5A'; x.fillRect(cx + 70, cy + 40, 36, 6); x.fillStyle = '#9C7347'; x.fillRect(cx + 74, cy + 46, 4, 8); x.fillRect(cx + 98, cx * 0 + cy + 46, 4, 8); }
       if (id === 'forest') { for (let i = 0; i < 12; i++) tree(cx - 62 + (i % 4) * 36 + (i > 3 ? 10 : 0) + (i > 7 ? -6 : 0), cy - 22 + Math.floor(i / 4) * 24, 0.95 + (i % 3) * 0.12, i % 2 ? '#25703F' : '#2E8B4A', '#3B9E58'); }
       if (id === 'street') { ['#F26B5B', '#9B7BE0', '#3FC1B0', '#F4B83A'].forEach((c, i) => house(cx - 54 + i * 36, cy - 6 + (i % 2) * 10, 0.9, '#FFF8EA', c)); x.fillStyle = 'rgba(255,255,255,.5)'; x.fillRect(cx - 62, cy + 20, 124, 5); }
+      if (id === 'hill') { for (let i = 0; i < 4; i++) { x.fillStyle = i % 2 ? '#A58BE0' : '#B9A2EA'; x.fillRect(cx - 62, cy + 4 + i * 8, 48, 5); } x.fillStyle = '#FFF4DE'; x.beginPath(); x.moveTo(cx + 8, cy + 22); x.lineTo(cx + 14, cy - 18); x.lineTo(cx + 30, cy - 18); x.lineTo(cx + 36, cy + 22); x.closePath(); x.fill(); x.fillStyle = '#D8684E'; x.beginPath(); x.moveTo(cx + 10, cy - 16); x.lineTo(cx + 22, cy - 32); x.lineTo(cx + 34, cy - 16); x.closePath(); x.fill(); x.save(); x.translate(cx + 22, cy - 14); x.rotate(0.4); x.fillStyle = '#FFFDF6'; for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.fillRect(-2, 0, 4, 24); x.fillRect(2, 6, 7, 16); } x.restore(); tree(cx + 58, cy - 10, 0.9); }
+      if (id === 'fair') { x.strokeStyle = '#FFFFFF'; x.lineWidth = 3; x.beginPath(); x.arc(cx - 30, cy - 14, 26, 0, 7); x.stroke(); ['#F26B5B', '#F7C83F', '#7FD8C4', '#A58BE0', '#62B5E5', '#F29AB4'].forEach((col, i) => { const a = i / 6 * 6.283; x.fillStyle = col; x.beginPath(); x.arc(cx - 30 + Math.cos(a) * 26, cy - 14 + Math.sin(a) * 26, 5, 0, 7); x.fill(); }); x.fillStyle = '#F29AB4'; x.beginPath(); x.moveTo(cx + 14, cy + 4); x.lineTo(cx + 34, cy - 14); x.lineTo(cx + 54, cy + 4); x.closePath(); x.fill(); x.fillStyle = '#FFF4DE'; x.fillRect(cx + 18, cy + 4, 32, 12); }
       if (id === 'beach') { palm(cx - 42, cy + 6, 1.1); palm(cx + 30, cy - 10, 0.95); x.fillStyle = '#F26B5B'; x.beginPath(); x.moveTo(cx - 4, cy + 18); x.lineTo(cx + 22, cy + 6); x.lineTo(cx + 48, cy + 18); x.closePath(); x.fill(); x.fillStyle = '#FFF4DE'; x.beginPath(); x.moveTo(cx + 22, cy + 6); x.lineTo(cx + 34, cy + 17); x.lineTo(cx + 48, cy + 18); x.closePath(); x.fill(); x.fillStyle = '#6B4B33'; x.fillRect(cx + 21, cy + 6, 2, 24); }
     }
     // boats on the routes
@@ -75,7 +77,7 @@
     // mist over what is not open yet
     for (const [id, p] of order) { if (!p.locked) continue; const cx = p.map.x * W, cy = p.map.y * H; for (let i = 0; i < 7; i++) { x.fillStyle = `rgba(255,255,255,${0.22 + (i % 3) * 0.06})`; x.beginPath(); x.ellipse(cx - 70 + i * 24, cy + (i % 2 ? 14 : -10), 44, 20, 0, 0, 7); x.fill(); } }
     // compass rose, bottom left
-    { const cx = 70, cy = H - 72; x.save(); x.translate(cx, cy); x.fillStyle = 'rgba(255,255,255,.2)'; x.beginPath(); x.arc(0, 0, 40, 0, 7); x.fill(); x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 34, 0, 7); x.stroke(); for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.fillStyle = i === 0 ? '#F26B5B' : 'rgba(255,255,255,.95)'; x.beginPath(); x.moveTo(0, -32); x.lineTo(6, -6); x.lineTo(-6, -6); x.closePath(); x.fill(); } x.restore(); }
+    { const cx = W * 0.5, cy = H - 58; x.save(); x.translate(cx, cy); x.fillStyle = 'rgba(255,255,255,.2)'; x.beginPath(); x.arc(0, 0, 40, 0, 7); x.fill(); x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 34, 0, 7); x.stroke(); for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.fillStyle = i === 0 ? '#F26B5B' : 'rgba(255,255,255,.95)'; x.beginPath(); x.moveTo(0, -32); x.lineTo(6, -6); x.lineTo(-6, -6); x.closePath(); x.fill(); } x.restore(); }
     // time of day
     if (dusk) { x.fillStyle = 'rgba(255,140,90,.2)'; x.fillRect(0, 0, W, H); const gg = x.createLinearGradient(0, 0, 0, H); gg.addColorStop(0, 'rgba(255,180,120,.25)'); gg.addColorStop(1, 'rgba(120,60,140,.18)'); x.fillStyle = gg; x.fillRect(0, 0, W, H); }
     if (night) { x.fillStyle = 'rgba(14,22,80,.5)'; x.fillRect(0, 0, W, H); const r2 = OC.rng(7); for (let i = 0; i < 36; i++) { x.fillStyle = `rgba(255,255,230,${0.3 + r2() * 0.6})`; x.beginPath(); x.arc(r2() * W, r2() * H * 0.45, 0.8 + r2() * 1.6, 0, 7); x.fill(); } }
@@ -89,6 +91,8 @@
     if (id === 'beach') { if (ph === 'night') out.push('夜晚：月光水母出沒'); if (wx === 'clear') out.push('晴天：彩虹小魚'); if (ph === 'dusk') out.push('黃昏：星斑鯛、夕陽'); }
     if (id === 'forest') { if (wx === 'rain') out.push('雨天：雲紋錦鯉、雨天蝸牛'); if (ph === 'night') out.push('夜晚：螢火蟲'); out.push('每天的採集點會重新長出來'); }
     if (id === 'street') { const d = SH().deal('food'); if (d) out.push(`食品店特價：${I(d).zh}`); out.push('每日市場：今天的種子與食材'); }
+    if (id === 'hill') { out.push(wx === 'rain' ? '雨天：風車轉得特別快' : '磨坊：麵粉、麵包、小風車'); if (ph !== 'night' && wx !== 'rain') out.push('白天：草原蚱蜢'); }
+    if (id === 'fair') { out.push('星光舞台：每位角色每天一次演出費'); out.push(`套圈圈：一局 ${OC.Mini ? OC.Mini.TOSS_COST : 20} 星幣`); }
     if (id === 'cafe' && wx === 'rain') out.push('雨天暖飲 85 折');
     if (id === 'isle') { const ready = Object.values(S().garden).filter((p) => p.seed && p.growth >= 1).length; if (ready) out.push(`菜園：${ready} 塊可以收成`); }
     return out;

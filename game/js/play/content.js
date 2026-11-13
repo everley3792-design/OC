@@ -58,6 +58,10 @@
     Q('p_forest_bug', 'place', 'forest', '森林的小生命', '在苔光森林觀察小生物', { ev: 'critter', n: 1, w: { place: 'forest' } }, { coins: 70 }, { ic: 'leaf', place: 'forest' }),
     Q('p_beach_fish', 'place', 'beach', '海風與魚線', '在星砂海灘釣 2 條魚', { ev: 'fish', n: 2, w: { place: 'beach' } }, { coins: 80 }, { ic: 'sparkle', place: 'beach' }),
     Q('p_beach_crab', 'place', 'beach', '橫著走的朋友', '在海灘觀察螃蟹', { ev: 'critter', n: 1, w: { place: 'beach' } }, { coins: 70 }, { ic: 'leaf', place: 'beach' }),
+    Q('p_hill_mill', 'place', 'hill', '磨坊的香味', '在風車磨坊買一樣東西', { ev: 'buy', n: 1, w: { shop: 'mill' } }, { coins: 60 }, { ic: 'leaf', place: 'hill', req: { open: ['hill'] } }),
+    Q('p_hill_bug', 'place', 'hill', '草叢裡跳的是誰', '在風車丘觀察小生物', { ev: 'critter', n: 1, w: { place: 'hill' } }, { coins: 70 }, { ic: 'leaf', place: 'hill', req: { open: ['hill'] } }),
+    Q('p_fair_show', 'place', 'fair', '第一場演出', '在星光舞台開一場演唱會', { ev: 'concert', n: 1, w: { place: 'fair' } }, { coins: 80 }, { ic: 'star', place: 'fair', req: { open: ['fair'] } }),
+    Q('p_fair_toss', 'place', 'fair', '圈圈要套準', '玩一局套圈圈', { ev: 'toss', n: 1, w: { place: 'fair' } }, { coins: 40 }, { ic: 'star', place: 'fair', req: { open: ['fair'] } }),
     Q('p_street_market', 'place', 'street', '市場的新鮮貨', '在每日市場買一樣東西', { ev: 'buy', n: 1, w: { shop: 'market' } }, { coins: 50 }, { ic: 'cart', place: 'street' }),
     Q('p_street_lib', 'place', 'street', '圖書館之旅', '讓一位 OC 在葉影圖書館讀書', { ev: 'act', n: 1, w: { act: ['read', 'study'], place: 'library' } }, { coins: 80 }, { ic: 'book', place: 'street', req: { open: ['library'] } }),
     Q('p_home_cook', 'place', 'home', '家的味道', '在家裡的小廚房做料理', { ev: 'cook', n: 1, w: { place: 'home' } }, { coins: 70 }, { ic: 'apple', place: 'home' }),
@@ -157,7 +161,7 @@
       steps: [{ zh: '和大家聊天或一起玩 6 次', goal: { ev: 'social', n: 6, w: { oc: 'self' } } }, { zh: '交到一位朋友', goal: { ev: 'rel', n: 1, w: { oc: 'self', to: ['friend', 'bestfriend'] } } }, { zh: '交到一位摯友', goal: { ev: 'rel', n: 1, w: { oc: 'self', to: 'bestfriend' } } }],
       reward: { coins: 600, items: { souv_badge: 1 }, title: 'socialstar' } },
     explorer: { zh: '小小探險家', d: '想去所有地方看看，發現沒見過的東西。', ic: 'compass', acts: ['explore', 'forage', 'observe'], fit: (c) => (has(c, 'curious') ? 2 : 0.4) + (c.personality.energy > 60 ? 0.5 : 0),
-      steps: [{ zh: '去 3 個不同的地方', goal: { ev: 'arrive', n: 3, w: { oc: 'self' }, distinct: 'place' } }, { zh: '新發現 8 種物品', goal: { ev: 'discover', n: 8 } }, { zh: '走遍所有開放的地點', goal: { ev: 'arrive', n: 7, w: { oc: 'self' }, distinct: 'place' } }],
+      steps: [{ zh: '去 3 個不同的地方', goal: { ev: 'arrive', n: 3, w: { oc: 'self' }, distinct: 'place' } }, { zh: '新發現 8 種物品', goal: { ev: 'discover', n: 8 } }, { zh: '走遍所有開放的地點', goal: { ev: 'arrive', n: OC.Places.list().filter((p) => OC.Places.open(p)).length, w: { oc: 'self' }, distinct: 'place' } }],
       reward: { coins: 600, items: { souv_globe: 1 }, title: 'wanderer' } },
     artist: { zh: '生活藝術家', d: '想用畫和歌把每天的美好留下來。', ic: 'brush', acts: ['sketch', 'sing', 'observe'], fit: (c) => (has(c, 'artsy') ? 2 : 0.3) + (has(c, 'creative') ? 1 : 0),
       steps: [{ zh: '畫素描或唱歌 3 次', goal: { ev: 'act', n: 3, w: { oc: 'self', act: ['sketch', 'sing'] } } }, { zh: '看風景 3 次', goal: { ev: 'act', n: 3, w: { oc: 'self', act: 'observe' } } }, { zh: '藝術或音樂技能到 Lv.2', goal: { ev: 'skillUp', n: 1, w: { oc: 'self', skill: ['art', 'music'], lv: '>=2' } } }],
@@ -197,7 +201,11 @@
     A('req10', 'social', '貼心小天使', '完成 10 個 OC 的請求', () => C().count('request'), 10, { coins: 400, title: 'kindheart' }),
     // explore
     A('forest', 'explore', '森林探險', '造訪苔光森林', () => (st().visits || {}).forest || 0, 1),
-    A('allplaces', 'explore', '環島旅行', '造訪所有開放的地點', () => Object.keys(OC.Store.s.places.visited).filter((p) => OC.Places.open(p)).length, 7, { coins: 400, title: 'wanderer' }),
+    A('allplaces', 'explore', '環島旅行', '造訪所有開放的地點', () => Object.keys(OC.Store.s.places.visited).filter((p) => OC.Places.open(p)).length, OC.Places.list().filter((p) => OC.Places.open(p)).length, { coins: 400, title: 'wanderer' }),
+    A('hill', 'explore', '風的山丘', '造訪風車丘', () => (st().visits || {}).hill || 0, 1),
+    A('stage3', 'special', '舞台常客', '在星光舞台開 3 場演唱會', () => C().count('concert'), 3, { coins: 250 }),
+    A('toss3', 'special', '神準', '套圈圈一局全中', () => C().count('toss', { hits: 3 }), 1, { coins: 200 }, { hidden: true, hint: '三個圈都要套中…' }),
+    A('wheel', 'explore', '最高的地方', '搭一次摩天輪', () => C().count('ride', { kind: 'wheel' }), 1, { coins: 120 }),
     A('critter10', 'explore', '小生物朋友', '觀察到 10 隻小生物', () => C().count('critter'), 10),
     A('nightbeach', 'explore', '夜晚的海', '晚上去星砂海灘', () => C().count('visit', { place: 'beach', phase: 'night' }), 1, { coins: 120 }, { hidden: true, hint: '月亮出來以後的海邊…' }),
     // collect
@@ -264,10 +272,15 @@
   Object.assign(D.ACTS, {
     sketch: { zh: '畫素描', ic: '✏️', verb: 'view', fx: { fun: 30, interest: 35, mood: 10 }, dur: [15, 30], anim: 'sketch', sk: 'art', cat: 'fun', unlock: 'sketch' },
     sing: { zh: '唱歌', ic: '🎵', verb: 'view', fx: { fun: 40, mood: 18, social: 6 }, dur: [6, 12], anim: 'sing', sk: 'music', cat: 'fun', unlock: 'sing' },
+    /* 15.2: a part-time shift behind a counter (café, mill, fair snack stand) — only when the player asks (cmdOnly); paid once per character,
+     * place and game day at the end of a shift of 20+ game minutes (OC.Jobs, key job:<oc>:<place>:<day>) */
+    work: { zh: '打工', ic: '💼', verb: 'work', fx: { energy: -40, social: 50, fun: -10 }, dur: [30, 40], anim: 'tend', lock: true, cmdOnly: true, cat: 'chore' },
+    /* 15.2: the carousel at the Rainbow Fair (seated in a carriage while the horses go round) */
+    ride: { zh: '坐旋轉木馬', ic: '🎠', verb: 'ride', fx: { fun: 160, mood: 30, energy: -6 }, dur: [6, 10], anim: 'sit', seat: true, sed: true, look: true, cat: 'fun' },
   });
 
   // places where the new activities can also happen while the OC is away (abstract life)
-  for (const id of ['isle', 'forest', 'beach']) { const P0 = OC.Places.P[id]; if (P0 && P0.acts) for (const a of ['sketch', 'sing']) if (!P0.acts.includes(a)) P0.acts.push(a); }
+  for (const id of ['isle', 'forest', 'beach', 'hill', 'fair']) { const P0 = OC.Places.P[id]; if (P0 && P0.acts) for (const a of ['sketch', 'sing']) if (!P0.acts.includes(a)) P0.acts.push(a); }
 
   // ======================= dialogue (requests, growth, achievements) =======================
   const Pp = { voice: 'plain' }, B = { voice: 'bright' }, Cc = { voice: 'calm' }, K = { voice: 'cool' };

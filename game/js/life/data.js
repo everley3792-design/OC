@@ -188,7 +188,7 @@
     // ---- pet / app context (for the floating pet; conditions on app) ----
     // ---- places (Phase 5) ----
     ['arrive', '這裡就是{place}呀！', P], ['arrive', '哇——{place}！', B], ['arrive', '……{place}，好安靜。', { voice: 'calm', place: ['library'] }, 3], ['arrive', '人好多……', { trait: 'shy', place: ['street'] }, 4],
-    ['arrive', '海風好舒服！', { place: ['beach'] }, 3], ['arrive', '咖啡的香味！', { place: ['cafe'] }, 3], ['arrive', '森林的味道……', { place: ['forest'] }, 3], ['arrive', '我回來了～', { place: ['home', 'isle'] }, 2],
+    ['arrive', '海風好舒服！', { place: ['beach'] }, 3], ['arrive', '風好大。風車還在轉。', { place: ['hill'] }, 3], ['arrive', '這裡看得好遠。', { place: ['hill'] }, 2], ['arrive', '有音樂的聲音。', { place: ['fair'] }, 3], ['arrive', '先去哪一個？摩天輪還是木馬？', { place: ['fair'] }, 2], ['arrive', '咖啡的香味！', { place: ['cafe'] }, 3], ['arrive', '森林的味道……', { place: ['forest'] }, 3], ['arrive', '我回來了～', { place: ['home', 'isle'] }, 2],
     ['solo_fish', '咬鉤吧……', P], ['solo_fish', '今天會釣到什麼呢？', B], ['solo_fish', '（靜靜地等著）', C], ['solo_forage', '這顆莓果好紅！', P], ['solo_forage', '香草的味道……', C],
     ['solo_study', '原來如此……', K], ['solo_study', '再讀一頁就好。', P], ['solo_cook', '加一點點鹽……', P], ['solo_cook', '好香喔！', B], ['solo_browse', '這個好可愛！', B], ['solo_browse', '下次來買這個。', P],
     ['new_furn', '咦？這是新的{item}！', P], ['new_furn', '哇，新家具！我可以坐坐看嗎？', B], ['new_furn', '……多了一件{item}。不錯。', K],

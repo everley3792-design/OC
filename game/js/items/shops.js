@@ -16,6 +16,8 @@
     furniture: { zh: '木木家具行', place: 'street', ic: 'sofa', items: ['chair', 'table', 'cushion', 'bed', 'sofa', 'desk', 'bookshelf', 'toybox', 'stove', 'wardrobe', 'painting', 'clock', 'bigpot', 'plant', 'lamp', 'lantern', 'rug', 'campfire', 'swing'] },
     gift: { zh: '星星禮品屋', place: 'street', ic: 'gift', items: ['star', 'giftbox', 'letter', 'plush', 'ball', 'yoyo', 'kite', 'blocks'] },
     market: { zh: '每日市場', place: 'street', ic: 'leaf', sells: true, rotate: ['seed_tomato', 'seed_carrot', 'seed_potato', 'seed_straw', 'seed_sun', 'tomato', 'carrot', 'potato', 'honey', 'juice', 'egg', 'herb', 'berry'], daily: 6, stock: [2, 5] },
+    mill: { zh: '風車磨坊', place: 'hill', ic: 'leaf', items: ['flour', 'bread', 'honey', 'pinwheel', 'lavender', 'seed_sun', 'kite', 'tea'] },
+    fair: { zh: '遊樂園點心攤', place: 'fair', ic: 'apple', eatHere: true, items: ['cotton_candy', 'popcorn', 'soda_float', 'lemonade', 'juice'] },
     cafe: { zh: '雲朵咖啡館', place: 'cafe', ic: 'apple', eatHere: true, items: ['latte', 'cocoa', 'tea', 'lemonade', 'juice', 'bread', 'pancake', 'pudding', 'soup_mush', 'curry', 'salad'] },
   };
   const gday = () => OC.Sim.day();

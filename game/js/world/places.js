@@ -26,12 +26,16 @@
     beach: { zh: '星砂海灘', type: 'beach', area: 'beach', map: { x: 0.76, y: 0.3 }, icon: 'sparkle', col: '#4FC3E8',
       d: '細細的星砂與長長的碼頭。釣魚、撿貝殼、看海、在沙灘上玩。', facilities: ['碼頭釣魚', '海邊釣魚', '潮池', '沙灘毛巾', '沙堡'], acts: ['fish', 'observe', 'play', 'rest', 'nap', 'walk', 'explore'],
       finds: ['shell', 'shell_star', 'shell_conch', 'sea_glass', 'f_sardine', 'f_rainbow', 'f_puffer', 'f_starbream', 'f_silver', 'f_moonjelly', 'b_crab'] },
-    // not built yet — shown as clearly locked (never a fake button)
-    hill: { zh: '風車丘', type: 'nature', locked: true, map: { x: 0.17, y: 0.8 }, icon: 'lock', col: '#9AA3B5', d: '風很大的山丘，有一座老風車。', why: '尚未開放（之後的版本）' },
-    fair: { zh: '彩虹遊樂園', type: 'fun', locked: true, map: { x: 0.82, y: 0.87 }, icon: 'lock', col: '#9AA3B5', d: '表演、比賽與節慶活動的地方。', why: '尚未開放（之後的版本）' },
+    // 15.2: both opened — real scenes with facilities (js/world/areas15.js)
+    hill: { zh: '風車丘', type: 'nature', area: 'hill', map: { x: 0.17, y: 0.8 }, icon: 'leaf', col: '#A58BE0',
+      d: '風很大的山丘。老風車還在轉，磨坊賣麵粉和麵包；坡上有薰衣草田、野餐墊，天氣好時有人放風箏。', facilities: ['風車磨坊（商店）', '薰衣草田', '野餐墊', '山丘頂', '採集點', '小生物觀察', '長椅'],
+      acts: ['observe', 'rest', 'nap', 'play', 'walk', 'explore', 'forage', 'daydream', 'stretch', 'tend'], finds: ['herb', 'berry', 'flower', 'b_butterfly', 'b_ladybug', 'b_hopper', 'pinwheel'] },
+    fair: { zh: '彩虹遊樂園', type: 'fun', area: 'fair', map: { x: 0.82, y: 0.87 }, icon: 'star', col: '#F29AB4',
+      d: '摩天輪、旋轉木馬、套圈圈、點心攤，還有可以開演唱會的星光舞台。', facilities: ['星光舞台（演唱會）', '摩天輪', '旋轉木馬', '套圈圈', '點心攤', '長椅'],
+      acts: ['ride', 'play', 'observe', 'eat', 'drink', 'rest', 'walk'], finds: ['cotton_candy', 'popcorn', 'soda_float', 'prize_bear', 'prize_star'] },
   };
   const TYPES = { home: '住宅', street: '商店街', cafe: '咖啡館', library: '學習場所', nature: '自然探索', beach: '海灘', fun: '娛樂', island: '其他島嶼' };
-  const OUTDOOR = ['isle', 'street', 'forest', 'beach'];
+  const OUTDOOR = ['isle', 'street', 'forest', 'beach', 'hill', 'fair'];
   const top = (id) => (P[id] && P[id].parent) || id;
   /** travel time in game minutes */
   function travelMin(a, b) { if (a === b) return 0; const ta = top(a), tb = top(b); let m = 0; if (a !== ta) m += 3; if (b !== tb) m += 3; if (ta !== tb) m += 20; return m; }
@@ -51,6 +55,8 @@
     if (T === 'library') a += (has('bookworm') ? 0.4 : 0) + (has('shy') ? 0.15 : 0) + (p.thinking > 60 ? 0.1 : 0);
     if (T === 'cafe') a += (has('foodie') ? 0.25 : 0) + (p.social > 60 ? 0.1 : 0);
     if (T === 'street') a += (has('outgoing') || has('social') ? 0.2 : 0) - (has('shy') ? 0.15 : 0);
+    if (T === 'fun') a += (has('outgoing') || has('social') || has('cheerful') ? 0.25 : 0) + (p.energy > 60 ? 0.1 : 0) - (has('shy') ? 0.1 : 0);
+    if (id === 'hill') a += (has('lazy') ? 0.1 : 0) + (has('dreamy') ? 0.15 : 0);
     if (T === 'home') a += (has('lazy') ? 0.15 : 0) + (has('shy') ? 0.05 : 0);
     const mem = OC.Mind && OC.Mind.placeFeel ? OC.Mind.placeFeel(c, 'place:' + id) : 0;
     return a + mem * 0.2;
@@ -98,7 +104,7 @@
   function critterAt(area, i) {
     const spots = OC.Areas[area] && OC.Areas[area].critterSpots; if (!spots || !spots[i]) return null; const [, , sp] = spots[i];
     const ph = OC.Clock.phase(OC.Clock.hour()), wx = OC.Clock.weather();
-    const ok = { b_butterfly: ph !== 'night' && wx !== 'rain', b_ladybug: ph !== 'night', b_firefly: ph === 'night', b_beetle: true, b_snail: wx === 'rain' || ph === 'dusk', b_crab: true }[sp];
+    const ok = { b_butterfly: ph !== 'night' && wx !== 'rain', b_ladybug: ph !== 'night', b_firefly: ph === 'night', b_beetle: true, b_snail: wx === 'rain' || ph === 'dusk', b_crab: true, b_hopper: ph !== 'night' && wx !== 'rain' }[sp];
     if (!ok) return null; const slot = Math.floor(Sim().now() / 720); const c = (S().world.critters = S().world.critters || {}); if (c[area + ':' + i] === slot) return null;
     return { species: sp, slot, key: `critter:${area}:${i}:${slot}` };
   }

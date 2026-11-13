@@ -165,7 +165,7 @@
     if (!ctx) return; const key = `${o.area}|${o.wx}|${o.night ? 1 : 0}`; if (key === ambKey) return; ambKey = key;
     const want = {}, area = o.area, P = OC.Places && OC.Places.get(area), inside = P && P.interior;
     if (inside) { want.room = 1; if (o.wx === 'rain') want.rainIn = 1; }
-    else { if (area === 'beach') want.sea = 1; else if (area === 'isle') want.seaSoft = 1; if (area === 'forest' || area === 'street' || o.wx === 'fog') want.wind = 1; if (o.wx === 'rain') want.rain = 1; }
+    else { if (area === 'beach') want.sea = 1; else if (area === 'isle') want.seaSoft = 1; if (area === 'forest' || area === 'street' || area === 'hill' || o.wx === 'fog') want.wind = 1; if (o.wx === 'rain') want.rain = 1; }
     const t0 = T();
     for (const id of Object.keys(BEDS)) {
       const on = !!want[id]; if (!on && !beds[id]) continue; const b = bed(id, BEDS[id]);
@@ -285,7 +285,7 @@
     const at = placement(a); if (!at) return false;
     return play(snd, { pan: at.pan, vol: at.vol });
   }
-  const GROUND = { isle: 'grass', forest: 'leaf', beach: 'sand', street: 'stone', home: 'wood', cafe: 'wood', library: 'wood' };
+  const GROUND = { isle: 'grass', forest: 'leaf', beach: 'sand', street: 'stone', home: 'wood', cafe: 'wood', library: 'wood', hill: 'grass', fair: 'stone' };
   let footT = 0;
   /** one footstep (called from the walk cycle); quiet, by ground, panned to where the OC is */
   function foot(a) {

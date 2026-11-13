@@ -16,6 +16,7 @@
   /** go to a place. 'map' opens the world map. from = the place we leave (for the door we appear at) */
   function travel(to, o = {}) {
     if (to === 'map') { A().tab('explore'); return; }
+    if (OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding()) { toast('等摩天輪轉完這一圈', 'info'); return; }
     const p = PL().get(to); if (!p || p.locked) { toast(p ? p.why || '尚未開放' : '沒有這個地方', 'lock'); return; }
     const from = Wd().area ? Wd().area.id : null; if (from === to) { A().tab('island'); return; }
     if (busy) { pending = to; return; } busy = true;   // a request during the fade is kept (the last one wins), not dropped
@@ -88,6 +89,10 @@
       case 'critter': if (!it.critter) { toast('牠跑掉了…', 'leaf'); return true; } goThen(it, () => OC.Mini.critter(it)); return true;
       case 'bookshelf': goThen(it, () => useBy('read', it)); return true;
       case 'towel': goThen(it, () => useBy('nap', it)); return true;
+      case 'ride': goThen(it, () => useBy('ride', it)); return true;
+      case 'wheel': goThen(it, () => OC.Mini.wheel(it)); return true;
+      case 'stage': goThen(it, () => OC.Mini.concert(it)); return true;
+      case 'toss': goThen(it, () => OC.Mini.toss(it)); return true;
     }
     if (it.type === 'furn') { const d = I(it.id) || {}; if ((d.verbs || []).includes('cook')) { A().goThen(it.x, it.y + 14, () => OC.Mini.cooking(it)); return true; } if ((d.verbs || []).includes('study')) { A().goThen(it.x, it.y + 14, () => useBy('study', it)); return true; } if ((d.verbs || []).includes('read') && !d.sit) { A().goThen(it.x, it.y + 14, () => useBy('read', it)); return true; } if ((d.verbs || []).includes('play') && !d.sit) { A().goThen(it.x, it.y + 14, () => useBy('play', it)); return true; } if (d.sleep || it.id === 'bed') { A().goThen(it.x + 16, it.y + 6, () => useBy('sleep', it)); return true; } }
     return false;
