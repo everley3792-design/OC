@@ -211,9 +211,11 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
     // ================= 9. performance & interaction settings reach the service =================
     if (want(9)) {
       await openPage(page, 'petcenter');
+      /* 15.4: these settings live on the 「互動與效能」 tab */
+      await page.evaluate(() => { const t = [...document.querySelectorAll('.pet-tabs button')].find((b) => b.textContent === '互動與效能'); if (t) t.click(); }); await wait(page, 300);
       await page.evaluate(() => { const s = [...document.querySelectorAll('[data-page=petcenter] .seg button')].find((b) => b.textContent === '60'); s.click(); });
       await page.evaluate(() => { const s = [...document.querySelectorAll('[data-page=petcenter] .seg button')].find((b) => b.textContent === '48MB'); s.click(); });
-      const sw = await page.$$('[data-page=petcenter] .card .switch'); await sw[0].click(); await wait(page, 300);
+      await wait(page, 600); await page.evaluate(() => { const sw = [...document.querySelectorAll('[data-page=petcenter] .card .switch')].find((x) => x.offsetParent); sw.click(); }); await wait(page, 300);   /* the first visible switch (觸控穿透); clicked in-page because the page may rebuild between finding and clicking */
       const g = await page.evaluate(() => __mock.config.global);
       check('9a 幀率、快取、觸控穿透送到原生（原生依此改變 Choreographer 上限與視窗旗標）', g.fps === 60 && g.cacheMB === 48 && g.passthrough === true, g);
       await page.evaluate(() => { __mock.emit('', 'setting', { passthrough: false }); OC.PetSync.pull('notif'); });
@@ -313,6 +315,7 @@ const openPage = async (page, id, params) => { await page.evaluate(([i, p]) => {
       check('16f 音效輸出失敗不會讓桌寵起不來（只是安靜），並記在同步紀錄', s2.ok && s2.running && s2.log.includes('sounds:false'), s2);
       // the settings page
       await page.evaluate(() => { OC.Store.s.pet.global.sound = false; }); await openPage(page, 'petcenter');
+      await page.evaluate(() => { const t = [...document.querySelectorAll('.pet-tabs button')].find((b) => b.textContent === '互動與效能'); if (t) t.click(); }); await wait(page, 300);   /* 15.4: the sound switch is on the 「互動與效能」 tab */
       const ui0 = await page.$eval('[data-page=petcenter]', (e) => ({ has: e.innerText.includes('桌面音效'), vol: e.innerText.includes('試聽') }));
       await page.evaluate(() => { const row = [...document.querySelectorAll('[data-page=petcenter] .hstack')].find((e) => e.textContent.includes('桌面音效')); const sw = row && row.querySelector('[role=switch], input, button, .toggle'); sw && sw.click(); });
       await wait(page, 1500);
