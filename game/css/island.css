@@ -263,7 +263,7 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .news-mast { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) var(--sp-1) var(--sp-1); border-bottom: 3px double var(--line-strong); }
 .news-mast b { font-size: var(--fs-2xl); font-weight: 900; letter-spacing: .12em; color: var(--ink); }
 .news-mast span { margin-left: auto; color: var(--ink-2); font-size: var(--fs-s); }
-.news-kicker { display: inline-block; margin-bottom: 6px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--sun-soft); color: var(--on-sun); font-size: var(--fs-xs); font-weight: 800; }
+.news-kicker { display: inline-block; margin-bottom: 6px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--sun-soft); color: var(--ink); font-size: var(--fs-xs); font-weight: 800; }
 .news p { margin: 4px 0; line-height: var(--lh); color: var(--ink); }
 .news p.faint { color: var(--ink-2); font-size: var(--fs-s); }
 .news-list { margin: 4px 0 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; color: var(--ink); }

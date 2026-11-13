@@ -49,6 +49,13 @@ const MODE = process.argv[3] || 'both';
     ['61-petone', () => OC.Pages.open('petone', { id: OC.Store.s.activeId })],
     ['62-pettools', () => OC.Pages.open('pettools')],
     ['63-petapps', () => OC.Pages.open('petapps')],
+    ['57-news', () => OC.Pages.open('news')],
+    ['58-album', () => OC.Pages.open('album')],
+    ['64-hill', () => OC.WorldUI.travel('hill')],
+    ['65-fair', () => OC.WorldUI.travel('fair')],
+    ['67-concert', () => OC.Mini.concert(OC.World.interacts.find((i) => i.type === 'stage'))],
+    ['68-toss', () => { OC.Mini.close && OC.Mini.close(); OC.Mini.toss(OC.World.interacts.find((i) => i.type === 'toss')); }],
+    ['69-isle', () => { OC.Mini.close && OC.Mini.close(); OC.WorldUI.travel('isle'); }],
     ['70-creator', () => { OC.Creator.start(); /* not awaited: it resolves when the flow is closed */ }],
   ];
   const themes = MODE === 'both' ? ['light', 'dark'] : [MODE];
@@ -59,6 +66,7 @@ const MODE = process.argv[3] || 'both';
       const ok = await page.evaluate(`(async () => { try { await (${fn.toString()})(); return true; } catch (e) { return String(e && e.message || e); } })()`);
       if (ok !== true) { missed.push(`${th}/${name}: ${ok}`); continue; }
       await page.waitForTimeout(name.startsWith('0') ? 1300 : 800);
+      if (/hill|fair|isle/.test(name)) await page.waitForFunction(() => !OC.WorldUI.busy, null, { timeout: 60000 }).then(() => page.waitForTimeout(1500)).catch(() => {});
       await page.screenshot({ path: path.join(OUT, `${th}-${name}.png`) });
     }
   }

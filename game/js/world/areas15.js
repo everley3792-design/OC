@@ -105,8 +105,8 @@
     add(g, rbox(14, 16, 10, 3), mat('#F7C83F'), 28, 8, 12); add(g, rbox(16, 3, 12, 1.4), mat('#F26B5B'), 28, 17.5, 12);
     fuse(g);
     const wheel = new THREE.Group(); wheel.position.set(0, C, 0); g.add(wheel);
-    for (const z of [-7, 7]) { add(wheel, Mo.geo('fwrim' + R, () => new THREE.TorusGeometry(R, 1.6, 6, 48)), steel, 0, 0, z, { cast: true }); add(wheel, Mo.geo('fwrim2' + R, () => new THREE.TorusGeometry(R * 0.45, 1.1, 6, 32)), steel, 0, 0, z); }
-    for (let i = 0; i < 12; i++) { const sp = add(wheel, rbox(1.4, R * 2, 1.4, 0.4), steelLo, 0, 0, i % 2 ? 7 : -7); sp.rotation.z = (i / 12) * Math.PI * 2; }
+    for (const z of [-7, 7]) { add(wheel, Mo.geo('fwrim' + R, () => new THREE.TorusGeometry(R, 1.6, 6, 48)), steel, 0, 0, z, { cast: false }); add(wheel, Mo.geo('fwrim2' + R, () => new THREE.TorusGeometry(R * 0.45, 1.1, 6, 32)), steel, 0, 0, z, { cast: false }); }   /* 15.3: the thin wheel throws no shadow (it darkened half the plaza) */
+    for (let i = 0; i < 12; i++) { const sp = add(wheel, rbox(1.4, R * 2, 1.4, 0.4), steelLo, 0, 0, i % 2 ? 7 : -7, { cast: false }); sp.rotation.z = (i / 12) * Math.PI * 2; }
     for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; add(wheel, sphere(1.8, 6, 5), glow(['#F26B5B', '#F7C83F', '#7FD8C4', '#A58BE0'][i % 4]), Math.cos(a) * R, Math.sin(a) * R, 8.5, { cast: false }); }
     add(wheel, sphere(5, 12, 10), mat('#F7C83F'), 0, 0, 0);
     fuse(wheel);

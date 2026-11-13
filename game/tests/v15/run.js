@@ -319,6 +319,42 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await closeAll();
     }
 
+    // ================= 8. 15.3: seasons, drift, glints, cloud travel, night glow =================
+    if (want(8)) {
+      await closeAll();
+      const go = async (id) => { await page.evaluate((id) => OC.WorldUI.travel(id), id); await page.waitForFunction((id) => OC.World.area.id === id && !OC.WorldUI.busy, id, { timeout: 90000 }); await wait(page, 800); };
+      const se = await page.evaluate(() => {
+        const S = OC.Store.s.settings, before = S.season; const out = { world: OC.World.season, clock: OC.Clock.season(), chunk: /OC_CHAR/.test(THREE.ShaderChunk.tonemapping_fragment) };
+        const a = OC.World.actors.find((x) => x.m && x.m.material); out.charDef = !!(a && a.m.material.defines && 'OC_CHAR' in a.m.material.defines);
+        S.season = 'winter'; out.pick = OC.Clock.season(); S.season = 'spring'; out.pick2 = OC.Clock.season(); S.season = before;
+        const m = (d) => OC.Clock.season(new Date(2026, d, 15)); out.cal = [m(3), m(6), m(9), m(0)];
+        return out; });
+      check('8a 季節：依日期（春夏秋冬）或玩家選的季節；世界在開始時套用季節色調，角色的材質不套（OC_CHAR）', se.world === se.clock && se.chunk && se.charDef && se.pick === 'winter' && se.pick2 === 'spring' && JSON.stringify(se.cal) === JSON.stringify(['spring', 'summer', 'autumn', 'winter']), se);
+      /* effects on (high), outdoors at the beach: drifting leaves / petals / snow (none in summer) and glints on the sea; none indoors */
+      await page.evaluate(() => { const S = OC.Store.s.settings; window.__perf = S.perf; S.perf = 'high'; OC.App.applyPerf(); S.weather = 'clear'; S.fixedHour = 11; });
+      await go('beach'); await wait(page, 1500);
+      const fx = await page.evaluate(() => ({ drift: OC.Ambient.drift, glints: OC.Ambient.glints, season: OC.World.season }));
+      await go('home'); await wait(page, 1200);
+      const fxIn = await page.evaluate(() => ({ drift: OC.Ambient.drift, glints: OC.Ambient.glints }));
+      check('8b 戶外有飄落的花瓣／落葉／雪（夏天沒有）與海面的閃光；室內沒有', (fx.season === 'summer' ? !fx.drift : fx.drift && fx.drift.count > 0) && fx.glints > 0 && (!fxIn.drift || fxIn.drift.count === 0) && !fxIn.glints, { fx, fxIn });
+      /* the cloud transition: nine clouds and the place name while moving; gone afterwards */
+      const tr = await page.evaluate(() => { OC.WorldUI.travel('fair'); const f = document.getElementById('fade'); return { clouds: f.querySelectorAll('.travel-clouds i').length, cls: f.className, label: (f.querySelector('.travel-label b') || {}).textContent, stk: !!f.querySelector('.travel-stk') }; });
+      await page.waitForFunction(() => OC.World.area.id === 'fair' && !OC.WorldUI.busy, null, { timeout: 90000 }); await wait(page, 900);
+      const tr2 = await page.evaluate(() => { const f = document.getElementById('fade'); return { left: f.children.length, cls: f.className, op: getComputedStyle(f).opacity }; });
+      check('8c 換地點時是雲朵轉場（九朵雲＋地點名稱與貼紙），結束後清乾淨', tr.clouds === 9 && /clouds/.test(tr.cls) && tr.label === '彩虹遊樂園' && tr.stk && tr2.left === 0 && !/clouds/.test(tr2.cls), { tr, tr2 });
+      /* the fair at night: its bulbs are on the night light rig and glow */
+      await page.evaluate(() => { OC.Store.s.settings.fixedHour = 21; }); await page.waitForFunction(() => (OC.World.env || {}).night > 0.8, null, { timeout: 60000 }).catch(() => {}); await wait(page, 600);
+      const nightGlow = await page.evaluate(() => { const w = OC.Models.night.windows; const cols = w.map((m) => '#' + m.color.getHexString().toUpperCase()); return { n: w.length, has: ['#FFE08A', '#FFF1B0'].every((c) => cols.includes(c)), lit: w.filter((m) => m.emissiveIntensity > 0.5).length, night: OC.World.env.night }; });
+      await shot(page, '8-fair-night');
+      await page.evaluate(() => { const S = OC.Store.s.settings; S.fixedHour = 10; S.perf = window.__perf; OC.App.applyPerf(); });
+      check('8d 遊樂園的燈泡接在夜晚的燈光上，晚上會亮', nightGlow.has && nightGlow.lit > 0, nightGlow);
+      /* the settings have the season row; picking one is stored */
+      const st = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); OC.Pages.open('settings'); await sleep(900); const segs = [...document.querySelectorAll('.page .seg button, .seg button')].map((b) => b.textContent); const btn = [...document.querySelectorAll('.seg button')].find((b) => b.textContent === '冬'); if (btn) btn.click(); await sleep(300); const v = OC.Store.s.settings.season; OC.Store.s.settings.season = 'auto'; return { has: ['依日期', '春', '夏', '秋', '冬'].every((t) => segs.includes(t)), v }; });
+      await closeAll();
+      check('8e 設定的「世界」區有季節選擇（依日期／春夏秋冬），選了會記住', st.has && st.v === 'winter', st);
+      await go('isle');
+    }
+
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
   await browser.close();
