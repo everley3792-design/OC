@@ -227,6 +227,10 @@
           row('upload', '匯入存檔', '從 JSON 檔還原', null, () => fileIn.click()),
           row('refresh', '重新開始', '刪除進度（保留設定）', null, async () => { if (await confirm('重新開始', '所有角色、物品與進度都會刪除，無法復原。', '刪除並重新開始', true)) { St.reset(); location.reload(); } })),
         h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '10px 4px' }, 'data-saved': '' }, ''));
+      /* 15.1: a board of the sections at the top (the device-settings principle): one tap jumps to the section */
+      const STK = { '外觀主題': 'sun', '效能': 'sparkle', '世界': 'cloud', '生活': 'users', '操作': 'hand', '聲音': 'music', '資料': 'book' };
+      requestAnimationFrame(() => { const heads = [...el.querySelectorAll('.section-title')].filter((t) => STK[t.firstChild && t.firstChild.textContent]);
+        el.prepend(h('div.set-board', null, ...heads.map((t) => { const zh = t.firstChild.textContent; return h('button.set-tile', { on: { click: () => { haptic('tick'); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); } } }, OC.UI.sticker(STK[zh]), h('small', null, zh === '外觀主題' ? '外觀' : zh)); }))); });
     },
     refresh(p) {
       const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf);
