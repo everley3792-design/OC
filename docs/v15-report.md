@@ -34,10 +34,10 @@
 
 | 項目 | 指令 | 結果 |
 |---|---|---|
-| 15.0 驗收（新） | `node game/tests/v15/run.js`（4 個情境，點選的部分用真實觸控） | RESULT_V15 |
-| 14.x／13.0／12.0／11.0／10.x／8.0 | `v14`…`v8` | RESULT_OLD |
-| 桌寵（遊戲端） | `node game/tests/pet/run.js` | RESULT_PET |
-| 第四～六階段 | `life`／`world`／`play` | RESULT_PHASES |
+| 15.0 驗收（新） | `node game/tests/v15/run.js`（4 個情境，點選的部分用真實觸控） | 16/16 通過 |
+| 14.x／13.0／12.0／11.0／10.x／8.0 | `v14`…`v8` | v14 23/23、v12 45/45、v11 41/41 通過；v13 35/36（1c 跟著角色換地點，時序）；v8 45/46（6c 長按在慢幀時被當成點一下）；**v10 7/9：兩項是 15.0 造成的**——(1) 選單剛打開 0.35 秒內點選單外面不會關掉（防誤觸擋太多了）→ 已修正：外面的新手指一律關閉，只有選單裡的按鈕要等；(2) 測試在 0.3 秒時按按鈕 → 測試改成等 0.45 秒。修正後 v10 單獨重跑見 15.1 報告 |
+| 桌寵（遊戲端） | `node game/tests/pet/run.js` | 64/65（16c，最近幾輪反覆出現、單獨跑會過） |
+| 第四～六階段 | `life`／`world`／`play` | world 74/74、life 52/52 通過；**play 在情境 1 中斷**（點角色頭上的請求泡泡後，請求表單沒有出現，等了 30 秒逾時，後面的情境都沒跑）——在目前的程式上單獨重跑情境 1 時泡泡可以點開；play 整套在 15.1 的回歸重跑 |
 | Kotlin 單元測試 | `cd android && gradle -PcoreOnly=true test` | 這一輪沒有改 Kotlin（75 個，上一輪全過） |
 | APK | `gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk` | 建置成功；`verifyDebugApk` 通過（v2／v3 簽章、Manifest：targetSdk 35、specialUse、無無障礙／QUERY_ALL_PACKAGES）；versionCode 21、versionName 0.15.0-alpha。**Debug 簽章；沒有在實機或模擬器上執行過** |
 

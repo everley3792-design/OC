@@ -13,7 +13,7 @@
   function ctex(key, w, h, draw, rep) { if (texCache[key]) return texCache[key]; const t = OC.Env.texture(w, h, draw, rep); t.userData.cached = true; return (texCache[key] = t); }
   const TM = {};
   /** cached Lambert material with a cached map */
-  function tmat(key, map) { if (TM[key]) return TM[key]; const m = new THREE.MeshLambertMaterial({ color: '#FFFFFF', map }); m.userData.cached = true; return (TM[key] = m); }
+  function tmat(key, map) { if (TM[key]) return TM[key]; const m = new THREE.MeshLambertMaterial({ color: '#FFFFFF', map }); m.userData.cached = true; m.userData.key = key; /* which texture it is (for diagnostics and tests) */ return (TM[key] = m); }
 
   // ---------------- textures ----------------
   const plankTex = (base) => ctex('plank' + base, 128, 128, (x, w, h) => { x.fillStyle = base; x.fillRect(0, 0, w, h); const r = rng(4); for (let i = 0; i < 8; i++) { x.fillStyle = `rgba(${r() > 0.5 ? '255,255,255' : '90,50,20'},${0.05 + r() * 0.06})`; x.fillRect(0, i * 16, w, 16); x.fillStyle = 'rgba(90,50,20,.22)'; x.fillRect(0, i * 16 + 15, w, 1.5); x.fillRect(((i * 37) % 4) * 32, i * 16, 1.5, 16); } }, [1 / 48, 1 / 48]);

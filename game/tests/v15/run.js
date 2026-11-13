@@ -157,6 +157,54 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('4c 相簿頁列出拍過的照片', r.cells === 1, { cells: r.cells });
     }
 
+    // ================= 5. 15.1 pages: apartment, passport, walls & floor, fitting room, settings board, creator =================
+    if (want(5)) {
+      await closeAll(); await page.evaluate(() => OC.App.tab('char')); await wait(page, 1300);
+      const a = await page.evaluate(() => { const rooms = [...document.querySelectorAll('.apt-room')]; return { n: rooms.length, chars: OC.Chars.all().length, names: rooms.filter((r) => !r.classList.contains('vacant')).map((r) => r.querySelector('.apt-plate b').textContent), me: (document.querySelector('.apt-room.me .apt-plate b') || {}).textContent, active: OC.Chars.name(OC.Chars.active()), vacant: !!document.querySelector('.apt-room.vacant'), drawn: [...document.querySelectorAll('.apt-room:not(.vacant) canvas')].every((cv) => { const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 3; i < d.length; i += 64) if (d[i] > 40) n++; return n > 30; }) }; });
+      await shot(page, '5-apartment');
+      const pr = await page.evaluate(async () => { document.querySelector('.apt-room:not(.vacant)').click(); await new Promise((r) => setTimeout(r, 900)); const el = OC.Pages.pages.profile.el; return { open: el.classList.contains('open'), strip: (el.querySelector('.pass-strip b') || {}).textContent, no: (el.querySelector('.pass-no') || {}).textContent }; });
+      await shot(page, '5-passport'); await closeAll();
+      check('5a 角色頁是公寓：每位角色一扇窗（畫出角色、門牌與名字），操控中的那間有標記，最後一間是「空房間」可以新增角色；點窗戶打開護照式檔案', a.n === a.chars + 1 && a.names.length === a.chars && a.me === a.active && a.vacant && a.drawn && pr.open && /島民護照/.test(pr.strip) && /^No\. \d{6}$/.test(pr.no), { a, pr });
+      /* walls and floor of the home */
+      await page.evaluate(() => OC.WorldUI.travel('home', { instant: true })); await page.waitForFunction(() => OC.World.area && OC.World.area.id === 'home', null, { timeout: 40000 }); await wait(page, 1500);
+      const w = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), roomColors = () => { const cols = new Set(); OC.World.root.traverse((o) => { if (o.isMesh && o.material && o.material.color) cols.add('#' + o.material.color.getHexString(THREE.SRGBColorSpace)); if (o.isMesh && o.material && o.material.userData && o.material.userData.key) cols.add(String(o.material.userData.key).toLowerCase());   /* walls and floors are textures: their key names the colours */ }); return cols; };
+        const before = roomColors(); document.querySelector('.rail-btn[aria-label="佈置模式"]').click(); await sleep(500);
+        const btn = [...document.querySelectorAll('.deco-bar .btn')].find((b) => b.textContent === '牆壁與地板'); btn.click(); await sleep(600);
+        [...document.querySelectorAll('.swatch')].find((b) => b.textContent === '薄荷').click(); await sleep(2200);
+        const after = roomColors(), saved = JSON.stringify(OC.Store.s.surfaces);
+        [...document.querySelectorAll('.deco-bar .btn')].find((b) => b.textContent === '牆壁與地板').click(); await sleep(600);
+        [...document.querySelectorAll('.sheet .btn')].find((b) => b.textContent === '恢復原本的樣子').click(); await sleep(2200);
+        const reset = roomColors(); document.querySelector('.rail-btn[aria-label="佈置模式"]').click();
+        return { mintBefore: [...before].some((k) => k.includes('#e9f5ef')), mintAfter: [...after].some((k) => k.includes('#e9f5ef')), creamBack: [...reset].some((k) => k.includes('wl#fff1de')), saved, cleared: !OC.Store.s.surfaces.home, area: OC.World.area.id };
+      });
+      await page.evaluate(() => OC.WorldUI.travel('isle', { instant: true })); await page.waitForFunction(() => OC.World.area && OC.World.area.id === 'isle', null, { timeout: 40000 });
+      check('5b 在家裡的佈置模式可以換牆壁與地板（真的重建了房間的顏色、存起來）；「恢復原本的樣子」回到原本的顏色', !w.mintBefore && w.mintAfter && /e9f5ef/i.test(w.saved) && w.creamBack && w.cleared && w.area === 'home', w);
+      /* the fitting room */
+      await closeAll();
+      const f = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms)), me = OC.Chars.active(), look0 = JSON.stringify(me.look);
+        OC.Pages.open('shop', { shop: 'clothes' }); await sleep(900);
+        const item = [...document.querySelectorAll('.shop-item')][0]; item.click(); await sleep(900);
+        const st = document.querySelector('.fit-stage'); return { stage: !!st, wear: st && st.classList.contains('wear'), label: st && st.textContent, lookSame: JSON.stringify(OC.Chars.active().look) === look0 };
+      });
+      await shot(page, '5-fitting'); await closeAll();
+      check('5c 服裝店的購買畫面是試衣間：操控中的角色穿著這件衣服（用副本畫，角色本身沒有被改）', f.stage && f.wear && /試穿中/.test(f.label) && f.lookSame, f);
+      /* settings board and the creator's first step */
+      const g = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+        OC.Pages.open('settings'); await sleep(900); const tiles = [...document.querySelectorAll('.set-tile')].map((b) => b.textContent);
+        const pg = OC.Pages.pages.settings.el; pg.scrollTop = 0; [...document.querySelectorAll('.set-tile')].find((b) => b.textContent === '資料').click(); await sleep(1200);
+        const head = [...pg.querySelectorAll('.section-title')].find((t) => t.textContent.startsWith('資料')); const top = head.getBoundingClientRect().top;
+        OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); await sleep(300);
+        OC.Creator.start(); await sleep(1200); const cards = [...document.querySelectorAll('.cr-choice')]; cards[1].click(); await sleep(300);
+        const on = document.querySelectorAll('.cr-choice.on').length, hasStk = cards.every((c) => c.querySelector('.cr-ic .stk, .cr-ic svg'));
+        return { tiles, scrolled: pg.scrollTop > 200, top, cards: cards.length, on, hasStk };
+      });
+      await closeAll(); await page.evaluate(() => { const x = document.querySelector('.creator, .creator-flow'); if (x) x.remove(); });
+      check('5d 設定最上面是各區的方格（外觀、效能、世界、生活、操作、聲音、資料），點一下就捲到那一區；創角第一步是有貼紙的大卡片、選中的有標記', ['外觀', '效能', '世界', '生活', '操作', '資料'].every((k) => g.tiles.includes(k)) && g.scrolled && g.top < 220 && g.cards === 4 && g.on === 1 && g.hasStk, g);
+    }
+
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
   await browser.close();
