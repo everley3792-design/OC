@@ -21,7 +21,11 @@
     const from = Wd().area ? Wd().area.id : null; if (from === to) { A().tab('island'); return; }
     if (busy) { pending = to; return; } busy = true;   // a request during the fade is kept (the last one wins), not dropped
     const f = document.getElementById('fade'), lab = h('div.travel-label', null, h('b', null, p.zh), h('span', null, PL().TYPES[p.type] || ''), h('i.dots', null, h('i'), h('i'), h('i')));
-    f.replaceChildren(lab); f.style.opacity = 1; f.style.pointerEvents = 'auto';
+    /* 15.3: a puff-of-clouds transition (cream clouds roll in from the edges, the place's name in the middle); plain fade with reduced motion */
+    const reduceM = document.documentElement.classList.contains('reduce-motion') || o.instant;
+    const clouds = reduceM ? null : h('div.travel-clouds', { style: { '--pc': p.col || 'var(--accent)' } }, ...Array.from({ length: 9 }, (_, i) => h('i', { style: { '--i': i } })));
+    if (clouds) { f.classList.add('clouds'); lab.prepend(h('span.travel-stk', null, OC.UI.sticker(p.icon === 'lock' ? 'map' : ({ home: 'island', cart: 'shop', apple: 'apple', book: 'book', leaf: 'leaf', sparkle: 'sun', star: 'star' }[p.icon] || 'map')))); }
+    f.replaceChildren(...(clouds ? [clouds, lab] : [lab])); f.style.opacity = 1; f.style.pointerEvents = 'auto';
     setTimeout(() => {
       try {
         // where do we appear? interior ← parent door / parent ← child door / outdoor ← its spawn
@@ -31,7 +35,7 @@
         A().loadArea(to, pos ? Object.assign({ area: to }, pos) : null, { from });
         A().tab('island');
       } catch (e) { console.error(e); toast('移動時發生錯誤：' + e.message, 'info'); }
-      setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; busy = false; setTimeout(() => f.replaceChildren(), 400); if (pending) { const nx = pending; pending = null; if (nx !== (Wd().area && Wd().area.id)) travel(nx); } }, 220);
+      setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; busy = false; setTimeout(() => { f.replaceChildren(); f.classList.remove('clouds'); }, 400); if (pending) { const nx = pending; pending = null; if (nx !== (Wd().area && Wd().area.id)) travel(nx); } }, 220);
     }, o.instant ? 0 : 380);
   }
   /** after a place is built: visits, discoveries, visuals */

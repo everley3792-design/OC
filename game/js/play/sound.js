@@ -178,6 +178,9 @@
   function tick(dt) {
     if (!ctx || !ambState || ambState.inside || ambState.wx === 'rain' || document.hidden || !cfg().on) return;
     birdT -= dt; if (birdT > 0) return;
+    /* 15.3: the fair plays a soft, original music-box phrase (random notes of a pentatonic scale) instead of birdsong; the windmill creaks now and then */
+    if (ambState.area === 'fair' && !ambState.night) { birdT = 6 + Math.random() * 5; const sc = [523.25, 587.33, 659.25, 783.99, 880, 1046.5], n = 3 + Math.floor(Math.random() * 3); let k = Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) { k = Math.max(0, Math.min(sc.length - 1, k + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)))); tone('amb', sc[k], { t: i * 0.22, d: 0.32, v: 0.018, type: 'triangle' }); } return; }
+    if (ambState.area === 'hill' && Math.random() < 0.3) { birdT = 4 + Math.random() * 4; noise('amb', { a: 0.25, d: 0.9, v: 0.02, f: 220, to: 160, q: 6 }); return; }
     if (ambState.night) { birdT = 0.9 + Math.random() * 1.8; for (let i = 0; i < 3; i++) tone('amb', 4200 + Math.random() * 300, { t: i * 0.07, d: 0.04, v: 0.012 }); }
     else if (ambState.area !== 'beach' && ambState.area !== 'street') { birdT = 3 + Math.random() * 6; const f = 2200 + Math.random() * 1400; tone('amb', f, { d: 0.12, v: 0.02, to: f * 1.4, slide: 0.08 }); tone('amb', f * 1.2, { t: 0.15, d: 0.1, v: 0.016, to: f * 0.9, slide: 0.08 }); }
     else birdT = 4;

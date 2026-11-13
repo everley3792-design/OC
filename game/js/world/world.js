@@ -124,7 +124,7 @@
      * CPU-backed canvas up front makes the upload a plain copy. */
     const res = bbRes, c = OC.makeCanvas(res, res); c.getContext('2d', { willReadFrequently: true });
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
-    const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false }));
+    const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false })); m.material.defines = { OC_CHAR: '' };   /* 15.3: no season tint on characters */
     m.renderOrder = 2;
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeBlob(), transparent: true, depthWrite: false, fog: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
     a.c = c; a.tex = tex; a.m = m; a.sh = sh;
@@ -558,6 +558,14 @@
      * frame, very slow in a phone's WebView. It now lives in the shaders (a few instructions at the end of every built-in material),
      * so it costs next to nothing and is the same in every performance mode. */
     if (!THREE.ShaderChunk.__ocGrade) { THREE.ShaderChunk.__ocGrade = true; THREE.ShaderChunk.tonemapping_fragment += '\n{ float ocL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ); gl_FragColor.rgb = mix( vec3( ocL ), gl_FragColor.rgb, 1.2 ); gl_FragColor.rgb = max( ( gl_FragColor.rgb - 0.18 ) * 1.06 + 0.18, 0.0 ); }\n'; }
+    /* 15.3: the season tints foliage (pixels where green clearly leads) — baked in once at start, so it costs a few instructions and never
+     * recompiles; characters are left alone (their material defines OC_CHAR). Spring fresh yellow-green, summer deep green, autumn amber, winter frost. */
+    if (!THREE.ShaderChunk.__ocSeason) {
+      THREE.ShaderChunk.__ocSeason = true; const SE = OC.Clock && OC.Clock.season ? OC.Clock.season() : 'summer'; seasonId = SE;
+      const T = { spring: 'c * vec3( 1.06, 1.12, 0.92 ) + vec3( 0.03, 0.045, 0.015 )', summer: 'c * vec3( 0.84, 1.08, 0.78 )', autumn: 'vec3( c.g * 0.98 + 0.035, c.g * 0.80 + 0.005, c.b * 0.55 )', winter: 'mix( c, vec3( ocS * 1.15 + 0.16, ocS * 1.2 + 0.18, ocS * 1.25 + 0.22 ), 0.8 )' }[SE];
+      const K = { spring: '0.6', summer: '0.6', autumn: '0.62', winter: '0.68' }[SE];
+      THREE.ShaderChunk.tonemapping_fragment += '\n#ifndef OC_CHAR\n{ vec3 c = gl_FragColor.rgb; float ocS = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); float w = clamp( ( c.g - max( c.r, c.b ) ) * 4.0 - 0.25, 0.0, 1.0 ); gl_FragColor.rgb = mix( c, ' + T + ', w * ' + K + ' ); }\n#endif\n';
+    }
     R = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false });
     R.debug.checkShaderErrors = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
     R.outputColorSpace = THREE.SRGBColorSpace; R.shadowMap.enabled = true; R.shadowMap.type = quality.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
@@ -593,7 +601,7 @@
     OC.Models.night.lamps.forEach((l) => { if (l.L) l.L.visible = lampsLit && q.lights !== false; });
     if (bbChanged) { bbRes = bbTarget(); actors.forEach(resizeActorCanvas); }
   }
-  let last = 0, envCur = null, camTarget = null;
+  let last = 0, envCur = null, camTarget = null, seasonId = null;
   /** move actors without rendering (the world is covered by a page) — keeps the life simulation moving */
   function tickActors(dt) { if (!area) return; for (const a of actors.slice()) updateActor(a, dt); }
   /** camera follows another actor (observe / important events); null = back to the player */
@@ -659,7 +667,7 @@
     init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H, dx: x.c.x, dy: x.c.z * SIN }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
-    get root() { return root; }, get camCenter() { return { x: camX + panX, y: camY + panY }; }, get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
+    get root() { return root; }, get season() { return seasonId; }, get camCenter() { return { x: camX + panX, y: camY + panY }; }, get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },
     set hourFn(f) { hourFn = f; }, set weatherFn(f) { weatherFn = f; }, get hourFn() { return hourFn; }, get weatherFn() { return weatherFn; }, set reduce(v) { reduce = v; }, set hooks(h) { hooks = h; },
     recenter() { panX = 0; panY = 0; follow = true; },
     /** camera modes: classic | follow | focus | free (cine is entered by shot()) */

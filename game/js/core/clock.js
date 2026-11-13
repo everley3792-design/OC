@@ -42,5 +42,9 @@
       phase: phase(h), phaseZh: PHASE_ZH[phase(h)], wx: weather(), wxZh: WX_ZH[weather()], wxIcon: WX_ICON[weather()],
     };
   }
-  OC.Clock = { cycleWeather, hour, phase, weather, autoWeather, label, dayKey, WEATHERS, WX_ZH, WX_ICON, PHASE_ZH, PRESET_HOUR };
+  /* 15.3: the island's season — from the calendar month (northern hemisphere) unless the player picked one (settings.season).
+   * It is read once when the game starts (the world's colours are baked into the shaders), so a change shows after a restart. */
+  const SEASONS = ['spring', 'summer', 'autumn', 'winter'], SEASON_ZH = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+  function season(d = new Date()) { let q = null; try { q = new URLSearchParams(location.search).get('season'); } catch (e) { /* no location */ } const s = SEASONS.includes(q) ? q : OC.Store.s && OC.Store.s.settings && OC.Store.s.settings.season;   /* ?season=… previews a season (tests, screenshots) */ if (SEASONS.includes(s)) return s; const m = d.getMonth() + 1; return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
+  OC.Clock = { cycleWeather, hour, phase, weather, autoWeather, label, dayKey, season, SEASONS, SEASON_ZH, WEATHERS, WX_ZH, WX_ICON, PHASE_ZH, PRESET_HOUR };
 })();

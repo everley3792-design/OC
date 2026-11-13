@@ -11,6 +11,10 @@
   const { place, inBlob, blobPts, slab, stoneTiles, grassField } = H;
   const { mat, add, rbox, sphere, cyl, cone, fuse } = Mo;
 
+  /* 15.3: bulbs that light up at night (driven by the same night rig as house windows); one material per colour, registered once */
+  const GLOW = {};
+  function glow(col) { const m = GLOW[col] || (GLOW[col] = mat(col, { p: { emissive: new THREE.Color(col), emissiveIntensity: 0 } })); if (!Mo.night.windows.includes(m)) Mo.night.windows.push(m); return m; }   /* the list is cleared on every area load */
+
   // ======================= models =======================
   /** a stone windmill; returns { group, sails } — the sails turn (ctx.tick) */
   function windmill() {
@@ -73,7 +77,7 @@
     const ring = new THREE.Group(); ring.position.y = 0; g.add(ring);
     const cano = new THREE.Group(); cano.position.y = 55;
     add(cano, cone(54, 18, 16), pink, 0, 9, 0); add(cano, cyl(54, 54, 5, 16), white, 0, -2, 0);
-    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; add(cano, sphere(3.6, 8, 6), i % 2 ? pink : mint, Math.cos(a) * 54, -6, Math.sin(a) * 54); }
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; add(cano, sphere(3.6, 8, 6), i % 2 ? glow('#FFD8E6') : glow('#D8FFF4'), Math.cos(a) * 54, -6, Math.sin(a) * 54); }
     add(cano, sphere(5, 12, 8), gold, 0, 20, 0);
     fuse(cano); ring.add(cano);
     const horses = [];
@@ -103,7 +107,7 @@
     const wheel = new THREE.Group(); wheel.position.set(0, C, 0); g.add(wheel);
     for (const z of [-7, 7]) { add(wheel, Mo.geo('fwrim' + R, () => new THREE.TorusGeometry(R, 1.6, 6, 48)), steel, 0, 0, z, { cast: true }); add(wheel, Mo.geo('fwrim2' + R, () => new THREE.TorusGeometry(R * 0.45, 1.1, 6, 32)), steel, 0, 0, z); }
     for (let i = 0; i < 12; i++) { const sp = add(wheel, rbox(1.4, R * 2, 1.4, 0.4), steelLo, 0, 0, i % 2 ? 7 : -7); sp.rotation.z = (i / 12) * Math.PI * 2; }
-    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; add(wheel, sphere(1.8, 6, 5), mat(['#F26B5B', '#F7C83F', '#7FD8C4', '#A58BE0'][i % 4], { p: { emissive: '#000000' } }), Math.cos(a) * R, Math.sin(a) * R, 8.5, { cast: false }); }
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; add(wheel, sphere(1.8, 6, 5), glow(['#F26B5B', '#F7C83F', '#7FD8C4', '#A58BE0'][i % 4]), Math.cos(a) * R, Math.sin(a) * R, 8.5, { cast: false }); }
     add(wheel, sphere(5, 12, 10), mat('#F7C83F'), 0, 0, 0);
     fuse(wheel);
     const cabins = [], cols = ['#F26B5B', '#F7C83F', '#7FD8C4', '#A58BE0', '#62B5E5', '#F29AB4', '#92D680', '#F5A84B'];
@@ -125,8 +129,8 @@
     add(g, rbox(120, 64, 4, 2), cream, 0, 42, -24);
     for (const s of [-1, 1]) { add(g, rbox(8, 70, 8, 3), gold, s * 58, 45, -18); for (let k = 0; k < 5; k++) add(g, rbox(6, 56, 3, 2.6), k % 2 ? cur : curLo, s * (48 - k * 4.4), 40, -20 + k * 0.6); }
     add(g, rbox(126, 12, 10, 4), cur, 0, 82, -18); add(g, rbox(128, 3, 11, 1), gold, 0, 76, -18);
-    for (let i = 0; i < 9; i++) add(g, sphere(2, 8, 6), gold, -48 + i * 12, 88.5, -18);
-    for (const x of [-40, 40]) { add(g, cyl(2, 3, 14, 8), mat('#5A5A6A'), x, 17, 18); add(g, sphere(4, 10, 8), mat('#FFF1B0'), x, 25, 18); }
+    for (let i = 0; i < 9; i++) add(g, sphere(2, 8, 6), glow('#FFE08A'), -48 + i * 12, 88.5, -18);
+    for (const x of [-40, 40]) { add(g, cyl(2, 3, 14, 8), mat('#5A5A6A'), x, 17, 18); add(g, sphere(4, 10, 8), glow('#FFF1B0'), x, 25, 18); }
     fuse(g);
     const sg = Mo.sign('星光舞台', '#D8505A', 48); sg.position.set(0, 82, -12.5); g.add(sg);
     return g;
