@@ -22,6 +22,7 @@
 - **14.0（0.14.0-alpha）統一風格與打磨**：整個 App **只有一種介面風格**「島日和」（奶油紙、暖棕字、薄荷綠＝可按、陽光黃＝已選；白天／夜晚是同一套設計的兩個調色盤；風格切換已移除）、HUD 小膠囊、彩色導覽列、背包口袋格、交易紀錄（餘額／今日／分日）、桌寵中心的「桌面」預覽、圖片角色用手指直接裁切／移動／縮放、樹／杉樹／灌木／岩石／房屋正面重新建模、**靜態模型依材質合併（`Models.fuse`，小島繪製呼叫 557 → 約 250）**、**桌寵行為全部搬進 `core/pet/PetActor`（純 Kotlin、有單元測試），原生視窗只負責顯示**、新增「去睡一下／叫醒」。**原生層仍未經實機驗證。** 驗收：`node game/tests/v14/run.js`；逐頁檢視：`node game/tests/v14/shots.js`。紀錄：`docs/v14-report.md`。
 - **14.1（0.14.1-alpha）修正卡頓**：調色從「畫布上的 CSS 濾鏡」改到著色器、光暈層不用混合模式、白天關掉路燈點光源、陰影每兩幀更新且只有「高」用柔邊、載入地點時預先編譯著色器、「平衡」會自動降解析度、HUD／泡泡只在改變時寫 DOM；`core/pet/PetStage`（多隻桌寵一起做的事）；房屋主體／攤位／橋重新建模；工坊改成工具方格。**手機上是否還卡沒有驗證。** 紀錄：`docs/v14.1-report.md`。
 - **14.2（0.14.2-alpha）**：玩家回報平均約 20 fps。角色看板改用 CPU 畫布（上傳貼圖不用從 GPU 讀回）、一幀最多重畫兩個角色、待機每秒重畫 2 次、花圃的花合成一叢（小島繪製呼叫約 250 → 約 140）、自動降級多一級（關陰影與草）、「顯示 FPS」顯示每幀時間／繪製時間／角色重畫／呼叫數／解析度／降級、拿掉 14.1 加的 WebView 硬體圖層。**手機上是否改善仍未驗證。** 紀錄：`docs/v14.1-report.md` 的「一之二」。
+- **15.0（0.15.0-alpha）互動模型與介面骨架**（計畫 15.0–15.3，保留 2D 角色）：**點選 ≠ 執行**（`OC.Pick`：點物件只出現動作卡，按了才做；卡片／環狀選單／對話選項剛出現 0.35 秒不接受按壓；設定「點一下就做」可回到舊行為）、動作清單（`OC.Queue`，左上可逐項取消）、操控標記、「日常」改成口袋手機（App 主畫面）、拍照模式與相簿（`OC.Photo`）。紀錄：`docs/v15-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -30,6 +31,7 @@
 game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
+  js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
   js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（任務/成就/目標規則；12.0 起沒有居民）
@@ -61,6 +63,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
+  tests/v15/          run.js：15.0 驗收 1–4（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿）
   tests/v14/          run.js：14.x 驗收 1–8（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正、14.1 效能、14.2 角色貼圖與效能數字）；shots.js：逐頁截圖（淺色＋深色，檢視用）
   tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
@@ -83,6 +86,7 @@ node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
 node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v15/run.js [1 2 …]            # 15.0 驗收（約 4 分鐘）
 node game/tests/v14/run.js [1 2 …]            # 14.0 驗收（約 3 分鐘）
 node game/tests/v14/shots.js <輸出目錄> both   # 逐頁截圖（淺色＋深色；用眼睛檢查用）
 node game/tests/v13/run.js [1 2 …]            # 13.0 驗收（約 12 分鐘；可用 OC_URL 指向別的連接埠）
@@ -92,7 +96,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.14.2-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -197,3 +201,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **14.1 效能規則**：(1) 亮度 0 的光仍然要算——不用的光設 `visible = false`（路燈：`lampsLit`，白天關）；改變「看得見的光的數量」會換著色器，所以兩種狀態都在 `loadArea` 結尾用 `R.compile` 先編好。(2) `R.debug.checkShaderErrors = false`，不要打開。(3) 陰影貼圖只有 `quality.soft`（「高」）每幀更新＋柔邊，其餘每兩幀＋硬邊。(4) 主迴圈裡每幀執行的東西不得無條件寫 DOM 或組長字串：先比對再寫（HUD 每 200 ms、泡泡位置變了才寫）。(5) 「平衡」的自動降解析度在 `app.js` 的 `adaptStep`（只降不升、最多兩級、自動化執行時關閉）；新的效能模式欄位要同時在 `perfOf` 與這裡處理。v14 測試 7 檢查這些。
 - **14.1 桌寵**：多隻一起做的事（幀率節流、雙人動作、測試雙人、App 情境、提醒播報）只寫在 `core/pet/PetStage.kt` 並補單元測試；`OverlayPetService` 只呼叫 `stage.frameCap/step/appContext/announce/testPair` 並把回傳的 `Cmd` 交給對應的 `PetWindow.carry()`。
 - **14.2 效能規則**：(1) 會被上傳成 WebGL 貼圖的 2D 畫布，第一次 `getContext('2d')` 就要帶 `{ willReadFrequently: true }`（CPU 畫布；GPU 畫布上傳時要讀回，手機上很慢）。(2) `paintActor` 一幀最多兩次（`paintsLeft`），操控中的角色與正在被摸的不受限。(3) 會各自擺動的小東西不要每個一組網格——同一叢合成一個再擺（花圃：`flowerBed` 的 `cluster`）；v14 測試 5 要求整個小島 ≤ 200 個繪製呼叫。(4) 不要對 WebView 設 `setLayerType`。(5) `World.perfStats()` 的可重設計數器只給 FPS 讀數用，測試用 `totalPaints／totalFrames`。(6) `adaptStep` 有三級，第三級關陰影、草、點光源。
+
+- **15.0 點選 ≠ 執行**：世界裡的東西被點一下時，`onTap` 只呼叫 `describe(it)` 取得名稱與動作，交給 `OC.Pick.show()` 顯示動作卡；**不得**再讓單點直接走過去執行（設定 `quickTap` 開啟時例外）。新的可互動物件類型要在 `describe()` 加一筆（名稱、說明、動詞、`run`）。任何新出現在手指下的選單（卡片、環、選項、表單）都要 `OC.Pick.guard(el)`，按鈕處理要先檢查 `OC.Pick.armed(el)`。舊的測試套件經 harness 預設 `quickTap: true`；新預設由 v15 測試（真實觸控）。
+- **15.0 動作清單**：玩家安排的活動一律 `OC.Queue.add(id, act)`（不要直接 `Brain.command`，否則會跳過清單）；清單存在 `c.life.q15`，最多 4 個等候；交給引擎只在 `Sim.onStep` 且角色沒有被保留、沒有玩家安排的事時。
+- **15.0 拍照**：照片一律 `OC.Assets.put`（kind `photo`），`S().photos` 只放 id／時間／地點／濾鏡／相框；拍照模式是唯一允許在 `#world` 上用 CSS `filter` 的地方（只在模式開著時，`close()` 一定要清掉）。
