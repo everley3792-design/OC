@@ -764,9 +764,24 @@
   function decoBanner(v) {
     if (decoEl) { decoEl.remove(); decoEl = null; }
     if (!v) return;
-    decoEl = h('div.toast', { style: { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 'calc(var(--sat) + 104px)', zIndex: 33, animation: 'none', pointerEvents: 'auto' } }, icon('sofa', 's'), '佈置模式：點家具移動，或把背包裡的家具拖到地上', h('button.icon-btn', { 'aria-label': '結束佈置', style: { width: '32px', height: '32px' }, on: { click: () => setDecorate(false) } }, icon('close', 's')));
+    decoEl = h('div.toast.deco-bar', { style: { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 'calc(var(--sat) + 104px)', zIndex: 33, animation: 'none', pointerEvents: 'auto' } }, icon('sofa', 's'), '佈置模式：點家具移動，或把背包裡的家具拖到地上', (Wd.area && OC.Areas[Wd.area.id] && OC.Areas[Wd.area.id].interior && Wd.area.decor) ? h('button.btn.s', { style: { marginLeft: '6px' }, on: { click: () => surfaceSheet(Wd.area.id) } }, '牆壁與地板') : null, h('button.icon-btn', { 'aria-label': '結束佈置', style: { width: '32px', height: '32px' }, on: { click: () => setDecorate(false) } }, icon('close', 's')));
     $('#app').append(decoEl);
   }
+  /* 15.1: paint the walls and the floor of a room you decorate (free — it is paint, not an item; it changes how the room is built, so
+   * the room is rebuilt in place behind a short fade; the characters keep doing what they were doing) */
+  const WALLS = [['#FFF1DE', '#FBE3C7', '奶油'], ['#E9F5EF', '#D3EBDD', '薄荷'], ['#FDE7EE', '#F7CFDC', '櫻花'], ['#E7EEFB', '#D2DEF5', '晴空'], ['#F3EEE4', '#E3D8C4', '亞麻'], ['#E6DCF5', '#D3C4EC', '薰衣草']];
+  const FLOORS = [['#E2B27A', null, '原木'], ['#C99A6B', null, '深木'], ['#F2E3C9', null, '淺木'], [null, ['#F5E6D3', '#E8D3BA'], '格子磚'], [null, ['#D9EFE7', '#BFE3D6'], '薄荷磚'], [null, ['#F7DCE3', '#EEC3CF'], '粉格']];
+  function surfaceSheet(id) {
+    const cur = (S().surfaces = S().surfaces || {})[id] || {};
+    sheet('牆壁與地板', (b, api) => {
+      const sw = (bg, label, on, fn) => h('button.swatch' + (on ? '.on' : ''), { 'aria-label': label, on: { click: () => { haptic('tick'); fn(); api.close(); } } }, h('i', { style: { background: bg } }), h('small', null, label));
+      const apply = (patch) => { S().surfaces[id] = Object.assign({}, S().surfaces[id] || {}, patch); St.touch('rooms'); const pos = { x: player.x, y: player.y }; fadeThen(() => loadArea(id, pos)); toast('換好了', 'sofa'); };
+      b.append(h('div.muted', null, '牆壁'), h('div.swatches', null, ...WALLS.map(([w, st, zh]) => sw(`linear-gradient(180deg, ${w} 0 60%, ${st} 60%)`, zh, cur.wall === w, () => apply({ wall: w, stripe: st })))),
+        h('div.muted', { style: { marginTop: '12px' } }, '地板'), h('div.swatches', null, ...FLOORS.map(([f, t, zh]) => sw(t ? `repeating-conic-gradient(${t[0]} 0 25%, ${t[1]} 0 50%) 0 0 / 14px 14px` : f, zh, t ? JSON.stringify(cur.tile) === JSON.stringify(t) : cur.floor === f && !cur.tile, () => apply(t ? { tile: t, floor: null } : { floor: f, tile: null })))),
+        h('button.btn.ghost.block', { style: { marginTop: '12px' }, on: { click: () => { delete S().surfaces[id]; St.touch('rooms'); api.close(); const pos = { x: player.x, y: player.y }; fadeThen(() => loadArea(id, pos)); } } }, '恢復原本的樣子'));
+    });
+  }
+  function fadeThen(fn) { const f = $('#fade'); if (!f) { fn(); return; } f.style.opacity = 1; setTimeout(() => { try { fn(); } finally { setTimeout(() => { f.style.opacity = 0; }, 80); } }, 260); }
   let placeBar = null;
   // ---------- placement (per place; decor places only): move · rotate · scale · undo / redo · store ----------
   const room = () => OC.Places.room(Wd.area.id);

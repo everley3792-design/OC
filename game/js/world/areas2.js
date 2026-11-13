@@ -23,7 +23,9 @@
       spots: o.spots || [], exits: [{ to: o.parent, x: D.x, y: R.y1 - 2, label: o.exitZh || '出去' }],
       build(ctx) {
         ctx.bounds = area.bounds;
-        const sh = Mo.room({ w: R.x1 - R.x0, d: R.y1 - R.y0, h: o.wallH || 48, floor: o.floor, tile: o.tile, wall: o.wall, stripe: o.stripe, trim: o.trim, curtain: o.curtain, windows: o.windows || [], door: 0, mat: o.mat });
+        /* 15.1: a place you can decorate can also have its walls and floor painted (S().surfaces[id] = { wall, stripe, floor, tile }) */
+        const sf = (o.decor && OC.Store.s && OC.Store.s.surfaces && OC.Store.s.surfaces[o.id]) || {};
+        const sh = Mo.room({ w: R.x1 - R.x0, d: R.y1 - R.y0, h: o.wallH || 48, floor: sf.tile ? null : (sf.floor || o.floor), tile: sf.tile || (sf.floor ? null : o.tile), wall: sf.wall || o.wall, stripe: sf.stripe || o.stripe, trim: o.trim, curtain: o.curtain, windows: o.windows || [], door: 0, mat: o.mat });
         sh.userData.noContact = true;   // the room shell is not an object standing on the ground
         place(ctx, sh, D.x, (R.y0 + R.y1) / 2, 0, 0);
         // dark surroundings so the cut-away room reads as an interior
