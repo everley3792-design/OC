@@ -18,21 +18,32 @@
   // ============================== roster ==============================
   Pg().define('char', '角色', {
     headRight: () => h('button.icon-btn', { 'aria-label': '匯入角色包', on: { click: () => OC.Library.importPackFile() } }, icon('download')),
+    /* 15.1: the roster is an apartment house (the cosy sim-life principle: everyone has a window, and you can see what they are up to).
+     * Every character has a room — its window shows the character, its name, what it is doing and little tags; the last window is an
+     * empty room with a sign: move a new character in. Tapping a window opens the passport; ⋯ opens the options (move up / down). */
     build(p, el) {
-      p.list = h('div.vstack', { style: { gap: '10px' } });
-      el.append(h('button.btn.primary.block', { on: { click: async () => { const c = await OC.Creator.start({}); if (c) Pg().open('profile', { id: c.id }); } } }, icon('plus', 's'), '新增角色'), T('我的角色', '長按拖曳可排序'), p.list);
+      p.list = h('div.apt-floors');
+      el.append(h('div.apt', null, h('div.apt-roof', null, h('b', null, '晴日公寓'), h('small', null, '')), p.list, h('div.apt-ground', null, h('span.apt-door'))));
     },
     refresh(p) {
-      const all = Ch().all();
-      p.list.replaceChildren(...all.map((c) => {
+      const all = Ch().all(), night = OC.Clock.phase() === 'night';
+      const sig = JSON.stringify([all.map((c) => [c.id, c.updated, Ch().name(c), moodOf(c), statusOf(c).map((x) => x[0]).join()]), S().activeId, night]);
+      if (p._sig === sig) return; p._sig = sig;
+      p.el.querySelector('.apt-roof small').textContent = `${all.length} 位住戶`;
+      const room = (c, n) => {
         const tags = statusOf(c).map(([t, k]) => h('span.tag' + (k ? '.' + k : ''), null, t));
-        const card = h('div.card.char-card', { 'data-id': c.id, style: { display: 'flex', gap: '12px', alignItems: 'center', padding: '12px' } },
-          thumb(c), h('div', { style: { flex: 1, minWidth: 0 } }, h('b', { style: { fontSize: 'var(--fs-l)' } }, Ch().name(c)), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, `${Ch().typeTitle(c)}・${moodOf(c)}`), h('div.hstack', { style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, ...tags)),
-          h('button.icon-btn', { 'aria-label': `${Ch().name(c)} 的選項`, on: { click: (e) => { e.stopPropagation(); menu(c); } } }, icon('more')));
-        card.addEventListener('click', (e) => { if (card.dataset.dragged) { delete card.dataset.dragged; return; } if (!e.target.closest('button')) Pg().open('profile', { id: c.id }); });
-        dragReorder(card, p);
-        return card;
-      }));
+        const w = h('div.apt-room' + (S().activeId === c.id ? '.me' : '') + (c.status.onIsland ? '' : '.away') + (night ? '.lit' : ''), { 'data-id': c.id, role: 'button', tabindex: 0, 'aria-label': `${Ch().name(c)}的房間・${moodOf(c)}` },
+          h('div.apt-win', null, h('span.apt-curtain.l'), h('span.apt-curtain.r'), thumb(c, 160), h('span.apt-sill')),
+          h('div.apt-plate', null, h('span.apt-no', null, String(101 + Math.floor(n / 2) * 100 + (n % 2))), h('b', null, Ch().name(c))),
+          h('small.apt-doing', null, moodOf(c)), h('div.apt-tags', null, ...tags),
+          h('button.icon-btn.apt-more', { 'aria-label': `${Ch().name(c)} 的選項`, on: { click: (e) => { e.stopPropagation(); menu(c); } } }, icon('more')));
+        w.addEventListener('click', (e) => { if (!e.target.closest('button')) { haptic('tick'); Pg().open('profile', { id: c.id }); } });
+        w.addEventListener('keydown', (e) => { if (e.key === 'Enter') Pg().open('profile', { id: c.id }); });
+        return w;
+      };
+      const vacant = h('button.apt-room.vacant', { 'aria-label': '空房間：新增角色', on: { click: async () => { haptic('tick'); const c = await OC.Creator.start({}); if (c) Pg().open('profile', { id: c.id }); } } },
+        h('div.apt-win', null, h('span.apt-sign', null, OC.UI.sticker('home'), h('b', null, '空房間'), h('small', null, '點一下，讓新角色入住'))), h('div.apt-plate', null, h('b', null, '＋ 新增角色')));
+      p.list.replaceChildren(...all.map(room), vacant);
     },
   });
   function dragReorder(card, p) {
@@ -51,6 +62,8 @@
         S().activeId !== c.id ? row('hand', '設為目前操控角色', '在小島上操控這位 OC', null, () => { Ch().setActive(c.id); done(`現在操控：${Ch().name(c)}`, 'person'); }) : null,
         S().activeId !== c.id ? row('island', c.status.onIsland ? '離開小島' : '加入小島', c.status.onIsland ? '回家休息，不會出現在島上' : '會在島上散步、和你打招呼', null, () => { c.status.onIsland = !c.status.onIsland; Ch().save(c); done(c.status.onIsland ? '加入小島了' : '回家休息了', 'island'); }) : null,
         row('paw', '桌寵設定', OC.PetSync.on().includes(c.id) ? '在桌面上的成員・外觀、動作、對話' : '大小、自主行動、動畫、對話', null, () => { api.close && api.close(); Pg().open('petone', { id: c.id }); }),
+        (() => { const ids = Ch().all().map((x) => x.id), k = ids.indexOf(c.id); const mv = (d) => { ids.splice(k + d, 0, ids.splice(k, 1)[0]); Ch().reorder(ids); done(d < 0 ? '往前搬了一間' : '往後搬了一間', 'home'); };
+          return h('div.hstack', { style: { gap: '8px', padding: '8px 12px' } }, h('span.grow.muted', null, '房間順序'), h('button.btn.s', { disabled: k <= 0, on: { click: () => mv(-1) } }, '往前'), h('button.btn.s', { disabled: k >= ids.length - 1, on: { click: () => mv(1) } }, '往後')); })(),
         row('edit', '編輯角色', null, null, () => { api.close(); Pg().open('charedit', { id: c.id }); }),
         row('film', '動畫配置', null, null, () => { api.close(); Pg().open('charedit', { id: c.id, tab: 'anims' }); }),
         row('copy', '複製角色', '外觀、個性、動畫設定都會複製', null, () => { const d = Ch().duplicate(c.id); done(`已複製為「${Ch().name(d)}」`, 'copy'); }),
@@ -69,7 +82,9 @@
     build(p, el) {
       p.cv = h('canvas', { width: 320, height: 320 }); p.top = h('div'); p.body = h('div');
       p.ptab = 'info'; p.tabs = seg([['info', '檔案'], ['life', '生活'], ['grow', '成長'], ['rel', '關係'], ['mem', '日誌']], 'info', (v) => { p.ptab = v; p.refresh(p); });
-      el.append(h('div.card', null, h('div.hero', null, h('div.portrait', null, p.cv), p.top)), h('div.hstack', { style: { marginTop: '12px' } }, h('button.btn.primary.block', { on: { click: () => Pg().open('charedit', { id: p.params.id }) } }, icon('edit', 's'), '編輯角色'), h('button.btn.block', { on: { click: () => Pg().open('charedit', { id: p.params.id, tab: 'anims' }) } }, icon('film', 's'), '動畫')), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body);
+      /* 15.1: the header is the character's island passport (a strip with the island's name and a resident number, a stamped photo, the traits as badges) */
+      p.passNo = h('span.num.pass-no');
+      el.append(h('div.card.passport', null, h('div.pass-strip', null, OC.UI.sticker('island', 's'), h('b', null, '晴日島　島民護照'), p.passNo), h('div.hero', null, h('div.portrait', null, p.cv, h('span.pass-stamp', { 'aria-hidden': 'true' }, '晴日')), p.top)), h('div.hstack', { style: { marginTop: '12px' } }, h('button.btn.primary.block', { on: { click: () => Pg().open('charedit', { id: p.params.id }) } }, icon('edit', 's'), '編輯角色'), h('button.btn.block', { on: { click: () => Pg().open('charedit', { id: p.params.id, tab: 'anims' }) } }, icon('film', 's'), '動畫')), h('div', { style: { marginTop: '12px' } }, p.tabs), p.body);
       OC.App.live(p.cv, () => ({ char: Ch().get(p.params.id), pose: { face: 0.2 } }));
     },
     refresh(p) {
@@ -78,6 +93,7 @@
       if (p.params.tab) { p.ptab = p.params.tab; p.params.tab = null; } p.tabs.set(p.ptab); p.params.id = c.id;
       const P = c.profile, pers = c.personality;
       p.el.querySelector('h1').textContent = Ch().name(c);
+      { let hh = 0; for (const ch of c.id) hh = (hh * 31 + ch.charCodeAt(0)) >>> 0; p.passNo.textContent = 'No. ' + String(hh % 1000000).padStart(6, '0'); }
       p.top.replaceChildren(h('h2', null, P.name || '無名氏'), OC.Growth && OC.Growth.titleOf(c) ? h('div.title-chip', null, '「' + OC.Growth.titleOf(c) + '」') : null, P.nickname ? h('div.muted', null, `暱稱：${P.nickname}`) : null, h('div.tag.teal', { style: { marginTop: '4px' } }, Ch().typeTitle(c)), h('div.muted', { style: { marginTop: '4px', fontSize: 'var(--fs-s)' } }, moodOf(c)), h('div.hstack', { style: { gap: '4px', marginTop: '6px', flexWrap: 'wrap' } }, ...statusOf(c).map(([t, k]) => h('span.tag' + (k ? '.' + k : ''), null, t))));
       const kv = (k, v) => (v ? h('div.hstack', { style: { padding: '6px 0', borderBottom: '1px solid var(--line)' } }, h('span.muted', { style: { width: '72px', flex: 'none' } }, k), h('span', { style: { flex: 1 } }, v)) : null);
       const chips = (arr, k = 'accent') => (arr.length ? h('div.hstack', { style: { flexWrap: 'wrap', gap: '6px' } }, ...arr.map((t) => h('span.tag.' + k, null, t))) : h('span.faint', null, '（未設定）'));

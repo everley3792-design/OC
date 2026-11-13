@@ -186,3 +186,40 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .album-cell { aspect-ratio: 9 / 16; border-radius: var(--r-s); overflow: hidden; background: var(--surface-2); box-shadow: 0 2px 0 var(--lip); }
 .album-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .album-big { width: 100%; max-height: 60vh; object-fit: contain; border-radius: var(--r-m); background: var(--surface-2); display: block; }
+
+/* ---- 15.1 roster: the apartment house ---- */
+.apt { margin: 4px auto 0; max-width: 460px; }
+.apt-roof { position: relative; height: 64px; margin: 0 -6px; display: grid; place-content: center; justify-items: center; color: var(--on-sun);
+  background: var(--coral); border-radius: 22px 22px 6px 6px; box-shadow: inset 0 -6px 0 rgba(0, 0, 0, .1), 0 3px 0 var(--lip); clip-path: polygon(4% 100%, 12% 0, 88% 0, 96% 100%); }
+.apt-roof b { font-size: var(--fs-l); letter-spacing: .12em; color: #FFF9E3; } .apt-roof small { font-size: var(--fs-xs); color: #FFF0D6; }
+.apt-floors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 12px; background: var(--surface-2); background-image: repeating-linear-gradient(0deg, transparent 0 22px, var(--line) 22px 23px); box-shadow: inset 0 0 0 3px var(--surface-3); }
+.apt-room { position: relative; display: grid; justify-items: center; gap: 4px; padding: 10px 8px 10px; border-radius: var(--r-m); background: var(--surface); box-shadow: var(--hl), var(--toy); text-align: center; min-height: 196px; transition: transform var(--t-spring) var(--spring); }
+.apt-room:active { transform: scale(.97); transition-duration: var(--t-press); }
+.apt-win { position: relative; width: 100%; aspect-ratio: 1.1; border-radius: 12px 12px 6px 6px; overflow: hidden; display: grid; place-items: end center;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-mid)); box-shadow: inset 0 0 0 4px #E9D6B2, inset 0 0 0 6px var(--lip); }
+.apt-room.lit .apt-win { background: linear-gradient(180deg, #FFE1A1, #FFC979); }
+.apt-room.away .apt-win canvas { opacity: .35; filter: grayscale(.6); }
+.apt-win canvas { width: 82% !important; height: auto !important; aspect-ratio: 1; background: none !important; border-radius: 0 !important; position: relative; z-index: 1; }
+.apt-curtain { position: absolute; top: 4px; bottom: 30%; width: 18%; background: var(--pink); opacity: .85; border-radius: 0 0 40% 40%; z-index: 2; } .apt-curtain.l { left: 4px; } .apt-curtain.r { right: 4px; }
+.apt-sill { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #E9D6B2; z-index: 2; }
+.apt-plate { display: flex; align-items: center; gap: 6px; max-width: 100%; } .apt-plate b { font-size: var(--fs-m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apt-no { font: 900 10px var(--font-num); padding: 1px 6px; border-radius: 6px; background: var(--sun-soft); color: var(--on-sun); }
+.apt-doing { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.apt-tags { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; } .apt-tags .tag { font-size: 10px; padding: 1px 7px; }
+.apt-more { position: absolute; top: 4px; right: 4px; z-index: 3; width: 36px; height: 36px; background: var(--surface); border-radius: 50%; box-shadow: 0 2px 0 var(--lip); }
+.apt-more::after { content: ""; position: absolute; inset: -6px; }
+.apt-room.me { box-shadow: inset 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip), var(--shadow-1); }
+.apt-room.vacant { background: transparent; box-shadow: inset 0 0 0 2.5px var(--line-strong); border: 0; }
+.apt-room.vacant .apt-win { background: var(--surface-2); box-shadow: inset 0 0 0 3px var(--line-strong); place-items: center; }
+.apt-sign { display: grid; justify-items: center; gap: 2px; color: var(--ink-2); } .apt-sign .stk { width: 36px; height: 36px; opacity: .8; } .apt-sign small { font-size: 10.5px; padding: 0 6px; }
+.apt-ground { height: 26px; margin: 0 -6px; background: var(--surface-3); border-radius: 0 0 14px 14px; display: grid; place-items: end center; box-shadow: 0 3px 0 var(--lip); }
+.apt-door { width: 44px; height: 22px; border-radius: 12px 12px 0 0; background: #B9885A; }
+:root[data-theme="dark"] .apt-win { box-shadow: inset 0 0 0 4px #7D6A50, inset 0 0 0 6px var(--lip); } :root[data-theme="dark"] .apt-sill { background: #7D6A50; }
+
+/* ---- 15.1 profile: the island passport ---- */
+.card.passport { padding: 0; overflow: hidden; background: var(--surface); background-image: repeating-linear-gradient(135deg, transparent 0 10px, var(--dots) 10px 11px); }
+.pass-strip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--accent); color: var(--on-accent); }
+.pass-strip b { flex: 1; font-size: var(--fs-s); letter-spacing: .14em; } .pass-strip .stk { width: 22px; height: 22px; } .pass-no { font-size: var(--fs-xs); opacity: .9; letter-spacing: .06em; }
+.card.passport .hero { padding: 14px; }
+.card.passport .portrait { position: relative; border-radius: 14px; box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 2px var(--line-strong); background: linear-gradient(180deg, var(--sky-top), var(--sky-low)); }
+.pass-stamp { position: absolute; right: -10px; bottom: -8px; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font: 800 11px var(--font-ui); letter-spacing: .1em; color: var(--coral); border: 2.5px solid var(--coral); transform: rotate(-14deg); opacity: .8; background: color-mix(in srgb, var(--surface) 55%, transparent); }
