@@ -2,9 +2,10 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.15.0-alpha（15.0）
+## 目前版本 0.15.1-alpha（15.1）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.15.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.15.0-alpha-debug.apk)
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.15.1-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.15.1-alpha-debug.apk)
+- 15.1：晴日公寓（角色頁）、島民護照、家裡的牆壁與地板、商店試衣間、設定區塊方格、創角大卡片。紀錄：[`docs/v15.1-report.md`](docs/v15.1-report.md)
 - 15.0：點選不再等於執行（點東西先出現動作卡，按了才做；修正誤觸）、動作清單、口袋手機、拍照模式與相簿。紀錄：[`docs/v15-report.md`](docs/v15-report.md)
 - 14.2：針對「平均約 20 fps」的回報再修一輪——角色貼圖改用 CPU 畫布、限制每幀重畫數、花圃合併（小島繪製呼叫約 140）、自動降級多一級、「顯示 FPS」會顯示每幀時間等數字方便回報。**手機上是否改善仍未驗證。**
 - 14.1：修正卡頓（拿掉每幀的全螢幕合成效果、白天關掉點光源、陰影減半、預先編譯著色器、自動降解析度；**手機上的效果尚未驗證**）、桌寵的群體行為搬進可測試的核心、房屋主體／攤位／橋重新建模、工坊改成工具方格。紀錄：[`docs/v14.1-report.md`](docs/v14.1-report.md)
