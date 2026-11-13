@@ -24,7 +24,8 @@
 - **14.2（0.14.2-alpha）**：玩家回報平均約 20 fps。角色看板改用 CPU 畫布（上傳貼圖不用從 GPU 讀回）、一幀最多重畫兩個角色、待機每秒重畫 2 次、花圃的花合成一叢（小島繪製呼叫約 250 → 約 140）、自動降級多一級（關陰影與草）、「顯示 FPS」顯示每幀時間／繪製時間／角色重畫／呼叫數／解析度／降級、拿掉 14.1 加的 WebView 硬體圖層。**手機上是否改善仍未驗證。** 紀錄：`docs/v14.1-report.md` 的「一之二」。
 - **15.0（0.15.0-alpha）互動模型與介面骨架**（計畫 15.0–15.3，保留 2D 角色）：**點選 ≠ 執行**（`OC.Pick`：點物件只出現動作卡，按了才做；卡片／環狀選單／對話選項剛出現 0.35 秒不接受按壓；設定「點一下就做」可回到舊行為）、動作清單（`OC.Queue`，左上可逐項取消）、操控標記、「日常」改成口袋手機（App 主畫面）、拍照模式與相簿（`OC.Photo`）。紀錄：`docs/v15-report.md`。
 - **15.1（0.15.1-alpha）逐頁重新設計（第一批）**：角色頁＝晴日公寓（每人一間房、空房間＝新增）、檔案＝島民護照、家裡的牆壁與地板（`S().surfaces`，佈置模式）、商店購買畫面＝試衣間（用副本試穿）、設定的區塊方格、創角第一步的大卡片；修正 15.0 防誤觸擋住「點外面關閉」。地圖、桌寵中心、設計亭、創角大舞台還沒做。紀錄：`docs/v15.1-report.md`。
-- 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」、風車丘、遊樂園仍是未開放（`locked`），不要做假入口。
+- **15.2（0.15.2-alpha）兩個新地點與島上生活**：開放**風車丘**（風車磨坊商店、薰衣草田、野餐墊、草原蚱蜢）與**彩虹遊樂園**（星光舞台演唱會小遊戲、摩天輪、旋轉木馬、套圈圈、點心攤）（`js/world/areas15.js`）；打工（`OC.Jobs`）、島報／房間評分／小島評價／生日（`OC.Island`）。夢境、宣言、連續劇、願望與恐懼、人生階段、季節活動未做。紀錄：`docs/v15.2-report.md`。
+- 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
@@ -32,6 +33,7 @@
 game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
+  js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
@@ -64,7 +66,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
-  tests/v15/          run.js：15.x 驗收 1–5（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿、15.1 的頁面）
+  tests/v15/          run.js：15.x 驗收 1–7（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿、15.1 的頁面、15.2 新地點、島報與生日）
   tests/v14/          run.js：14.x 驗收 1–8（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正、14.1 效能、14.2 角色貼圖與效能數字）；shots.js：逐頁截圖（淺色＋深色，檢視用）
   tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
@@ -97,7 +99,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.2-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -209,3 +211,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **15.1 牆壁與地板**：可佈置的室內地點（`interior({ decor: true })`）讀 `S().surfaces[id] = { wall, stripe, floor, tile }` 覆蓋原本的顏色；只是外觀，不經 `OC.Tx`、不是物品；改了之後用 `loadArea(id, 目前位置)` 在淡出淡入中重建（不重建 renderer）。房間材質的 `userData.key` 標出是哪一張紋理（測試用）。
 - **15.1 試衣間**：預覽服裝一律畫在角色的**淺拷貝**上（`Object.assign({}, c, { look: … })`），絕不改 `save.chars`；真正穿上仍走 `OC.Use` 的 `wear`。
 - **15.0 防誤觸的範圍**：`OC.Pick.guard` 只擋選單**裡面的按鈕**；選單外面的新手指一律立刻關閉選單（不要再加 armed 檢查）。
+- **15.2 新地點**：風車丘、彩虹遊樂園和其他地點一樣登記在 `OC.Places.P`、場景在 `OC.Areas`（`areas15.js`）。會自己動的部分（風車葉片、旋轉木馬的轉盤與木馬、摩天輪與車廂、氣球）各自是一個已合併的群組；其餘 `fuse()`。新的設施類型（`ride`／`wheel`／`stage`／`toss`）在 `describe()`、`WorldUI.tap`、`Brain.rebuild` 各有一筆。摩天輪搭乘中 `OC.Mini.wheelRiding()` 為真：`travel()` 會拒絕、`canLead` 為假。
+- **15.2 遊樂園小遊戲**（`OC.Mini.concert／toss／wheel`）：真實輸入；演唱會在按下的瞬間用 `performance.now()` 判定（不用上一幀的時間）；演出費 key `concert:<角色>:<日>`；套圈圈先付 `TOSS_COST`、獎品 key `toss:<付款 key>`。
+- **15.2 只有玩家安排才做的活動**：`ACTS.x.cmdOnly = true`（例如 `work` 打工）——`Brain.candidates` 只在 `b.queued === act` 時提供，離線抽象生活不會選。打工工資只在 `Progress` 的 `act` 事件（`min >= 20`）時入帳，key `job:<角色>:<地點>:<日>`。
+- **15.2 島報**只能寫真的資料（回憶、帳本、天氣、特價、生日、評價）；房間評分的等級獎勵由玩家在島報領取（key `room:<地點>:<級>`）；生日蛋糕 key `bday:<角色>:<年>`；小島評價只讀資料，**不得**呼叫 `Mind.rel()`（會建立新的關係紀錄）。
