@@ -334,12 +334,25 @@
       !ks.length ? h('span.muted', null, '還不知道。慢慢地在身上來回摸，觀察牠的反應吧。') : null),
       small(`摸過 ${K.n} 次・共 ${Math.round(K.total)} 秒${OC.Touch.taste(c).ticklish ? '・好像很怕癢' : ''}`));
   }
+  /* 15.5: dreams, a declaration in progress, fears (and how far along overcoming them), the life stage */
+  function innerCard(c, refresh) {
+    const L = OC.Life15; if (!L) return null; const s = L.st(c), stg = L.stage(c), d = s.dreams[0], q = s.decl, fs = L.fears(c);
+    const bd = OC.Island && OC.Island.birthdays().find((x) => x.c.id === c.id && x.today);
+    return card(
+      h('div.hstack', { style: { gap: '8px', flexWrap: 'wrap' } }, h('span.tag.sun', null, stg ? `${stg.age} 歲・${stg.zh}` : '年齡沒有寫'),
+        bd && stg ? h('button.btn.s.primary', { on: { click: () => { const r = L.growUp(c); toast(r.ok ? `${OC.Chars.name(c)} ${r.to.age} 歲了${r.to.id !== r.from.id ? `，進入${r.to.zh}` : ''}` : r.why, r.ok ? 'heart' : 'info'); refresh && refresh(); } } }, '生日快樂：長大一歲') : null),
+      h('div', { style: { marginTop: '10px' } }, h('b', null, '最近的夢'), d ? h('p', { style: { margin: '4px 0' } }, (d.nightmare ? '（噩夢）' : '') + d.text) : small('還沒有記得的夢（好好睡一晚之後才會有）')),
+      h('div', { style: { marginTop: '10px' } }, h('b', null, '宣言'), q ? h('div', null, h('div', { style: { margin: '4px 0' } }, `「這三天${q.zh}」`), q.done ? h('span.tag.teal', null, '做到了') : q.failed ? h('span.tag', null, '這次沒做到') : bar(q.prog / q.n * 100, 'var(--sun)'), small(q.done || q.failed ? '' : `${q.prog}/${q.n}`)) : small('還沒有宣言。有幹勁的角色偶爾會在早上宣布一個小目標。')),
+      h('div', { style: { marginTop: '10px' } }, h('b', null, '怕的東西'), fs.length ? h('div.chips', { style: { marginTop: '4px' } }, ...fs.map((f) => h('span.tag' + (f.lv <= 0 ? '.teal' : ''), null, f.lv <= 0 ? `✓ 不怕${L.FEARS[f.id].zh}了` : `${L.FEARS[f.id].zh}（${'●'.repeat(f.lv)}）`))) : small('什麼都不怕。'),
+        fs.some((f) => f.lv > 0) ? small('牠在害怕的地方時，摸摸牠或抱抱牠，三次之後就不怕了。') : null));
+  }
   function lifeSection(c, refresh) {
     const g = c.growth;
     return h('div', null,
       T('現在'), emoCard(c),
       T('需求', '依遊戲時間變化'), card(...D().NEEDS.map((n) => h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('span', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))))),
       T('作息'), routineCard(c), T('喜歡被摸的地方', '摸摸看就會知道'), touchCard(c),
+      T('心裡的事', '夢、宣言、怕的東西、人生階段'), innerCard(c, refresh),
       T('願望與目標'), wishCard(c),
       T('技能'), skillCard(c),
       T('後天的習慣'), habitCard(c, refresh),

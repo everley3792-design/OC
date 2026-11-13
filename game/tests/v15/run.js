@@ -412,6 +412,53 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       /* the pet centre's tabs are checked by the pet suite (it runs with the mock Android app): tests/pet scenario 18 */
     }
 
+    // ================= 10. 15.5: dreams, declarations, fears, life stages, a serial story, festivals =================
+    if (want(10)) {
+      await closeAll();
+      /* a fresh game on a festival day in summer (?fest=1&season=summer previews them) */
+      await H.boot(page, { chars: 3, seed: 21, quickTap: false, query: '?fest=1&season=summer' });
+      await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'fixed'; S.settings.fixedHour = 11; S.settings.weather = 'clear'; if (OC.Events.current) OC.Events.end('t'); S.life.ev.lastAny = Date.now() + 3.6e6; S.play.req.nextAt = 1e12; });
+      await page.waitForFunction(() => OC.Store.count('fest_sparkler') > 0, null, { timeout: 20000 }).catch(() => {});
+      const fe = await page.evaluate(() => { const L = OC.Life15, n0 = OC.Store.count('fest_sparkler'); L.festGift(); L.festGift(); const days = [new Date(2026, 3, 18), new Date(2026, 6, 18), new Date(2026, 9, 17), new Date(2027, 0, 16), new Date(2026, 3, 15)];
+        return { today: L.festival() && L.festival().id, gift: OC.Store.count('fest_sparkler'), again: OC.Store.count('fest_sparkler') === n0, ids: days.map((d) => { const f = L.festival(d); return f ? f.id : null; }), harvest: L.harvestBonus() }; });
+      check('10a 季節活動：週末是節日（春花之祭、夏夜煙火、秋豐收祭、冬燈之祭；平日不是）；節日當天送一份禮物，只送一次；豐收祭才有收成加成', fe.today === 'fireworks' && fe.gift === 1 && fe.again && JSON.stringify(fe.ids) === JSON.stringify(['flowers', 'fireworks', 'harvest', 'lights', null]) && fe.harvest === 0, fe);
+      /* fireworks at night outdoors (effects on) */
+      await page.evaluate(() => { const S = OC.Store.s.settings; window.__perf = S.perf; S.perf = 'high'; OC.App.applyPerf(); S.fixedHour = 21; });
+      const fw = await page.waitForFunction(() => OC.Ambient.fireworks > 0, null, { timeout: 60000 }).then(() => true).catch(() => false);
+      await shot(page, '10-fireworks');
+      await page.evaluate(() => { const S = OC.Store.s.settings; S.fixedHour = 11; S.perf = window.__perf; OC.App.applyPerf(); });
+      check('10b 夏夜煙火：節日晚上在戶外看得到煙火（特效開著時）', fw, fw);
+      /* dreams: a night's sleep → a dream from its own life, remembered, told once when it is near */
+      const dr = await page.evaluate(() => { const L = OC.Life15, c = OC.Chars.active(); OC.Mind.remember(c, { type: 'activity', imp: 0.7, text: '在星砂海灘看了一整個下午的海', key: 't15dream' });
+        OC.Progress.emit('act', { oc: c.id, act: 'sleep', min: 480 }); let d = L.st(c).dreams[0]; if (!d) d = L.makeDream(c, 0.3); const mem = c.life.mem.recent.some((m) => /做了一個夢/.test(m.text));
+        L.tickNow(); return { text: d.text, kind: d.kind, mem, told: L.st(c).dreams[0].told }; });
+      check('10c 夢：睡一晚可能做夢，內容來自角色自己的回憶／朋友／地點／願望／怕的東西；記在回憶裡，靠近時會告訴你一次', dr.text && dr.text.length > 4 && dr.mem && dr.told, dr);
+      /* declarations: a small goal of its own, tracked on the progress stream, paid once */
+      const dc = await page.evaluate(() => { const L = OC.Life15, c = OC.Chars.active(); L.st(c).decl = null; const q = L.declare(c); const ev = { fish: 'fish', cook: 'cook', forage: 'forage', chat: 'chat', stage: 'concert', job: 'job', garden: 'plant' }[q.id];
+        const c0 = OC.Store.s.coins; for (let i = 0; i < q.n; i++) OC.Progress.emit(ev, { oc: c.id, item: 'f_sardine', place: 'isle', count: 1 }); const gain = OC.Store.s.coins - c0; OC.Progress.emit(ev, { oc: c.id, count: 1 });
+        return { zh: q.zh, done: L.st(c).decl.done, gain, after: OC.Store.s.coins - c0, mem: c.life.mem.recent.concat(c.life.mem.long).some((m) => /說到做到/.test(m.text)) }; });
+      check('10d 宣言：角色自己宣布三天內的小目標，做到時入帳一次（key decl:<角色>:<時間>）並留下回憶', dc.done && dc.gain > 0 && dc.after === dc.gain && dc.mem, dc);
+      /* fears: brave characters fear nothing; a fear around makes it nervous; petting it there three times and the fear is gone */
+      const fr = await page.evaluate(async () => { const L = OC.Life15, all = OC.Chars.all(), c = OC.Chars.active(), S = OC.Store.s; const counts = all.map((x) => L.fears(x).length);
+        const br = Object.assign({}, all[1], { id: 'brave_test', personality: Object.assign({}, all[1].personality, { traits: ['brave'] }), life: Object.assign({}, all[1].life, { l15: null }) });
+        L.st(c).fears = [{ id: 'thunder', lv: 3 }]; S.settings.weather = 'rain'; await new Promise((r) => setTimeout(r, 2500)); L.tickNow(); const nowFear = L.st(c).fearNow;
+        const t0 = OC.Sim.now(); for (let k = 0; k < 3; k++) { L.st(c).calmAt = -1e9; OC.Progress.emit('pet', { oc: c.id }); } S.settings.weather = 'clear';
+        return { counts, brave: L.fears(br).length, nowFear, lv: L.st(c).fears[0].lv, mem: c.life.mem.recent.concat(c.life.mem.long).some((m) => /不再怕/.test(m.text)), t0 }; });
+      check('10e 怕的東西：每個角色 0–2 個（勇敢的沒有）；在怕的情況會緊張；在那時候摸摸牠三次就不怕了（留下回憶）', fr.counts.every((n) => n >= 0 && n <= 2) && fr.brave === 0 && fr.nowFear === 'thunder' && fr.lv === 0 && fr.mem, fr);
+      /* life stages: from the age the player wrote; one year older only by the player's choice, once a year */
+      const ls = await page.evaluate(() => { const L = OC.Life15, c = OC.Chars.active(); c.profile.age = '12'; const s0 = L.stage(c); const r1 = L.growUp(c); const r2 = L.growUp(c); c.profile.age = ''; return { s0: s0 && s0.zh, r1: r1.ok && r1.to.zh + r1.to.age, r2: r2.ok, none: L.stage(c) }; });
+      check('10f 人生階段：依你寫的年齡（童年→少年→青年→成年→長者）；只有你按下才會長大一歲，一年一次；沒寫年齡就沒有階段', ls.s0 === '童年' && ls.r1 === '少年13' && ls.r2 === false && ls.none === null, ls);
+      /* the serial story: three parts carried by flags; part two asks you, and your answer picks the ending */
+      const sr = await page.evaluate(() => { const ids = OC.Events.defs().map((e) => e.id); const t2 = OC.Events.defs().find((e) => e.id === 'thank2'); const ch = t2.steps.find((s) => s[0] === 'choice'); const lines = ['ev_thank1', 'ev_thank2', 'ev_thank3', 'ev_thank3_r', 'ev_thank3w'].every((k) => OC.LifeData.LINES.some((l) => l.cat === k));
+        return { has: ['thank1', 'thank2', 'thank3', 'thank3w'].every((k) => ids.includes(k)), opts: ch[2].map((o) => o.fx.flag), lines }; });
+      check('10g 連續劇「說不出口的話」：三段（一定順序、跨天，用旗標串起來），第二段問你，你的回答決定第三段怎麼收尾', sr.has && JSON.stringify(sr.opts) === JSON.stringify(['thankGo', 'thankLetter', 'thankWait']) && sr.lines, sr);
+      /* the profile shows the inner life; the paper shows the festival, dreams and declarations */
+      const ui = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); OC.Pages.open('profile', { id: OC.Store.s.activeId, tab: 'life' }); await sleep(1200); const t = (document.querySelector('[data-page="profile"]') || {}).textContent || '';
+        OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); await sleep(300); OC.Pages.open('news'); await sleep(1000); const n = (document.querySelector('.news') || {}).textContent || ''; return { prof: ['心裡的事', '最近的夢', '宣言', '怕的東西'].every((k) => t.includes(k)), news: n.includes('今天是節日') && n.includes('夏夜煙火') && n.includes('昨晚的夢') }; });
+      await shot(page, '10-news'); await closeAll();
+      check('10h 角色檔案有「心裡的事」（夢、宣言、怕的東西、人生階段）；島報寫出今天的節日與昨晚的夢', ui.prof && ui.news, ui);
+    }
+
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
   } catch (e) { console.error(e); check('執行沒有例外', false, String(e && e.stack || e)); }
   await browser.close();

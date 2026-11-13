@@ -102,6 +102,11 @@
     soda_float: drink('冰淇淋汽水', { price: 75, sell: 28, use: { food: 4, fun: 8, energy: 4 }, flavor: { sweet: 2, fresh: 1 }, temp: 'cold', cat: 'drink', d: '汽水上面浮著一球香草冰淇淋。', src: ['遊樂園點心攤'], art: { t: 'glass', a: '#7FD8C4' } }),
     prize_bear: F('套圈圈熊熊', 'gift', { sell: 60, rarity: 2, use: { mood: 12, comfort: 6 }, tags: ['cute'], d: '套圈圈套中瓶子換來的獎品。', src: ['遊樂園套圈圈'], art: { t: 'plush', a: '#F2D28B' } }),
     prize_star: F('閃亮星星徽章', 'gift', { sell: 90, rarity: 3, use: { mood: 16 }, d: '套圈圈全中才拿得到的徽章。', src: ['遊樂園套圈圈（全中）'], art: { t: 'gem', a: '#F7C83F' } }),
+    // ---- 15.5: festival gifts (one per festival day) ----
+    fest_petal: food('花瓣餅乾', { sell: 30, rarity: 2, use: { food: 8, mood: 10 }, flavor: { sweet: 2 }, texture: 'crunchy', cat: 'dessert', d: '花之祭的禮物，餅乾上壓著一片花瓣。', src: ['花之祭（春天週末）'], art: { t: 'cookie', a: '#F7B8CF' } }),
+    fest_sparkler: F('仙女棒', 'toy', { sell: 25, rarity: 2, use: { fun: 18, mood: 8 }, d: '夏夜煙火的禮物。點起來會劈哩啪啦。', src: ['夏夜煙火（夏天週末）'], art: { t: 'gem', a: '#FFE08A' } }),
+    fest_pie: food('南瓜派', { sell: 45, rarity: 2, use: { food: 22, mood: 8 }, flavor: { sweet: 2 }, texture: 'soft', cat: 'dessert', d: '豐收祭的禮物，還是溫的。', src: ['豐收祭（秋天週末）'], art: { t: 'tart', a: '#E8913C' } }),
+    fest_cocoa: drink('星星可可', { sell: 30, rarity: 2, use: { food: 6, comfort: 14, mood: 6 }, flavor: { sweet: 2 }, texture: 'creamy', temp: 'hot', cat: 'drink', d: '燈之祭的禮物，上面撒了星星糖。', src: ['燈之祭（冬天週末）'], art: { t: 'mug', a: '#8A5A3C' } }),
     // ---- furniture ----
     sofa: F('雲朵沙發', 'furniture', { price: 420, sell: 150, fp: [2, 1], sit: true, seats: 2, d: '兩個人可以一起坐的沙發。', src: ['家具店'], art: { t: 'sofa', a: '#9FD3FF' } }),
     desk: F('小書桌', 'furniture', { price: 320, sell: 110, fp: [2, 1], verbs: ['study', 'read'], d: 'OC 會在這裡讀書、寫字。', src: ['家具店'], art: { t: 'desk', a: '#D9A26A' } }),

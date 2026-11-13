@@ -101,6 +101,10 @@
     out.money = { n: led.length, in: led.reduce((a, e) => a + ((e.get && e.get.coins) || 0), 0), out: led.reduce((a, e) => a + ((e.pay && e.pay.coins) || 0), 0) };
     for (const sh of ['food', 'furniture', 'clothes', 'gift', 'mill']) { const d = OC.Shops.deal(sh); if (d) out.deals.push({ shop: OC.Shops.SHOPS[sh].zh, item: d }); }
     out.bdays = birthdays(now).filter((x) => x.days <= 14);
+    /* 15.5: today's festival, last night's dreams, declarations in progress */
+    out.fest = OC.Life15 ? OC.Life15.festival(now) : null;
+    out.dreams = OC.Life15 ? OC.Chars.all().map((c) => ({ c, d: OC.Life15.st(c).dreams[0] })).filter((x) => x.d && x.d.day >= Sim().day() - 1).slice(0, 3) : [];
+    out.decls = OC.Life15 ? OC.Chars.all().map((c) => ({ c, q: OC.Life15.st(c).decl })).filter((x) => x.q && !x.q.done && !x.q.failed) : [];
     out.rating = rating(); out.room = roomScore('home');
     return out;
   }
@@ -114,11 +118,14 @@
     build(p, el) { p.box = h('div.news'); el.append(p.box); },
     refresh(p) {
       const N = news(), cl = roomClaimable('home');
-      if (same(p, JSON.stringify([N.date, N.stories.map((s) => s.text), N.money, N.deals.map((d) => d.item), N.bdays.map((b) => b.c.id + b.days), N.rating.stars, Math.round(N.rating.avg * 100), N.room.score, cl, S().coins]))) return;
+      if (same(p, JSON.stringify([N.fest && N.fest.id, N.dreams.map((x) => x.d.text), N.decls.map((x) => x.q.prog), N.date, N.stories.map((s) => s.text), N.money, N.deals.map((d) => d.item), N.bdays.map((b) => b.c.id + b.days), N.rating.stars, Math.round(N.rating.avg * 100), N.room.score, cl, S().coins]))) return;
       const R = N.room, RT = N.rating;
       p.box.replaceChildren(
         h('div.news-mast', null, h('b', null, '晴日島報'), h('span', null, N.date)),
         h('div.card.news-lead', null, h('div.news-kicker', null, '今天的天氣'), h('p', null, N.weather.text)),
+        N.fest ? h('div.card.news-fest', null, h('div.news-kicker', null, '今天是節日'), h('p', null, h('b', null, N.fest.zh), '　', N.fest.d)) : null,
+        N.decls.length ? h('div.card', null, h('div.news-kicker', null, '宣言進行中'), h('ul.news-list', null, ...N.decls.map((x) => h('li', null, h('b', null, name(x.c)), `　這三天${x.q.zh}（${x.q.prog}/${x.q.n}）`)))) : null,
+        N.dreams.length ? h('div.card', null, h('div.news-kicker', null, '昨晚的夢'), h('ul.news-list', null, ...N.dreams.map((x) => h('li', null, h('b', null, name(x.c)), '　' + x.d.text)))) : null,
         N.bdays.length ? h('div.card.news-bday', null, h('div.news-kicker', null, '生日'), ...N.bdays.map((x) => h('p', null, x.today ? `今天是 ${name(x.c)} 的生日！` : `${name(x.c)} 的生日還有 ${x.days} 天（${x.b.m}/${x.b.d}）`))) : null,
         h('div.card', null, h('div.news-kicker', null, '昨天的島上'),
           N.stories.length ? h('ul.news-list', null, ...N.stories.map((s) => h('li', null, h('b', null, name(s.who)), '　', s.text))) : h('p.faint', null, '昨天很安靜，沒有特別的事。'),

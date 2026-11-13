@@ -40,7 +40,22 @@
       const im = new THREE.InstancedMesh(gg, gm, 28); im.frustumCulled = false; im.count = 0; out.group.add(im);
       out.glint = { im, p: Array.from({ length: 28 }, () => ({ x: 0, y: 0, ph: Math.random() * 6.3, sp: 1.2 + Math.random() * 1.6, ok: false })) };
     }
+    /* 15.5: summer festival fireworks — bursts of 28 sparks high over the view at night, outdoors; one InstancedMesh with per-spark colours */
+    { const g = new THREE.SphereGeometry(1.6, 6, 4), m = new THREE.MeshBasicMaterial({ color: '#FFFFFF', fog: false, transparent: true, depthWrite: false });
+      const im = new THREE.InstancedMesh(g, m, 84); im.frustumCulled = false; im.count = 0; im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(84 * 3), 3); out.group.add(im);
+      out.fw = { im, bursts: [], t: 1 }; }
     return out;
+  }
+  const FW_COLS = ['#FF8FA3', '#FFD166', '#9AD7F5', '#C9B6FF', '#B5F2A5', '#FFFFFF'];
+  function fireworks(dt, Wd, show) {
+    const F = built.fw; if (!F) return; if (!show) { F.im.count = 0; F.bursts.length = 0; return; }
+    F.t -= dt; if (F.t <= 0 && F.bursts.length < 3) { F.t = 1.6 + Math.random() * 1.8; const c = Wd.camCenter; F.bursts.push({ x: c.x + (Math.random() - 0.5) * 260, y: c.y - 120 - Math.random() * 120, h: 150 + Math.random() * 60, age: 0, col: new THREE.Color(FW_COLS[Math.floor(Math.random() * FW_COLS.length)]) }); OC.Sound && OC.Sound.play && OC.Sound.play('pop', { vol: 0.2 }); }
+    let n = 0; const col = new THREE.Color();
+    for (const b of F.bursts) {
+      b.age += dt; const k = Math.min(1, b.age / 0.6), fade = Math.max(0, 1 - Math.max(0, b.age - 0.6) / 1.2);
+      for (let i = 0; i < 28 && n < 84; i++, n++) { const a = (i / 28) * Math.PI * 2, r = 44 * (1 - Math.pow(1 - k, 3)); dq.position.copy(Wd.V3(b.x + Math.cos(a) * r, b.y, 0, b.h + Math.sin(a) * r - b.age * b.age * 10)); dq.rotation.set(0, 0, 0); dq.scale.setScalar(Math.max(0.01, fade)); dq.updateMatrix(); F.im.setMatrixAt(n, dq.matrix); col.copy(b.col).multiplyScalar(0.4 + 0.6 * fade); F.im.setColorAt(n, col); }
+    }
+    F.bursts = F.bursts.filter((b) => b.age < 1.8); F.im.count = n; F.im.instanceMatrix.needsUpdate = true; if (F.im.instanceColor) F.im.instanceColor.needsUpdate = true;
   }
   function glints(dt, Wd, show, env) {
     const g = built.glint; if (!g) return;
@@ -90,6 +105,7 @@
     if (built.drift) built.drift.im.material.color.set(OC.mix(built.drift.base, '#2A3550', Math.min(0.75, (env.night || 0) * 0.8)));   /* dim at night (no glowing leaves) */
     drift(dt, Wd, !room && q.fx !== false && env.rain < 0.3, reduce);
     glints(dt, Wd, !room && q.fx !== false && env.rain < 0.5 && !reduce, env);
+    { const fe = OC.Life15 && OC.Life15.festival(); fireworks(dt, Wd, !!(fe && fe.id === 'fireworks') && !room && q.fx !== false && env.night > 0.6 && env.rain < 0.3 && !reduce); }
     // birds: a small V crosses high over the view every ~20–40 s
     birdT -= dt;
     const flock = built.birds; if (birdT < 0 && day && !reduce) { birdT = 20 + Math.random() * 20; const c = Wd.camCenter, dir = Math.random() < 0.5 ? 1 : -1; flock.st = { x: c.x - dir * 420, y: c.y - 160 - Math.random() * 120, dir, t: 0 }; }
@@ -107,5 +123,5 @@
       ring.position.copy(V3(s.x + (q2 > 0.5 ? 14 : 0), s.y, 0, sea + 0.4)); const r = (s.t % 0.9) / 0.9; ring.scale.setScalar(1 + r * 2.5); ring.material.opacity = (1 - r) * 0.55;
       if (s.t > 1.8) { fish.st = null; fish.visible = false; ring.material.opacity = 0; } }
   }
-  OC.Ambient = { update, get drift() { return built && built.drift ? { season: built.drift.season, count: built.drift.im.count } : null; }, get glints() { return built && built.glint ? built.glint.im.count : 0; } };
+  OC.Ambient = { update, get drift() { return built && built.drift ? { season: built.drift.season, count: built.drift.im.count } : null; }, get glints() { return built && built.glint ? built.glint.im.count : 0; }, get fireworks() { return built && built.fw ? built.fw.im.count : 0; } };
 })();

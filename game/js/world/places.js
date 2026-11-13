@@ -83,7 +83,7 @@
   function water(id, who) { const p = plot(id); if (!p.seed || p.growth >= 1) return false; if (p.wateredDay === day()) return 'already'; p.wateredDay = day(); p.wateredBy = who || 'player'; St.touch('garden', { id, water: true }); OC.Progress && OC.Progress.emit('water', { plot: id, by: who || 'player', oc: who && who !== 'player' ? who : undefined, place: 'isle' }); return true; }
   function harvest(id) {
     const p = plot(id); if (!p.seed || p.growth < 1) return { ok: false, why: '還沒長好' };
-    const it = OC.Style.ITEMS[p.seed], g = it.grow, me = OC.Chars.active(), n = g.n[0] + (OC.hash(p.at * 0.0137) * (g.n[1] - g.n[0] + 1) | 0) + (OC.Growth && OC.Growth.has(me, 'harvest_plus') ? 1 : 0);
+    const it = OC.Style.ITEMS[p.seed], g = it.grow, me = OC.Chars.active(), n = g.n[0] + (OC.hash(p.at * 0.0137) * (g.n[1] - g.n[0] + 1) | 0) + (OC.Growth && OC.Growth.has(me, 'harvest_plus') ? 1 : 0) + (OC.Life15 ? OC.Life15.harvestBonus() : 0);   /* 15.5: harvest festival */
     const r = OC.Tx.run(`harvest:${id}:${p.at}`, { get: { items: { [g.crop]: n } } }, `收成${OC.Style.ITEMS[g.crop].zh}`);
     if (!r.ok && !r.dup) return { ok: false, why: r.why[0] };
     const crop = g.crop; Object.assign(p, { seed: null, at: 0, growth: 0, wateredDay: -1 }); St.touch('garden', { id, harvested: crop });

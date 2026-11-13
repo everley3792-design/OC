@@ -334,3 +334,4 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .pet-desk-apps { position: absolute; left: 22px; right: 22px; top: 40px; display: grid; grid-template-columns: repeat(6, 30px); justify-content: space-between; gap: 10px; opacity: .45; pointer-events: none; }
 .pet-desk-apps i { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 2px 0 var(--lip); }
 .pet-tabs { margin: 12px 0 4px; }
+.news-fest { background: var(--accent-soft); }
