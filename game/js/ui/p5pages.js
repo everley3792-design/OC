@@ -337,6 +337,12 @@
         api.close(); p.refresh(p);
         if (shop.eatHere && (it.kind === 'food' || it.kind === 'drink')) setTimeout(() => confirm('現在就吃嗎？', `要請 OC 在${shop.zh}吃${it.zh}嗎？（也可以留在背包）`, '現在吃').then((y) => { if (y) use(id); }), 350);
       });
+      /* 15.1: a little fitting room — clothing is tried on the character you play (drawn from a copy; nothing changes until you buy and wear it),
+       * anything else stands beside it, so you can see the size and the colours together */
+      { const me = OC.Chars.active(), cv = h('canvas', { width: 320, height: 320 }), fit = it.kind === 'clothing' && !it.custom && it.slot;
+        const who = fit ? Object.assign({}, me, { look: Object.assign({}, me.look, { [it.slot]: it.val }), updated: (me.updated || 0) + 0.5 }) : me;
+        OC.CharRender.portrait(cv, who, { pose: { mouth: 'smile', action: fit ? 'happy' : 'idle', at: 0.4 } });
+        b.append(h('div.fit-stage' + (fit ? '.wear' : ''), null, h('div.fit-who', null, cv, h('small', null, fit ? `${OC.Chars.name(me)} 試穿中` : OC.Chars.name(me))), fit ? null : h('div.fit-item', null, img(id, 96)), h('span.fit-floor'))); }
       b.append(h('div.hstack', null, img(id, 72), h('div.grow', null, h('p', { style: { margin: '0 0 4px' } }, it.d || ''), ...facts(id).filter((t) => !t.startsWith('在雜貨攤')).map(small))),
         it.custom ? small('這是你在工坊做的原創商品') : null,
         h('div.hstack', { style: { marginTop: '12px' } }, h('button.icon-btn', { 'aria-label': '減少', on: { click: () => { n = Math.max(1, n - 1); sync(); } } }, icon('minus')), num, h('button.icon-btn', { 'aria-label': '增加', on: { click: () => { n = Math.min(max, n + 1); sync(); } } }, icon('plus')), h('span.grow'), tot),
