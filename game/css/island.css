@@ -247,3 +247,13 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .set-tile { display: grid; justify-items: center; gap: 3px; min-height: 64px; color: var(--ink); } .set-tile .stk { width: 36px; height: 36px; } .set-tile small { font-size: var(--fs-xs); font-weight: 800; }
 .set-tile:active .stk { transform: scale(.9); transition: transform var(--t-press); }
 .page .section-title { scroll-margin-top: calc(var(--sat) + 80px); }
+
+/* ---- 15.1 creator: the first choice ---- */
+.card.cr-choice { display: flex; gap: 14px; align-items: center; width: 100%; text-align: left; margin-top: 10px; padding: 14px; transition: transform var(--t-spring) var(--spring); }
+.card.cr-choice:active { transform: scale(.98); transition-duration: var(--t-press); }
+.cr-ic { width: 60px; height: 60px; flex: none; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(180deg, var(--sky-top), var(--sky-mid)); box-shadow: inset 0 -3px 0 var(--lip); }
+.cr-ic .stk { width: 40px; height: 40px; }
+.card.cr-choice b { font-size: var(--fs-l); } .card.cr-choice .muted { font-size: var(--fs-s); }
+.cr-tick { width: 26px; height: 26px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 2.5px var(--line-strong); }
+.card.cr-choice.on { box-shadow: inset 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip), var(--shadow-1); }
+.card.cr-choice.on .cr-tick { background: var(--sun); box-shadow: inset 0 0 0 6px var(--sun), inset 0 0 0 30px var(--surface); background: radial-gradient(circle, var(--on-sun) 0 4px, var(--sun) 5px); }

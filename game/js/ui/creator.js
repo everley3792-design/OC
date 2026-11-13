@@ -62,8 +62,10 @@
         body.replaceChildren(...build(s.id));
       }
       function card(id, title, desc, ic) {
-        return h('button.card', { style: { display: 'flex', gap: '12px', alignItems: 'center', width: '100%', textAlign: 'left', marginTop: '10px', boxShadow: method === id ? '0 0 0 2.5px var(--accent), var(--shadow-1)' : null }, on: { click: () => choose(id) } },
-          h('span', { style: { width: '44px', height: '44px', borderRadius: '14px', display: 'grid', placeItems: 'center', background: 'var(--accent-soft)', color: 'var(--accent)', flex: 'none' } }, icon(ic)), h('span', null, h('b', null, title), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, desc)));
+        /* 15.1: big choice cards with a sticker (the create-a-character principle: the first choice should feel like opening a toy box) */
+        const STK = { person: 'person', edit: 'brush', image: 'camera', layers: 'sparkle' };
+        return h('button.card.cr-choice' + (method === id ? '.on' : ''), { on: { click: () => choose(id) } },
+          h('span.cr-ic', null, OC.UI.stickerOr(STK[ic] || ic)), h('span.grow', null, h('b', null, title), h('div.muted', null, desc)), h('span.cr-tick', { 'aria-hidden': 'true' }));
       }
       async function choose(id) {
         method = id; haptic();
