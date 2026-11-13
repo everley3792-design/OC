@@ -27,6 +27,7 @@
 - **15.2（0.15.2-alpha）兩個新地點與島上生活**：開放**風車丘**（風車磨坊商店、薰衣草田、野餐墊、草原蚱蜢）與**彩虹遊樂園**（星光舞台演唱會小遊戲、摩天輪、旋轉木馬、套圈圈、點心攤）（`js/world/areas15.js`）；打工（`OC.Jobs`）、島報／房間評分／小島評價／生日（`OC.Island`）。夢境、宣言、連續劇、願望與恐懼、人生階段、季節活動未做。紀錄：`docs/v15.2-report.md`。
 - **15.3（0.15.3-alpha）視覺與動態打磨**：季節（`OC.Clock.season()`；色調烤進著色器、角色不套；`OC.Ambient` 的花瓣／落葉／雪與海面閃光）、雲朵轉場、遊樂園燈泡接夜晚燈光、遊樂園音樂盒與風車聲、逐頁檢查。地圖、桌寵中心、設計亭、創角大舞台、季節活動未做。紀錄：`docs/v15.3-report.md`。
 - **15.4（0.15.4-alpha）剩下的頁面**：創角大舞台＋分類列、設計亭（`OC.Design`：12×12 圖樣穿在上衣，`look.pattern = 'design:<id>'`，資料在 `S().designs`）、地圖路線與路程、桌寵中心三個分頁。紀錄：`docs/v15.4-report.md`。
+- **15.5（0.15.5-alpha）剩下的內容**：夢、宣言、恐懼、人生階段、季節活動（`OC.Life15`）、三段連續劇「說不出口的話」（`events15.js`）。紀錄：`docs/v15.5-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -36,6 +37,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
+  js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
@@ -68,7 +70,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
   tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
   tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
-  tests/v15/          run.js：15.x 驗收 1–8（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿、15.1 的頁面、15.2 新地點、島報與生日、15.3 季節與轉場）
+  tests/v15/          run.js：15.x 驗收 1–10（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿、15.1 的頁面、15.2 新地點、島報與生日、15.3 季節與轉場、15.4 頁面、15.5 內容）
   tests/v14/          run.js：14.x 驗收 1–8（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正、14.1 效能、14.2 角色貼圖與效能數字）；shots.js：逐頁截圖（淺色＋深色，檢視用）
   tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
   tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
@@ -101,7 +103,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.4-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.5-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -220,3 +222,4 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **15.3 季節**：`OC.Clock.season()`（`settings.season` 或日期；`?season=` 可預覽）只在 `World.init` 讀一次，色調寫進 `tonemapping_fragment`（`#ifndef OC_CHAR`）；**不要在遊戲中途改 ShaderChunk**（內建材質的程式快取不會跟著換）。看板角色的材質一定要有 `defines.OC_CHAR`。飄落物與海面閃光在 `OC.Ambient`（各一個 InstancedMesh，特效關閉／室內／減少動態時不顯示）。
 - **15.3 轉場**：`WorldUI.travel` 的雲朵只在轉場期間存在（不是常駐元素），結束時移除；減少動態時用原本的淡出淡入。夜晚會亮的材質一律放進 `OC.Models.night.windows`（每次載入地點都會清空，要在建場景時重新加入）。
 - **15.4 設計亭**（`js/ui/design15.js`）：圖樣是 144 個調色盤索引（不是圖片），存在 `S().designs`；草稿 `S().designDraft`；預覽用暫時的 `__draft`（離開時刪除）。**從外面關閉（`layer.close`，例如換分頁、返回鍵）不可以再跳確認視窗**——關閉的程式會一直關最上層，確認一跳出來就被關掉、又再問一次，會無限迴圈吃光記憶體（15.4 的教訓）；只有設計亭自己的返回鍵才問。新的全螢幕工具也要遵守。格子不要用全域已有的類別名稱（`.empty` 會帶進 padding）。
+- **15.5 內在生活**（`OC.Life15`，資料在 `c.life.l15`）：夢只在 `act` 進度事件（`sleep`、60 分以上）後產生；宣言的進度只從 `OC.Progress` 算，獎勵 `OC.Quests.grant('decl:<oc>:<made>')`；恐懼的克服只在恐懼正在發生時的 `pet`／`hug` 事件；**年齡（`profile.age`）是玩家的設定，只有玩家按「長大一歲」才改**（一年一次，key `age:<oc>:<年>`）。節日禮物 key `fest:<id>:<日期>`。`Life15.festival()`（今天，套用選擇的季節與 `?fest=1`）和 `festival(日期)`（只看日曆）不要混用。新的連續劇寫在事件資料（旗標串接），事件不給獎勵。
