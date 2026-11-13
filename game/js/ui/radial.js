@@ -44,6 +44,7 @@
         style: { '--x': Math.cos(a) * R + 'px', '--y': Math.sin(a) * R + 'px', '--x0': Math.cos(a0) * r0 + 'px', '--y0': Math.sin(a0) * r0 + 'px', '--d': 40 + i * 28 + 'ms', '--dc': (n - 1 - i) * 16 + 'ms' },
         on: { click: (e) => {
           e.stopPropagation(); if (!cur || cur.picking) return;
+          if (OC.Pick && !OC.Pick.armed(el)) return;   /* 15.0: the finger that opened the ring cannot pick from it */
           if (it.off) { haptic('error'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); toast(it.off, 'info'); return; }
           // the chosen button pops, the others tuck in, then the action runs as the ring fades
           cur.picking = true; haptic('confirm'); OC.Sound && OC.Sound.play('tap');
@@ -54,8 +55,8 @@
       ring.append(b);
     });
     el.append(ring);
-    el.addEventListener('pointerdown', (e) => { if (e.target === el) close(); });
-    document.getElementById('app').append(el);
+    el.addEventListener('pointerdown', (e) => { if (e.target === el && (!OC.Pick || OC.Pick.armed(el))) close(); });
+    document.getElementById('app').append(el); if (OC.Pick) OC.Pick.guard(el);
     const layer = { scrim: false, close: () => close() }; OC.UI.pushLayer(layer);
     cur = { el, layer, target: o.target || null, onClose: o.onClose || null, raf: 0, picking: false };
     // follow the anchor (eased) while open: the character may still be finishing a step

@@ -449,18 +449,37 @@
     if (decorate && it && it.type === 'furn') { startPlacement({ uid: it.uid }); return; }
     if (!it) { const t = Wd.nearestWalkable(r.p.x, r.p.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); else toast('那裡走不過去', 'info'); return; }
     haptic();
+    if (it.type === 'self' || it.type === 'mate') { menuFor(it, screenOf(it.type === 'self' ? player : mates[it.id])); return; }
+    if (it.type === 'furn') { if (decorate) { furnInteract(it); return; } menuFor(it, Wd.project(it.x, it.y, Wd.levelAt(it.x, it.y), 30)); return; }
+    /* 15.0: tapping a thing selects it — a card shows what you can do, and it only happens when you press that button.
+     * (Settings › 操作 › 「點一下就做」 brings the old one-tap behaviour back for those who prefer it.) */
+    const d = describe(it); if (!d) return;
+    if (S().settings.quickTap) { d.run(); return; }
+    const at = it.at || it.drop || it, lv = Wd.levelAt(at.x, at.y);
+    OC.Pick.show({ key: it.type + ':' + (it.id || it.shop || it.to || ''), title: d.title, sub: d.sub, stk: d.stk, x: (r.s || {}).x || 0, y: (r.s || {}).y || 0,
+      track: () => Wd.project(at.x, at.y, lv, 18), actions: [{ label: d.verb, primary: true, run: d.run, off: d.off }] });
+  }
+  /** what a thing in the world is called and what one press on its card does (the same actions as before 15.0, now behind a button) */
+  function describe(it) {
+    const P = OC.Places, zh = (id) => (P && P.get(id) ? P.get(id).zh : id);
     switch (it.type) {
-      case 'self': case 'mate': menuFor(it, screenOf(it.type === 'self' ? player : mates[it.id])); break;
-      case 'drop': goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)); break;
-      case 'tree': goThen(it.at.x, it.at.y, () => shakeTree(it)); break;
-      case 'bed': goThen(it.at.x, it.at.y, () => pickFlower(it)); break;
-      case 'bench': goThen(it.at.x, it.at.y, () => sit(it.seat)); break;
-      case 'home': goThen(it.at.x, it.at.y, () => travel('home')); break;
-      case 'shop': if (OC.WorldUI.tap(it)) break; goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); break;
-      case 'travel': goThen(it.at.x, it.at.y, () => tab('explore')); break;
-      case 'travelHome': goThen(it.at.x, it.at.y, () => travel('isle')); break;
-      case 'furn': if (decorate) { furnInteract(it); break; } menuFor(it, Wd.project(it.x, it.y, Wd.levelAt(it.x, it.y), 30)); break;
-      default: OC.WorldUI.tap(it);
+      case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
+      case 'tree': { const left = treeReadyIn(it); return { title: it.label || '果樹', sub: left <= 0 ? '果實成熟了' : `還要約 ${Math.ceil(left)} 分鐘長出果實`, stk: 'apple', verb: '搖一搖', run: () => goThen(it.at.x, it.at.y, () => shakeTree(it)) }; }
+      case 'bed': return { title: it.label || '花圃', sub: '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => goThen(it.at.x, it.at.y, () => pickFlower(it)) };
+      case 'bench': return { title: it.label || '長椅', sub: '坐下來休息', stk: 'sofa', verb: '坐下', run: () => goThen(it.at.x, it.at.y, () => sit(it.seat)) };
+      case 'home': return { title: '我的家', sub: '走進去', stk: 'home', verb: '進去', run: () => goThen(it.at.x, it.at.y, () => travel('home')) };
+      case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => goThen(it.at.x, it.at.y, () => tab('explore')) };
+      case 'travelHome': return { title: '回晴日島', sub: '離開這裡', stk: 'island', verb: '回去', run: () => goThen(it.at.x, it.at.y, () => travel('isle')) };
+      case 'exit': return { title: `往${zh(it.to)}`, sub: '離開這裡', stk: 'walk', verb: '前往', run: () => OC.WorldUI.tap(it) };
+      case 'shop': case 'counter': return { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); } };
+      case 'fishing': return { title: it.label || '釣魚點', sub: '甩竿試試', stk: 'fish', verb: '釣魚', run: () => OC.WorldUI.tap(it) };
+      case 'stove': return { title: it.label || '爐台', sub: '做一道料理', stk: 'apple', verb: '做料理', run: () => OC.WorldUI.tap(it) };
+      case 'plot': return { title: it.label || '菜園', sub: '播種、澆水、收成', stk: 'seed', verb: '照顧菜園', run: () => OC.WorldUI.tap(it) };
+      case 'forage': return { title: it.label || '可以採集的地方', sub: '找找有什麼', stk: 'leaf', verb: '採集', run: () => OC.WorldUI.tap(it) };
+      case 'critter': return { title: it.label || '小生物', sub: it.critter ? '輕輕靠近' : '牠跑掉了', stk: 'leaf', verb: '靠近看看', run: () => OC.WorldUI.tap(it) };
+      case 'bookshelf': return { title: it.label || '書架', sub: '挑一本書', stk: 'book', verb: '看書', run: () => OC.WorldUI.tap(it) };
+      case 'towel': return { title: it.label || '沙灘巾', sub: '躺下來曬太陽', stk: 'sun', verb: '躺一下', run: () => OC.WorldUI.tap(it) };
+      default: return { title: it.label || '這個東西', sub: null, stk: 'hand', verb: '使用', run: () => OC.WorldUI.tap(it) };
     }
   }
   function onLongPress(r) {
@@ -708,6 +727,7 @@
     const d = dlgOpen, last = d.i >= d.lines.length - 1;
     typeLine(d.lines[d.i]);
     dlg.choices.replaceChildren(); dlg.next.hidden = last && d.choices.length > 0;
+    if (last && d.choices.length && OC.Pick) OC.Pick.guard(dlg.choices);   /* 15.0: the tap that advanced the line cannot answer the question */
     if (last && d.choices.length) dlg.choices.append(...d.choices.map((c) => h('button.btn.block', { on: { click: () => { haptic(); if (d.custom) { d.choices = []; const more = c.fx(); if (more && more.length) { d.lines.push(...more); d.i++; renderLine(); } else endDialogue(); return; } c.fx(); const reply = ['（看起來很開心）', '嘿嘿，謝謝你～', '好呀！'][Math.floor(Math.random() * 3)]; dlgOpen.choices = []; dlgOpen.lines.push(reply); dlgOpen.i++; renderLine(); } } }, c.label)));
   }
   let typeT = 0;
