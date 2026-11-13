@@ -501,7 +501,7 @@
     if (window.__ocInputLog) window.__ocInputLog.push(`down ${e.pointerType} id=${e.pointerId} primary=${e.isPrimary} n=${ptrs.size} g=${gesture && gesture.kind}`);
     if (e.isPrimary) { ptrs.clear(); if (gesture && gesture.kind === 'drag') hooks.dragEnd && hooks.dragEnd(null); if (gesture && gesture.kind === 'claim') hooks.claimCancel && hooks.claimCancel(); gesture = null; }   // 10.0 fix: a lost finger-up on a character used to leave it held in the air forever
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* the pointer can already be gone (released before the handler ran) */ }
-    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now() });
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), te: e.timeStamp });
     if (ptrs.size === 1) {
       const p = ptrs.get(e.pointerId); const g = { kind: 'press', id: e.pointerId, moved: false };
       if (ghost) { const d = screenToDesign(e.clientX, e.clientY); if (Math.abs(d.x - ghost.f.x) < 26 && Math.abs(d.y - ghost.f.y) < 26) g.kind = 'ghost'; }
@@ -542,6 +542,12 @@
     if (gesture.kind === 'claim') { hooks.claimUp && hooks.claimUp(p ? screenToDesign(p.x, p.y) : null, p, e); gesture = null; return; }
     if (gesture.kind === 'drag') { hooks.dragEnd && hooks.dragEnd(p ? screenToDesign(p.x, p.y) : null); gesture = null; return; }
     if (gesture.kind === 'ghost' && gesture.moved) hooks.ghostDone && hooks.ghostDone();
+    /* 15.3: a finger that really stayed down long enough is a long press even if the page was busy the whole time (the timer could not run);
+     * the events' own timestamps say when the finger went down and up, however late they were handled */
+    if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel' && p.te != null && e.timeStamp - p.te >= 480 && hooks.longPress) {
+      if (window.__ocInputLog) window.__ocInputLog.push(`late long ${Math.round(e.timeStamp - p.te)}ms`);
+      gesture.kind = 'long'; const r = hooks.longPress(pick(p.x, p.y)); if (r && r.drag) hooks.dragEnd && hooks.dragEnd(screenToDesign(p.x, p.y)); gesture = null; return;   /* a drag that began with the finger already up ends where it started */
+    }
     if (gesture.kind === 'press' && !gesture.moved && p && e.type !== 'pointercancel') {
       const r = pick(p.x, p.y); r.s = { x: p.x, y: p.y }; if (window.__ocInputLog) window.__ocInputLog.push(`tap pick=${r.it ? r.it.type + ':' + (r.it.shop || r.it.id || '') : 'none'} ghost=${!!ghost}`);
       if (ghost) { moveGhost(r.p.x, r.p.y, ghost.f.rot || 0); hooks.ghostMoved && hooks.ghostMoved(ghost.ok); }

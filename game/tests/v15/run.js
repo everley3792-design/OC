@@ -339,7 +339,9 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('8b 戶外有飄落的花瓣／落葉／雪（夏天沒有）與海面的閃光；室內沒有', (fx.season === 'summer' ? !fx.drift : fx.drift && fx.drift.count > 0) && fx.glints > 0 && (!fxIn.drift || fxIn.drift.count === 0) && !fxIn.glints, { fx, fxIn });
       /* the cloud transition: nine clouds and the place name while moving; gone afterwards */
       const tr = await page.evaluate(() => { OC.WorldUI.travel('fair'); const f = document.getElementById('fade'); return { clouds: f.querySelectorAll('.travel-clouds i').length, cls: f.className, label: (f.querySelector('.travel-label b') || {}).textContent, stk: !!f.querySelector('.travel-stk') }; });
-      await page.waitForFunction(() => OC.World.area.id === 'fair' && !OC.WorldUI.busy, null, { timeout: 90000 }); await wait(page, 900);
+      await page.waitForFunction(() => OC.World.area.id === 'fair' && !OC.WorldUI.busy, null, { timeout: 90000 });
+      /* the clouds go 0.4 s after the move ends (a follow-up move — a character leading you on — starts its own) */
+      await page.waitForFunction(() => !OC.WorldUI.busy && !document.getElementById('fade').children.length, null, { timeout: 20000 }).catch(() => {}); await wait(page, 300);
       const tr2 = await page.evaluate(() => { const f = document.getElementById('fade'); return { left: f.children.length, cls: f.className, op: getComputedStyle(f).opacity }; });
       check('8c 換地點時是雲朵轉場（九朵雲＋地點名稱與貼紙），結束後清乾淨', tr.clouds === 9 && /clouds/.test(tr.cls) && tr.label === '彩虹遊樂園' && tr.stk && tr2.left === 0 && !/clouds/.test(tr2.cls), { tr, tr2 });
       /* the fair at night: its bulbs are on the night light rig and glow */
