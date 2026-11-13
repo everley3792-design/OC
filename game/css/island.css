@@ -133,3 +133,20 @@ body.talking #hud .hud-quest { opacity: 0; pointer-events: none; transition: opa
 /* a menu that has only just appeared does not take presses yet (see OC.Pick.guard) */
 .unarmed button, .unarmed .btn, .unarmed .radial-btn { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .pick.on .pick-dot { animation: none; } }
+
+/* ---- 15.0 the action queue (top left, under the clock) ---- */
+.hud-queue { position: absolute; left: calc(var(--sal) + 12px); top: calc(var(--sat) + 108px); display: flex; flex-direction: column; align-items: flex-start; gap: 5px; max-width: 58vw; }
+.hud-queue[hidden] { display: none; }
+.q-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 8px 0 4px; border-radius: var(--r-pill); background: var(--hud-glass); color: var(--ink); font-size: var(--fs-s); font-weight: 800; box-shadow: 0 2.5px 0 var(--lip), var(--shadow-1); position: relative; animation: rail-in 260ms var(--spring) backwards; }
+.q-chip::after { content: ""; position: absolute; inset: -7px 0; }     /* 48dp tall target around a slim chip */
+.q-chip .q-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); font: 900 11px var(--font-num); }
+.q-chip.now { background: var(--sun-soft); color: var(--on-sun); box-shadow: inset 0 0 0 2px var(--sun), 0 2.5px 0 var(--sun-lip); } .q-chip.now .q-n { background: var(--sun); color: var(--on-sun); }
+.q-chip svg { width: 14px; height: 14px; opacity: .6; }
+.q-chip:active { transform: scale(.95); transition: transform var(--t-press); }
+/* ---- 15.0 the marker over the character you play: a little leaf-drop of our own, coloured by control mode ---- */
+.ctl-mark { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; will-change: transform; }
+.ctl-mark i { position: absolute; left: -8px; top: -20px; width: 16px; height: 16px; border-radius: 2px 60% 60% 60%; transform: rotate(-135deg); background: var(--accent); box-shadow: 0 0 0 2.5px var(--surface), 0 3px 6px rgba(0, 0, 0, .25); animation: mark-bob 1.8s var(--ease-in-out) infinite; }
+.ctl-mark[data-m="manual"] i { background: var(--sun); } .ctl-mark[data-m="auto"] i { background: var(--teal); }
+@keyframes mark-bob { 50% { top: -25px; } }
+html.cinema .ctl-mark, body.talking .ctl-mark { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .ctl-mark i { animation: none; } }

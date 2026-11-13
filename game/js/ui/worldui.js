@@ -95,7 +95,7 @@
   /** the played OC uses a facility through the life engine (proper slot, alignment, animation) */
   function useBy(act, it) {
     const id = S().activeId, b = OC.Brain.get(id); if (!b) return;
-    const r = OC.Brain.command(id, act); toast(r === 'later' ? '先把手上的事做完' : `${OC.Chars.name(A().me())}：${OC.LifeData.ACTS[act].zh}`, 'sparkle'); void it;
+    const r = OC.Queue ? OC.Queue.add(id, act) : OC.Brain.command(id, act); toast(r === 'queued' ? `排進清單：${OC.LifeData.ACTS[act].zh}` : r ? `${OC.Chars.name(A().me())}：${OC.LifeData.ACTS[act].zh}` : '清單滿了，先取消一項', 'sparkle'); void it;
   }
   function doForage(it) {
     const r = PL().forage(it.area, it.i, it.kind); if (!r.ok) { toast(r.why, 'leaf'); return; }

@@ -130,7 +130,10 @@
     hud.quest = h('button.hud-quest', { 'aria-label': '今天的任務', hidden: true, on: { click: () => { haptic('tick'); tab('more'); } } }, hud.questIc, h('div.grow', null, hud.questT, hud.questS), icon('chev', 's'));
     // ≤ 6 permanent controls (name plate, weather, 3 tools, quest card); the bell only appears with notices.
     // Settings live in 日常 › 設定 and tapping your OC opens its ring menu — no duplicate buttons on the island.
-    el.append(hud.me, hud.timeBtn, h('div.hud-sys', null, hud.bell), hud.rail, hud.quest);
+    /* 15.0: the action queue of the character you play — what it is doing for you and what comes next; each entry can be cancelled */
+    hud.queue = h('div.hud-queue', { role: 'list', 'aria-label': '動作清單', hidden: true });
+    hud.mark = h('div.ctl-mark', { 'aria-hidden': 'true' }, h('i')); overlays().append(hud.mark);
+    el.append(hud.me, hud.timeBtn, hud.queue, h('div.hud-sys', null, hud.bell), hud.rail, hud.quest);
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();
@@ -155,9 +158,13 @@
   }
   function updateHUD() {
     const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
-    const key = [OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
+    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.act + x.state).join(',') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
     hud.name.textContent = OC.Chars.name(c); hud.mood.textContent = doing || OC.Mind.label(c);
+    { const ql = OC.Queue ? OC.Queue.list(c.id) : [], qk = ql.map((x) => x.act + x.state).join(',');
+      if (qk !== hud._qk) { hud._qk = qk; hud.queue.hidden = !ql.length;
+        hud.queue.replaceChildren(...ql.map((x, n) => h('button.q-chip' + (x.i < 0 ? '.now' : ''), { role: 'listitem', 'aria-label': `${x.zh}（${x.i < 0 ? (x.state === 'doing' ? '進行中' : '正要去') : '排第 ' + (n + 1)}）・點一下取消`, on: { click: () => { haptic('tick'); OC.Queue.cancel(c.id, x.i); toast(`取消：${x.zh}`, 'info'); lastHudKey = ''; } } },
+          h('span.q-n', null, x.i < 0 ? '▶' : String(n + 1)), h('span', null, x.zh), icon('close', 's')))); } }
     { const m = c.life.control || 'semi'; hud.ctl.hidden = m === 'semi'; hud.ctl.textContent = OC.LifeUI.ctlZh(m); hud.ctl.dataset.m = m; }
     hud.moodBar.style.width = Math.max(4, Math.min(100, mood)) + '%'; hud.moodBar.classList.toggle('low', mood < 30);
     hud.bell.hidden = !nn; hud.badge.textContent = nn > 9 ? '9+' : nn;
@@ -425,6 +432,10 @@
   function floatAt(x, y, lvl, text, color) { const el = h('div.float-text', { style: { color: color || 'var(--accent)' } }, text); overlays().append(el); floats.push({ el, pos: { x, y, lvl }, up: 20, t: 0, dur: 1.4 }); }
   function updateOverlays(dt) {
     if (rings.length) placeRings();
+    if (hud.mark && player) { const show = !player.hidden && !decorate && !placing, p = show ? Wd.project(player.x, player.y, player.lvl, (player.gy - player.lvl * Wd.HY) + 64 + (player.lift || 0)) : null;
+      if (show !== hud._mShow) { hud._mShow = show; hud.mark.style.visibility = show ? '' : 'hidden'; }
+      if (p && (Math.abs(p.x - (hud._mx || -9e9)) > 0.4 || Math.abs(p.y - (hud._my || -9e9)) > 0.4)) { hud._mx = p.x; hud._my = p.y; hud.mark.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`; }
+      const m = me().life.control || 'semi'; if (m !== hud._mMode) { hud._mMode = m; hud.mark.dataset.m = m; } }
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.t += dt; if (f.t > f.dur) { f.el.remove(); floats.splice(i, 1); continue; }
       const p = f.a ? Wd.project(f.a.x, f.a.y, f.a.lvl, (f.a.gy - f.a.lvl * Wd.HY) + f.up) : Wd.project(f.pos.x, f.pos.y, f.pos.lvl, f.up);
@@ -984,7 +995,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init();
+    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

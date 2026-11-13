@@ -282,7 +282,7 @@
       b.append(small('牠會照你的安排去做（正在睡覺或吃飯時會先做完）。沒有自訂動畫時使用內建動作。'),
         h('div.act-grid', { style: { marginTop: '10px' } }, ...Object.entries(D().ACTS).map(([k, x]) => {
           const denied = S().life.settings.deny.includes(k);
-          return h('button.act-btn', { disabled: denied, on: { click: () => { api.close(); const r = B().command(id, k); toast(r === 'later' ? `${name(c)}做完手上的事就去${x.zh}` : r ? `已安排：${x.zh}` : '現在無法安排', 'clock'); } } }, h('span.emoji', null, x.ic), h('span', null, x.zh));
+          return h('button.act-btn', { disabled: denied, on: { click: () => { api.close(); const r = OC.Queue ? OC.Queue.add(id, k) : B().command(id, k); toast(r === 'queued' ? `排進清單：${x.zh}（做完前面的就去）` : r ? `已安排：${x.zh}` : (OC.Queue && OC.Queue.list(id).length > OC.Queue.MAX ? '清單滿了，先取消一項' : '現在無法安排'), 'clock'); } } }, h('span.emoji', null, x.ic), h('span', null, x.zh));
         })));
     });
   }
