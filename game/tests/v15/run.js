@@ -1,5 +1,6 @@
 /* OC Shimeji 15.0 — acceptance. Usage: node game/tests/v15/run.js [1 2 …]   (http.server on :8765 first, or OC_URL)
- * 1  tapping is selecting, not doing (real touch events): things in the world, the ring menu, dialogue choices */
+ * 1  tapping is selecting, not doing (real touch events): things in the world, the ring menu, dialogue choices
+ * 6  15.2: Windmill Hill and the Rainbow Fair (facilities, concert, ring toss, Ferris wheel, carousel, mill)  7  island paper, room score, rating, birthdays */
 const path = require('path'), fs = require('fs');
 const H = require('../life/harness.js');
 const want = (n) => process.argv.length <= 2 || process.argv.slice(2).includes(String(n));
@@ -203,6 +204,119 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       });
       await closeAll(); await page.evaluate(() => { const x = document.querySelector('.creator, .creator-flow'); if (x) x.remove(); });
       check('5d 設定最上面是各區的方格（外觀、效能、世界、生活、操作、聲音、資料），點一下就捲到那一區；創角第一步是有貼紙的大卡片、選中的有標記', ['外觀', '效能', '世界', '生活', '操作', '資料'].every((k) => g.tiles.includes(k)) && g.scrolled && g.top < 220 && g.cards === 4 && g.on === 1 && g.hasStk, g);
+    }
+
+    // ================= 6. 15.2: Windmill Hill and the Rainbow Fair are real places =================
+    if (want(6)) {
+      await closeAll();
+      const go = async (id) => { await page.evaluate((id) => OC.WorldUI.travel(id), id); await page.waitForFunction((id) => OC.World.area.id === id && !OC.WorldUI.busy, id, { timeout: 90000 }); await wait(page, 800); };
+      const info = {};
+      for (const id of ['hill', 'fair']) {
+        await go(id);
+        info[id] = await page.evaluate(() => { const p = OC.App.player, types = OC.World.interacts.map((i) => i.type); return { walk: OC.World.walkable(p.x, p.y), types, calls: OC.World.renderer.info.render.calls, open: OC.Places.open(OC.World.area.id), aff: OC.Brain.dump ? null : null }; });
+        await page.evaluate(() => OC.World.camTo(null, 1.15)); await wait(page, 1500); await shot(page, '6-' + id);
+      }
+      check('6a 風車丘、彩虹遊樂園已開放、可以進入，玩家站在可走的地方；各有真的設施（磨坊商店、花田、野餐墊、採集、小生物／摩天輪、旋轉木馬、舞台、套圈圈、點心攤）',
+        info.hill.open && info.fair.open && info.hill.walk && info.fair.walk && ['shop', 'bed', 'towel', 'forage', 'critter', 'exit'].every((t) => info.hill.types.includes(t)) && ['wheel', 'ride', 'stage', 'toss', 'shop', 'exit'].every((t) => info.fair.types.includes(t)), info);
+      /* the stage card, then a concert played with real touches on the lanes */
+      await closeAll();
+      await page.evaluate(() => OC.World.camTo(null, 2)); await page.evaluate(() => Promise.race([new Promise((r) => OC.App.goThen(300, 410, r)), new Promise((r) => setTimeout(r, 60000))])); await wait(page, 1500);
+      const stage = await find('stage');
+      for (let k = 0; k < 3 && stage; k++) { await page.touchscreen.tap(stage.x, stage.y); const ok = await page.waitForFunction(() => OC.Pick.open_ && OC.Pick.key && OC.Pick.key.startsWith('stage'), null, { timeout: 8000 }).then(() => true).catch(() => false); if (ok) break; await closeAll(); await wait(page, 500); }
+      const card = await page.evaluate((st) => ({ at: st, key: OC.Pick.key, title: (document.querySelector('.pick-card b') || {}).textContent, verb: (document.querySelector('.pick-acts .btn') || {}).textContent, mini: OC.Mini.active }), stage);
+      await closeAll();
+      const coins0 = await page.evaluate(() => { OC.Progress.count('concert'); return OC.Store.s.coins; });
+      await page.evaluate(() => OC.Mini.concert(OC.World.interacts.find((i) => i.type === 'stage'))); await wait(page, 300);
+      const rect = await page.evaluate(() => OC.Mini.state.rect); const done = new Set(); let taps = 0;
+      for (let guard = 0; guard < 400; guard++) {
+        const nx = await page.evaluate((done) => { const s = OC.Mini.state; if (!s || s.done) return null; const now = (performance.now() - s.t0) / 1000; const n = s.notes.map((n, i) => Object.assign({ i }, n)).find((n) => !n.st && !done.includes(n.i) && n.t > now - 0.05); return n ? { i: n.i, lane: n.lane, ms: (n.t - now) * 1000 } : { none: true }; }, [...done]);
+        if (!nx) break; if (nx.none) { await new Promise((r) => setTimeout(r, 200)); continue; }
+        if (nx.ms > 400) { await new Promise((r) => setTimeout(r, nx.ms - 300)); continue; }
+        await new Promise((r) => setTimeout(r, Math.max(0, nx.ms - 40)));
+        await page.touchscreen.tap(rect.x + rect.width * (nx.lane + 0.5) / 3, rect.y + rect.height / 2); taps++; done.add(nx.i);
+      }
+      await page.waitForFunction(() => !OC.Mini.active, null, { timeout: 30000 }).catch(() => {});
+      const con = await page.evaluate((c0) => ({ coins: OC.Store.s.coins - c0, n: OC.Progress.count('concert'), again: (() => { const k = Object.keys(OC.Store.s.ledger.keys).find((x) => x.startsWith('concert:')); return k; })() }), coins0);
+      check('6b 點舞台只出現動作卡（「上台表演」）；演唱會用真的觸控按三條線，結束有星等、演出費（每位角色每天一次，key concert:<角色>:<日>）並送出進度事件', card.title === '星光舞台' && card.verb === '上台表演' && !card.mini && taps >= 20 && con.coins > 0 && con.n === 1 && !!con.again, { card, taps, con });
+      /* a second show the same day: still playable, no second fee */
+      const sec = await page.evaluate(async () => { const c0 = OC.Store.s.coins; const key = Object.keys(OC.Store.s.ledger.keys).find((x) => x.startsWith('concert:')); const r = OC.Tx.run(key, { get: { coins: 60 } }, 'x'); return { dup: r.dup, diff: OC.Store.s.coins - c0 }; });
+      check('6c 同一天第二次演出不會再付錢（交易 key 擋下重複）', sec.dup && sec.diff === 0, sec);
+      /* ring toss: pays 20 first; the prize matches the hits */
+      const t0 = await page.evaluate(() => ({ coins: OC.Store.s.coins, inv: ['prize_star', 'prize_bear', 'popcorn'].map((k) => OC.Store.count(k)) }));
+      await page.evaluate(() => OC.Mini.toss(OC.World.interacts.find((i) => i.type === 'toss'))); await wait(page, 300);
+      const r2 = await page.evaluate(() => OC.Mini.state.rect);
+      for (let k = 0; k < 3; k++) {
+        await page.waitForFunction(() => { const s = OC.Mini.state; return !s || (!s.flying && s.left > 0); }, null, { timeout: 30000 }).catch(() => {});
+        await page.touchscreen.tap(r2.x + 30, r2.y + 30); await page.waitForFunction(() => !OC.Mini.state || !OC.Mini.state.flying, null, { timeout: 30000 }).catch(() => {});
+      }
+      const hits = await page.evaluate(() => OC.Mini.state ? OC.Mini.state.hits : null);
+      await page.waitForFunction(() => !OC.Mini.active, null, { timeout: 20000 }).catch(() => {});
+      const t1 = await page.evaluate(() => ({ coins: OC.Store.s.coins, inv: ['prize_star', 'prize_bear', 'popcorn'].map((k) => OC.Store.count(k)), n: OC.Progress.log.find ? null : null }));
+      const got = t1.inv.map((v, i) => v - t0.inv[i]), expect = hits >= 3 ? [1, 0, 0] : hits === 2 ? [0, 1, 0] : hits === 1 ? [0, 0, 1] : [0, 0, 0];
+      check('6d 套圈圈：先付 20 星幣、真的觸控丟 3 個圈，獎品和套中數一致（3＝星星徽章、2＝熊熊、1＝爆米花、0＝沒有）', t0.coins - t1.coins === 20 && hits != null && JSON.stringify(got) === JSON.stringify(expect), { hits, got, paid: t0.coins - t1.coins });
+      /* Ferris wheel: the played OC goes up (hidden, one cabin lit) and comes back; travel is refused during the ride */
+      const w = await page.evaluate(async () => { const it = OC.World.interacts.find((i) => i.type === 'wheel'); OC.Mini.wheel(it); const up = { hidden: OC.App.player.hidden, lit: OC.World.area.wheel.cabins.filter((c) => c.userData.flag.visible).length }; OC.WorldUI.travel('isle'); await new Promise((r) => setTimeout(r, 1500)); up.stayed = OC.World.area.id === 'fair' && !OC.WorldUI.busy; return up; });
+      await page.waitForFunction(() => !OC.Mini.wheelRiding(), null, { timeout: 40000 }).catch(() => {});
+      const w2 = await page.evaluate(() => ({ hidden: OC.App.player.hidden, lit: OC.World.area.wheel.cabins.filter((c) => c.userData.flag.visible).length, holds: Object.keys((OC.Brain.get(OC.Store.s.activeId) || {}).holds || {}), walk: OC.World.walkable(OC.App.player.x, OC.App.player.y) }));
+      check('6e 摩天輪：角色坐進一節車廂（地上看不到、那一節亮燈），轉一圈回來，保留全部放開；搭乘中不能離開', w.hidden && w.lit === 1 && w.stayed && !w2.hidden && w2.lit === 0 && !w2.holds.length && w2.walk, { w, w2 });
+      /* carousel through the action list: the OC sits in a carriage */
+      let qr = null, rode = false;
+      for (let k = 0; k < 2 && !rode; k++) {
+      qr = await page.evaluate(() => OC.Queue.add(OC.Store.s.activeId, 'ride'));
+      rode = await page.waitForFunction(() => { const b = OC.Brain.get(OC.Store.s.activeId); if (!(b && b.act === 'ride' && b.st === 'do')) return false; const p = OC.App.player, it = OC.World.interacts.find((i) => i.type === 'ride'), d = Math.min(...it.seats.map(([x, y]) => Math.hypot(p.x - x, p.y - y))); window.__seat = { d, mode: p.mode }; return d < 12; }, null, { timeout: 60000, polling: 'raf' }).then(() => true).catch(() => false);
+      }   /* a walk can be abandoned when a friend blocks the way; the player then asks again */
+      await shot(page, '6-carousel');
+      const seat = await page.evaluate(() => window.__seat || null);
+      check('6f 旋轉木馬：排進動作清單後，角色走到馬車座位坐下（活動「坐旋轉木馬」）', rode && seat && seat.d < 12, { qr, seat, log: await page.evaluate(() => OC.Brain.log.filter((l) => l.who === OC.Store.s.activeId).slice(0, 4).map((l) => l.text)) });
+      await page.evaluate(() => { const id = OC.Store.s.activeId; OC.Brain.command && OC.Queue.clear && OC.Queue.clear(id); });
+      /* a part-time shift at the snack stand: the card offers it, the character works ~30 game minutes, pay arrives once that day */
+      /* the scenario runs on a fixed clock hour (game time = real time); a shift needs the day cycle running fast */
+      await page.evaluate(() => { const id = OC.Store.s.activeId, st = OC.Store.s.settings; window.__time = [st.time, st.timeSpeed]; st.time = 'cycle'; st.timeSpeed = 10; OC.Queue.clear && OC.Queue.clear(id); OC.Brain.playerAct(id); }); await wait(page, 500);
+      const jc = await page.evaluate(() => { const it = OC.World.interacts.find((i) => i.type === 'shop' && i.shop === 'fair'); OC.App.onTapForTest ? null : null; return null; });
+      const coinsJ = await page.evaluate(() => OC.Store.s.coins);
+      const jq = await page.evaluate(() => OC.Queue.add(OC.Store.s.activeId, 'work'));
+      const worked = await page.waitForFunction(() => { const b = OC.Brain.get(OC.Store.s.activeId); return b.act === 'work' && b.st === 'do'; }, null, { timeout: 120000 }).then(() => true).catch(() => false);
+      await page.waitForFunction(() => OC.Brain.get(OC.Store.s.activeId).act !== 'work', null, { timeout: 300000 }).catch(() => {}); await wait(page, 600);
+      const job = await page.evaluate((c0) => ({ gain: OC.Store.s.coins - c0, keys: Object.keys(OC.Store.s.ledger.keys).filter((k) => k.startsWith('job:')), mem: OC.Chars.active().life.mem.recent.some((m) => /打工|當了一班/.test(m.text)), auto: OC.Chars.all().filter((c) => c.id !== OC.Store.s.activeId).some((c) => OC.Brain.get(c.id) && OC.Brain.get(c.id).act === 'work'), log: OC.Brain.log.filter((l) => l.who === OC.Store.s.activeId).slice(0, 3).map((l) => l.text) }), coinsJ);
+      check('6h 打工：玩家安排後角色走到點心攤後面工作一班，結束時入帳一次（key job:<角色>:<地點>:<日>）並留下回憶；其他角色不會自己去打工', jq && worked && job.gain > 0 && job.keys.length === 1 && job.mem && !job.auto, Object.assign({ jq, worked }, job));
+      void jc; await page.evaluate(() => { const st = OC.Store.s.settings; [st.time, st.timeSpeed] = window.__time; });
+      /* the mill on the hill sells its own things; the map shows no locked pins */
+      await go('hill');
+      const mill = await page.evaluate(() => ({ stock: OC.Shops.stock('mill'), buy: OC.Shops.buy('mill', 'pinwheel', 1), fair: OC.Shops.stock('fair') }));
+      await page.evaluate(() => OC.App.tab('explore')); await wait(page, 900);
+      const map = await page.evaluate(() => ({ locked: document.querySelectorAll('.map-pin.locked').length, pins: [...document.querySelectorAll('.map-pin')].map((b) => b.getAttribute('aria-label')) }));
+      await shot(page, '6-map'); await page.evaluate(() => OC.App.tab('island')); await wait(page, 500);
+      check('6g 風車磨坊賣麵粉、麵包、小風車…（買得到）；點心攤有棉花糖、爆米花；地圖上沒有鎖住的島、兩個新地點都在', mill.buy.ok && mill.stock.includes('pinwheel') && mill.fair.includes('cotton_candy') && map.locked === 0 && map.pins.includes('風車丘') && map.pins.includes('彩虹遊樂園'), { mill, map });
+    }
+
+    // ================= 7. 15.2: the island paper, room score, island rating, birthdays =================
+    if (want(7)) {
+      await closeAll();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+        const C = OC.Chars.all(), d = new Date(), out = {};
+        /* a real memory from yesterday (the paper only prints what happened) */
+        const yd = OC.Sim.day() - 1; C[0].life.mem.recent.push({ id: 'mt1', gm: (yd) * 1440 + 600, t: Date.now() - 864e5, day: yd, place: '', type: 'activity', who: [], emo: 'happy', imp: 0.9, text: '在苔光森林釣到了雲紋錦鯉', data: null });
+        C[1].profile.birthday = `${d.getMonth() + 1}/${d.getDate()}`;
+        const cake0 = OC.Store.count('cake'); OC.Island.checkBirthdays(true); OC.Island.checkBirthdays(true); out.cake = OC.Store.count('cake') - cake0;
+        out.bdayMem = C[1].life.mem.recent.concat(C[1].life.mem.long).some((m) => /生日/.test(m.text));
+        /* room score: starter room is below tier 1; adding furniture raises it; a tier is claimed once */
+        const before = OC.Island.roomScore('home'); out.before = before.score; out.cl0 = OC.Island.roomClaimable('home').length;
+        const R = OC.Places.room('home'); ['table', 'sofa', 'clock', 'painting', 'wardrobe', 'toybox'].forEach((id, i) => R.push({ uid: 't15_' + i, id, x: 120 + i * 20, y: 380, rot: 0, sc: 1 }));
+        const after = OC.Island.roomScore('home'); out.after = after.score; out.tier = after.tier; out.cl = OC.Island.roomClaimable('home');
+        OC.Pages.open('news'); await sleep(1200);
+        out.paper = document.querySelector('.news') ? document.querySelector('.news').textContent : '';
+        const c0 = OC.Store.s.coins; const b = document.querySelector('.news-room .btn.primary'); if (b) b.click(); await sleep(400); out.gain = OC.Store.s.coins - c0;
+        out.again = OC.Island.claimRoom('home', 1); out.cl2 = OC.Island.roomClaimable('home');
+        out.rating = OC.Island.rating(); out.parse = ['3/14', '3月14日', '03-14', 'abc'].map((x) => JSON.stringify(OC.Island.parseBday(x)));
+        return out;
+      });
+      await shot(page, '7-news');
+      check('7a 島報只寫真的發生的事：昨天的回憶、帳本、天氣、今日特價、生日、小島評價、房間評分', /釣到了雲紋錦鯉/.test(r.paper) && /今天是/.test(r.paper) && /小島評價/.test(r.paper) && /房間評分/.test(r.paper) && /今日特價/.test(r.paper), r.paper.slice(0, 300));
+      check('7b 生日：資料裡的生日（例如 3/14、3月14日）當天收到一個蛋糕（一年一次，重複檢查不會再給）並留下回憶', r.cake === 1 && r.bdayMem && r.parse[0] === r.parse[1] && r.parse[1] === r.parse[2] && r.parse[3] === 'null', { cake: r.cake, mem: r.bdayMem, parse: r.parse });
+      check('7c 房間評分：新家低於第一級、多擺家具會提高；達到的等級由玩家在島報領取，只能領一次', r.cl0 === 0 && r.after > r.before && r.tier >= 1 && r.cl.length >= 1 && r.gain === 80 && r.again.dup && !r.cl2.includes(1), { before: r.before, after: r.after, tier: r.tier, gain: r.gain });
+      check('7d 小島評價 1–5 星，來自六項真實數值（家、探索、收藏、感情、菜園、回憶）並給出最弱一項的建議', r.rating.stars >= 1 && r.rating.stars <= 5 && r.rating.parts.length === 6 && r.rating.parts.every((x) => x.v >= 0 && x.v <= 1) && !!r.rating.tip, r.rating);
+      await closeAll();
     }
 
     check('沒有 JavaScript 錯誤', !errors.length, errors.slice(0, 3));
