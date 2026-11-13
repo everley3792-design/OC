@@ -679,6 +679,8 @@
     zoomTo(z) { zoomGoal = clamp(z, 1.15, 3.2); },
     /** read-only, for diagnostics and tests */
     get scene() { return scene; },
+    /** 15.0 photo mode: render the scene once more and copy it out immediately (the WebGL buffer is not kept between frames) */
+    snapshot(w, h) { const c = OC.makeCanvas(w || R.domElement.width, h || R.domElement.height); R.render(scene, cam); c.getContext('2d').drawImage(R.domElement, 0, 0, c.width, c.height); return c; },
     /** 14.2 diagnostics: character redraws / uploads and main-thread render time since the last call (the counters reset) */
     perfStats() { const o = { paints: stats.paints, paintSkips: stats.paintSkips, renderMs: stats.frames ? stats.renderMs / stats.frames : 0, frames: stats.frames, calls: R ? R.info.render.calls : 0, tris: R ? R.info.render.triangles : 0, ratio: R ? R.getPixelRatio() : 0, shadows: quality.shadows || 0, bb: bbRes, totalPaints: stats.totalPaints, totalFrames: stats.totalFrames }; stats.paints = stats.paintSkips = stats.renderMs = stats.frames = 0; return o; },
     get gpu() { try { const gl = R.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)) : 'unknown'; } catch (e2) { return 'unknown'; } },

@@ -90,11 +90,11 @@
       const todo = S().pet.tools.todos.filter((t) => !t.done).length;
       const APPS = [
         ['quests', '任務', 'flag', qc, null], ['req', '請求', 'chat', ro, null], ['ach', '成就', 'trophy', ac, null], ['coll', '圖鑑', 'collection', 0, null],
-        ['camera', '拍照', 'camera', 0, () => (OC.Photo ? OC.Photo.open() : toast('拍照模式還沒準備好', 'info'))], ['map', '地圖', 'compass', 0, () => OC.App.tab('explore')],
+        ['camera', '拍照', 'camera', 0, () => (OC.Photo ? OC.Photo.open() : toast('拍照模式還沒準備好', 'info'))], ['album', '相簿', 'book', 0, () => Pg().open('album')], ['map', '地圖', 'compass', 0, () => OC.App.tab('explore')],
         ['bag', '背包', 'bag', 0, () => Pg().open('bag')], ['shop', '商店', 'shop', 0, () => Pg().open('shop', { shop: 'general' })],
         ['ledger', '帳本', 'coin', 0, () => Pg().open('ledger')], ['goals', '小島目標', 'star', 0, () => Pg().open('goals')],
         ['products', '工坊商品', 'gift', 0, () => Pg().open('products')], ['pet', '桌寵', 'paw', 0, () => Pg().open('petcenter')],
-        ['tools', '提醒待辦', 'clock', todo, () => Pg().open('pettools')], ['settings', '設定', 'gear', 0, () => Pg().open('settings')], ['about', '關於', 'info', 0, () => Pg().open('about')]];
+        ['tools', '提醒待辦', 'clock', todo, () => Pg().open('pettools')], ['settings', '設定', 'gear', 0, () => Pg().open('settings')],];   /* 關於 lives in 設定 */
       p.tabs.replaceChildren(...APPS.map(([k, zh, stk, n, fn]) => h('button.phone-app' + (p.tab === k ? '.on' : ''), { role: fn ? 'button' : 'tab', 'aria-selected': fn ? null : String(p.tab === k), 'data-v': k, 'aria-label': zh + (n ? `（${n}）` : ''),
         on: { click: () => { haptic('tick'); if (fn) { fn(); return; } p.tab = k; p._sig = ''; p.refresh(p); } } }, h('span.phone-ic', null, OC.UI.sticker(stk), n ? h('span.badge', null, n > 9 ? '9+' : n) : null), h('small', null, zh))));
       p.head.replaceChildren(h('div.phone-bar', null, h('b.num', null, OC.Clock.label().time), h('span', null, new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'short' })), h('span.grow'), h('span.phone-coins', null, OC.UI.sticker('coin', 's'), h('b.num', null, S().coins.toLocaleString()))));
