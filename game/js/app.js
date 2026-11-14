@@ -164,10 +164,10 @@
   function hudCalm() { const el = $('#hud'); if (!el) return; el.classList.add('calm'); clearTimeout(calmT); calmT = setTimeout(() => el.classList.remove('calm'), 1100); }
   let lastHudKey = '';
   /** 16.0: play another character — nobody is moved; the view goes to where that character is */
-  function switchTo(id) {
+  function switchTo(id, keepCard) {
     const c = OC.Chars.get(id); if (!c || id === S().activeId) return;
     if (OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding()) { toast('等摩天輪轉完這一圈', 'info'); return; }
-    haptic('tick'); toggleStatus(false); OC.Chars.setActive(id); toast(`現在操控：${OC.Chars.name(c)}`, 'person'); lastHudKey = '';
+    haptic('tick'); if (!keepCard) toggleStatus(false); OC.Chars.setActive(id); toast(`現在操控：${OC.Chars.name(c)}`, 'person'); lastHudKey = '';
   }
   function switchBy(d) { const all = OC.Chars.all().filter((x) => x.status.onIsland || x.id === S().activeId); if (all.length < 2) return; const i = all.findIndex((x) => x.id === S().activeId); switchTo(all[(i + d + all.length) % all.length].id); }
   const placeOf = (c) => { const id = c.id === S().activeId ? (Wd.area && Wd.area.id) : (c.life.loc || 'isle'), pl = OC.Places && OC.Places.get(id); return { id, zh: pl ? pl.zh : '' }; };
@@ -278,7 +278,7 @@
     for (const [k, i] of Object.entries(f.bars)) { const w = Math.round(Math.max(0, Math.min(100, c.needs[k]))) + '%'; if (i.style.width !== w) i.style.width = w; i.classList.toggle('low', c.needs[k] < 25); }
     const sig = OC.Chars.all().map((x) => x.id + x.updated).join() + S().activeId;
     if (el._sig !== sig) { el._sig = sig; const all = OC.Chars.all(); f.who.hidden = all.length < 2;
-      f.who.replaceChildren(h('small.muted', null, '切換操控'), ...all.map((x) => { const cv2 = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv2, x, { pose: { mouth: 'smile' } }); return h('button.sc-pick' + (x.id === S().activeId ? '.on' : ''), { 'aria-label': '操控' + OC.Chars.name(x), on: { click: () => { if (x.id !== S().activeId) switchTo(x.id); else updateStatus(true); } } }, cv2); })); }
+      f.who.replaceChildren(h('small.muted', null, '切換操控'), ...all.map((x) => { const cv2 = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv2, x, { pose: { mouth: 'smile' } }); return h('button.sc-pick' + (x.id === S().activeId ? '.on' : ''), { 'aria-label': '操控' + OC.Chars.name(x), on: { click: () => { if (x.id !== S().activeId) switchTo(x.id, true); updateStatus(true); } } }, cv2); })); }
   }
 
   // =============================== tab bar ===============================

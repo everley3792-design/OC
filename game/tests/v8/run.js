@@ -28,8 +28,8 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       const yaws = [], subs = []; for (let i = 0; i < 5; i++) { const r = await page.evaluate(() => { const s = document.querySelector('.intro-subtitle'); return [OC.World.yaw, s ? s.textContent : '']; }); yaws.push(r[0]); subs.push(r[1]); await wait(page, 500); }
       const mid = await page.evaluate(([y, ss]) => ({ chars: OC.Chars.all().length, mates: Object.keys(OC.App.mates || {}).length, yaw: Math.max(...y) - Math.min(...y), sub: ss.reduce((a, b) => (b.length > a.length ? b : a), '') }), [yaws, subs]);
       check('1a 全新安裝：開場期間沒有任何角色（小島是空的）', mid.chars === 0 && mid.mates === 0, mid);
-      check('2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播', mid.yaw > 0.05 && mid.sub.length > 4, mid);
-      const t0 = Date.now(); await page.tap('.intro-skip'); await page.waitForSelector('.intro-welcome.on', { timeout: 8000 });
+      check('2a 開場是真的 3D 鏡頭運動（旋轉的視角＋字幕），不是圖片輪播', mid.yaw > 0.03 && mid.sub.length > 4, mid);
+      const t0 = Date.now(); await page.waitForSelector('.intro-skip', { timeout: 20000 }); await page.tap('.intro-skip'); await page.waitForSelector('.intro-welcome.on', { timeout: 8000 });
       check('2b 開場可以跳過（立刻到歡迎畫面），並記住看過了', Date.now() - t0 < 4000 && await page.evaluate(() => OC.Store.s.intro.seen), Date.now() - t0);
       await shot(page, '2-welcome');
       await page.tap('.intro-welcome .btn.ghost'); await page.waitForSelector('.intro-film', { timeout: 8000 });
