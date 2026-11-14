@@ -82,15 +82,16 @@
 
   // ======================= facilities =======================
   function goThen(it, fn) { A().goThen(it.at.x, it.at.y, fn); }
+  function direct(it, fn) { A().direct(it.at.x, it.at.y, fn); }   /* 16.0: done through the interface, no walking there first */
   function tap(it) {
     switch (it.type) {
       case 'exit': goThen(it, () => travel(it.to)); return true;
-      case 'shop': goThen(it, () => OC.Pages.open('shop', { shop: it.shop || 'general' })); return true;
-      case 'counter': goThen(it, () => OC.Pages.open('shop', { shop: it.shop || 'cafe' })); return true;
+      case 'shop': direct(it, () => OC.Pages.open('shop', { shop: it.shop || 'general' })); return true;
+      case 'counter': direct(it, () => OC.Pages.open('shop', { shop: it.shop || 'cafe' })); return true;
       case 'fishing': goThen(it, () => OC.Mini.fishing(it.water, it)); return true;
       case 'stove': goThen(it, () => OC.Mini.cooking(it)); return true;
-      case 'plot': goThen(it, () => gardenSheet(it)); return true;
-      case 'forage': goThen(it, () => doForage(it)); return true;
+      case 'plot': direct(it, () => gardenSheet(it)); return true;
+      case 'forage': direct(it, () => doForage(it)); return true;
       case 'critter': if (!it.critter) { toast('牠跑掉了…', 'leaf'); return true; } goThen(it, () => OC.Mini.critter(it)); return true;
       case 'bookshelf': goThen(it, () => useBy('read', it)); return true;
       case 'towel': goThen(it, () => useBy('nap', it)); return true;
@@ -109,7 +110,7 @@
   }
   function doForage(it) {
     const r = PL().forage(it.area, it.i, it.kind); if (!r.ok) { toast(r.why, 'leaf'); return; }
-    haptic(); A().floatText(A().player, `+${r.n} ${I(r.item).zh}`); OC.Brain.playerAct(S().activeId); OC.World.setAction(A().player, 'tend', { dur: 1.2, priority: 4 });
+    haptic(); A().floatText(A().player, `+${r.n} ${I(r.item).zh}`); if (S().settings.walkTo) { OC.Brain.playerAct(S().activeId); OC.World.setAction(A().player, 'tend', { dur: 1.2, priority: 4 }); } else A().offerUse(r.item);
     const c = A().me(); M().skill(c, 'garden', 0.6); St.stat('picked'); if (r.firsts && r.firsts.length) discovered(r.firsts);
     refreshVisuals();
   }

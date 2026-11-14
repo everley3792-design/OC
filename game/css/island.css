@@ -372,3 +372,9 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .np-more { font-size: var(--fs-xs); font-weight: 800; color: var(--ink-2); }
 .hud-time { top: calc(var(--sat) + 68px); }
 .reduce-motion .np-need { animation: none; }
+
+/* 16.0 — "use it now" after picking something up by hand */
+.use-now { position: absolute; left: 50%; bottom: calc(var(--sab) + 96px); transform: translate(-50%, 16px); opacity: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 8px; min-width: 220px; max-width: calc(100vw - 32px); border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--hl), 0 3px 0 var(--lip), var(--shadow-2); transition: transform var(--t-base) var(--spring), opacity var(--t-base); z-index: 30; }
+.use-now.on { transform: translate(-50%, 0); opacity: 1; }
+.use-now canvas { width: 36px; height: 36px; flex: none; }
+.use-now b { display: block; font-size: var(--fs-m); line-height: 1.15; } .use-now small { color: var(--ink-2); font-size: var(--fs-xs); }

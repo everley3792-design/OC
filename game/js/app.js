@@ -519,15 +519,15 @@
   function describe(it) {
     const P = OC.Places, zh = (id) => (P && P.get(id) ? P.get(id).zh : id);
     switch (it.type) {
-      case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => goThen(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
+      case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => direct(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
       case 'tree': { const left = treeReadyIn(it); return { title: it.label || '果樹', sub: left <= 0 ? '果實成熟了' : `還要約 ${Math.ceil(left)} 分鐘長出果實`, stk: 'apple', verb: '搖一搖', run: () => goThen(it.at.x, it.at.y, () => shakeTree(it)) }; }
-      case 'bed': return { title: it.label || '花圃', sub: it.item ? `可以摘一束${(Sty.ITEMS[it.item] || {}).zh || '花'}` : '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => goThen(it.at.x, it.at.y, () => pickFlower(it)) };
+      case 'bed': return { title: it.label || '花圃', sub: it.item ? `可以摘一束${(Sty.ITEMS[it.item] || {}).zh || '花'}` : '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => direct(it.at.x, it.at.y, () => pickFlower(it)) };
       case 'bench': return { title: it.label || '長椅', sub: '坐下來休息', stk: 'sofa', verb: '坐下', run: () => goThen(it.at.x, it.at.y, () => sit(it.seat)) };
       case 'home': return { title: '我的家', sub: '走進去', stk: 'home', verb: '進去', run: () => goThen(it.at.x, it.at.y, () => travel('home')) };
-      case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => goThen(it.at.x, it.at.y, () => tab('explore')) };
+      case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => direct(it.at.x, it.at.y, () => tab('explore')) };
       case 'travelHome': return { title: '回晴日島', sub: '離開這裡', stk: 'island', verb: '回去', run: () => goThen(it.at.x, it.at.y, () => travel('isle')) };
       case 'exit': return { title: `往${zh(it.to)}`, sub: '離開這裡', stk: 'walk', verb: '前往', run: () => OC.WorldUI.tap(it) };
-      case 'shop': case 'counter': { const base = { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) goThen(it.at.x, it.at.y, () => { face(player, 0, 1); OC.Pages.open('shop', { shop: 'general' }); }); } }; const jp = OC.Jobs && OC.Jobs.placeOfShop[it.shop]; if (jp && (it.type === 'counter' || it.shop !== 'cafe')) { const me = OC.Chars.active(), paid = me && OC.Jobs.paidToday(me.id, jp); base.extra = [{ label: paid ? '打工（今天已領過）' : '打工一班', run: () => { if (!OC.Queue) return; const r = OC.Queue.add(S().activeId, 'work'); toast(r === 'queued' ? '排進清單：打工' : r ? `${OC.Chars.name(me)}去打工了（約 30–40 分鐘${paid ? '；今天的工資已經領過' : ''}）` : '清單滿了，先取消一項', 'coin'); } }]; } return base; }
+      case 'shop': case 'counter': { const base = { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) direct(it.at.x, it.at.y, () => { OC.Pages.open('shop', { shop: 'general' }); }); } }; const jp = OC.Jobs && OC.Jobs.placeOfShop[it.shop]; if (jp && (it.type === 'counter' || it.shop !== 'cafe')) { const me = OC.Chars.active(), paid = me && OC.Jobs.paidToday(me.id, jp); base.extra = [{ label: paid ? '打工（今天已領過）' : '打工一班', run: () => { if (!OC.Queue) return; const r = OC.Queue.add(S().activeId, 'work'); toast(r === 'queued' ? '排進清單：打工' : r ? `${OC.Chars.name(me)}去打工了（約 30–40 分鐘${paid ? '；今天的工資已經領過' : ''}）` : '清單滿了，先取消一項', 'coin'); } }]; } return base; }
       case 'fishing': return { title: it.label || '釣魚點', sub: '甩竿試試', stk: 'fish', verb: '釣魚', run: () => OC.WorldUI.tap(it) };
       case 'stove': return { title: it.label || '爐台', sub: '做一道料理', stk: 'apple', verb: '做料理', run: () => OC.WorldUI.tap(it) };
       case 'plot': return { title: it.label || '菜園', sub: '播種、澆水、收成', stk: 'seed', verb: '照顧菜園', run: () => OC.WorldUI.tap(it) };
@@ -558,6 +558,24 @@
     mk.classList.remove('on'); void mk.offsetWidth; mk.classList.add('on'); mk.style.opacity = 1;
     mk.dataset.x = p.x; mk.dataset.y = p.y; mk._t0 = performance.now(); mk._hold = true; OC.Sound && OC.Sound.play('ping');
     positionMarker();   // right now, not on the next frame (a slow frame must never show it in the corner)
+  }
+  /* 16.0: things the PLAYER does through the interface — buying, picking something up, picking a flower, gathering, opening the map — happen
+   * at once; the character only turns to look. (Characters living on their own still walk to the shop or the thing.) The setting
+   * 'walkTo' brings the old behaviour back; activities the character itself performs (sitting, fishing, cooking, rides) still walk. */
+  function direct(x, y, fn) {
+    if (S().settings.walkTo) { goThen(x, y, fn); return; }
+    if (player && !player.path) { const dx = x - player.x, dy = y - player.y, d = Math.hypot(dx, dy); if (d > 4) face(player, dx / d, dy / d); }
+    fn();
+  }
+  /** something just went into the bag by hand: offer to use it on the spot (eat / drink / play) — one tap, or it simply stays in the bag */
+  let useNowEl = null, useNowT = 0;
+  function offerUse(id) {
+    const k = OC.Items && OC.Items.useKind ? OC.Items.useKind(id) : null; if (!['eat', 'drink', 'play'].includes(k) || !OC.Use) return;
+    if (useNowEl) useNowEl.remove(); clearTimeout(useNowT);
+    const it = Sty.ITEMS[id] || {}, cv = Sty.itemCanvas(id, 64), close = () => { if (useNowEl) { const e = useNowEl; useNowEl = null; e.classList.remove('on'); setTimeout(() => e.remove(), 200); } };
+    useNowEl = h('div.use-now', { role: 'status' }, cv, h('span.grow', null, h('b', null, it.zh || id), h('small', null, '放進背包了')),
+      h('button.btn.s.primary', { 'data-use': id, on: { click: () => { haptic('tick'); close(); OC.Use.use(id, S().activeId); } } }, k === 'play' ? '現在玩' : k === 'drink' ? '現在喝' : '現在吃'));
+    $('#app').append(useNowEl); requestAnimationFrame(() => useNowEl && useNowEl.classList.add('on')); useNowT = setTimeout(close, 5000);
   }
   function goThen(x, y, fn) { const near = Math.hypot(player.x - x, player.y - y) < 8; if (near) { fn(); return; } if (!Wd.walkTo(player, x, y, () => fn())) toast('到不了那裡', 'info'); }
   function face(a, dx, dy) { a.tFace = Math.max(-1, Math.min(1, dx)); a.tBack = dy < 0 ? 1 : 0; }
@@ -592,12 +610,12 @@
   }
   function pickDrop(d) {
     if (!Wd.drops.includes(d)) return;
-    const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`);
+    const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`); offerUse(d.id);
     if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick', 1, { item: d.id }); if (Gm.has('curious') && Math.random() < 0.25 && OC.Tx.run((d.key || 'drop') + ':bonus', { get: { items: { [d.id]: 1 } } }, '好奇心多找到').ok) { toast('好奇心發作，多找到一個！', 'sparkle'); } }
     if (tray.classList.contains('open')) renderSlots();
   }
   function pickFlower(it) {
-    face(player, 0, -1); const k = it.id, last = S().world.trees[k] || 0, left = 8 - (Date.now() - last) / 60000;
+    if (S().settings.walkTo) face(player, 0, -1); const k = it.id, last = S().world.trees[k] || 0, left = 8 - (Date.now() - last) / 60000;
     if (left > 0) { toast(`花還沒長好，約 ${Math.ceil(left)} 分鐘後再來`, 'leaf'); return; }
     const fl = it.item || 'flower'; S().world.trees[k] = Date.now(); OC.Tx.run(`flower:${k}:${S().world.trees[k]}`, { get: { items: { [fl]: 1 } } }, '摘花'); St.needs({ mood: 3 }); St.stat('picked'); Gm.progress('pick', 1, { item: fl });
     floatAt(it.x, it.y, it.lvl || 0, `+1 ${Sty.ITEMS[fl].zh}`); haptic();
@@ -1147,6 +1165,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { adaptStep, get adaptLevel() { return adaptLv; }, canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { adaptStep, get adaptLevel() { return adaptLv; }, canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, direct, offerUse, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

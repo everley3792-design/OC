@@ -61,7 +61,7 @@
         settings: { autonomy: 'full', tone: 'mature', travel: true, lead: true, aspAuto: true, requests: true, playerAuto: false, deny: [], lockRel: false, growth: true, bubbles: true, romance: { enabled: false, adult: {}, forbid: [], fixed: {} } },
       },                   // import log {at, kind, name, n, ok, msg}
       settings: {
-        theme: 'system', perf: 'balanced', charQ: 'auto', custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
+        theme: 'system', perf: 'balanced', charQ: 'auto', walkTo: false, custom: { fps: 60, shadows: 'low', fx: true, grass: true, scale: 1.5 },
         time: 'real', timeSpeed: 1, weather: 'auto', control: 'tap', haptics: true, quickTap: false, showFps: false, reduceMotion: false, petScale: 1,
         sound: { on: true, master: 0.8, ui: 0.6, sfx: 0.8, amb: 0.5, event: 0.8 },
       },

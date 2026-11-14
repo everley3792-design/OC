@@ -221,6 +221,7 @@
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }, '樹葉與草地的顏色、飄落的花瓣／落葉／雪。為了不在遊戲中重新編譯著色器，改了之後下次開啟才會換。')),
         title('生活'), h('div.list', null, row('users', '生活設定', '自主程度、不做的活動、戀愛、成長建議', null, () => open('lifeset')), row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => open('dialogue')), S().settings.dev ? row('target', '開發者診斷', null, null, () => open('lifedev')) : null),
         title('操作'), card(h('div.muted', null, '移動方式'), p.ctrl, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '觸覺回饋'), toggle(s().haptics, (v) => set('haptics', v))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '減少動態效果'), toggle(s().reduceMotion, (v) => { set('reduceMotion', v); app().applyMotion(); })),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '買東西、撿東西要走過去', h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, '關閉（預設）：逛商店、撿東西、摘花、採集直接完成，角色不用先走到那裡')), toggle(!!s().walkTo, (v) => set('walkTo', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '點一下就做'), toggle(!!s().quickTap, (v) => set('quickTap', v))), h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '2px' } }, '關閉（預設）：點東西只會選取它，旁邊出現動作卡，按了才做——不會因為誤觸就坐下、採花或換地點。開啟：點一下就直接走過去做。')),
         // 聲音：Phase 6 adds the real sound settings at the end of this page (js/ui/p6pages.js)
         title('資料'), fileIn, h('div.list', null,
