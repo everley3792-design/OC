@@ -162,7 +162,7 @@
      *  Applied when the picture is drawn; the original file is never changed, so everything here can be undone. */
     image(c, x) {
       if (c.appearance.mode !== 'sprite') return null;
-      const F = () => { const f = (c.appearance.frame = Object.assign({ flip: false, zoom: 1, dx: 0, dy: 0, faces: 'right' }, c.appearance.frame || {})); f.crop = Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop || {}); return f; };
+      const F = () => { const f = (c.appearance.frame = Object.assign({ flip: false, zoom: 1, sx: 1, sy: 1, dx: 0, dy: 0, faces: 'right' }, c.appearance.frame || {})); f.crop = Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop || {}); return f; };
       const set = (k) => (v, live) => { F()[k] = v; x.changed('look', live ? null : 'idle'); };
       const crop = (k) => (v, live) => { F().crop[k] = v / 100; x.changed('look', live ? null : 'idle'); };
       const pct = (v) => Math.round(v) + '%', box = h('div', { 'data-sec': 'image' });
@@ -175,12 +175,12 @@
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = !c.appearance.pixel; g.drawImage(img, 0, 0, w * 2, hh * 2);
         const rect = h('div.crop-rect'), wrap = h('div.crop-box', { style: { width: w + 'px', height: hh + 'px' }, 'aria-label': '裁切框' }, cv, rect);
         const lay = () => { const k2 = F().crop; rect.style.left = k2.l * 100 + '%'; rect.style.top = k2.t * 100 + '%'; rect.style.right = k2.r * 100 + '%'; rect.style.bottom = k2.b * 100 + '%'; };
-        const cl = (v) => Math.max(0, Math.min(0.45, v));
+        const cl = (v, side) => { const k2 = F().crop, other = side === 'l' ? k2.r : side === 'r' ? k2.l : side === 't' ? k2.b : k2.t; return Math.max(0, Math.min(0.92 - other, v)); };   /* 16.0: any amount, as long as a sliver is left */
         for (const side of ['l', 't', 'r', 'b']) {
           const hd = h('div.crop-h.' + side, { role: 'slider', 'aria-label': { l: '左邊', t: '上邊', r: '右邊', b: '下邊' }[side] });
           let s0 = null;
           hd.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); hd.setPointerCapture(e.pointerId); s0 = { x: e.clientX, y: e.clientY, v: F().crop[side] }; });
-          hd.addEventListener('pointermove', (e) => { if (!s0) return; const d = side === 'l' ? (e.clientX - s0.x) / w : side === 'r' ? (s0.x - e.clientX) / w : side === 't' ? (e.clientY - s0.y) / hh : (s0.y - e.clientY) / hh; F().crop[side] = cl(s0.v + d); lay(); x.changed('look', null); });
+          hd.addEventListener('pointermove', (e) => { if (!s0) return; const d = side === 'l' ? (e.clientX - s0.x) / w : side === 'r' ? (s0.x - e.clientX) / w : side === 't' ? (e.clientY - s0.y) / hh : (s0.y - e.clientY) / hh; F().crop[side] = cl(s0.v + d, side); lay(); x.changed('look', null); });
           const end = () => { if (!s0) return; s0 = null; x.changed('look', 'idle'); build(); };
           hd.addEventListener('pointerup', end); hd.addEventListener('pointercancel', end);
           rect.append(hd);
@@ -192,12 +192,45 @@
         rect.addEventListener('pointermove', (e) => {
           if (!pts.has(e.pointerId) || !m0) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); const a = [...pts.values()], f = F();
           if (a.length !== m0.n) { snap(); return; }
-          if (a.length > 1 && m0.d > 10) f.zoom = Math.max(0.4, Math.min(2.5, m0.zoom * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / m0.d));
-          else { f.dx = Math.max(-50, Math.min(50, m0.dx + (a[0].x - m0.x) / hh * 100)); f.dy = Math.max(-50, Math.min(50, m0.dy + (a[0].y - m0.y) / hh * 100)); }
+          if (a.length > 1 && m0.d > 10) f.zoom = Math.max(0.2, Math.min(4, m0.zoom * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / m0.d));
+          else { f.dx = Math.max(-150, Math.min(150, m0.dx + (a[0].x - m0.x) / hh * 100)); f.dy = Math.max(-150, Math.min(150, m0.dy + (a[0].y - m0.y) / hh * 100)); }
           x.changed('look', null);
         });
         const up = (e) => { if (!pts.delete(e.pointerId)) return; if (pts.size) snap(); else { m0 = null; x.changed('look', 'idle'); build(); } };
         rect.addEventListener('pointerup', up); rect.addEventListener('pointercancel', up);
+        lay(); return wrap;
+      };
+      /* 16.0: size straight on a little stage — a dashed outline shows the standard size, the solid frame is this character; drag the
+       * right edge (width), the top edge (height) or the corner (both). The stage shrinks its own scale so the frame always fits. */
+      const sizeBox = () => {
+        const r = OC.CharRender.spriteFor(c, { action: 'idle' }), img = r && OC.Anim.composite(r.doc, 0);
+        if (!img) return h('div.faint', { style: { fontSize: 'var(--fs-xs)' } }, '圖片還在載入。');
+        const SW = 260, SH = 200, cv = h('canvas', { width: SW * 2, height: SH * 2 }); cv.style.cssText = `width:${SW}px;height:${SH}px;display:block`;
+        const fr0 = h('div.size-frame'), ref = h('div.size-ref'), lab = h('div.size-lab'), wrap = h('div.size-box', { style: { width: SW + 'px', height: SH + 'px' }, 'aria-label': '大小框' }, cv, ref, fr0, lab);
+        const asp = r.doc.w / r.doc.h;
+        const lay = () => {
+          const f = F(), wU = asp * f.zoom * f.sx, hU = f.zoom * f.sy, u = Math.min((SH - 28) / Math.max(1, hU), (SW - 28) / Math.max(asp, wU));   /* px per "one standard height" */
+          const g = cv.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, SW, SH); g.imageSmoothingEnabled = !c.appearance.pixel; g.imageSmoothingQuality = 'high';
+          const w = wU * u, hh = hU * u, x0 = (SW - w) / 2, y0 = SH - 8 - hh;
+          g.save(); if (f.flip) { g.translate(SW, 0); g.scale(-1, 1); } g.drawImage(img, x0, y0, w, hh); g.restore();
+          fr0.style.left = x0 + 'px'; fr0.style.top = y0 + 'px'; fr0.style.width = w + 'px'; fr0.style.height = hh + 'px';
+          ref.style.left = (SW - asp * u) / 2 + 'px'; ref.style.top = SH - 8 - u + 'px'; ref.style.width = asp * u + 'px'; ref.style.height = u + 'px';
+          lab.textContent = `寬 ${Math.round(f.zoom * f.sx * 100)}%・高 ${Math.round(f.zoom * f.sy * 100)}%`;
+          return u;
+        };
+        const cl = (v) => Math.max(0.2, Math.min(4, v));
+        for (const kind of ['e', 'n', 'ne']) {
+          const hd = h('div.size-h.' + kind, { role: 'slider', 'aria-label': { e: '寬度', n: '高度', ne: '整體大小' }[kind] }); let s0 = null;
+          hd.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); hd.setPointerCapture(e.pointerId); const f = F(); s0 = { x: e.clientX, y: e.clientY, sx: f.sx, sy: f.sy, zoom: f.zoom, u: lay() }; });
+          hd.addEventListener('pointermove', (e) => {
+            if (!s0) return; const f = F(), dx = (e.clientX - s0.x) * 2 / (s0.u * asp * s0.zoom), dy = (s0.y - e.clientY) / (s0.u * s0.zoom);
+            if (kind === 'e') f.sx = cl(s0.sx + dx); else if (kind === 'n') f.sy = cl(s0.sy + dy); else f.zoom = cl(s0.zoom * Math.max(0.05, 1 + ((e.clientX - s0.x) - (e.clientY - s0.y)) / 160));
+            lay(); x.changed('look', null);
+          });
+          const end = () => { if (!s0) return; s0 = null; x.changed('look', 'idle'); build(); };
+          hd.addEventListener('pointerup', end); hd.addEventListener('pointercancel', end);
+          fr0.append(hd);
+        }
         lay(); return wrap;
       };
       const build = () => {
@@ -206,10 +239,12 @@
           h('div.hstack', { style: { marginBottom: '8px' } }, h('span.grow', null, '左右翻轉'), toggle(!!fr.flip, (v) => { F().flip = v; x.changed('look'); })),
           h('div.hstack', null, h('span.grow', null, '走路時跟著左右轉向'), toggle(fr.faces !== 'front', (v) => { F().faces = v ? 'right' : 'front'; x.changed('look'); })),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '2px 0 10px' } }, '開啟時，請讓圖裡的角色面向右邊——方向不對就按「左右翻轉」。正面的圖可以關掉，就不會被鏡像。'),
-          num('放大縮小', fr.zoom, 0.4, 2.5, 0.01, set('zoom'), (v) => Math.round(v * 100) + '%'), num('水平位置', fr.dx, -50, 50, 1, set('dx')), num('垂直位置', fr.dy, -50, 50, 1, set('dy')),
+          T('大小', '拖曳框的右邊＝寬度、上邊＝高度、右上角＝一起放大縮小；怎麼放大都不會被切掉'), sizeBox(),
+          num('整體大小', fr.zoom, 0.2, 4, 0.01, set('zoom'), (v) => Math.round(v * 100) + '%'), num('寬度', fr.sx, 0.2, 4, 0.01, set('sx'), (v) => Math.round(v * 100) + '%'), num('高度', fr.sy, 0.2, 4, 0.01, set('sy'), (v) => Math.round(v * 100) + '%'),
+          num('水平位置', fr.dx, -150, 150, 1, set('dx')), num('垂直位置', fr.dy, -150, 150, 1, set('dy')),
           T('裁切', '拖曳四邊的把手；框內單指拖曳＝移動位置，兩指＝放大縮小'), cropBox(),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '6px 0 4px' } }, '也可以用下面的滑桿微調：'),
-          num('上', fr.crop.t * 100, 0, 45, 1, crop('t'), pct), num('下', fr.crop.b * 100, 0, 45, 1, crop('b'), pct), num('左', fr.crop.l * 100, 0, 45, 1, crop('l'), pct), num('右', fr.crop.r * 100, 0, 45, 1, crop('r'), pct),
+          num('上', fr.crop.t * 100, 0, 90, 1, crop('t'), pct), num('下', fr.crop.b * 100, 0, 90, 1, crop('b'), pct), num('左', fr.crop.l * 100, 0, 90, 1, crop('l'), pct), num('右', fr.crop.r * 100, 0, 90, 1, crop('r'), pct),
           h('button.btn.s.ghost', { style: { marginTop: '6px' }, on: { click: () => { c.appearance.frame = null; x.changed('look'); build(); } } }, '全部重設'),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '還沒畫的動作（走路、吃飯、睡覺、開心…）圖片會自己表演：搖擺、彈跳，加上愛心、Zzz、碎屑等特效。之後在動畫工作室畫了某個動作，就改播你畫的。'));
       };

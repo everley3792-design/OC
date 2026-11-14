@@ -156,16 +156,16 @@
       if (!img) return { sprite: true, doc, i: f.i, loading: true };
       // 13.0: the picture's framing (flip / zoom / offset / crop / which way it looks) and, when the player has not drawn this action, the
       // picture performs it itself (OC.Puppet: lean, hop, squash + comic marks) — applied at draw time, the original is never changed
-      const P13 = OC.Puppet, fr = P13 ? P13.frameOf(c) : { zoom: 1, dx: 0, dy: 0, crop: { l: 0, t: 0, r: 0, b: 0 } }, mir = P13 ? P13.mirror(c, sp, p) : !!sp.mirror;
+      const P13 = OC.Puppet, fr = P13 ? P13.frameOf(c) : { zoom: 1, sx: 1, sy: 1, dx: 0, dy: 0, crop: { l: 0, t: 0, r: 0, b: 0 } }, mir = P13 ? P13.mirror(c, sp, p) : !!sp.mirror;
       const pu = P13 && P13.active(c, sp, p) ? P13.pose(c, p, t) : null;
       const a0 = doc.anchor || { x: doc.w / 2, y: doc.h * 0.9 }, a = { x: a0.x, y: Math.min(a0.y, doc.h * (1 - fr.crop.b)) }, kb = (unitPx * RIG_H * (c.appearance.scale || 1)) / refH(c, doc), k = kb * fr.zoom;
       const breath = 1 + (p.breath || 0) * 0.008, sq = (p.squash || 1) * (pu ? pu.sq : 1), Hu = RIG_H * (c.appearance.scale || 1);
       const ox = x + (doc.offset.x || 0) * k + (fr.dx / 100) * Hu * unitPx + (pu ? pu.dx * unitPx : 0), oy = y - (p.lift || 0) * unitPx + (doc.offset.y || 0) * k + (fr.dy / 100) * Hu * unitPx + (pu ? pu.dy * unitPx : 0), rot = (p.lean || 0) + (pu ? pu.rot : 0);
       ctx.save(); ctx.translate(ox, oy);
-      ctx.rotate(rot); ctx.scale((mir ? -1 : 1) * k / Math.sqrt(sq), k * sq * breath);
+      ctx.rotate(rot); ctx.scale((mir ? -1 : 1) * k * fr.sx / Math.sqrt(sq), k * fr.sy * sq * breath);   /* 16.0: width and height can be set apart */
       ctx.imageSmoothingEnabled = !c.appearance.pixel; ctx.imageSmoothingQuality = 'high';   // 8.0: crisp pixel art / well-filtered downscales
       if (fr.crop.l || fr.crop.t || fr.crop.r || fr.crop.b) { ctx.beginPath(); ctx.rect(doc.w * fr.crop.l - a.x, doc.h * fr.crop.t - a.y, doc.w * (1 - fr.crop.l - fr.crop.r), doc.h * (1 - fr.crop.t - fr.crop.b)); ctx.clip(); }
-      ctx.drawImage(img, -a.x, -a.y);
+      drawScaled(ctx, img, -a.x, -a.y, Math.min(k * fr.sx, k * fr.sy), !!c.appearance.pixel);
       // overlay (blink) — suppressed in states that already have closed eyes
       if ((p.blink || 0) > 0.5) {
         const ov = OC.Anim.resolve(c, 'blink', p.dir || 'front');
@@ -207,6 +207,52 @@
     return `R${c.updated}:${p.action}:${q(p.face, 4)}:${q(p.back, 3)}:${p.walk > 0.05 ? q((p.phase || 0) % 2, 4) : 'x'}:${(p.blink || 0) > 0.5 ? 1 : 0}:${p.eyes || ''}:${p.mouth || ''}:${q(p.at, FAST.has(p.action) || (OC.Anim11 && OC.Anim11.has(p.action)) || p.touch ? 10 : p.action === 'idle' || !p.action ? 2 : 2)}:${q(p.lookX, 1)}:${loaded}:${q(p.blush, 2)}:${p.overrides && p.overrides.held || ''}${tk}${p.fx || ''}`;
   }
 
+  /* 16.0: a big picture drawn much smaller in one go turns soft and jagged at once on phone WebViews (their "high quality" resampling is
+   * only bilinear past 2×). Each picture gets a chain of half-size copies, made once and kept with it; the draw uses the smallest copy
+   * that is still at least as large as what ends up on the canvas — so the last step is never more than 2×. Pixel art is left alone. */
+  function mipOf(img, level) {
+    if (level <= 0) return img;
+    const chain = img.__mips || (img.__mips = []);
+    for (let i = chain.length; i < level; i++) {
+      const src = i ? chain[i - 1] : img, w = Math.max(1, Math.ceil(src.width / 2)), h = Math.max(1, Math.ceil(src.height / 2));
+      const m = OC.makeCanvas(w, h), x = m.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, w, h); chain.push(m);
+      if (w <= 8 || h <= 8) break;
+    }
+    return chain[Math.min(level, chain.length) - 1];
+  }
+  function drawScaled(ctx, img, x, y, scale, pixel) {
+    const w = img.width, h = img.height;
+    if (pixel || !(scale < 0.5) || !w || !h) { ctx.drawImage(img, x, y); return; }
+    const level = Math.min(6, Math.floor(Math.log2(1 / scale)));
+    ctx.drawImage(mipOf(img, level), x, y, w, h);
+  }
+  /** how much room a character needs, as a multiple of the standard 120-unit canvas (feet at 90 % of its height). 1 for nearly everyone;
+   *  a picture made big or wide in its framing, or a very large character, gets more so nothing is cut off. Steps of 0.25, at most 6. */
+  function extent(c) {
+    const ap = c.appearance || {}, sc = ap.scale || 1; let w = 60 * sc, hgt = RIG_H * sc * 1.45;
+    if (ap.mode === 'sprite' || (c.actions && c.actions.idle)) {
+      const sp = spriteFor(c, { action: 'idle', dir: 'front' });
+      if (sp && sp.doc) {
+        const doc = sp.doc, fr = OC.Puppet ? OC.Puppet.frameOf(c) : { zoom: 1, sx: 1, sy: 1, dx: 0, dy: 0 }, ku = RIG_H * sc / refH(c, doc) * fr.zoom, Hu = RIG_H * sc;
+        const a = doc.anchor || { x: doc.w / 2, y: doc.h * 0.9 };
+        w = Math.max(a.x, doc.w - a.x) * ku * fr.sx * 2 * 1.12 + Math.abs(fr.dx / 100) * Hu * 2 + 16;   /* + room for leaning and the comic marks */
+        hgt = a.y * ku * fr.sy * 1.12 + Math.max(0, -fr.dy / 100) * Hu + 22;                          /* + room for a hop */
+      }
+    }
+    const e = Math.max(1, w / 120, hgt / 108);
+    return Math.min(6, Math.ceil(e * 4 - 0.001) / 4);
+  }
+  /** how tall the character stands compared with a standard one (≥ 1) — markers and speech bubbles sit above the real head */
+  function tall(c) {
+    const ap = c.appearance || {}, sc = ap.scale || 1;
+    if (ap.mode === 'sprite' || (c.actions && c.actions.idle)) {
+      const sp = spriteFor(c, { action: 'idle', dir: 'front' });
+      if (sp && sp.doc) { const doc = sp.doc, fr = OC.Puppet ? OC.Puppet.frameOf(c) : { zoom: 1, sy: 1, dy: 0, crop: { t: 0 } }, a = doc.anchor || { x: doc.w / 2, y: doc.h * 0.9 };
+        return Math.max(1, ((a.y - doc.h * ((fr.crop && fr.crop.t) || 0)) / refH(c, doc) * sc * fr.zoom * fr.sy - fr.dy / 100 * sc) / 1.125); }
+    }
+    return Math.max(1, sc);
+  }
+
   /** draw a character to fill a portrait canvas */
   function portrait(canvas, c, o = {}) {
     const x = canvas.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, canvas.width, canvas.height);
@@ -219,5 +265,5 @@
   const presetCache = {};
   function presetChar(key) { return presetCache[key] || (presetCache[key] = OC.Chars.fromPreset(key)); }
 
-  OC.CharRender = { draw, plan, key, portrait, rigState, spriteFor, refH, presetChar, RIG_H, motion };
+  OC.CharRender = { extent, tall, mipOf, draw, plan, key, portrait, rigState, spriteFor, refH, presetChar, RIG_H, motion };
 })();

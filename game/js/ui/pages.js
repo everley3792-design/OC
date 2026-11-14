@@ -215,7 +215,7 @@
       el.append(
         title('外觀主題'), card(p.theme, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '只影響介面；島上的白天黑夜依照遊戲時間。')),
         
-        title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
+        title('效能'), card(p.perf, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' }, 'data-perf-desc': '' }), p.custom, h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色畫質', h('div.muted', { style: { fontSize: 'var(--fs-xs)' } }, '「最高」＝角色永遠用螢幕原本的解析度畫，比較耗電')), (p.charQ = seg([['auto', '自動'], ['max', '最高']], s().charQ || 'auto', (v) => { set('charQ', v); app().applyPerf(); }))), h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示 FPS'), toggle(s().showFps, (v) => { set('showFps', v); app().applyPerf(); }))),
         title('世界'), card(h('button.btn.block', { on: { click: () => app().timePanel() } }, icon('clock', 's'), '時間與天氣…'), h('div.faint', { 'data-time-desc': '', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }),
           h('div.muted', { style: { marginTop: '12px' } }, '季節'), seg([['auto', '依日期'], ['spring', '春'], ['summer', '夏'], ['autumn', '秋'], ['winter', '冬']], OC.Clock.SEASONS.includes(s().season) ? s().season : 'auto', (v) => { set('season', v); toast(`季節：${v === 'auto' ? '依日期（' + OC.Clock.SEASON_ZH[OC.Clock.season()] + '）' : OC.Clock.SEASON_ZH[v]}。下次開啟遊戲時套用到整個世界的顏色`, 'leaf'); }),
           h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }, '樹葉與草地的顏色、飄落的花瓣／落葉／雪。為了不在遊戲中重新編譯著色器，改了之後下次開啟才會換。')),
@@ -235,7 +235,7 @@
         el.prepend(h('div.set-board', null, ...heads.map((t) => { const zh = t.firstChild.textContent; return h('button.set-tile', { on: { click: () => { haptic('tick'); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); } } }, OC.UI.sticker(STK[zh]), h('small', null, zh === '外觀主題' ? '外觀' : zh)); }))); });
     },
     refresh(p) {
-      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf);
+      const s = S().settings; p.theme.set(s.theme); p.perf.set(s.perf); if (p.charQ) p.charQ.set(s.charQ || 'auto');
       { const d = p.el.querySelector('[data-time-desc]'); if (d) d.textContent = `目前：${{ real: '跟隨手機時間', cycle: `遊戲循環 ×${s.timeSpeed || 1}${s.timePaused ? '（暫停）' : ''}`, fixed: `固定在 ${String(Math.floor(s.fixedHour || 12)).padStart(2, '0')}:${String(Math.round(((s.fixedHour || 12) % 1) * 60)).padStart(2, '0')}` }[s.time] || '固定時段'}・天氣 ${{ auto: '自動', clear: '晴', cloudy: '多雲', rain: '雨', fog: '霧' }[s.weather] || s.weather}`; }
       p.ctrl.set(s.control);
       p.custom.hidden = s.perf !== 'custom';

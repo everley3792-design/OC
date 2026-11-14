@@ -102,6 +102,7 @@
 
   // ====================== actors (2D billboards) ======================
   let blobTex = null, silMat = null;
+  const CHAR_LAYER = 1;
   function makeBlob() {
     if (blobTex) return blobTex;
     blobTex = OC.Env.texture(64, 64, (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(30,40,40,0.42)'); g.addColorStop(0.6, 'rgba(30,40,40,0.22)'); g.addColorStop(1, 'rgba(30,40,40,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); });
@@ -122,23 +123,26 @@
     /* 14.2 (performance): the character's canvas is uploaded to a WebGL texture every time its pose changes. A GPU-backed 2D canvas has
      * to be read back from the GPU for that (tens of milliseconds on a phone, several times a second per character). Asking for a
      * CPU-backed canvas up front makes the upload a plain copy. */
-    const res = bbRes, c = OC.makeCanvas(res, res); c.getContext('2d', { willReadFrequently: true });
+    o.ext = 1; const res = bbRes, c = OC.makeCanvas(res, res); c.getContext('2d', { willReadFrequently: true });
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
     const m = new THREE.Mesh(bbGeo(), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, depthWrite: true, side: THREE.DoubleSide, fog: false })); m.material.defines = { OC_CHAR: '' };   /* 15.3: no season tint on characters */
     m.renderOrder = 2;
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: makeBlob(), transparent: true, depthWrite: false, fog: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
-    a.c = c; a.tex = tex; a.m = m; a.sh = sh;
-    if (a.xray) { a.sil = new THREE.Mesh(m.geometry, silMaterial(tex)); a.sil.renderOrder = 1.5; root.add(a.sil); }
+    a.c = c; a.tex = tex; a.m = m; a.sh = sh; m.layers.set(CHAR_LAYER);
+    if (a.xray) { a.sil = new THREE.Mesh(m.geometry, silMaterial(tex)); a.sil.renderOrder = 1.5; a.sil.layers.set(CHAR_LAYER); root.add(a.sil); }
     root.add(m); root.add(sh);
     a.gy = groundY(a.x, a.y);
     actors.push(a); return a;
   }
   // 8.0: billboard texture resolution follows the character's real size on screen (zoom × pixel ratio), in steps with
   // hysteresis, capped by the performance mode — no more 256 px textures stretched over a 500 px close-up
-  const BB_STEPS = [128, 192, 256, 384, 512, 768];
+  const BB_STEPS = [128, 192, 256, 384, 512, 768, 1024, 1536];
   let bbRes = 256, bbWant = 256, bbWantT = 0;
-  function bbTarget() { const need = BB_H * zoom * (quality.ratio || 1) * 1.05, cap = quality.bbMax || Math.max(quality.bb, 256); return Math.min(cap, BB_STEPS.find((v) => v >= need) || 768); }
-  function resizeActorCanvas(a) { const r = bbRes; if (a.c.width === r) return; a.c.width = a.c.height = r; a.key = ''; a.tex.dispose(); a.tex = new THREE.CanvasTexture(a.c); a.tex.colorSpace = THREE.SRGBColorSpace; a.tex.generateMipmaps = false; a.tex.minFilter = THREE.LinearFilter; pixelFilter(a); a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; }
+  function bbTarget() { const need = BB_H * zoom * charRatio() * 1.05, cap = quality.bbMax || Math.max(quality.bb, 256); return Math.min(cap, BB_STEPS.find((v) => v >= need) || 1536); }
+  /* 16.0: a character's canvas covers 120 design units × ext — a big or wide picture gets a bigger canvas (and a bigger billboard) instead of being cut off at the edge */
+  const BB_MAX_PX = 2048;
+  function actorRes(a) { return Math.min(BB_MAX_PX, Math.round(bbRes * (a.ext || 1))); }
+  function resizeActorCanvas(a) { const r = actorRes(a); if (a.c.width === r) return; a.c.width = a.c.height = r; a.key = ''; a.tex.dispose(); a.tex = new THREE.CanvasTexture(a.c); a.tex.colorSpace = THREE.SRGBColorSpace; a.tex.generateMipmaps = false; a.tex.minFilter = THREE.LinearFilter; pixelFilter(a); a.m.material.map = a.tex; if (a.sil) a.sil.material.uniforms.map.value = a.tex; }
   /** pixel-art characters keep hard edges (nearest filter); everyone else is smoothly filtered */
   function pixelFilter(a) { const ch = a.char && a.char(), px = !!(ch && ch.appearance && ch.appearance.pixel); const f = px ? THREE.NearestFilter : THREE.LinearFilter; if (a.tex.magFilter !== f) { a.tex.magFilter = f; a.tex.minFilter = f; a.tex.needsUpdate = true; } a.pixel = px; }
 
@@ -176,20 +180,21 @@
     if (paintsLeft <= 0 && a.key && !a.player && !a.touch) { stats.paintSkips++; return; }
     paintsLeft--; stats.paints++; stats.totalPaints++;
     a.key = key;
+    { const e = OC.CharRender.extent ? OC.CharRender.extent(ch) : 1; if (e !== a.ext) { a.ext = e; resizeActorCanvas(a); a.key = key; } a.tk = OC.CharRender.tall ? OC.CharRender.tall(ch) : 1; }
     const r = a.c.width, x = a.c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, r, r);
     if (a.pixel === undefined) pixelFilter(a);
     x.imageSmoothingEnabled = !a.pixel; x.imageSmoothingQuality = 'high';   // big player images are downsampled with a proper filter
-    const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / 120, a.t);
+    const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / (120 * (a.ext || 1)), a.t);
     if (res && res.state) a.lastState = res.state;
     if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
-    if (!pl.sprite && quality.fx !== false) toyShade(x, r);
+    if (!pl.sprite && quality.fx !== false) toyShade(x, r, a.ext || 1);
     a.tex.needsUpdate = true;
   }
   /** 10.0 "vinyl toy" volume on rig-drawn characters: a soft top light, a cool shade toward the feet and the side away
    *  from the sun (drawn only on the character's own pixels). Imported / painted sprites are left exactly as drawn. */
-  function toyShade(x, r) {
+  function toyShade(x, r, ext) {
     x.save(); x.globalCompositeOperation = 'source-atop';
-    const top = r * FEET - r * 0.62, g = x.createLinearGradient(0, top, 0, r * FEET);
+    const top = r * FEET - r * 0.62 / (ext || 1), g = x.createLinearGradient(0, top, 0, r * FEET);
     g.addColorStop(0, 'rgba(255, 248, 236, 0.16)'); g.addColorStop(0.38, 'rgba(255, 255, 255, 0)'); g.addColorStop(0.72, 'rgba(70, 50, 130, 0)'); g.addColorStop(1, 'rgba(70, 50, 130, 0.17)');
     x.fillStyle = g; x.fillRect(0, 0, r, r);
     const s = x.createLinearGradient(r * 0.3, 0, r * 0.75, 0); s.addColorStop(0, 'rgba(70, 50, 130, 0)'); s.addColorStop(1, 'rgba(70, 50, 130, 0.07)');
@@ -247,7 +252,7 @@
     a.pl = a.lift || 0;
     a.m.position.set(a.x, a.gy + 0.6 + (a.lift + bob) * RIG_UNIT, z + 1.5);
     const turn = a.turnT > 0 ? Math.max(0.08, Math.abs(1 - 2 * (1 - a.turnT / 0.16))) : 1;
-    const sx = turn * (a.sc || 1), sy = (1 + br) * a.squash * (a.sc || 1);
+    const sx = turn * (a.sc || 1) * (a.ext || 1), sy = (1 + br) * a.squash * (a.sc || 1) * (a.ext || 1);
     a.m.scale.set(sx / Math.sqrt(a.squash), sy, 1);
     a.m.rotation.order = 'YXZ'; a.m.rotation.y = yaw;
     // held by the player: swing around the hands (pivot ≈ 55 % of the billboard height), not around the feet
@@ -573,7 +578,7 @@
       THREE.ShaderChunk.tonemapping_fragment += '\n#ifndef OC_CHAR\n{ vec3 c = gl_FragColor.rgb; float ocS = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); float w = clamp( ( c.g - max( c.r, c.b ) ) * 4.0 - 0.25, 0.0, 1.0 ); gl_FragColor.rgb = mix( c, ' + T + ', w * ' + K + ' ); }\n#endif\n';
     }
     R = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false });
-    R.debug.checkShaderErrors = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
+    R.debug.checkShaderErrors = false; R.info.autoReset = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
     R.outputColorSpace = THREE.SRGBColorSpace; R.shadowMap.enabled = true; R.shadowMap.type = quality.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     scene = new THREE.Scene(); scene.background = new THREE.Color(OC.Style.P.sea);
     cam = new THREE.OrthographicCamera(-180, 180, 320, -320, 1, 4000);
@@ -586,16 +591,62 @@
     canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); hooks.contextLost && hooks.contextLost(); });
     resize();
   }
+  /* 16.0 — characters at the screen's own resolution.
+   * The world is drawn at quality.ratio (1–2× CSS pixels, lower when the phone is slow) and used to be stretched over a 2.6–3× screen:
+   * fine for the soft toy world, but a detailed imported picture turned to mush. When quality.cr (the character ratio) is higher than
+   * the world's, the canvas is created at cr and each frame is: (1) the world without characters into a small render target (colour
+   * + depth; the target is flagged like an XR target so three.js applies the same tone mapping / sRGB output as on screen — the shaders
+   * are the very same programs), (2) one full-screen copy of that colour and depth to the canvas, (3) the characters (layer 1) on top
+   * at full resolution, depth-tested against the copied depth, so trees and walls still hide them. WebGL 2 only (gl_FragDepth);
+   * anything else keeps the single pass. */
+  let split = null;
+  function charRatio() { return splitOn() ? quality.cr : (quality.ratio || 1); }
+  function splitOn() { return !!(R && R.capabilities.isWebGL2 && quality.cr && quality.cr > (quality.ratio || 1) + 0.05 && !splitBroken); }
+  let splitBroken = false;
+  function setupTargets() {
+    const on = splitOn();
+    R.setPixelRatio(on ? quality.cr : quality.ratio); R.setSize(W, H, false);
+    if (!on) { if (split) { split.rt.dispose(); split.rt.depthTexture.dispose(); split.mat.dispose(); split = null; } return; }
+    const w = Math.max(2, Math.round(W * quality.ratio)), h = Math.max(2, Math.round(H * quality.ratio));
+    if (split && split.w === w && split.h === h) return;
+    if (split) { split.rt.dispose(); split.rt.depthTexture.dispose(); }
+    const depth = new THREE.DepthTexture(w, h); depth.minFilter = depth.magFilter = THREE.NearestFilter;
+    const rt = new THREE.WebGLRenderTarget(w, h, { depthTexture: depth, depthBuffer: true, stencilBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
+    rt.isXRRenderTarget = true; rt.texture.colorSpace = THREE.SRGBColorSpace;
+    if (!split) {
+      const mat = new THREE.ShaderMaterial({ uniforms: { tColor: { value: null }, tDepth: { value: null } }, depthTest: true, depthWrite: true, depthFunc: THREE.AlwaysDepth, toneMapped: false, fog: false,
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
+        fragmentShader: 'uniform sampler2D tColor; uniform sampler2D tDepth; varying vec2 vUv; void main(){ gl_FragColor = vec4( texture2D( tColor, vUv ).rgb, 1.0 ); gl_FragDepth = texture2D( tDepth, vUv ).r; }' });
+      const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); quad.frustumCulled = false;
+      const sc = new THREE.Scene(); sc.add(quad);
+      split = { mat, sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), checks: 0 };
+    }
+    split.rt = rt; split.w = w; split.h = h; split.mat.uniforms.tColor.value = rt.texture; split.mat.uniforms.tDepth.value = depth;
+  }
+  function renderWorld() {
+    R.info.reset();
+    if (!split) { cam.layers.enableAll(); R.render(scene, cam); return; }
+    try {
+      cam.layers.set(0); R.setRenderTarget(split.rt); R.render(scene, cam);
+      R.setRenderTarget(null); R.render(split.sc, split.cam);
+      const bg = scene.background, ac = R.autoClear; scene.background = null; R.autoClear = false; cam.layers.set(CHAR_LAYER);
+      R.render(scene, cam);
+      scene.background = bg; R.autoClear = ac; cam.layers.enableAll();
+      if (split.checks < 3) { split.checks++; const gl = R.getContext(), e = gl.getError(); if (e) throw new Error('GL error ' + e); }
+    } catch (err) { /* a driver that cannot do this falls back to the single pass for the rest of the session */
+      splitBroken = true; R.setRenderTarget(null); R.autoClear = true; cam.layers.enableAll(); setupTargets(); console.warn('[world] split rendering off: ' + (err && err.message)); R.render(scene, cam);
+    }
+  }
   function resize() {
     if (!canvas || !R) return;
     const r = canvas.getBoundingClientRect(); W = Math.max(1, r.width); H = Math.max(1, r.height);
-    R.setPixelRatio(quality.ratio); R.setSize(W, H, false);
+    setupTargets();
   }
   function setQuality(q) {
-    const bbChanged = q.bb !== quality.bb, shChanged = q.shadows !== quality.shadows;
+    const bbChanged = q.bb !== quality.bb || q.cr !== quality.cr || q.bbMax !== quality.bbMax, shChanged = q.shadows !== quality.shadows;
     quality = Object.assign({}, q);
     if (quality.fx === false) { leaves = []; puffs = []; if (leafMesh) { leafMesh.count = 0; puffMesh.count = 0; } }   // effects off: nothing already in the air stays
-    R.setPixelRatio(q.ratio); R.setSize(W, H, false);
+    setupTargets();
     { const type = q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap; if (R.shadowMap.type !== type) { R.shadowMap.type = type; R.shadowMap.needsUpdate = true; scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true)); }); } }
     if (shChanged) {
       const was = R.shadowMap.enabled; R.shadowMap.enabled = !!q.shadows;
@@ -660,7 +711,7 @@
     /* the sun's shadow map is redrawn every frame only in 'high'; otherwise every other frame (half the shadow cost, one frame of lag nobody sees) */
     if (env.sun && env.sun.shadow) { frameN++; env.sun.shadow.autoUpdate = false; env.sun.shadow.needsUpdate = !!quality.soft || frameN % 2 === 0 || frameN < 4; }
     if (area.bg) scene.background.set(OC.mix(area.bg, '#14202E', envCur.night * 0.7)); else scene.background.set(envCur.sea);
-    { const t0 = performance.now(); R.render(scene, cam); stats.renderMs += performance.now() - t0; stats.frames++; stats.totalFrames++; }
+    { const t0 = performance.now(); renderWorld(); stats.renderMs += performance.now() - t0; stats.frames++; stats.totalFrames++; }
     paintsLeft = 2;
   }
 
@@ -694,9 +745,9 @@
     /** read-only, for diagnostics and tests */
     get scene() { return scene; },
     /** 15.0 photo mode: render the scene once more and copy it out immediately (the WebGL buffer is not kept between frames) */
-    snapshot(w, h) { const c = OC.makeCanvas(w || R.domElement.width, h || R.domElement.height); R.render(scene, cam); c.getContext('2d').drawImage(R.domElement, 0, 0, c.width, c.height); return c; },
+    snapshot(w, h) { const c = OC.makeCanvas(w || R.domElement.width, h || R.domElement.height); renderWorld(); c.getContext('2d').drawImage(R.domElement, 0, 0, c.width, c.height); return c; },
     /** 14.2 diagnostics: character redraws / uploads and main-thread render time since the last call (the counters reset) */
-    perfStats() { const o = { paints: stats.paints, paintSkips: stats.paintSkips, renderMs: stats.frames ? stats.renderMs / stats.frames : 0, frames: stats.frames, calls: R ? R.info.render.calls : 0, tris: R ? R.info.render.triangles : 0, ratio: R ? R.getPixelRatio() : 0, shadows: quality.shadows || 0, bb: bbRes, totalPaints: stats.totalPaints, totalFrames: stats.totalFrames }; stats.paints = stats.paintSkips = stats.renderMs = stats.frames = 0; return o; },
+    perfStats() { const o = { paints: stats.paints, paintSkips: stats.paintSkips, renderMs: stats.frames ? stats.renderMs / stats.frames : 0, frames: stats.frames, calls: R ? R.info.render.calls : 0, tris: R ? R.info.render.triangles : 0, ratio: quality.ratio || 0, charRatio: charRatio(), split: !!split, shadows: quality.shadows || 0, bb: bbRes, totalPaints: stats.totalPaints, totalFrames: stats.totalFrames }; stats.paints = stats.paintSkips = stats.renderMs = stats.frames = 0; return o; },
     get gpu() { try { const gl = R.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)) : 'unknown'; } catch (e2) { return 'unknown'; } },
     saveView() { return { mode, subject, zoom, yaw, panX, panY, follow }; },
     restoreView(v) { if (!v) return; mode = v.mode; subject = v.subject; zoomGoal = v.zoom; yawGoal = v.yaw; panX = v.panX; panY = v.panY; follow = v.follow; shot = null; },

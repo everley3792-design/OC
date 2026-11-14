@@ -47,7 +47,14 @@
   function applyPerf(keepAdapt) {
     if (!keepAdapt) { adaptLv = 0; adaptBad = 0; }
     Q = perfOf(S().settings.perf);
-    if (adaptLv && S().settings.perf === 'balanced') { Q.ratio = Math.max(1, Q.ratio - 0.25 * adaptLv); Q.shadows = adaptLv >= 2 ? 512 : Q.shadows; Q.grass = adaptLv >= 2 ? 0.35 : Q.grass; Q.bb = adaptLv >= 2 ? 192 : Q.bb; Q.bbMax = adaptLv >= 2 ? 384 : Q.bbMax; if (adaptLv >= 3) { Q.shadows = 0; Q.grass = 0; Q.lights = false; Q.bb = 160; Q.bbMax = 256; } /* 14.2: the last step drops the sun's shadow pass (half of all drawing) and the grass */ } if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
+    if (adaptLv && S().settings.perf === 'balanced') { Q.ratio = Math.max(1, Q.ratio - 0.25 * adaptLv); Q.shadows = adaptLv >= 2 ? 512 : Q.shadows; Q.grass = adaptLv >= 2 ? 0.35 : Q.grass; if (adaptLv >= 3) { Q.shadows = 0; Q.grass = 0; Q.lights = false; } /* 14.2: the last step drops the sun's shadow pass (half of all drawing) and the grass */ } if (Q.grade == null) Q.grade = !!Q.fx; if (Q.dof == null) Q.dof = false;
+    /* 16.0: characters are drawn at the screen's own resolution on top of the (lower resolution) world — 'max' always, in every mode and never
+     * stepped down; 'auto' up to 2.5× (2× once the game has had to step all the way down), not in the power saver. The slow-phone steps no
+     * longer shrink the characters' pictures: the world gives way first. */
+    { const mx = S().settings.charQ === 'max', dpr = Math.min(window.devicePixelRatio || 1, 4);
+      Q.cr = mx ? dpr : S().settings.perf === 'saver' ? Q.ratio : Math.min(dpr, adaptLv >= 3 ? 2 : 2.5);
+      if (Q.cr < Q.ratio) Q.cr = Q.ratio;
+      if (mx) { Q.bb = Math.max(Q.bb, 320); Q.bbMax = 1536; } else if (S().settings.perf !== 'saver') Q.bbMax = Math.max(Q.bbMax, 768); }
     Wd.setQuality(Q); fpsEl.hidden = !S().settings.showFps;
     const root = document.documentElement; root.classList.toggle('grade', !!Q.grade); root.classList.toggle('dof', !!Q.dof); root.classList.toggle('lite', !Q.fx);   // saver: no backdrop blur (costly on weak GPUs), opaque glass instead
   }
@@ -432,13 +439,13 @@
   function floatAt(x, y, lvl, text, color) { const el = h('div.float-text', { style: { color: color || 'var(--accent)' } }, text); overlays().append(el); floats.push({ el, pos: { x, y, lvl }, up: 20, t: 0, dur: 1.4 }); }
   function updateOverlays(dt) {
     if (rings.length) placeRings();
-    if (hud.mark && player) { const show = !player.hidden && !decorate && !placing, p = show ? Wd.project(player.x, player.y, player.lvl, (player.gy - player.lvl * Wd.HY) + 64 + (player.lift || 0)) : null;
+    if (hud.mark && player) { const show = !player.hidden && !decorate && !placing, p = show ? Wd.project(player.x, player.y, player.lvl, (player.gy - player.lvl * Wd.HY) + 64 * (player.tk || 1) + (player.lift || 0)) : null;
       if (show !== hud._mShow) { hud._mShow = show; hud.mark.style.visibility = show ? '' : 'hidden'; }
       if (p && (Math.abs(p.x - (hud._mx || -9e9)) > 0.4 || Math.abs(p.y - (hud._my || -9e9)) > 0.4)) { hud._mx = p.x; hud._my = p.y; hud.mark.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`; }
       const m = me().life.control || 'semi'; if (m !== hud._mMode) { hud._mMode = m; hud.mark.dataset.m = m; } }
     for (let i = floats.length - 1; i >= 0; i--) {
       const f = floats[i]; f.t += dt; if (f.t > f.dur) { f.el.remove(); floats.splice(i, 1); continue; }
-      const p = f.a ? Wd.project(f.a.x, f.a.y, f.a.lvl, (f.a.gy - f.a.lvl * Wd.HY) + f.up) : Wd.project(f.pos.x, f.pos.y, f.pos.lvl, f.up);
+      const p = f.a ? Wd.project(f.a.x, f.a.y, f.a.lvl, (f.a.gy - f.a.lvl * Wd.HY) + f.up * (f.a.tk || 1)) : Wd.project(f.pos.x, f.pos.y, f.pos.lvl, f.up);
       f.x = p.x; f.y = p.y; { const hid = !!(f.a && f.a.hidden); if (Math.abs(p.x - (f.px || -9e9)) > 0.4 || Math.abs(p.y - (f.py || -9e9)) > 0.4) { f.px = p.x; f.py = p.y; f.el.style.left = p.x + 'px'; f.el.style.top = p.y + 'px'; } if (hid !== f.hid) { f.hid = hid; f.el.style.visibility = hid ? 'hidden' : ''; } }   /* 14.1: write styles only when the bubble actually moved */
     }
     // speech bubbles never cover each other: push the later one up
@@ -579,7 +586,7 @@
   }
   // =============================== 8.0 context ring ===============================
   /** screen point above an actor's head */
-  function screenOf(a) { if (!a) return { x: innerWidth / 2, y: innerHeight / 2 }; return Wd.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * Wd.HY + 70); }
+  function screenOf(a) { if (!a) return { x: innerWidth / 2, y: innerHeight / 2 }; return Wd.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * Wd.HY + 70 * (a.tk || 1)); }
   function menuFor(it, pt) {
     if (!it || !pt) return;
     const L = OC.LifeUI, Pg = OC.Pages;
@@ -933,7 +940,7 @@
     if (OC.Arcs) OC.Arcs.update(dt);
     if (statusEl) updateStatus();
     loopMs += performance.now() - loopT0; loopN++;
-    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { const fps = fpsN / fpsT; { const ps = Wd.perfStats ? Wd.perfStats() : null, lm = loopN ? loopMs / loopN : 0; fpsEl.textContent = ps && !fpsEl.hidden ? `${Math.round(fps)} fps｜每幀 ${lm.toFixed(1)}ms（繪製 ${ps.renderMs.toFixed(1)}）｜角色重畫 ${Math.round(ps.paints / fpsT)}/秒｜呼叫 ${ps.calls}｜×${ps.ratio.toFixed(2)}｜陰影 ${ps.shadows}｜降級 ${adaptLv}` : `${Math.round(fps)} fps`; loopMs = 0; loopN = 0; } fpsN = 0; fpsT = 0; if (!navigator.webdriver && curTab === 'island' && !OC.UI.stack.length) adaptStep(fps); }
+    fpsN++; fpsT += dt; if (fpsT > 0.5 && fpsEl) { const fps = fpsN / fpsT; { const ps = Wd.perfStats ? Wd.perfStats() : null, lm = loopN ? loopMs / loopN : 0; fpsEl.textContent = ps && !fpsEl.hidden ? `${Math.round(fps)} fps｜每幀 ${lm.toFixed(1)}ms（繪製 ${ps.renderMs.toFixed(1)}）｜角色重畫 ${Math.round(ps.paints / fpsT)}/秒｜呼叫 ${ps.calls}｜×${ps.ratio.toFixed(2)}${ps.split ? '（角色 ×' + ps.charRatio.toFixed(2) + '）' : ''}｜陰影 ${ps.shadows}｜降級 ${adaptLv}` : `${Math.round(fps)} fps`; loopMs = 0; loopN = 0; } fpsN = 0; fpsT = 0; if (!navigator.webdriver && curTab === 'island' && !OC.UI.stack.length) adaptStep(fps); }
   }
   let intT = 0, lastMusicKey = '', world_rendered_once = false, reqT = 0, aspT = 0, lastNight = null, lastAmbWx = null;
   function saveMatePos() { if (!Wd.area) return; for (const [id, a] of Object.entries(mates)) { const c = OC.Chars.get(id); if (c) c.life.pos = { area: Wd.area.id, x: Math.round(a.x), y: Math.round(a.y) }; } }

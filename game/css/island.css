@@ -335,3 +335,14 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .pet-desk-apps i { width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 2px 0 var(--lip); }
 .pet-tabs { margin: 12px 0 4px; }
 .news-fest { background: var(--accent-soft); }
+
+/* 16.0 — picture characters: the size stage (width / height / both, never cut off) */
+.size-box { position: relative; margin: 6px auto 8px; border-radius: var(--r-s); background: var(--surface-2, var(--bg-2)); overflow: hidden; touch-action: none; user-select: none; }
+.size-ref { position: absolute; border: 1.5px dashed var(--ink-3); border-radius: 4px; opacity: 0.6; pointer-events: none; }
+.size-frame { position: absolute; box-shadow: inset 0 0 0 2.5px var(--sun); border-radius: 4px; }
+.size-h { position: absolute; background: var(--sun); box-shadow: 0 2px 0 var(--sun-lip); border-radius: var(--r-pill); touch-action: none; }
+.size-h::after { content: ""; position: absolute; inset: -16px; }
+.size-h.e { right: -5px; top: 50%; width: 10px; height: 40px; margin-top: -20px; cursor: ew-resize; }
+.size-h.n { top: -5px; left: 50%; height: 10px; width: 40px; margin-left: -20px; cursor: ns-resize; }
+.size-h.ne { right: -8px; top: -8px; width: 18px; height: 18px; cursor: nesw-resize; }
+.size-lab { position: absolute; left: 8px; top: 6px; font-size: var(--fs-xs); color: var(--ink-2); pointer-events: none; }

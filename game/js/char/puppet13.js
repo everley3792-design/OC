@@ -13,8 +13,8 @@
   const TAU = Math.PI * 2, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const DEF = { flip: false, zoom: 1, dx: 0, dy: 0, crop: { l: 0, t: 0, r: 0, b: 0 }, faces: 'right' };
   /** the picture's framing with defaults filled in (never writes to the character) */
-  function frameOf(c) { const f = (c && c.appearance && c.appearance.frame) || {}; return { flip: !!f.flip, zoom: clamp(+f.zoom || 1, 0.3, 3), dx: clamp(+f.dx || 0, -60, 60), dy: clamp(+f.dy || 0, -60, 60), crop: Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop || {}), faces: ['left', 'front', 'right'].includes(f.faces) ? f.faces : 'right' }; }
-  const isDefault = (c) => { const f = frameOf(c), k = f.crop; return !f.flip && f.zoom === 1 && !f.dx && !f.dy && !k.l && !k.t && !k.r && !k.b && f.faces === 'right'; };
+  function frameOf(c) { const f = (c && c.appearance && c.appearance.frame) || {}; return { flip: !!f.flip, zoom: clamp(+f.zoom || 1, 0.2, 4), sx: clamp(+f.sx || 1, 0.2, 4), sy: clamp(+f.sy || 1, 0.2, 4), dx: clamp(+f.dx || 0, -150, 150), dy: clamp(+f.dy || 0, -150, 150), crop: Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop || {}), faces: ['left', 'front', 'right'].includes(f.faces) ? f.faces : 'right' }; }
+  const isDefault = (c) => { const f = frameOf(c), k = f.crop; return !f.flip && f.zoom === 1 && f.sx === 1 && f.sy === 1 && !f.dx && !f.dy && !k.l && !k.t && !k.r && !k.b && f.faces === 'right'; };
   /** should the picture be mirrored for this pose? (the player's own flip, and the direction it walks in) */
   function mirror(c, sp, p) {
     const f = frameOf(c); let m = !!sp.mirror;
