@@ -1,5 +1,5 @@
 {
- "at": "2026-11-13T20:50:14.330Z",
+ "at": "2026-11-14T11:46:59.420Z",
  "results": [
   {
    "name": "T1 交易：同一個 key 只會入帳一次（防重複獎勵）",
@@ -34,42 +34,24 @@
    "ok": true
   },
   {
-   "name": "6a 釣魚：蓄力→等待→上鉤點擊→收線，真的釣到魚並入背包",
+   "name": "12a 來回 32 次換場景：共用快取暖機後幾何數不再成長（第 3→4 輪 ≤ +10）",
    "ok": true,
-   "detail": "{\"n\":1,\"skill\":0,\"xp\":5,\"mem\":true}"
+   "detail": "283→283→283→282"
   },
   {
-   "name": "6b 釣魚給技能經驗並寫入回憶",
-   "ok": true
-  },
-  {
-   "name": "6c 料理：切菜→攪拌→火候，完成才扣材料並得到料理",
+   "name": "12b 材質數有上限（第 3→4 輪 ≤ +2，總數 < 40）",
    "ok": true,
-   "detail": "{\"rice\":1,\"oni\":2,\"log\":\"新發現：飯糰\"}"
+   "detail": "22→21→22→21"
   },
   {
-   "name": "6d 料理中途放棄＝材料都還在",
-   "ok": true
-  },
-  {
-   "name": "6h 個性影響玩法：勤奮／好奇＝收線區更寬、上鉤反應時間更長；懶散＝收線較慢",
+   "name": "12c JS heap 穩定（< +40MB）",
    "ok": true,
-   "detail": "{\"a\":{\"pz\":0.03,\"pb\":0.25,\"pr\":1},\"b\":{\"pz\":0,\"pb\":0,\"pr\":0.85}}"
+   "detail": "36MB→36MB→36MB→36MB"
   },
   {
-   "name": "6e 採集：入背包；同一個點一天只能採一次",
+   "name": "12d 每個場景只載入自己的模型（新場景 draw calls < 250）",
    "ok": true,
-   "detail": "今天已經採過了，明天再來"
-  },
-  {
-   "name": "6f 種田：播種扣種子→澆水在遊戲時間內成長→收成入背包，不能重複收成",
-   "ok": true,
-   "detail": "{\"planted\":true,\"seedUsed\":true,\"growth\":0,\"got\":2,\"again\":false}"
-  },
-  {
-   "name": "6g OC 也會使用活動設施（OC 走去菜園澆水，菜園記得是誰澆的）",
-   "ok": true,
-   "detail": "do/tend/cmwfg9uwsiprr verbs=tend res=plot:isle1#0,cmwfg9uwsiprr reason=照顧植物（玩家安排、需求 interest0.17 fun0.36 active0.47、願望+0.30） cands=[{\"id\":\"tend\",\"s\":6.168,\"why\":\"玩家安排、需求 interest0.17 fun0.36 active0.47、願望+0.30、地點-0.14\"},{\"id\":\"read\",\"s\":1.403,\"why\":\"需求 fun0.38 interest0.21 comfort0.20、特質+0.40、悠哉+0.04、人生目標+0.22、地點-0.06\"},{\"id\":\"play\",\"s\":1.261,\"why\":\"需求 fun0.56 active0.73、活力-0.09、晴天+0.10、地點-0.04\"}] loc=isle mate=true plot={\"seed\":\"seed_carrot\",\"at\":29915160,\"growth\":0.0000011574074074074074,\"last\":0,\"wateredDay\":20774,\"wateredBy\":\"cmwfg9uwsiprr\"} day=20774 wx=clear log=照顧植物（玩家安排、需求 interest0.17 fun0.36 active0.47、願望+0.30） / 出發去葉影圖書館 / 要去葉影圖書館閱讀 / 去葉影圖書館閱讀（去葉影圖書館閱讀、需求 fun0.10 interest0.11、特質+0.40） / 閱讀（需求 fun0.10 interest0.11、特質+0.40、悠哉+0.04）"
+   "detail": "{\"isle\":139,\"street\":81,\"beach\":66,\"forest\":113,\"cafe\":167,\"home\":142,\"library\":213}"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",
