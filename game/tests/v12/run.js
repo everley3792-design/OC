@@ -180,8 +180,8 @@ const { check, wait } = H;
     if (want(7)) {
       await closeAll(); await page.evaluate(() => { OC.App.tab('island'); OC.App.rail(false); }); await wait(page, 700);
       const vis = (sel) => `[...document.querySelectorAll('${sel}')].filter((e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && !e.hidden; }).length`;
-      const hud = await page.evaluate((q) => ({ controls: eval(q), moodRowVisible: [...document.querySelectorAll('.hud-plate .hud-row')].filter((e) => getComputedStyle(e).display !== 'none').length, railOpen: document.querySelector('.hud-rail').classList.contains('open') }), vis('#hud button'));
-      check('7a 常駐 HUD 只剩：頭像名牌、時間、一個工具把手（有任務時多一個小膠囊）；心情列移到狀態卡', hud.controls <= 4 && hud.moodRowVisible === 1 && !hud.railOpen, hud);
+      const hud = await page.evaluate((q) => ({ controls: eval(q) - document.querySelectorAll('#hud .np-mini').length, moodRowVisible: [...document.querySelectorAll('.hud-plate .hud-row')].filter((e) => getComputedStyle(e).display !== 'none').length, railOpen: document.querySelector('.hud-rail').classList.contains('open') }), vis('#hud button'));
+      check('7a 常駐 HUD 只剩：頭像名牌、時間、一個工具把手（有任務時多一個小膠囊）；心情列移到狀態卡（16.0：名牌第二行是「地點・在做什麼」，其他角色的小頭像算名牌的一部分）', hud.controls <= 4 && hud.moodRowVisible === 2 && !hud.railOpen, hud);
       await page.evaluate(() => OC.App.rail(true)); await wait(page, 600);
       const open = await page.evaluate((q) => ({ n: eval(q), exp: document.querySelector('.rail-toggle').getAttribute('aria-expanded') }), vis('.hud-rail button'));
       await page.evaluate(() => OC.App.rail(false)); await wait(page, 300);

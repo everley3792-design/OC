@@ -578,7 +578,7 @@
       THREE.ShaderChunk.tonemapping_fragment += '\n#ifndef OC_CHAR\n{ vec3 c = gl_FragColor.rgb; float ocS = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); float w = clamp( ( c.g - max( c.r, c.b ) ) * 4.0 - 0.25, 0.0, 1.0 ); gl_FragColor.rgb = mix( c, ' + T + ', w * ' + K + ' ); }\n#endif\n';
     }
     R = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false });
-    R.debug.checkShaderErrors = false; R.info.autoReset = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
+    R.debug.checkShaderErrors = false;   /* asking for the compile log forces every shader to finish compiling on the spot (a visible hitch each time something new appears) */
     R.outputColorSpace = THREE.SRGBColorSpace; R.shadowMap.enabled = true; R.shadowMap.type = quality.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     scene = new THREE.Scene(); scene.background = new THREE.Color(OC.Style.P.sea);
     cam = new THREE.OrthographicCamera(-180, 180, 320, -320, 1, 4000);
@@ -624,17 +624,18 @@
     split.rt = rt; split.w = w; split.h = h; split.mat.uniforms.tColor.value = rt.texture; split.mat.uniforms.tDepth.value = depth;
   }
   function renderWorld() {
-    R.info.reset();
     if (!split) { cam.layers.enableAll(); R.render(scene, cam); return; }
+    /* three resets its counters at the start of every render() call; the three passes are counted together (the shadow pass included) */
+    R.info.autoReset = false; R.info.reset();
     try {
       cam.layers.set(0); R.setRenderTarget(split.rt); R.render(scene, cam);
       R.setRenderTarget(null); R.render(split.sc, split.cam);
       const bg = scene.background, ac = R.autoClear; scene.background = null; R.autoClear = false; cam.layers.set(CHAR_LAYER);
       R.render(scene, cam);
-      scene.background = bg; R.autoClear = ac; cam.layers.enableAll();
+      scene.background = bg; R.autoClear = ac; cam.layers.enableAll(); R.info.autoReset = true;
       if (split.checks < 3) { split.checks++; const gl = R.getContext(), e = gl.getError(); if (e) throw new Error('GL error ' + e); }
     } catch (err) { /* a driver that cannot do this falls back to the single pass for the rest of the session */
-      splitBroken = true; R.setRenderTarget(null); R.autoClear = true; cam.layers.enableAll(); setupTargets(); console.warn('[world] split rendering off: ' + (err && err.message)); R.render(scene, cam);
+      R.info.autoReset = true; splitBroken = true; R.setRenderTarget(null); R.autoClear = true; cam.layers.enableAll(); setupTargets(); console.warn('[world] split rendering off: ' + (err && err.message)); R.render(scene, cam);
     }
   }
   function resize() {

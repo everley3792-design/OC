@@ -109,7 +109,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       await wait(page, 400);
       const draft = await page.evaluate(() => { const box = document.querySelector('[data-sec=image]'); const p = OC.Pages.current && OC.Pages.current(); const txt = box ? box.textContent : ''; return { txt: txt.length }; });
       await shot(page, '2-picture-adjust');
-      check('2f 編輯器裡圖片角色有「調整圖片」：左右翻轉、跟著轉向、放大縮小、水平／垂直位置、四邊裁切、全部重設（7 個滑桿）', ui.has && ui.flipRow && ui.turn && ui.zoom && ui.crop && ui.reset && ui.sliders === 7 && ui.clicked, { ui, draft });
+      check('2f 編輯器裡圖片角色有「調整圖片」：左右翻轉、跟著轉向、放大縮小、水平／垂直位置、四邊裁切、全部重設（16.0：9 個滑桿，含寬度、高度）', ui.has && ui.flipRow && ui.turn && ui.zoom && ui.crop && ui.reset && ui.sliders === 9 && ui.clicked, { ui, draft });
       await closeAll(); await page.evaluate(() => { OC.UI.stack.slice().reverse().forEach((l) => l.close && l.close()); OC.App.tab('island'); }); await wait(page, 500);
       // on the desktop too: the exported frames of an action the player did not draw are animated
       const pet = await page.evaluate(async (id) => { const c = OC.Chars.get(id); const pack = await OC.PetSync.renderSprites(c); const a = pack.manifest.anims; const distinct = (k) => new Set(a[k].frames.map((f) => pack.files[f])).size; return { eat: distinct('eat'), sleep: distinct('sleep'), happy: distinct('happy'), walkSrc: a.walk.src, eatSrc: a.eat.src }; }, pic);

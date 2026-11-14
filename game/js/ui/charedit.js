@@ -180,7 +180,7 @@
           const hd = h('div.crop-h.' + side, { role: 'slider', 'aria-label': { l: '左邊', t: '上邊', r: '右邊', b: '下邊' }[side] });
           let s0 = null;
           hd.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); hd.setPointerCapture(e.pointerId); s0 = { x: e.clientX, y: e.clientY, v: F().crop[side] }; });
-          hd.addEventListener('pointermove', (e) => { if (!s0) return; const d = side === 'l' ? (e.clientX - s0.x) / w : side === 'r' ? (s0.x - e.clientX) / w : side === 't' ? (e.clientY - s0.y) / hh : (s0.y - e.clientY) / hh; F().crop[side] = cl(s0.v + d, side); lay(); x.changed('look', null); });
+          hd.addEventListener('pointermove', (e) => { if (!s0) return; const d = side === 'l' ? (e.clientX - s0.x) / w : side === 'r' ? (s0.x - e.clientX) / w : side === 't' ? (e.clientY - s0.y) / hh : (s0.y - e.clientY) / hh; const nv = cl(s0.v + d, side); F().crop[side] = nv;   /* the value first: cl() reads F(), which re-copies the crop object */ lay(); x.changed('look', null); });
           const end = () => { if (!s0) return; s0 = null; x.changed('look', 'idle'); build(); };
           hd.addEventListener('pointerup', end); hd.addEventListener('pointercancel', end);
           rect.append(hd);
