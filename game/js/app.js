@@ -119,12 +119,16 @@
     hud.coins = h('span.num'); hud.moodBar = h('i');
     hud.ctl = h('span.hud-ctl', { hidden: true });
     hud.me = h('button.hud-me', { 'aria-label': '角色狀態（長按：操控模式）', 'aria-expanded': 'false', on: { click: () => { if (hud._lp) { hud._lp = false; return; } haptic('tick'); toggleStatus(); } } },
-      h('div.hud-av', null, hud.av),
+      (hud.ring = h('div.hud-av', null, hud.av, (hud.modeIc = h('i.np-mode')))),
       h('div.hud-plate', null,
         h('div.hud-row', null, hud.name, hud.ctl, h('span.hud-coins', { 'aria-label': '星幣' }, stk('coin', 's'), hud.coins)),
-        h('div.hud-row', null, stk('heart', 's'), h('div.hud-bar', null, hud.moodBar), hud.mood)));
-    { let lp = 0; hud.me.addEventListener('pointerdown', () => { hud._lp = false; clearTimeout(lp); lp = setTimeout(() => { hud._lp = true; haptic('long'); OC.LifeUI.controlSheet(); }, 520); });
-      for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hud.me.addEventListener(ev, () => clearTimeout(lp)); }
+        h('div.hud-row.np-now', null, (hud.needs = h('span.np-needs')), hud.mood, h('div.hud-bar', { hidden: true }, hud.moodBar))));
+    /* 16.0 name card: tap = status card · long press = control mode · swipe sideways = play the next / previous character (the view goes to them) */
+    { let lp = 0, sx = null;
+      hud.me.addEventListener('pointerdown', (e) => { hud._lp = false; sx = e.clientX; clearTimeout(lp); lp = setTimeout(() => { hud._lp = true; sx = null; haptic('long'); OC.LifeUI.controlSheet(); }, 520); });
+      hud.me.addEventListener('pointermove', (e) => { if (sx == null) return; const d = e.clientX - sx; if (Math.abs(d) > 34) { clearTimeout(lp); sx = null; hud._lp = true; switchBy(d < 0 ? 1 : -1); } });
+      for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hud.me.addEventListener(ev, () => { clearTimeout(lp); sx = null; }); }
+    hud.others = h('div.np-others', { role: 'list', 'aria-label': '其他角色' });
     hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span.hud-wx');
     hud.timeBtn = h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => { haptic('tick'); timePanel(); } } }, hud.wxIc, h('div', null, h('b', null, hud.wx), hud.time));
     hud.badge = h('span.badge.num');
@@ -140,7 +144,7 @@
     /* 15.0: the action queue of the character you play — what it is doing for you and what comes next; each entry can be cancelled */
     hud.queue = h('div.hud-queue', { role: 'list', 'aria-label': '動作清單', hidden: true });
     hud.mark = h('div.ctl-mark', { 'aria-hidden': 'true' }, h('i')); overlays().append(hud.mark);
-    el.append(hud.me, hud.timeBtn, hud.queue, h('div.hud-sys', null, hud.bell), hud.rail, hud.quest);
+    el.append(hud.me, hud.others, hud.timeBtn, hud.queue, h('div.hud-sys', null, hud.bell), hud.rail, hud.quest);
     live(hud.av, () => ({ char: me(), pose: Object.assign({ face: 0.2 }, moodPose()) }));
     fpsEl = h('div.fps'); $('#app').append(fpsEl);
     updateHUD();
@@ -158,6 +162,14 @@
   /** while the player pans / zooms the island the HUD steps back (more of the world, less chrome) */
   function hudCalm() { const el = $('#hud'); if (!el) return; el.classList.add('calm'); clearTimeout(calmT); calmT = setTimeout(() => el.classList.remove('calm'), 1100); }
   let lastHudKey = '';
+  /** 16.0: play another character — nobody is moved; the view goes to where that character is */
+  function switchTo(id) {
+    const c = OC.Chars.get(id); if (!c || id === S().activeId) return;
+    if (OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding()) { toast('等摩天輪轉完這一圈', 'info'); return; }
+    haptic('tick'); toggleStatus(false); OC.Chars.setActive(id); toast(`現在操控：${OC.Chars.name(c)}`, 'person'); lastHudKey = '';
+  }
+  function switchBy(d) { const all = OC.Chars.all().filter((x) => x.status.onIsland || x.id === S().activeId); if (all.length < 2) return; const i = all.findIndex((x) => x.id === S().activeId); switchTo(all[(i + d + all.length) % all.length].id); }
+  const placeOf = (c) => { const id = c.id === S().activeId ? (Wd.area && Wd.area.id) : (c.life.loc || 'isle'), pl = OC.Places && OC.Places.get(id); return { id, zh: pl ? pl.zh : '' }; };
   function questCard() {
     if (!OC.Quests) return null;
     const q = OC.Quests.list('daily').find((x) => !x.claimed); if (!q) return null;
@@ -165,9 +177,22 @@
   }
   function updateHUD() {
     const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
-    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.act + x.state).join(',') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s].join('|');
+    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.act + x.state).join(',') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s, Wd.area && Wd.area.id, OC.Chars.all().map((x) => x.id + (x.status.onIsland ? 1 : 0) + (x.life.loc || '') + (x.updated || '')).join(), OC.LifeData.NEEDS.map((n) => (c.needs[n.id] || 0) < 25 ? 1 : 0).join('')].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
-    hud.name.textContent = OC.Chars.name(c); hud.mood.textContent = doing || OC.Mind.label(c);
+    hud.name.textContent = OC.Chars.name(c); { const pz = placeOf(c).zh, d = doing || OC.Mind.label(c); hud.mood.textContent = pz ? pz + '・' + d : d; }
+    /* the ring around the portrait is the mood; the little badge is the control mode; needs only show up when one is low */
+    { const ml = mood < 30 ? 'low' : mood < 60 ? 'mid' : 'good'; if (hud.ring.dataset.mood !== ml) hud.ring.dataset.mood = ml;
+      const m = c.life.control || 'semi'; if (hud.modeIc.dataset.m !== m) { hud.modeIc.dataset.m = m; const ct = OC.LifeUI.CTL.find((x) => x[0] === m); hud.modeIc.replaceChildren(icon(ct ? ct[2] : 'sparkle', 's')); }
+      const low = OC.LifeData.NEEDS.filter((n) => n.id !== 'mood' && (c.needs[n.id] || 0) < 25).sort((a, b) => (c.needs[a.id] || 0) - (c.needs[b.id] || 0)).slice(0, 2), lk = low.map((n) => n.id).join();
+      if (lk !== hud._lk) { hud._lk = lk; hud.needs.replaceChildren(...low.map((n) => h('i.np-need', { title: n.zh + '偏低', 'aria-label': n.zh + '偏低' }, icon(n.ic, 's')))); } }
+    /* the others, as small portraits behind the card: where they are (a dot when it is not here), dimmed when resting; tap = play that one */
+    { const others = OC.Chars.all().filter((x) => x.id !== c.id), here = Wd.area && Wd.area.id, now = OC.Sim.now();
+      const ok = others.map((x) => [x.id, x.updated, x.status.onIsland ? 1 : 0, (x.life.loc || 'isle') === here ? 1 : 0, x.life.trip && x.life.trip.eta > now ? 1 : 0, OC.Brain.get(x.id) && OC.Brain.get(x.id).conv ? 1 : 0].join(':')).join('|');
+      if (ok !== hud._ok) { hud._ok = ok; const show = others.slice(0, 4), more = others.length - show.length;
+        hud.others.replaceChildren(...show.map((x) => { const cv = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv, x, { pose: { mouth: 'smile' } }); const pz = placeOf(x), away = x.status.onIsland && pz.id !== here, b = OC.Brain.get(x.id);
+          return h('button.np-mini' + (x.status.onIsland ? '' : '.rest') + (away ? '.away' : '') + (b && b.conv ? '.chat' : ''), { role: 'listitem', 'data-id': x.id, 'aria-label': `操控${OC.Chars.name(x)}（${x.status.onIsland ? (x.life.trip && x.life.trip.eta > now ? '在路上' : pz.zh) : '休息中'}）`, on: { click: () => switchTo(x.id) } }, cv, h('i')); }),
+          ...(more > 0 ? [h('button.np-mini.np-more', { 'aria-label': `還有 ${more} 位`, on: { click: () => { haptic('tick'); toggleStatus(true); } } }, '+' + more)] : []));
+        hud.others.hidden = !others.length; } }
     { const ql = OC.Queue ? OC.Queue.list(c.id) : [], qk = ql.map((x) => x.act + x.state).join(',');
       if (qk !== hud._qk) { hud._qk = qk; hud.queue.hidden = !ql.length;
         hud.queue.replaceChildren(...ql.map((x, n) => h('button.q-chip' + (x.i < 0 ? '.now' : ''), { role: 'listitem', 'aria-label': `${x.zh}（${x.i < 0 ? (x.state === 'doing' ? '進行中' : '正要去') : '排第 ' + (n + 1)}）・點一下取消`, on: { click: () => { haptic('tick'); OC.Queue.cancel(c.id, x.i); toast(`取消：${x.zh}`, 'info'); lastHudKey = ''; } } },
@@ -251,7 +276,7 @@
     for (const [k, i] of Object.entries(f.bars)) { const w = Math.round(Math.max(0, Math.min(100, c.needs[k]))) + '%'; if (i.style.width !== w) i.style.width = w; i.classList.toggle('low', c.needs[k] < 25); }
     const sig = OC.Chars.all().map((x) => x.id + x.updated).join() + S().activeId;
     if (el._sig !== sig) { el._sig = sig; const all = OC.Chars.all(); f.who.hidden = all.length < 2;
-      f.who.replaceChildren(h('small.muted', null, '切換操控'), ...all.map((x) => { const cv2 = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv2, x, { pose: { mouth: 'smile' } }); return h('button.sc-pick' + (x.id === S().activeId ? '.on' : ''), { 'aria-label': '操控' + OC.Chars.name(x), on: { click: () => { if (x.id !== S().activeId) { OC.Chars.setActive(x.id); toast(`現在操控：${OC.Chars.name(x)}`, 'person'); } updateStatus(true); } } }, cv2); })); }
+      f.who.replaceChildren(h('small.muted', null, '切換操控'), ...all.map((x) => { const cv2 = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv2, x, { pose: { mouth: 'smile' } }); return h('button.sc-pick' + (x.id === S().activeId ? '.on' : ''), { 'aria-label': '操控' + OC.Chars.name(x), on: { click: () => { if (x.id !== S().activeId) switchTo(x.id); else updateStatus(true); } } }, cv2); })); }
   }
 
   // =============================== tab bar ===============================
@@ -413,12 +438,25 @@
     if (!Wd.area || !player) return;
     const act = S().activeId;
     if (player.cid !== act) {
-      const old = player.cid, oldPos = { x: player.x, y: player.y };
+      /* 16.0: switching who you play never moves anyone. The one you were playing stays where it stands and goes on with its own life;
+       * the view goes to the new one — here if it is here, otherwise to the place it is in (through the clouds), at the spot it was last
+       * seen. Only a character who was resting (not out at all) appears next to you, because it has no place yet. */
+      const old = player.cid, oldPos = { x: Math.round(player.x), y: Math.round(player.y) }, here = Wd.area.id, nc = me(), oc = OC.Chars.get(old);
+      if (OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding() && oc) { S().activeId = old; toast('等摩天輪轉完這一圈', 'info'); return; }
       OC.Brain.detach(old); standUp();
-      const m = mates[act]; if (m) { player.x = m.x; player.y = m.y; player.path = null; OC.Brain.detach(act); Wd.removeActor(m); delete mates[act]; }
+      if (oc) { oc.life.loc = here; oc.life.trip = null; oc.life.pos = Object.assign({ area: here }, oldPos); }
+      const m = mates[act], joined = OC.Chars._joined === act; OC.Chars._joined = null;
+      const loc = nc && (nc.life.loc || 'isle'), away = !m && !joined && nc && loc !== here && OC.Areas[loc] && !(OC.Places.get(loc) || {}).locked;
+      if (away) {
+        const pos = nc.life.pos && nc.life.pos.area === loc ? { x: nc.life.pos.x, y: nc.life.pos.y } : null;
+        nc.life.trip = null; player.cid = act; saveMatePos();
+        OC.WorldUI.travel(loc, { pos: pos || { x: OC.Areas[loc].spawn.x, y: OC.Areas[loc].spawn.y }, sw: true });
+        return;
+      }
+      if (m) { player.x = m.x; player.y = m.y; player.path = null; OC.Brain.detach(act); Wd.removeActor(m); delete mates[act]; }
       player.cid = act; player.key = ''; OC.Brain.attach(player, me(), { manual: true });
-      const oc = OC.Chars.get(old); if (oc && oc.status.onIsland && Object.keys(mates).length < MAX_MATES) { oc.life.loc = Wd.area.id; oc.life.trip = null; addMate(oc, 0, oldPos); }
-      const nc = me(); if (nc) { nc.life.loc = Wd.area.id; nc.life.trip = null; }
+      if (oc && oc.status.onIsland && Object.keys(mates).length < MAX_MATES) addMate(oc, 0, oldPos);
+      if (nc) { nc.life.loc = here; nc.life.trip = null; }
     }
     syncPresence();
     player.key = ''; for (const a of Object.values(mates)) a.key = '';
@@ -858,7 +896,7 @@
     OC.Brain.rebuild();
     makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeMates(); spawnDailies();
     S().pos = { area: id, x: player.x, y: player.y };
-    OC.WorldUI.arrived(id, o.from); syncTreeFruit(); applyPerf(); Gm.checkAch();
+    OC.WorldUI.arrived(id, o.from, o.sw); syncTreeFruit(); applyPerf(); Gm.checkAch();
     if (followNext) {   // 13.0: we came here because the character we follow led the way (or the OC we were watching left)
       const f = followNext; followNext = null;
       if (f.lead) { const b = OC.Brain.get(f.lead); if (b && player && player.cid === f.lead) { b.ledAt = OC.Sim.now(); if (f.act && OC.LifeData.ACTS[f.act]) { b.queued = f.act; b.thinkAt = 0; } } }

@@ -173,7 +173,7 @@
     if (S().activeId === id) S().activeId = S().roster[0]; if (S().petId === id) S().petId = null;
     St.touch('chars', { id, removed: true }); return true;
   }
-  function setActive(id) { if (!get(id)) return; S().activeId = id; get(id).status.onIsland = true; St.touch('chars', { id, active: true }); }
+  function setActive(id) { if (!get(id)) return; S().activeId = id; if (!get(id).status.onIsland) OC.Chars._joined = id; /* 16.0: only someone who was resting appears beside you; everyone else keeps their place */ get(id).status.onIsland = true; St.touch('chars', { id, active: true }); }
   function move(id, dir) { const r = S().roster, i = r.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= r.length) return; [r[i], r[j]] = [r[j], r[i]]; St.touch('chars'); }
   function reorder(ids) { S().roster = ids.filter((id) => S().chars[id]); St.touch('chars'); }
   const name = (c) => (c && (c.profile.nickname || c.profile.name)) || '無名氏';

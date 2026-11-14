@@ -18,7 +18,7 @@
     if (to === 'map') { A().tab('explore'); return; }
     if (OC.Mini && OC.Mini.wheelRiding && OC.Mini.wheelRiding()) { toast('等摩天輪轉完這一圈', 'info'); return; }
     const p = PL().get(to); if (!p || p.locked) { toast(p ? p.why || '尚未開放' : '沒有這個地方', 'lock'); return; }
-    const from = Wd().area ? Wd().area.id : null; if (from === to) { A().tab('island'); return; }
+    const from = Wd().area ? Wd().area.id : null; if (from === to && !o.pos) { A().tab('island'); return; }
     if (busy) { pending = to; return; } busy = true;   // a request during the fade is kept (the last one wins), not dropped
     const f = document.getElementById('fade'), lab = h('div.travel-label', null, h('b', null, p.zh), h('span', null, PL().TYPES[p.type] || ''), h('i.dots', null, h('i'), h('i'), h('i')));
     /* 15.3: a puff-of-clouds transition (cream clouds roll in from the edges, the place's name in the middle); plain fade with reduced motion */
@@ -30,21 +30,22 @@
       try {
         // where do we appear? interior ← parent door / parent ← child door / outdoor ← its spawn
         const area = OC.Areas[p.area]; let pos = null;
-        if (from && area.doors && area.doors[from]) pos = Object.assign({}, area.doors[from], { y: area.doors[from].y + 10 });
+        if (o.pos) pos = { x: o.pos.x, y: o.pos.y };   /* 16.0: the view goes to where a character already is (switching who you play) */
+        else if (from && area.doors && area.doors[from]) pos = Object.assign({}, area.doors[from], { y: area.doors[from].y + 10 });
         else if (area.interior) pos = Object.assign({}, area.spawn);
-        A().loadArea(to, pos ? Object.assign({ area: to }, pos) : null, { from });
+        A().loadArea(to, pos ? Object.assign({ area: to }, pos) : null, { from, sw: !!o.sw });
         A().tab('island');
       } catch (e) { console.error(e); toast('移動時發生錯誤：' + e.message, 'info'); }
       setTimeout(() => { f.style.opacity = 0; f.style.pointerEvents = 'none'; busy = false; setTimeout(() => { f.replaceChildren(); f.classList.remove('clouds'); }, 400); if (pending) { const nx = pending; pending = null; if (nx !== (Wd().area && Wd().area.id)) travel(nx); } }, 220);
     }, o.instant ? 0 : 380);
   }
   /** after a place is built: visits, discoveries, visuals */
-  function arrived(id, from) {
+  function arrived(id, from, sw) {
     const p = PL().get(id), first = PL().visit(id), c = A().me();
     if (c) { c.life.loc = id; c.life.places = c.life.places || {}; const r = c.life.places[id] = c.life.places[id] || { visits: 0, last: 0 }; r.visits++; r.last = Sim().now();
       if (first || r.visits === 1) { M().remember(c, { type: 'discover', imp: 0.6, place: 'place:' + id, text: `第一次來到${p.zh}`, key: 'place:first:' + id + ':' + c.id }); M().feel(c, OC.Chars.has(c, 'shy') && p.type === 'street' ? 'nervous' : 'curious', 0.45, '第一次來到' + p.zh); } }
     if (first) setTimeout(() => toast(`新地點：${p.zh}`, 'compass'), 500);
-    if (OC.Events) OC.Events.trigger('arrive', { a: c && c.id, place: id, placeZh: p.zh });
+    if (OC.Events && !sw) OC.Events.trigger('arrive', { a: c && c.id, place: id, placeZh: p.zh });
     setupVisuals(id);
     S().stats.visits[id] = (S().stats.visits[id] || 0) + 1;
     // Phase 6: the player arriving somewhere (quests: visit) and the played OC arriving (requests / aspirations: arrive)

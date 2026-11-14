@@ -346,3 +346,29 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .size-h.n { top: -5px; left: 50%; height: 10px; width: 40px; margin-left: -20px; cursor: ns-resize; }
 .size-h.ne { right: -8px; top: -8px; width: 18px; height: 18px; cursor: nesw-resize; }
 .size-lab { position: absolute; left: 8px; top: 6px; font-size: var(--fs-xs); color: var(--ink-2); pointer-events: none; }
+
+/* 16.0 — the name card (top-left): mood ring, control-mode badge, where + what, needs only when low, the others behind it */
+.hud-plate { height: 46px; gap: 1px; padding: 0 12px 0 24px; max-width: calc(100vw - 150px); }
+.hud-plate .hud-row + .hud-row { display: flex; }
+.hud-av { width: 56px; height: 56px; overflow: visible; border-color: var(--heart, var(--accent)); transition: border-color var(--t-base); }
+.hud-av canvas { border-radius: 50%; transform: none; background: radial-gradient(circle at 50% 35%, var(--surface), var(--sun-soft)); }
+.hud-av[data-mood="mid"] { border-color: var(--sun); } .hud-av[data-mood="low"] { border-color: var(--alert); } .hud-av[data-mood="good"] { border-color: var(--accent); }
+.np-mode { position: absolute; right: -4px; bottom: -3px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--ink-2); box-shadow: 0 1.5px 0 var(--lip); }
+.np-mode .ic { width: 12px; height: 12px; } .np-mode[data-m="manual"] { background: var(--sun-soft); } .np-mode[data-m="auto"] { background: var(--accent-soft); color: var(--accent); }
+.hud-ctl { display: none; }
+.np-now { gap: 4px; } .np-now .hud-moodtxt { font-size: var(--fs-xs); color: var(--ink-2); max-width: 42vw; }
+.np-needs { display: inline-flex; gap: 3px; flex: none; } .np-needs:empty { display: none; }
+.np-need { width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: var(--alert); color: var(--on-alert); animation: np-pulse 1.6s ease-in-out infinite; } .np-need .ic { width: 10px; height: 10px; }
+@keyframes np-pulse { 50% { transform: scale(1.14); } }
+.np-others { position: absolute; left: calc(var(--sal) + 104px); top: calc(var(--sat) + 66px); display: flex; gap: 0; }
+.np-others[hidden] { display: none; }
+.np-mini { position: relative; width: 36px; height: 36px; margin-right: -6px; border-radius: 50%; border: 2.5px solid var(--surface); background: var(--surface-2); box-shadow: 0 2px 0 var(--lip), var(--shadow-1); padding: 0; transition: transform var(--t-press); }
+.np-mini::after { content: ""; position: absolute; inset: -7px; }   /* a 48dp target */
+.np-mini:active { transform: translateY(2px) scale(.94); }
+.np-mini canvas { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.np-mini i { position: absolute; right: -2px; top: -2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--surface); display: none; }
+.np-mini.away i { display: block; background: var(--sun); } .np-mini.chat i { display: block; background: var(--accent); }
+.np-mini.rest canvas { opacity: .45; filter: grayscale(.6); }
+.np-more { font-size: var(--fs-xs); font-weight: 800; color: var(--ink-2); }
+.hud-time { top: calc(var(--sat) + 68px); }
+.reduce-motion .np-need { animation: none; }

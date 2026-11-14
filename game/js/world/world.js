@@ -307,7 +307,7 @@
       const qx = (sx - bx) / zoom, qy = (sy - by) / zoom, inX = Math.abs(qx) <= h.w / 2, inY = qy >= -h.h && qy <= (h.d || 8);
       if (inX && inY) { const d = Math.abs(qx) + Math.abs(qy + h.h / 2) * 0.5 - (it.prio || 0) * 100; if (d < bestD) { bestD = d; best = it; } }
     };
-    actors.forEach((a) => { if (a.interact) consider(Object.assign(a.interact, { x: a.x, y: a.y, lvl: a.lvl })); });
+    actors.forEach((a) => { if (!a.interact) return; const it = Object.assign(a.interact, { x: a.x, y: a.y, lvl: a.lvl }); if (!a.hit0) a.hit0 = it.hit || { w: 24, h: 30 }; const k = a.tk || 1; it.hit = k > 1.05 ? { w: a.hit0.w * Math.min(k, 3), h: a.hit0.h * k, d: a.hit0.d } : a.hit0; consider(it); });   /* 16.0: a character made bigger is touchable over its whole height */
     drops.forEach((d) => consider(d.it)); interacts.forEach(consider); furn.forEach((f) => f.it && consider(f.it));
     return { p, it: best };
   }
