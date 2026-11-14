@@ -40,6 +40,7 @@
     sunrise: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v4M9.5 6.5 12 4l2.5 2.5M4.8 12.2l1.4 1M19.2 12.2l-1.4 1"/>',
     sunset: '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v4M9.5 5.5 12 8l2.5-2.5M4.8 12.2l1.4 1M19.2 12.2l-1.4 1"/>',
     back: '<path d="M14.5 5.5 8 12l6.5 6.5"/>', next: '<path d="M9.5 5.5 16 12l-6.5 6.5"/>',
+    up: '<path d="M5.5 14.5 12 8l6.5 6.5"/>', down: '<path d="M5.5 9.5 12 16l6.5-6.5"/>', scissors: '<circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M8.8 15.2 17 5M15.2 15.2 7 5"/>',
     close: '<path d="M7 7l10 10M17 7 7 17"/>', check: '<path d="M6 12.5l4.2 4L18 7.5"/>', plus: '<path d="M12 6v12M6 12h12"/>', minus: '<path d="M6 12h12"/>',
     play: '<path d="M8.5 6v12l9.5-6z" fill="currentColor" stroke="none"/>', pause: '<path d="M8 6v12M16 6v12"/>',
     heart: '<path d="M12 19.5C2 13 4 4.5 12 8.5c8-4 10 4.5 0 11z"/>', star: '<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z"/>',

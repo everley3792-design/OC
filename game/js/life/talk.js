@@ -107,7 +107,23 @@
   // ---------------- line library ----------------
   function lines() {
     const L = S().life.dlg, off = new Set(L.off || []);
-    return D().LINES.filter((l) => !off.has(l.id)).concat((L.custom || []).filter((l) => !l.disabled));
+    return D().LINES.filter((l) => !off.has(l.id)).concat((L.custom || []).filter((l) => !l.disabled), charLines());
+  }
+  /* 16.3: a character's own lines (c.lines16 = [{ id, cat, text, c, w }]) and the lines of its own interactions (c.inter16[].lines)
+   * travel with the character (.ocpack). Rebuilt only when a character changed. */
+  let clCache = null, clKey = '';
+  function charLines() {
+    const cs = OC.Chars.all(), key = cs.map((c) => c.id + ':' + (c.updated || 0) + ':' + ((c.lines16 || []).length) + ':' + ((c.inter16 || []).length)).join('|');
+    if (clCache && key === clKey) return clCache;
+    const out = [];
+    for (const c of cs) {
+      for (const l of c.lines16 || []) if (l && l.text && l.cat && !l.off) out.push({ id: 'c16:' + c.id + ':' + l.id, cat: l.cat, text: String(l.text), c: l.c || null, w: l.w || 1, char: c.id, custom: true, cd: l.cd != null ? l.cd : 60 });
+      for (const x of c.inter16 || []) { if (!x || !x.id || !x.lines) continue; const k = 'u16_' + c.id + '_' + x.id;
+        (x.lines.ask || []).forEach((t, i) => t && out.push({ id: `c16:${k}:a${i}`, cat: 'i16_' + k, text: String(t), char: c.id, custom: true, cd: 0 }));
+        (x.lines.yes || []).forEach((t, i) => t && out.push({ id: `c16:${k}:y${i}`, cat: k + '_yes', text: String(t), custom: true, cd: 0 }));
+        (x.lines.no || []).forEach((t, i) => t && out.push({ id: `c16:${k}:n${i}`, cat: k + '_no', text: String(t), custom: true, cd: 0 })); }
+    }
+    clCache = out; clKey = key; return out;
   }
   const saidOf = (c) => (S().life.said[c.id] = S().life.said[c.id] || {});
   /** 12.0 tone: with "沉穩" (default) the grown-up lines (flagged m) are preferred and the older exuberant ones (tildes, stacked
@@ -119,6 +135,8 @@
     const X = ctx(sp, ot, extra), gm = Sim().now(), said = saidOf(sp);
     let pool = lines().filter((l) => l.cat === cat && (!l.char || l.char === sp.id) && !(l.once && said[l.id]) && test(l.c, X));
     if (!pool.length) return null;
+    /* 16.3: 「只用我寫的」 for this category — the built-in lines step aside when the character has its own */
+    if (sp.lines16mode && sp.lines16mode[cat] === 'only') { const own = pool.filter((l) => l.char === sp.id && String(l.id).startsWith('c16:')); if (own.length) pool = own; }
     const fresh = pool.filter((l) => !(said[l.id] && gm - said[l.id] < (l.cd != null ? l.cd : 90)));
     if (fresh.length) pool = fresh; else pool = pool.slice().sort((a, b) => (said[a.id] || 0) - (said[b.id] || 0)).slice(0, 2);
     const vo = voice(sp), spec = (l) => 1 + 0.35 * (l.c ? Object.keys(l.c).filter((k) => k !== 'voice').length : 0) + (l.c && l.c.voice && [].concat(l.c.voice).includes(vo) ? 1.2 : 0);

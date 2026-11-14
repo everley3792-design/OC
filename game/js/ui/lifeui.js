@@ -564,9 +564,10 @@
       const head = h('div.muted', { style: { fontSize: 'var(--fs-s)', margin: '-4px 0 8px' } }, `${name(cb)}眼中的${name(ca)}：${M().relLabel(M().relPeek(bId, aId))}`);
       const tabs = h('div.soc-cats'), list = h('div.soc-list');
       const draw = () => {
-        tabs.replaceChildren(...OC.Will.CATS.map(([id, zh]) => h('button.chip-btn' + (st.cat === id ? '.on' : ''), { 'data-cat': id, on: { click: () => { st.cat = id; (S().life.ui16 = S().life.ui16 || {}).cat = id; draw(); } } }, zh)));
+        const hasOwn = Object.values(OC.Will.INTER).some((x) => x.own === aId); if (st.cat === 'own' && !hasOwn) st.cat = 'talk';
+        tabs.replaceChildren(...OC.Will.CATS.filter(([id]) => id !== 'own' || hasOwn).map(([id, zh]) => h('button.chip-btn' + (st.cat === id ? '.on' : ''), { 'data-cat': id, on: { click: () => { st.cat = id; (S().life.ui16 = S().life.ui16 || {}).cat = id; draw(); } } }, zh)));
         const showHint = S().life.settings.willHint !== false;
-        list.replaceChildren(...Object.values(OC.Will.INTER).filter((x) => x.cat === st.cat).map((x) => {
+        list.replaceChildren(...Object.values(OC.Will.INTER).filter((x) => x.cat === st.cat && (!x.own || x.own === aId)).map((x) => {
           const hh = OC.Will.hint(cb, ca, x.id), lock = hh.face === '🔒' ? (OC.People && (OC.People.minor(ca) || OC.People.minor(cb)) ? '未成年不會有戀愛相關的互動' : '要在生活設定為兩人打開戀愛功能') : '';
           return h('button.soc-row' + (lock ? '.locked' : ''), { 'data-int': x.id, disabled: !!lock, on: { click: () => { if (!OC.Pick || OC.Pick.armed(b)) { api.close(); const r = OC.Will.ask(aId, bId, x.id, { player: true }); if (!r.ok) { toast(r.why, r.defy ? 'info' : 'lock'); if (r.defy) { const a = A().actorOf(aId); if (a) { OC.World.setAction(a, 'shake', { dur: 1.2, priority: 4 }); A().bubble && A().bubble(a, r.why.replace(name(ca), '').replace(/^[，、]/, '') || '……', name(ca), 1.8, { thought: true }); } } } } } } },
             h('span.soc-ic', null, x.ic), h('span.grow', null, x.zh, lock ? h('small', null, lock) : null), showHint && !lock ? h('span.soc-hint', { title: '大概的反應', 'aria-label': '對方大概的反應' }, hh.face) : null, lock ? icon('lock', 's') : null);

@@ -137,8 +137,14 @@
   }
 
   /** does this pose render from player frames? → { doc, mirror } | null */
+  /** 16.3 where a picture character's motion comes from (c.appearance.anim16 = { src: 'preset' | 'mixed' | 'custom', preset: { action: true } }):
+   *  preset — the picture itself performs every action (only the standing picture is used) · mixed (default) — your animation where you
+   *  made one, the picture performs the rest; single actions can be sent back to preset · custom — only your animations (no preset motion) */
+  function animSrc(c) { const a = c && c.appearance && c.appearance.mode === 'sprite' && c.appearance.anim16; return a ? (a.src === 'preset' || a.src === 'custom' ? a.src : 'mixed') : 'mixed'; }
   function spriteFor(c, p) {
-    const r = OC.Anim.resolve(c, p.action || 'idle', p.dir || 'front');
+    const act0 = p.action || 'idle', a16 = c && c.appearance && c.appearance.mode === 'sprite' ? c.appearance.anim16 : null;
+    if (a16 && act0 !== 'idle' && (a16.src === 'preset' || (a16.src !== 'custom' && a16.preset && a16.preset[act0]))) { const r0 = OC.Anim.resolve(c, 'idle', p.dir || 'front'); if (r0) return r0; }
+    const r = OC.Anim.resolve(c, act0, p.dir || 'front');
     if (r) return r;
     return null;
   }
@@ -265,5 +271,5 @@
   const presetCache = {};
   function presetChar(key) { return presetCache[key] || (presetCache[key] = OC.Chars.fromPreset(key)); }
 
-  OC.CharRender = { extent, tall, mipOf, draw, plan, key, portrait, rigState, spriteFor, refH, presetChar, RIG_H, motion };
+  OC.CharRender = { animSrc, extent, tall, mipOf, draw, plan, key, portrait, rigState, spriteFor, refH, presetChar, RIG_H, motion };
 })();

@@ -184,7 +184,7 @@
     const anims = new Set(); for (const a of Object.values(c.actions || {})) for (const id of Object.values(a)) if (OC.Anim.get(id)) anims.add(id);
     for (const d of OC.Anim.list((x) => x.owner === c.id)) anims.add(d.id);
     const assets = new Set((c.parts || []).flatMap((p) => [p.assetId, p.closedId]).filter(Boolean));
-    for (const id of anims) OC.Anim.assetsOf(OC.Anim.get(id)).forEach((a) => assets.add(a));
+    for (const id of anims) { const d = OC.Anim.get(id); OC.Anim.assetsOf(d).forEach((a) => assets.add(a)); if (d.cut16 && d.cut16.orig) d.cut16.orig.flat().filter(Boolean).forEach((a) => assets.add(a)); }   /* 16.3: the frames before background removal travel too (「還原原圖」) */
     return { anims: [...anims], assets: [...assets] };
   }
   /** opts = { chars:[ids], anims:[ids], assets:[ids], kind, progress:boolean } → Blob */
@@ -192,7 +192,7 @@
     const chars = (o.chars || []).map((id) => OC.Chars.get(id)).filter(Boolean);
     const animIds = new Set(o.anims || []), assetIds = new Set(o.assets || []);
     for (const c of chars) { const d = charDeps(c); d.anims.forEach((x) => animIds.add(x)); d.assets.forEach((x) => assetIds.add(x)); }
-    for (const id of animIds) OC.Anim.assetsOf(OC.Anim.get(id)).forEach((a) => assetIds.add(a));
+    for (const id of animIds) { const d = OC.Anim.get(id); OC.Anim.assetsOf(d).forEach((a) => assetIds.add(a)); if (d.cut16 && d.cut16.orig) d.cut16.orig.flat().filter((a) => a && OC.Assets.has(a)).forEach((a) => assetIds.add(a)); }
     const missing = OC.Assets.missing([...assetIds]); if (missing.length) throw new Error(`有 ${missing.length} 個素材遺失，無法完整匯出`);
     const files = [], assets = [];
     for (const id of assetIds) { const b = await OC.Assets.blob(id); const m = OC.Assets.meta.get(id); files.push({ name: `assets/${id}.png`, data: new Uint8Array(await b.arrayBuffer()) }); assets.push({ id, file: `assets/${id}.png`, w: m.w, h: m.h, kind: m.kind, name: m.name, size: m.size }); }
@@ -232,6 +232,7 @@
       const d = OC.Chars.clone(d0); const nid = fresh(d.id, 'an'); animMap.set(d.id, nid); d.id = nid;
       if (mode === 'merge' && OC.Anim.get(d0.id)) continue;
       d.layers.forEach((l) => { l.cells = l.cells.map((c) => (c ? map.get(c) || c : null)); });
+      if (d.cut16 && d.cut16.orig) d.cut16.orig = d.cut16.orig.map((l) => (l || []).map((c) => (c ? map.get(c) || c : null)));
       OC.Store.s.animations[d.id] = d;
     }
     const added = [];

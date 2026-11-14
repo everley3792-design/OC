@@ -278,6 +278,147 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       const wd = await page.evaluate(async () => { const a = OC.App.player; OC.World.setAction(a, 'drag', { priority: 9 }); await new Promise((r) => setTimeout(r, 5000)); return { act: a.act && a.act.action, fixed: window.__ocActFix || [] }; });
       check('15c 安全網：沒有擁有者的無限期高優先動作（會擋住走路）2 秒後自動結束', wd.act !== 'drag' && wd.fixed.includes('drag'), wd);
     }
+    /* ============================== 16.3 the character studio ============================== */
+    const PIC = `(async () => { const cv = document.createElement('canvas'); cv.width = 300; cv.height = 400; const g = cv.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 300, 400);
+      g.fillStyle = '#e8a080'; g.beginPath(); g.ellipse(150, 220, 90, 150, 0, 0, 7); g.fill(); g.fillStyle = '#ffffff'; g.beginPath(); g.arc(120, 180, 16, 0, 7); g.arc(180, 180, 16, 0, 7); g.fill();
+      const blob = await new Promise((r) => cv.toBlob(r, 'image/png')); const c = OC.Chars.blank('import'); await OC.Library.spriteCharFromFiles(c, [new File([blob], 'pic.png', { type: 'image/png' })], { cut: false, quiet: true }); c.profile.name = '圖片角色'; c.status.onIsland = true; OC.Chars.add(c); await OC.Anim.preload(OC.Anim.get(c.actions.idle.any)); return c.id; })()`;
+    if (want(16)) {
+      await page.evaluate(() => { OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back()); });
+      const r = await page.evaluate(async () => {
+        OC.Pages.open('charedit', { id: OC.Chars.all()[0].id }); await new Promise((res) => setTimeout(res, 1500));
+        const pg = document.querySelector('.page.open[data-page=charedit]'), panel = pg.querySelector('.st-panel'), top0 = pg.querySelector('.st-top').getBoundingClientRect().top, tabs0 = pg.querySelector('.st-tabs').getBoundingClientRect().top;
+        panel.scrollTop = 1200; await new Promise((res) => setTimeout(res, 400));
+        const top1 = pg.querySelector('.st-top').getBoundingClientRect().top, tabs1 = pg.querySelector('.st-tabs').getBoundingClientRect().top;
+        const rigTabs = [...pg.querySelectorAll('.st-tab')].map((b) => b.dataset.tab);
+        return { pageScroll: pg.scrollTop, fits: pg.scrollHeight <= pg.clientHeight + 1, panelScrolls: panel.scrollTop > 600, top: [top0, top1], tabs: [tabs0, tabs1], rigTabs };
+      });
+      check('16a 編輯頁分成兩區：角色舞台和分頁固定不動，只有下面的面板捲動（不再跑版）', r.pageScroll === 0 && r.fits && r.panelScrolls && Math.abs(r.top[0] - r.top[1]) < 1 && Math.abs(r.tabs[0] - r.tabs[1]) < 1, r);
+      const pid = await page.evaluate(PIC);
+      const r2 = await page.evaluate(async (id) => { OC.Pages.open('charedit', { id }); await new Promise((res) => setTimeout(res, 1500)); const pg = document.querySelector('.page.open[data-page=charedit]'); return { tabs: [...pg.querySelectorAll('.st-tab')].map((b) => b.dataset.tab), table: !!pg.querySelector('.fr-table canvas') }; }, pid);
+      check('16b 圖片角色有自己的分頁：「圖片」取景台＋動畫，沒有捏臉（外觀／臉／耳朵／顏色）', r2.tabs[0] === 'frame' && r2.tabs.includes('anims') && !r2.tabs.includes('look') && r2.table, r2.tabs);
+      /* real touch on the framing table: one finger moves, two fingers zoom */
+      const cdp = await page.context().newCDPSession(page);
+      const box = await page.evaluate(() => { const r = document.querySelector('.page.open .fr-table canvas').getBoundingClientRect(); const p = OC.Pages.pages.charedit; const g = p.table.geo(); return { x: r.left, y: r.top, w: r.width, h: r.height, cx: r.left + (g.rect.x0 + g.rect.x1) / 2, cy: r.top + (g.rect.y0 + g.rect.y1) / 2, f0: JSON.parse(JSON.stringify(p.draft.appearance.frame || {})) }; });
+      const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], i) => ({ x, y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });
+      await touch('touchStart', [[box.cx, box.cy]]); for (let i = 1; i <= 6; i++) { await touch('touchMove', [[box.cx + i * 6, box.cy - i * 3]]); await page.waitForTimeout(16); } await touch('touchEnd', []);
+      const mv = await page.evaluate(() => JSON.parse(JSON.stringify(OC.Pages.pages.charedit.draft.appearance.frame)));
+      await touch('touchStart', [[box.cx - 30, box.cy], [box.cx + 30, box.cy]]); for (let i = 1; i <= 6; i++) { await touch('touchMove', [[box.cx - 30 - i * 8, box.cy], [box.cx + 30 + i * 8, box.cy]]); await page.waitForTimeout(16); } await touch('touchEnd', []);
+      const zm = await page.evaluate(() => JSON.parse(JSON.stringify(OC.Pages.pages.charedit.draft.appearance.frame)));
+      check('16c 取景台（真實觸控）：單指拖曳移動、兩指撐開放大；只改 frame，不改原圖', mv.dx > 5 && mv.dy < -2 && zm.zoom > 1.3, { mv, zm });
+      await page.evaluate(() => { OC.Pages.pages.charedit.dirty = false; OC.UI.back(); });
+    }
+    if (want(17)) {
+      const r = await page.evaluate(async () => {
+        /* white page, white eyes inside a body: an edge flood keeps the eyes; the old colour key erased them */
+        const cv = document.createElement('canvas'); cv.width = 200; cv.height = 240; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 200, 240); g.fillStyle = '#d08060'; g.beginPath(); g.ellipse(100, 130, 70, 100, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(80, 110, 12, 0, 7); g.arc(120, 110, 12, 0, 7); g.fill();
+        const det = OC.Cutout.detect(cv), out = OC.Cutout.remove(cv, {}), A = (k, x, y) => k.getContext('2d').getImageData(x, y, 1, 1).data[3];
+        const old = OC.IO.keyOut(OC.Cutout.clone(cv));
+        /* a closed gap: a ring with white inside, then the wand clears it */
+        const cv2 = document.createElement('canvas'); cv2.width = 120; cv2.height = 120; const g2 = cv2.getContext('2d'); g2.fillStyle = '#fff'; g2.fillRect(0, 0, 120, 120); g2.strokeStyle = '#333'; g2.lineWidth = 14; g2.beginPath(); g2.arc(60, 60, 35, 0, 7); g2.stroke();
+        const ring = OC.Cutout.remove(cv2, {}), ringW = OC.Cutout.wand(ring, 60, 60, 42);
+        return { det: det.has, corner: A(out, 2, 2), eye: A(out, 80, 110), body: A(out, 100, 180), oldEye: A(old, 80, 110), hole: A(ring, 60, 60), holeW: A(ringW, 60, 60), ringKeep: A(ringW, 60, 26) };
+      });
+      check('17a 去背只去掉跟邊緣相連的背景：角色身上同顏色的眼白留著（舊的顏色鍵會一起去掉）', r.det && r.corner === 0 && r.eye === 255 && r.body === 255 && r.oldEye < 255, r);
+      check('17b 圍起來的空隙用「點一下」去掉，線條本身不受影響', r.hole === 255 && r.holeW === 0 && r.ringKeep === 255, r);
+      const r2 = await page.evaluate(async (src) => {
+        const id = await eval(src), c = OC.Chars.get(id), doc = OC.Anim.get(c.actions.idle.any), before = doc.layers[0].cells.slice();
+        const n = await OC.Frame16.applyCut(c, { tol: 42, seeds: [], on: true }); const after = OC.Anim.get(c.actions.idle.any).layers[0].cells.slice();
+        await OC.Anim.preload(OC.Anim.get(c.actions.idle.any)); const img = OC.Anim.composite(OC.Anim.get(c.actions.idle.any), 0); const cornerA = img.getContext('2d').getImageData(12, 12, 1, 1).data[3];
+        const fit = OC.Frame16.autoFit(c), f = JSON.parse(JSON.stringify(c.appearance.frame));
+        const back = OC.Frame16.revertCut(c), reverted = OC.Anim.get(c.actions.idle.any).layers[0].cells.slice();
+        return { n, changed: before[0] !== after[0], cornerA, fit, f, back, same: reverted[0] === before[0] };
+      }, PIC);
+      check('17c 已有的圖片角色：去背處理所有影格（存成新圖），原圖保留，可以「還原原圖」', r2.n >= 1 && r2.changed && r2.cornerA === 0 && r2.back >= 1 && r2.same, r2);
+      check('17d 「自動對齊」：可見部分調成標準高度、腳底對齊（設定放大與位移，不裁切）', r2.fit && Math.abs(r2.f.zoom - 1) > 0.02 && r2.f.dy !== 0 && !(r2.f.crop && (r2.f.crop.t || r2.f.crop.b)), r2.f);
+      const r3 = await page.evaluate(async () => {
+        const c = OC.Chars.all().find((x) => x.profile.name === '圖片角色'), cv = document.createElement('canvas'); cv.width = 80; cv.height = 120; cv.getContext('2d').fillRect(10, 10, 60, 100);
+        const { doc } = await OC.Library.makeAnim([cv], { name: '行走', owner: c.id, action: 'walk' }); c.actions.walk = { any: doc.id };
+        const R = OC.CharRender, P = OC.Puppet, out = {};
+        for (const [k, a16] of [['mixed', { src: 'mixed', preset: {} }], ['mixedForced', { src: 'mixed', preset: { walk: true } }], ['preset', { src: 'preset', preset: {} }], ['custom', { src: 'custom', preset: {} }]]) {
+          c.appearance.anim16 = a16; const sw = R.spriteFor(c, { action: 'walk' }), sj = R.spriteFor(c, { action: 'jump' });
+          out[k] = { walk: sw.action, jumpPuppet: P.active(c, sj, { action: 'jump' }) };
+        }
+        c.appearance.anim16 = null; return out;
+      });
+      check('17e 動畫來源：混合＝有自己的走路就用、沒有的（跳）由圖片表演；單一動作可改回預設；全部預設＝都由圖片表演；全部自己匯入＝不用預設表演', r3.mixed.walk === 'walk' && r3.mixed.jumpPuppet && r3.mixedForced.walk === 'idle' && r3.preset.walk === 'idle' && r3.custom.walk === 'walk' && !r3.custom.jumpPuppet, r3);
+      const r4 = await page.evaluate(async () => {
+        const c = OC.Chars.all().find((x) => x.profile.name === '圖片角色'); OC.Pages.open('charedit', { id: c.id, tab: 'anims' }); await new Promise((res) => setTimeout(res, 1200));
+        const pg = document.querySelector('.page.open[data-page=charedit]'); pg.querySelector('[data-bulk=all]').click(); await new Promise((res) => setTimeout(res, 200));
+        pg.querySelector('[data-bulk=preset]').click(); await new Promise((res) => setTimeout(res, 200));
+        const d = OC.Pages.pages.charedit.draft, n = Object.keys((d.appearance.anim16 || {}).preset || {}).length, total = OC.Chars.ACTIONS.filter((a) => a[2] !== 'overlay').length;
+        const g = OC.Studio16.groupFiles([{ name: 'walk_01.png' }, { name: 'walk_02.png' }, { name: 'jump.gif' }, { name: '行走3.png' }, { name: 'hello.png' }].map((x) => new File([new Uint8Array(4)], x.name)));
+        OC.Pages.pages.charedit.dirty = false; OC.UI.back();
+        return { n, total, groups: g.map((x) => [x.act, x.files.length]) };
+      });
+      check('17f 一鍵全選：勾選全部動作 → 「改用預設」一次套用到全部', r4.n === r4.total && r4.total > 20, { n: r4.n, total: r4.total });
+      check('17g 批次匯入用檔名對應動作（walk_01、walk_02、行走3 → 走路；jump.gif → 跳；認不出來的另外選）', JSON.stringify(r4.groups) === JSON.stringify([['walk', 3], ['jump', 1], [null, 1]]), r4.groups);
+    }
+    if (want(18)) {
+      const r = await page.evaluate(async () => {
+        const [a, b] = OC.Chars.all(); a.lines16 = [{ id: 't1', cat: 'greet', text: '喲，{other}，今天也在。' }]; a.updated = Date.now();
+        const said = new Set(); a.lines16mode = { greet: 'only' }; for (let i = 0; i < 12; i++) { OC.Store.s.life.said[a.id] = {}; const l = OC.Talk.say('greet', a, b); if (l) said.add(l.text); }
+        a.lines16mode = {}; const mix = new Set(); for (let i = 0; i < 30; i++) { OC.Store.s.life.said[a.id] = {}; const l = OC.Talk.say('greet', a, b); if (l) mix.add(l.text.includes('今天也在') ? 'own' : 'builtin'); }
+        const other = new Set(); for (let i = 0; i < 12; i++) { OC.Store.s.life.said[b.id] = {}; const l = OC.Talk.say('greet', b, a); if (l && l.text.includes('今天也在')) other.add('leak'); }
+        /* the studio: open 台詞, add a line through the real buttons, save */
+        OC.Pages.open('charedit', { id: b.id, tab: 'lines' }); await new Promise((res) => setTimeout(res, 1200)); const pg = document.querySelector('.page.open[data-page=charedit]');
+        pg.querySelector('[data-cat=bye]').click(); await new Promise((res) => setTimeout(res, 200)); pg.querySelector('[data-add=bye]').click(); await new Promise((res) => setTimeout(res, 200));
+        const inp = pg.querySelector('.ln16-body .ln16-line input'); inp.value = '我先走囉。'; inp.dispatchEvent(new Event('change')); pg.querySelector('[data-act=save]').click(); await new Promise((res) => setTimeout(res, 300)); OC.UI.back();
+        return { only: [...said], mix: [...mix], leak: [...other], saved: (OC.Chars.get(b.id).lines16 || []).map((l) => l.cat + ':' + l.text) };
+      });
+      check('18a 角色自己的台詞：「只用我寫的」時只說自己的（套用說話方式），混合時兩種都會出現；別的角色不會說', r.only.length >= 1 && r.only.every((t) => t.includes('今天也在')) && r.mix.includes('own') && r.mix.includes('builtin') && !r.leak.length, r);
+      check('18b 在工作室「台詞」分頁新增一句（真實按鈕）→ 存到角色身上', r.saved.includes('bye:我先走囉。'), r.saved);
+    }
+    if (want(19)) {
+      const r = await page.evaluate(async () => {
+        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.Store.s.life.settings.defy = 0;
+        if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((res) => setTimeout(res, 2500)); }
+        const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'), a = all[0]; OC.Chars.setActive(a.id); await new Promise((res) => setTimeout(res, 1000));
+        const b = all.find((c) => c.id !== a.id && OC.App.actorOf(c.id)) || all[1];
+        for (const c of [a, b]) { c.life.emo.list = []; c.life.emo.dom = 'neutral'; c.profile.age = '25'; Object.assign(c.needs, { food: 90, sleep: 90, energy: 80, fun: 70, social: 60, comfort: 80 }); }
+        a.inter16 = [{ id: 'heart', zh: '比心', ic: '🫶', tone: 'warm', intim: 0.1, animA: 'wave', animB: 'happy', rel: { aff: 4 }, mem: '{other}對我比了一個心', lines: { ask: ['給你一個心。'], yes: ['收到了，謝謝。'], no: [] } }];
+        OC.Chars.save(a); OC.Will.sync(); const kind = OC.Will.customKind(a, a.inter16[0]);
+        const notOwner = OC.Will.ask(b.id, a.id, kind, { player: true });
+        if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((res) => setTimeout(res, 2500)); }
+        OC.Chars.setActive(a.id); await new Promise((res) => setTimeout(res, 800));
+        { const pa = OC.App.actorOf(a.id), bm = OC.App.actorOf(b.id); for (const bb of [OC.Brain.get(a.id), OC.Brain.get(b.id)]) { if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); } if (bm && pa) { const q = OC.World.nearestWalkable(pa.x + 40, pa.y, 40); if (q) { bm.path = null; bm.x = q.x; bm.y = q.y; } } }
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 80, aff: 70, trust: 60, intim: 30, conflict: 0 });
+        const aff0 = OC.Mind.relPeek(b.id, a.id).aff; const bubbles = []; const ob = new MutationObserver(() => document.querySelectorAll('.speech').forEach((e) => bubbles.push(e.textContent))); ob.observe(document.body, { childList: true, subtree: true, characterData: true });
+        let done = null; const off = OC.Store.on('will:done', (e) => { if (e.kind === kind) done = e; });
+        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const id of [a.id, b.id]) { const bb = OC.Brain.get(id); [...bb.holds].forEach((x) => OC.Brain.unhold(id, x)); }
+        const aff1 = OC.Mind.relPeek(b.id, a.id).aff;
+        const ok = OC.Will.ask(a.id, b.id, kind, { player: true });
+        const t0 = Date.now(); while (!done && Date.now() - t0 < 120000) await new Promise((res) => setTimeout(res, 400)); ob.disconnect();
+        return { notOwner, ok, done, kind, inMenu: OC.Will.INTER[kind] && OC.Will.INTER[kind].own === a.id, aff: [aff1, OC.Mind.relPeek(b.id, a.id).aff], said: [...new Set(bubbles)].filter((t) => /心|收到/.test(t)).slice(0, 4) };
+      });
+      check('19a 專屬互動登記到互動選單（「專屬」），只有擁有者能做', r.inMenu && r.notOwner.ok === false, r.notOwner);
+      check('19b 做專屬互動：對方用意願模型回應，用你寫的台詞，答應時關係照設定變化', r.ok.ok && r.done && (r.done.ok ? r.aff[1] > r.aff[0] : true) && r.said.length >= 1, r);
+    }
+    if (want(20)) {
+      const r = await page.evaluate(async () => {
+        const bad = OC.Script.compile('event a "x"\nwhen nope 3\n---\nsay A hi\ngoto nowhere\n');
+        /* 300 events in one JSON file — no limit */
+        const scripts = []; for (let i = 0; i < 300; i++) scripts.push({ src: `event e${i} "第${i}個"\ntrigger manual\ncast A = any\n---\nsay A "第${i}個事件"\n` });
+        const pf = OC.Script.parseFile(JSON.stringify({ format: 'ocshimeji-script', scripts }));
+        const before = OC.Script.lib().length; for (const it of pf.items) OC.Script.lib().push({ id: 'x' + Math.random(), src: it.src, on: true }); OC.Script.reset();
+        const n = OC.Script.all().filter((e) => e.trigger === 'manual').length;
+        OC.Script.lib().splice(before); OC.Script.reset();
+        /* a tick event that waits for a variable */
+        if (OC.Events.current) OC.Events.end('t'); const [a] = OC.Chars.all(); OC.Store.s.life.vars16 = OC.Store.s.life.vars16 || {}; delete OC.Store.s.life.vars16.gate; OC.Store.s.life.ev.lastAny = 0;
+        a.scripts16 = [{ id: 'g1', on: true, src: `event gate "門打開了"\ntrigger tick\ncast A = self\nwhen var gate >= 1\nonce\n---\nsay A "好了。"\nset var gate 2\n` }]; OC.Chars.save(a); OC.Script.reset();
+        const t0 = Date.now(); while (Date.now() - t0 < 12000) { await new Promise((res) => setTimeout(res, 500)); } const early = OC.Store.s.life.vars16.gate || 0;
+        OC.Store.s.life.vars16.gate = 1; OC.Store.s.life.ev.lastAny = 0; OC.Chars.all().forEach((c) => { const bb = OC.Brain.get(c.id); if (bb && bb.holds.size) [...bb.holds].forEach((h) => OC.Brain.unhold(c.id, h)); });
+        const t1 = Date.now(); while (Date.now() - t1 < 90000 && OC.Store.s.life.vars16.gate !== 2) { OC.Store.s.life.ev.lastAny = 0; await new Promise((res) => setTimeout(res, 500)); }
+        const ran = OC.Store.s.life.vars16.gate;
+        /* .ocpack round trip keeps the studio data */
+        a.lines16 = [{ id: 'l1', cat: 'greet', text: '喲。' }]; a.inter16 = [{ id: 'x1', zh: '擊拳', lines: { ask: ['來。'] } }]; OC.Chars.save(a);
+        const blob = await OC.IO.exportPack({ chars: [a.id] }); const pack = await OC.IO.readPack(await blob.arrayBuffer()); const res = await OC.IO.applyPack(pack, 'new'); const c2 = res.chars[0];
+        return { bad: bad.errors.map((e) => e.line + ':' + e.msg), n, early, ran, packed: { s: (c2.scripts16 || []).length, l: (c2.lines16 || []).length, i: (c2.inter16 || []).length } };
+      });
+      check('20a 腳本錯誤會說第幾行、哪裡錯（看不懂的條件、沒有引號、找不到標籤）', r.bad.some((x) => x.startsWith('2:')) && r.bad.some((x) => x.startsWith('4:')) && r.bad.some((x) => x.startsWith('5:')), r.bad);
+      check('20b 不限數量：一個檔案匯入 300 個事件，全部可用', r.n >= 300, r.n);
+      check('20c 條件成立才發生：變數 gate 還是 0 時不會演，設成 1 之後角色自己演出並把它改成 2', r.early === 0 && r.ran === 2, r);
+      check('20d .ocpack 匯出再匯入：角色的事件、台詞、專屬互動都在', r.packed.s === 1 && r.packed.l === 1 && r.packed.i === 1, r.packed);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);

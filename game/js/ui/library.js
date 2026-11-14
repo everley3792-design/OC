@@ -58,13 +58,16 @@
     OC.Anim.save(doc); return { doc, box };
   }
   /** creator: build a sprite character from player files */
-  async function spriteCharFromFiles(c, files) {
+  async function spriteCharFromFiles(c, files, o = {}) {
     const { frames, warnings } = await framesFromFiles(files);
-    const auto = hasOpaqueCorners(frames[0].canvas);
-    const cs = process(frames, { keyOut: auto, trim: true });
+    /* 16.3: background removal is an edge flood (OC.Cutout), not a global colour key — the same colour inside the character stays.
+     * o.cut === false: import as is (the creator offers the removal sheet afterwards, keeping the original frames for 「還原原圖」) */
+    const auto = o.cut === false ? false : OC.Cutout ? OC.Cutout.detect(frames[0].canvas).has : hasOpaqueCorners(frames[0].canvas);
+    const src = auto && OC.Cutout ? frames.map((f) => Object.assign({}, f, { canvas: OC.Cutout.remove(f.canvas, {}) })) : frames;
+    const cs = process(src, { keyOut: auto && !OC.Cutout, trim: true });
     const { doc, box } = await makeAnim(cs, { name: '待機', owner: c.id, action: 'idle', delays: frames.map((f) => f.delay) });
     c.actions.idle = { any: doc.id }; c.appearance.mode = 'sprite'; c.appearance.refH = box.h;
-    if (auto) toast('已自動去除背景（可在素材庫調整）', 'image');
+    if (auto && !o.quiet) toast('已自動去除背景（可以在「圖片」調整或還原）', 'image');
     warnings.forEach((w) => toast(w, 'info'));
     return doc;
   }

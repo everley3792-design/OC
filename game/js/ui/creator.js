@@ -36,6 +36,7 @@
       }
       stage.el.style.maxHeight = '30vh'; stage.canvas.style.maxHeight = '28vh'; stage.canvas.style.width = 'auto';
       stage.el.classList.add('cr-stage');
+      const ftable = OC.Frame16.table(() => c, { onChange: () => { c.updated = Date.now(); } });
       const ctx = { get level() { return level; }, stage, selected: null, changed: (kind, reactAction) => { c.updated = Date.now(); if (reactAction && typeof reactAction === 'string') stage.react(reactAction, 1.3); }, rebuild: () => render(), full: false };
       const STEPS = [
         { id: 'method', t: '你想怎麼開始？' },
@@ -61,6 +62,8 @@
         stepTitle.textContent = s.t; backBtn.style.visibility = step ? 'visible' : 'hidden'; skipBtn.style.visibility = s.skip ? 'visible' : 'hidden';
         dots.replaceChildren(...STEPS.map((_, i) => h('i', { class: i === step ? 'on' : '' })));
         next.replaceChildren(...(s.id === 'debut' ? [icon('sparkle', 's'), '登場！'] : ['下一步']));
+        const pic = s.id === 'look' && c.appearance.mode === 'sprite'; ftable.pause(!pic); el.classList.toggle('cr-pic', pic);
+        if (pic) { stageBox.replaceChildren(h('div.cr-frame', null, ftable.el)); requestAnimationFrame(() => ftable.redraw()); } else
         stageBox.replaceChildren(s.id === 'method' ? h('div.center', { style: { margin: '4px 0 8px' } }, h('div.logo', { style: { fontSize: o.first ? '34px' : '24px' } }, 'OC ', h('b', null, 'Shimeji')), o.first ? h('p.muted', { style: { margin: '6px 0 0' } }, '創造你的原創角色，讓他住進小島與手機桌面。') : null) : stage.el);
         /* 15.4: the look step gets the big stage (taller, spotlight floor) */
         const big = s.id === 'look' && c.appearance.mode !== 'sprite'; el.classList.toggle('cr-big', big);
@@ -81,8 +84,14 @@
         if (id === 'import') {
           const files = await OC.Library.chooseFiles({ multiple: true, accept: 'image/*,.gif,.png,.webp,.zip' }); if (!files || !files.length) { method = null; render(); return; }
           c = Ch().blank('import');
-          try { await OC.Library.spriteCharFromFiles(c, files); } catch (e) { toast(e.message, 'info'); method = null; render(); return; }
+          try { await OC.Library.spriteCharFromFiles(c, files, { cut: false }); } catch (e) { toast(e.message, 'info'); method = null; render(); return; }
           c.profile.name = files[0].name.replace(/\.[^.]+$/, '').replace(/[_-]?\d+$/, '').slice(0, 12);
+          /* 16.3: the import wizard — remove a plain background (live preview, tolerance, tap what should go), then fit the picture to the
+           * standard height with its feet on the line. Both can be changed or undone later in 「圖片」. */
+          await OC.Anim.preload(OC.Anim.get(c.actions.idle.any));
+          const first = OC.Anim.composite(OC.Anim.get(c.actions.idle.any), 0);
+          if (first && OC.Cutout.detect(first).has) { const r = await OC.Frame16.cutSheet([OC.Cutout.clone(first)], { title: '去除背景？' }); if (r && r.on !== false) { await OC.Frame16.applyCut(c, r); await OC.Anim.preload(OC.Anim.get(c.actions.idle.any)); } else toast('沒有去背；之後可以在「圖片」再做', 'info'); }
+          OC.Frame16.autoFit(c);
         }
         render();
       }
@@ -96,7 +105,7 @@
         }
         if (id === 'look') {
           const lv = seg([['simple', '簡易'], ['detailed', '詳細']], level, (v) => { level = v; render(); });
-          if (c.appearance.mode === 'sprite') return [h('div.card', null, h('b', null, '外觀來自你的圖片'), h('p.muted', { style: { fontSize: 'var(--fs-s)' } }, '之後可以在動畫工作室為不同動作加入更多影格，或在「部件」加上飾品。')), S_.image(c, ctx), S_.body(c, ctx), S_.parts(c, ctx)];
+          if (c.appearance.mode === 'sprite') return [OC.Frame16.panel(c, ctx, ftable), h('p.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '10px' } }, '其他動作（走路、跳、睡覺…）圖片會自己表演；之後可以在「編輯 → 動畫」選擇全部用預設、混合，或全部自己匯入。')];
           /* 15.4 「創角大舞台」: a big lit stage on top, a rail of category stickers, one category at a time (no long scroll) */
           const CATS = [['template', '範本', 'sparkle'], ['earsTail', '耳朵尾巴', 'paw'], ['colors', '顏色', 'brush'], ['face', '臉', 'eye'], ['outfit', '服裝', 'shirt']]
             .concat(level === 'detailed' ? [['body', '體型', 'person'], ['parts', '部件', 'star']] : []).concat([['expressions', '表情', 'heart']]);

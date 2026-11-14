@@ -21,7 +21,7 @@
   function define(id, title, o) { pages[id] = Object.assign({ id, title, sub: !!o.sub, el: null }, o); }
   function ensure(p) {
     if (p.el) return p;
-    p.el = h('section.page' + (p.sub ? '.sub' : ''), { 'data-page': p.id, 'aria-label': p.title });
+    p.el = h('section.page' + (p.sub ? '.sub' : '') + (p.fixed ? '.fixed' : ''), { 'data-page': p.id, 'aria-label': p.title });
     p.el.append(head(p.title, p.sub, p.headRight && p.headRight(p), p.stk || PAGE_STK[p.id]));
     p.inner = h('div.page-inner'); p.el.append(p.inner);
     document.getElementById('pages').append(p.el);

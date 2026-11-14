@@ -24,7 +24,7 @@
 
   // ---------------------------------------------------------------- categories
   const CATS = [['greet', '問候', 'wave'], ['talk', '閒聊', 'chat'], ['care', '關心', 'heart'], ['play', '玩鬧', 'dice'], ['prank', '惡作劇', 'sparkle'], ['close', '親近', 'paw'],
-    ['talent', '才藝', 'music'], ['gift', '禮物', 'gift'], ['gossip', '八卦', 'eye'], ['fight', '爭執', 'flag'], ['mend', '和解', 'hand'], ['love', '戀愛', 'heart']];
+    ['talent', '才藝', 'music'], ['gift', '禮物', 'gift'], ['gossip', '八卦', 'eye'], ['fight', '爭執', 'flag'], ['mend', '和解', 'hand'], ['love', '戀愛', 'heart'], ['own', '專屬', 'star']];
 
   /* interactions: id: [category, 名稱, emoji, closeness 0–1, tone, A's animation, B's animation when it goes well, rel change on success,
    *   needs on success, memory text ({other}), memory importance]
@@ -161,7 +161,8 @@
   function script(conv, say, A, B) {
     const it = INTER[conv.kind], rx = conv.answer.react || (conv.answer.ans === 'yes' ? 'accept' : 'decline'), R = REACT[rx];
     say('a', 'i16_' + conv.kind, { anim: it.animA, dur: 1.4, nudge: it.intim > 0.4 ? 0.5 : 0.2, other: R[1] && it.animB && it.intim >= 0.4 ? it.animB : null });
-    say('b', 'r16_' + rx, { anim: R[1] ? (rx === 'warm' || rx === 'accept' ? it.animB || R[3] : R[3]) : R[3], dur: 1.5 });
+    const own = it.custom && it.lines && (R[1] ? it.lines.yes : it.lines.no) && (R[1] ? it.lines.yes : it.lines.no).length ? conv.kind + (R[1] ? '_yes' : '_no') : null;
+    say('b', own || 'r16_' + rx, { anim: R[1] ? (rx === 'warm' || rx === 'accept' ? it.animB || R[3] : R[3]) : R[3], dur: 1.5 });
     if (!R[1] && it.tone !== 'neg') say('a', 'r16_after', { anim: 'headscratch', dur: 1.0 });
   }
   function resolve(conv, A, B) {
@@ -207,6 +208,7 @@
       const fit = 0.12 - Math.max(0, it.intim - closeness(r)) * 0.8 + (it.tone === 'neg' ? r.conflict / 200 : 0) + (it.tone === 'mend' ? r.conflict / 150 : 0) + (OC.Traits13 ? OC.Traits13.soc(c, id) : 0);
       K(id, s0 - 0.3 + fit, it.zh);
     }
+    for (const it of Object.values(INTER)) if (it.custom && it.own === c.id && pickable(it, c, o, r) && Sim().rnd() < 0.5) K(it.id, s0 - 0.25 + 0.12 - Math.max(0, it.intim - closeness(r)) * 0.8, it.zh);   /* its own signature moves, now and then */
   }
 
   // ---------------------------------------------------------------- doing things together at a place
@@ -220,6 +222,7 @@
   function ask(aId, bId, kind, o = {}) {
     const A = Ch().get(aId), B = Ch().get(bId), ba = OC.Brain.get(aId), bb = OC.Brain.get(bId); if (!A || !B || !ba || !bb) return { ok: false, why: '對方不在這裡' };
     if (INTER[kind] && INTER[kind].tone === 'love' && !M().romanceOK(aId, bId)) return { ok: false, why: OC.People && (OC.People.minor(A) || OC.People.minor(B)) ? '未成年不會有戀愛相關的互動' : '戀愛功能沒有為他們打開（生活設定）' };
+    if (!canStart(aId, kind)) return { ok: false, why: '這是別人的專屬互動' };
     if (OC.People && !OC.People.canDo(A, 'chat')) return { ok: false, why: OC.People.whyNot(A, 'chat') };
     if (o.player) { const no = defies(A, B, kind); if (no) { St.emit('will:defy', { a: aId, b: bId, kind, why: no }); return { ok: false, why: no, defy: true }; } }
     { const ev = OC.Events && OC.Events.current; if (ev && ev.cast && (ev.cast.all || [ev.cast.a, ev.cast.b]).some((x) => x && (x.id === aId || x.id === bId))) return { ok: false, why: '他們正在經歷一件特別的事' }; }
@@ -234,7 +237,25 @@
   }
   const invite = (aId, bId, act, at) => { const k = jointKind(act); return k ? ask(aId, bId, k, { player: true, at }) : { ok: false, why: '這裡不能一起做' }; };
 
-  function init() { if (S().life.settings.defy == null) S().life.settings.defy = 0.06; if (S().life.settings.willHint == null) S().life.settings.willHint = true; }
+  // ---------------------------------------------------------------- 16.3 a character's own interactions (made in the studio)
+  /* c.inter16 = [{ id, zh, ic, cat, intim, tone, animA, animB, rel:{aff,…}, needs:{…}, mem, lines:{ ask:[], yes:[], no:[] } }]
+   * registered as INTER['u16_<owner>_<id>'] with own = owner: only the owner starts them (you, or its AI); the other one answers
+   * with the same willingness model. Their lines live on the character (OC.Talk reads them, category i16_<kind> / u16_<kind>_yes|no). */
+  const TONES = ['warm', 'play', 'care', 'tease', 'love', 'neg', 'mend'];
+  function customKind(c, x) { return 'u16_' + c.id + '_' + x.id; }
+  function sync() {
+    for (const k of Object.keys(INTER)) if (INTER[k].custom) { delete INTER[k]; delete D.SOCIAL[k]; }
+    for (const c of Ch().all()) for (const x of c.inter16 || []) {
+      if (!x || !x.id || x.off) continue; const id = customKind(c, x), tone = TONES.includes(x.tone) ? x.tone : 'warm';
+      const clampD = (o, m) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => typeof v === 'number').map(([k, v]) => [k, Math.max(-m, Math.min(m, v))]));
+      INTER[id] = { id, cat: 'own', zh: String(x.zh || '專屬互動').slice(0, 14), ic: x.ic || '✨', intim: Math.max(0, Math.min(1, +x.intim || 0.2)), tone, animA: x.animA || 'talk', animB: x.animB || 'nod', rel: clampD(x.rel || { aff: 3, fam: 2 }, 12), needs: clampD(x.needs || { social: 8 }, 30), mem: x.mem ? String(x.mem).slice(0, 60) : '', imp: x.mem ? 0.4 : 0, custom: true, own: c.id, lines: x.lines || {} };
+      D.SOCIAL[id] = { zh: INTER[id].zh, ic: INTER[id].ic, will: true };
+    }
+  }
+  /** can A start this kind? (custom ones: only their owner) */
+  const canStart = (aId, kind) => !INTER[kind] || !INTER[kind].own || INTER[kind].own === aId;
 
-  OC.Will = { CATS, INTER, REACT, has: has16, inter: (k) => INTER[k], closeness, willing, hint, react, respond, defies, script, resolve, cands, jointKind, ask, invite, init };
+  function init() { sync(); St.on('chars', () => sync()); if (S().life.settings.defy == null) S().life.settings.defy = 0.06; if (S().life.settings.willHint == null) S().life.settings.willHint = true; }
+
+  OC.Will = { sync, canStart, customKind, TONES, CATS, INTER, REACT, has: has16, inter: (k) => INTER[k], closeness, willing, hint, react, respond, defies, script, resolve, cands, jointKind, ask, invite, init };
 })();

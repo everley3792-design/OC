@@ -47,6 +47,7 @@
   /** is this pose performed by the picture itself (true) or by frames the player drew for it (false)? */
   function active(c, sp, p) {
     const action = p.action || 'idle'; if (!sp || !sp.doc) return false;
+    if (OC.CharRender.animSrc && OC.CharRender.animSrc(c) === 'custom') return false;   /* 16.3 「全部自己匯入」: no preset motion at all */
     if (p.touch) return true;                                                   // being stroked: lean into the finger, hearts
     if (sp.action === action) return false;                                     // drawn by the player for this very action (or simply standing)
     if (sp.action !== 'idle' && OC.Anim.count(sp.doc) > 1) return false;        // a related animation the player drew stands in (walk for run …)
