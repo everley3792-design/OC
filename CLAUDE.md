@@ -28,7 +28,8 @@
 - **15.3（0.15.3-alpha）視覺與動態打磨**：季節（`OC.Clock.season()`；色調烤進著色器、角色不套；`OC.Ambient` 的花瓣／落葉／雪與海面閃光）、雲朵轉場、遊樂園燈泡接夜晚燈光、遊樂園音樂盒與風車聲、逐頁檢查。地圖、桌寵中心、設計亭、創角大舞台、季節活動未做。紀錄：`docs/v15.3-report.md`。
 - **15.4（0.15.4-alpha）剩下的頁面**：創角大舞台＋分類列、設計亭（`OC.Design`：12×12 圖樣穿在上衣，`look.pattern = 'design:<id>'`，資料在 `S().designs`）、地圖路線與路程、桌寵中心三個分頁。紀錄：`docs/v15.4-report.md`。
 - **15.5（0.15.5-alpha）剩下的內容**：夢、宣言、恐懼、人生階段、季節活動（`OC.Life15`）、三段連續劇「說不出口的話」（`events15.js`）。紀錄：`docs/v15.5-report.md`。
-- **16.0（0.16.0-alpha）**（計畫 16.0–16.8 見 `docs/v16-plan.md`，玩家已確認）：角色畫在螢幕原本的解析度（兩段式繪製）、圖片角色寬高分開 20–400%／不被切、名牌卡（左上）、**切換操控不傳送**（鏡頭過去）、買東西／撿東西直接在介面完成、`OC.Budget` 打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。驗收：`node game/tests/v16/run.js`。紀錄：`docs/v16.0-report.md`。16.1 起（開局多角色與關係、年齡與物種、意願模型、對話引擎、住處、職業學業、遊樂設施重做、生老病死）**尚未做**。
+- **16.0（0.16.0-alpha）**（計畫 16.0–16.8 見 `docs/v16-plan.md`，玩家已確認）：角色畫在螢幕原本的解析度（兩段式繪製）、圖片角色寬高分開 20–400%／不被切、名牌卡（左上）、**切換操控不傳送**（鏡頭過去）、買東西／撿東西直接在介面完成、`OC.Budget` 打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。驗收：`node game/tests/v16/run.js`。紀錄：`docs/v16.0-report.md`。16.2 起（意願模型、對話引擎、住處、職業學業、遊樂設施重做、生老病死）**尚未做**。
+- **16.1（0.16.1-alpha）開局與人生**：開局建立多位島民＋島民名冊＋關係圖（有方向、可鎖定、背景故事）＋選房子（`ui/opening16.js`：`OC.Opening`、`OC.Homes`）；`OC.People`（`life/people16.js`）：20 種物種＋自訂物種、七個人生階段（含嬰兒）、生日長大（自動／按了才長／固定）、未滿 18 歲不涉戀愛。紀錄：`docs/v16.1-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -104,7 +105,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -231,3 +232,5 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.0 打擾預算**：任何會「轉向玩家」的東西（請求、來訪、要回答的事件、建議）一定先問 `OC.Budget.can(kind)`、做了就 `spend(kind)`；不需要回答的寫進 `OC.Budget.mail({kind,title,text,key})`（信箱；固定 key 只會有一封）。舊測試 harness 用 `life.settings.lively = 'legacy'`（舊節奏）與 `settings.calendar = 'real'`；新預設只由 `tests/v16` 驗收。**不要**再為某個系統另寫計時器去打擾玩家。
 - **16.0 關係**：`Mind.rel(a,b)` 讀取不再建立紀錄（回傳暫時的空紀錄，第一次寫入才存）；要知道有沒有紀錄用 `relPeek`。
 - **16.0 日曆**：`OC.Clock.cal()`（遊戲曆：一年 112 天、每季 28 天、一週 7 天、第 6–7 天週末；`life.clock.cal0` 是第 1 年春 1 日；實時曆＝手機日期）。節日、生日、日期顯示都問 `cal()`，不要直接用 `new Date()`。生日欄位可寫「春 12」或 3/14（`Island.parseBday`）。存檔 v8，`migrateV7` 不可移除。
+- **16.1 物種與人生階段**（`OC.People`）：物種與階段的效果和特質同格式，經 `People.fxList(c)` 併入 `Traits13` 的 decay／act／soc／speed／sens／accept（不要另外寫判斷）；新物種只加資料。年齡只來自玩家寫的 `profile.age`；長大只經 `People.growUp`（一年一次，key `age:<oc>:<年>`），生日由 `Island.checkBirthdays` 呼叫 `People.birthday`；`c.life.age16.grow`：新角色 `auto`、舊存檔 `manual`。做不到的事一律問 `People.canDo(c, act)`（`Brain.candidates`、`abstractStep`、`Brain.command`、`Queue.add` 都有）、旅行問 `canTravel`。**未滿 18 歲絕不涉及戀愛**：`Mind.romanceOK` 先問 `People.minor`，任何新的戀愛／親密功能都要經 `romanceOK`。
+- **16.1 開局**：只在新遊戲且不是 `skipIntro`（測試）時出現；圖層 `dismissible:false`（返回鍵不做事，不可以跳確認視窗）。起始關係只經 `Opening.setStart`（`kind16`／`label16`／`fixed`，`relLabel` 顯示 `label16`）；戀愛類只能兩人都滿 18 歲。住處 `c.life.home16`，只經 `OC.Homes.assign`（檢查容量）；黃屋、紫屋的室內在 16.5 前不存在，**不要做假入口**。
