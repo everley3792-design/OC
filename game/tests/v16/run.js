@@ -193,7 +193,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         const reacts = new Set(); set({ fam: 30, aff: 20, trust: 20, intim: 0 }); for (let i = 0; i < 200; i++) { const roll = i / 200; reacts.add(W.react(b, a, 'hug', W.willing(b, a, 'hug').p, roll)); reacts.add(W.react(b, a, 'chat', W.willing(b, a, 'chat').p, roll)); reacts.add(W.react(b, a, 'shove', 0.3, roll)); }
         return { dom, n: Object.keys(W.INTER).length, cats: W.CATS.length, hugStranger, helloStranger, hugFriend, hugShy, hugNotShy, p0, pAnn, kissAdult, kissMinor, mOK, kissOff, rep, fresh, reacts: [...reacts] };
       });
-      check('12a 60 種互動、12 類；沒有鎖——和陌生人打招呼大概可以、抱陌生人幾乎一定被拒，和好朋友抱抱很樂意', r.n >= 60 && r.cats === 12 && r.helloStranger > 0.4 && r.hugStranger < 0.1 && r.hugFriend > 0.8, r);
+      check('12a 60 種互動、12 類（16.3 起多一個「專屬」）；沒有鎖——和陌生人打招呼大概可以、抱陌生人幾乎一定被拒，和好朋友抱抱很樂意', r.n >= 60 && r.cats >= 12 && r.helloStranger > 0.4 && r.hugStranger < 0.1 && r.hugFriend > 0.8, r);
       check('12b 個性與心情會改變反應：害羞的更難接受太親近的事；心情不好時連聊天都不想', r.hugShy < r.hugNotShy && r.pAnn < r.p0 - 0.2, r);
       check('12c 硬規則：戀愛互動要戀愛開啟＋兩人都成年；未滿 18 歲永遠不行（🔒）', r.kissAdult !== '🔒' && r.kissMinor === '🔒' && !r.mOK && r.kissOff === '🔒', r);
       check('12d 一直做同樣的事會比較不想；反應不只接受／拒絕（光譜）', r.rep < r.fresh && r.reacts.length >= 6, r);
@@ -438,6 +438,95 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       check('21 創角匯入圖片：選檔 → 去背畫面（預覽、容許度、點掉空隙）→ 外觀步驟是取景台＋自動對齊／翻轉／裁切／重設，沒有捏臉選項', sheet && look && st.acts.includes('自動對齊') && !st.face, { sheet, look, st });
       await page.evaluate(() => { const b = document.querySelector('.creator [aria-label=取消]'); if (b) b.click(); }); await page.waitForTimeout(500);
       await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet button')].find((x) => x.textContent.includes('取消建立')); if (b) b.click(); });
+    }
+    /* ============================== 16.4 menus and the action list ============================== */
+    const calm16 = () => page.evaluate(async () => { OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back()); if (OC.Radial.open_) OC.Radial.close(true); if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); } const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'); OC.Chars.setActive(all[0].id); await new Promise((r) => setTimeout(r, 800)); for (const c of all) { OC.Queue.clear(c.id); OC.Queue.cancel(c.id, -1); const bb = OC.Brain.get(c.id); if (bb) { [...bb.holds].forEach((x) => OC.Brain.unhold(c.id, x)); if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); } Object.assign(c.needs, { food: 60, sleep: 70, energy: 70, fun: 50, social: 50, comfort: 60, interest: 50, active: 50 }); } return all.map((c) => c.id); });
+    if (want(22)) {
+      const ids = await calm16();
+      const r = await page.evaluate(async (id) => {
+        const Q = OC.Queue, out = {}; const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+        out.adds = []; for (const a of ['stretch', 'daydream', 'spin', 'dance', 'diary', 'meditate', 'workout', 'photo', 'sweep', 'read']) out.adds.push(Q.add(id, a));
+        out.len = Q.list(id).length;
+        const before = Q.list(id).map((x) => x.act); out.moved = Q.move(id, 3, 1); out.afterMove = Q.list(id).map((x) => x.act);
+        out.loop = Q.loop(id, 2, true); out.looped = Q.list(id).filter((x) => x.loop).map((x) => x.act);
+        out.nowOk = Q.now(id, 4); await sleep(30); out.afterNow = Q.list(id).slice(0, 2).map((x) => x.act + ':' + x.state);
+        Q.clear(id); Q.cancel(id, -1); await sleep(300);
+        /* refusal with a reason, then 強迫 */
+        const c = OC.Chars.get(id); c.needs.food = 97; Q.add(id, 'eat'); await sleep(1500); const ref = Q.list(id)[0]; out.refused = ref && ref.state + ':' + ref.why;
+        Q.add(id, 'stretch'); const seen = new Set(); for (let i = 0; i < 40; i++) { for (const x of Q.list(id)) seen.add(x.act + ':' + x.state); const b0 = OC.Brain.get(id); if (b0.act === 'stretch') seen.add('stretch:' + b0.st); await sleep(100); } out.notBlocked = [...seen];
+        Q.clear(id); Q.cancel(id, -1); for (const x of Q.list(id)) Q.cancel(id, x.n); await sleep(300);
+        c.needs.food = 97; Q.add(id, 'eat'); await sleep(1200); const rf = Q.list(id).find((x) => x.state === 'refused'); out.forced = rf ? Q.force(id, rf.n) : false; await sleep(2500); const b = OC.Brain.get(id); out.forcedAct = b.act + ':' + b.st;
+        Q.clear(id); Q.cancel(id, -1); for (const x of Q.list(id)) Q.cancel(id, x.n);
+        /* this bench, not any bench */
+        const benches = OC.Brain.aff.filter((o) => o.kind === 'bench'); const far = benches.sort((a, b2) => Math.hypot(b2.x - OC.App.player.x, b2.y - OC.App.player.y) - Math.hypot(a.x - OC.App.player.x, a.y - OC.App.player.y))[0];
+        const want = far.slots.find((s2) => OC.Brain.free(s2, id)) || far.slots[0];
+        Q.add(id, { kind: 'act', act: 'rest', slot: want.k }); const t0 = Date.now(); let pr = null; while (Date.now() - t0 < 60000 && !(b.slot && b.st === 'do' && (pr = Q.list(id)[0]) && pr.prog != null)) { await sleep(150); }
+        out.slot = [b.slot && b.slot.k.split('#')[0], want.k.split('#')[0]]; out.prog = pr && pr.prog;
+        out.saved = Array.isArray(OC.Chars.get(id).life.q16);
+        Q.clear(id); Q.cancel(id, -1);
+        return out;
+      }, ids[0]);
+      check('22a 清單最多 8 個在等（第一個馬上開始）；可以拖曳排序、設成循環、「立刻做」插到最前面', r.adds[0] === 'now' && r.adds.slice(1, 9).every((x) => x === 'queued') && r.adds[9] === false && r.len === 9 && r.moved && r.afterMove[1] === 'dance' && r.looped.length === 1 && r.nowOk && /^diary:(next|going|doing)$/.test(r.afterNow[0]), r);
+      check('22b 不想做的事會說原因（還不餓），而且不會擋住後面的；按「強迫」就去做', /^refused:還不餓/.test(r.refused || '') && r.notBlocked.some((x) => /^stretch:(next|going|doing|go|do)$/.test(x)) && r.notBlocked.includes('eat:refused') && r.forced && /^eat:(go|do)$/.test(r.forcedAct), r);
+      check('22c 安排「這張長椅」就去那一張（不是最近的；那個位子有人就坐同一張的另一邊）；進行中有進度；清單存在角色身上', r.slot[0] === r.slot[1] && r.prog != null && r.saved, { slot: r.slot, prog: r.prog });
+    }
+    if (want(23)) {
+      const ids = await calm16();
+      const r = await page.evaluate(async (id) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), a = OC.App.actorOf(id);
+        OC.App.menuFor({ type: 'self' }, OC.App.screenOf(a)); await sleep(500);
+        const ring = [...document.querySelectorAll('.radial > .radial-ring > .radial-btn')].map((b) => b.textContent);
+        [...document.querySelectorAll('.radial-btn')].find((b) => b.textContent === '安排').click(); await sleep(500);
+        const tabs = [...document.querySelectorAll('.rp-tabs .chip-btn')].map((b) => b.textContent);
+        document.querySelector('.rp-tabs [data-tab=body]').click(); await sleep(200);
+        const items = [...document.querySelectorAll('.radial-panel .ri')].map((b) => b.textContent);
+        [...document.querySelectorAll('.radial-panel .ri')].find((b) => b.textContent.includes('伸展')).click(); await sleep(700);
+        const after1 = { open: OC.Radial.open_, list: OC.Queue.list(id).map((x) => x.act), toast: (document.querySelector('.undo-toast') || {}).textContent || '' };
+        const und = document.querySelector('.undo-toast button'); und && und.click(); await sleep(300);
+        const afterUndo = OC.Queue.list(id).map((x) => x.act);
+        return { ring, tabs, items, after1, afterUndo, sheets: document.querySelectorAll('.sheet.open').length };
+      }, ids[0]);
+      check('23a 點角色：一圈常用動作＋分類（親近、餵食、送禮、玩耍、安排、更多…）；分類在同一個選單裡展開（分頁＋項目），不跳出新視窗', ['親近', '安排', '餵食', '檔案', '更多'].every((x) => r.ring.includes(x)) && r.tabs.includes('需求') && r.tabs.includes('去別處') && r.items.some((x) => x.includes('伸展')) && r.sheets === 0, r);
+      check('23b 點項目就做（沒有「確定嗎？」）；下方提示可以「復原」', !r.after1.open && r.after1.list.includes('stretch') && /伸展/.test(r.after1.toast) && !r.afterUndo.includes('stretch'), r);
+      const lp = await page.evaluate(async (id) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); window.__r16 = []; OC.Store.on('menu16:request', (e) => window.__r16.push({ spec: typeof e.spec === 'string' ? e.spec : e.spec.act, r: e.r })); OC.Queue.add(id, 'meditate'); OC.Queue.add(id, 'spin');
+        OC.App.menuFor({ type: 'self' }, OC.App.screenOf(OC.App.actorOf(id))); await sleep(500); [...document.querySelectorAll('.radial-btn')].find((b) => b.textContent === '安排').click(); await sleep(450); document.querySelector('.rp-tabs [data-tab=body]').click(); await sleep(200);
+        const b = [...document.querySelectorAll('.radial-panel .ri')].find((x) => x.textContent.includes('伸展')); const r0 = b.getBoundingClientRect(); return { x: r0.left + r0.width / 2, y: r0.top + r0.height / 2 };
+      }, ids[0]);
+      await page.mouse.move(lp.x, lp.y); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up(); await page.waitForTimeout(800);
+      const first = await page.evaluate((id) => ({ req: window.__r16.slice(-1)[0], list: OC.Queue.list(id).map((x) => x.act + ':' + x.state), b: OC.Brain.get(id).act }), ids[0]);
+      check('23c 長按項目＝立刻做（插到最前面、馬上開始；原本在做的換掉，排在後面的還在）', first.req && first.req.spec === 'stretch' && first.req.r === 'now' && first.list.some((x) => x.startsWith('spin')) && !first.list.some((x) => x.startsWith('meditate')), first);
+      await page.evaluate((id) => { OC.Queue.clear(id); OC.Queue.cancel(id, -1); }, ids[0]);
+    }
+    if (want(24)) {
+      const ids = await calm16();
+      const r = await page.evaluate(async () => {
+        const W = OC.World, bench = W.interacts.find((i) => i.type === 'bench'), tree = W.interacts.find((i) => i.type === 'tree');
+        const db = OC.App.describe(bench), dt = OC.App.describe(tree);
+        return { bench: (db.extra || []).map((e) => e.label), tree: (dt.extra || []).map((e) => e.label) };
+      });
+      check('24a 東西會告訴你能做什麼：長椅（休息、看書、打盹、發呆…），每個在場的人各有一顆「邀…一起」；樹（抱抱樹、拍照…）', r.bench.some((x) => x.includes('休息')) && r.bench.some((x) => x.includes('打盹')) && r.bench.some((x) => /^邀.+一起/.test(x)) && r.tree.some((x) => x.includes('抱抱樹')), r);
+      const g = await page.evaluate(async (id) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), p = OC.App.player; let q = null; for (const [dx, dy] of [[60, 20], [-60, 20], [0, 50], [50, -30]]) { const c = OC.World.nearestWalkable(p.x + dx, p.y + dy, 20); if (c && Math.hypot(c.x - p.x, c.y - p.y) > 30) { q = c; break; } }
+        OC.App.menuFor({ type: 'ground', p: q }, OC.World.project(q.x, q.y, OC.World.levelAt(q.x, q.y), 0)); await sleep(500);
+        [...document.querySelectorAll('.radial-btn')].find((b) => b.textContent === '在這裡做').click(); await sleep(450);
+        const items = [...document.querySelectorAll('.radial-panel .ri')].map((b) => b.textContent);
+        [...document.querySelectorAll('.radial-panel .ri')].find((b) => b.textContent.includes('跳舞')).click(); await sleep(400);
+        const b = OC.Brain.get(id); const t0 = Date.now(); while (Date.now() - t0 < 40000 && !(b.act === 'dance' && b.st === 'do')) { OC.Sim.advance(1); await sleep(300); }
+        return { items, act: b.act + ':' + b.st, at: [Math.round(p.x - q.x), Math.round(p.y - q.y)] };
+      }, ids[0]);
+      check('24b 長按地面「在這裡做」：選跳舞 → 走到那裡再跳', g.items.length >= 8 && g.act === 'dance:do' && Math.hypot(g.at[0], g.at[1]) < 20, g);
+    }
+    if (want(25)) {
+      const ids = await calm16();
+      const r = await page.evaluate(async (id) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); const c = OC.Chars.get(id);
+        const away = OC.Menu16.actItems(id, 'away').map((x) => x.label);
+        const pl = OC.Acts16.placesFor('read').find((p) => p !== 'isle'); const r1 = OC.Queue.add(id, { kind: 'act', act: 'read', place: pl });
+        await sleep(1500); const b = OC.Brain.get(id); return { away, pl, r1, leaving: b.leaving && b.leaving.to, st: OC.Queue.list(id).map((x) => x.zh + ':' + x.state) };
+      }, ids[0]);
+      check('25 去別的地方做的事也能排（「去別處」）：角色會自己走出去前往那裡', r.away.length > 0 && r.r1 === 'now' && r.leaving === r.pl, r);
+      await page.waitForTimeout(4000); await calm16();
     }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }

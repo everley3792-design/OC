@@ -32,6 +32,7 @@
 - **16.1（0.16.1-alpha）開局與人生**：開局建立多位島民＋島民名冊＋關係圖（有方向、可鎖定、背景故事）＋選房子（`ui/opening16.js`：`OC.Opening`、`OC.Homes`）；`OC.People`（`life/people16.js`）：20 種物種＋自訂物種、七個人生階段（含嬰兒）、生日長大（自動／按了才長／固定）、未滿 18 歲不涉戀愛。紀錄：`docs/v16.1-report.md`。
 - **16.2（0.16.2-alpha）意願模型與互動**：`OC.Will`（`life/will16.js`）——沒有門檻表，60 種互動（12 類）都能做，對方依關係／親近程度／個性／心情／需求／旁人／歷史決定，反應是光譜（熱情…哭了）各有後果；點別的角色＝社交選單（大概的反應 😊😐🙁）；設施「邀請誰一起」；小機率不照指令（有原因）；12 個社交特質。紀錄：`docs/v16.2-report.md`。
 - **16.2.1（0.16.2.1-alpha）拖曳後凍結**：輕拋／丟出後反應動作（優先 8）被還在的 `drag`（優先 9、沒有結束時間）擋掉 → 角色停在拖曳姿勢、走路被擋；丟到海上／懸崖時落在不能走的格子 → 點地面沒反應。修正＋通用安全網（`actWatchdog`）＋每隻各自的搬運紀錄。紀錄：`docs/v16.2.1-report.md`。
+- **16.3（0.16.3-alpha）角色工作室**：編輯頁分兩區（舞台與分頁固定，只有面板捲動——修掉滑動跑版）；圖片角色有自己的分頁（取景台、去背、自動對齊、動畫來源「全部預設／混合／全部自己匯入」＋一鍵全選與批次匯入），沒有捏臉選項；角色自己的台詞（`c.lines16`）、專屬互動（`c.inter16` → `OC.Will`）、自訂事件腳本（`c.scripts16`／全島 `save.life.scripts16`，`OC.Script`，格式 `docs/oc-script.md`，不限數量、可匯入）。紀錄：`docs/v16.3-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -238,3 +239,8 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.1 開局**：只在新遊戲且不是 `skipIntro`（測試）時出現；圖層 `dismissible:false`（返回鍵不做事，不可以跳確認視窗）。起始關係只經 `Opening.setStart`（`kind16`／`label16`／`fixed`，`relLabel` 顯示 `label16`）；戀愛類只能兩人都滿 18 歲。住處 `c.life.home16`，只經 `OC.Homes.assign`（檢查容量）；黃屋、紫屋的室內在 16.5 前不存在，**不要做假入口**。
 - **16.2 意願模型**（`OC.Will`）：**不要加門檻表**——任何角色對角色的互動都經 `Brain.Social.respond` → `Will.respond`（`willing` 算機率、`react` 選反應），新互動只在 `will16.js` 的 `NEW` 加一行資料＋`lines16.js` 的 `i16_<id>` 台詞；反應的台詞分類 `r16_<反應>`。唯一的硬規則是 `tone: 'love'` 一律先問 `Mind.romanceOK`（含未成年）。玩家要求的互動經 `Will.ask(a, b, kind, { player: true })`（會先問 `defies`，有原因）；設施邀請經 `Will.invite(a, b, act, at)`（`with_<act>` 共同活動，`beginJoint` 用 `conv.at` 選那個設施）。玩家安排的對話（`conv.byPlayer`）事件不會搶走。
 - **16.2.1 身體的安全網**：沒有結束時間、優先 ≥ 5 的動作會擋住走路。新開始這種動作的地方要有擁有者（搬運、小遊戲、島上試播、`brain` 的 do／social／event 或 hold），否則 `app.js` 的 `actWatchdog` 2 秒後結束它。換到更高優先的動作前先 `setAction(a, 'idle')`。放下／落地一律經 `dragEnd`（帶 `id`），保證落在可以走的格子（找不到就回到抱起的位置）。
+- **16.3 角色工作室**（`ui/studio16.js` 覆寫 `charedit` 頁，`fixed: true`）：頁面本身不捲動，只有 `.st-panel` 捲動；不要再用 sticky 或依頁首高度的偏移。圖片角色（`appearance.mode === 'sprite'`）的分頁沒有外觀／臉／耳朵／顏色；新的圖片編輯只寫 `c.appearance.frame`（`OC.Frame16`，對應方式與 `render.js` 相同：腳底錨點、`refH`、zoom·sx／zoom·sy、位移以標準高度的 % 計）。舞台離開畫面時會停，重新顯示要 `stage.restart()`。
+- **16.3 去背**只用 `OC.Cutout`（從圖片邊緣灌水＋柔邊，不是全域顏色鍵；`detect` 看可見範圍的邊）。套用到角色經 `OC.Frame16.applyCut`（存成新圖、舊的影格 id 留在 `doc.cut16.orig`，`.ocpack` 一起匯出並重新對應 id），`revertCut` 還原。
+- **16.3 動畫來源**：`c.appearance.anim16 = { src: 'preset'｜'mixed'｜'custom', preset: { 動作: true } }`，只在 `CharRender.spriteFor`（preset／被設回預設的動作 → 用待機圖由 Puppet 表演）與 `Puppet.active`（custom → 不表演）判斷，不要在別處另寫。
+- **16.3 角色台詞**：`c.lines16 = [{ id, cat, text, c }]`、`c.lines16mode[cat] = 'only'`；由 `OC.Talk.lines()` 的 `charLines()` 併入（`char` 限定說話者）。專屬互動 `c.inter16` 由 `OC.Will.sync()` 登記成 `INTER['u16_<角色>_<id>']`（`own`＝只有擁有者能發起，分類 `own`「專屬」），台詞分類 `i16_<kind>`、`<kind>_yes`／`_no`；數值有上限（關係 ±12、需求 ±30）。
+- **16.3 事件腳本**（`OC.Script`，`life/script16.js`）：腳本是資料，**不得**加入能執行程式碼、給物品／星幣、改關係類型的指令；未成年不改親密；回憶 key 固定。由 `OC.Events.beginScript` 執行（一次一個、間隔、打擾預算、全部角色 hold、跳過時資料步驟照做），`Events.trigger`／`periodic` 在內建事件之後再試腳本。新指令要同時加 parser（`parseStep`）、執行（`step`）、驗證（`finishEvent`）、積木（`studio16.js` 的 `BLOCKS`／`toBlocks`／`toSrc`）與 `docs/oc-script.md`。

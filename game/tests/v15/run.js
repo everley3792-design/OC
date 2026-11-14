@@ -102,20 +102,21 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         out.chips = [...document.querySelectorAll('.q-chip')].map((e) => e.textContent.trim());
         out.chipH = document.querySelector('.q-chip') ? document.querySelector('.q-chip').getBoundingClientRect().height : 0;
         /* cancel the second waiting one through its chip (a real click on the HUD) */
-        const third = [...document.querySelectorAll('.q-chip')][2]; third && third.click(); await sleep(700);
+        const third = [...document.querySelectorAll('.q-chip')][2]; third && third.click(); await sleep(400);   /* 16.4: a tap opens the chip's controls in place */
+        out.ctl = [...document.querySelectorAll('.q-chip.open .q-act')].map((b) => b.textContent); const x = document.querySelector('.q-chip.open .q-act.x'); x && x.click(); await sleep(700);
         out.afterCancel = OC.Queue.list(id).map((x) => x.act);
         /* cancel what it is doing / about to do */
         OC.Queue.cancel(id, -1); await sleep(300); out.afterCur = OC.Queue.list(id).map((x) => x.act + ':' + x.state);
         /* the next one is handed to the engine when it is free */
         const t0 = performance.now(); while (performance.now() - t0 < 20000) { OC.Sim.advance(1); await sleep(150); const l = OC.Queue.list(id); if (l.length && l[0].i === -1) break; }
         out.handed = OC.Queue.list(id).map((x) => x.act + ':' + x.state);
-        out.saved = JSON.stringify(OC.Chars.get(id).life.q15);
+        out.saved = JSON.stringify(OC.Chars.get(id).life.q16);
         OC.Queue.clear(id); OC.Queue.cancel(id, -1); await sleep(300);
         out.cleared = OC.Queue.list(id).length; out.hidden = document.querySelector('.hud-queue').hidden;
         return out;
       });
-      check('2a 安排的動作會排成清單：第一個馬上開始，後面的依序等候，最多 4 個在等；不存在的動作不能排', r.adds[0] === 'now' && r.adds.slice(1, 5).every((x) => x === 'queued') && r.adds[5] === false && r.unknown === false && r.list.length === 5 && /^read:/.test(r.list[0]) && r.list.slice(1).every((x) => /:waiting$/.test(x)), { adds: r.adds, list: r.list });
-      check('2b 清單顯示在左上（目前的那一個標 ▶、其餘標號碼），每一項點一下就取消（膠囊 34 px 高，點擊範圍向外延伸到 48）', r.chips.length === 5 && /^▶/.test(r.chips[0]) && /^2/.test(r.chips[1]) && r.afterCancel.join() === 'read,stretch,nap,eat' && r.chipH >= 30, { chips: r.chips, afterCancel: r.afterCancel, h: r.chipH });
+      check('2a 安排的動作會排成清單：第一個馬上開始，後面的依序等候（16.4 起最多 8 個在等）；不存在的動作不能排', r.adds[0] === 'now' && r.adds.slice(1, 6).every((x) => x === 'queued') && r.unknown === false && r.list.length === 6 && /^read:/.test(r.list[0]) && r.list.slice(1).every((x) => /:waiting$/.test(x)), { adds: r.adds, list: r.list });
+      check('2b 清單顯示在左上（目前的那一個標 ▶ 或 …、其餘標號碼）；點一項就在原地展開它的按鈕（立刻做・循環・取消），按「取消」就取消（膠囊 34 px 高）', r.chips.length === 6 && /^[▶…]/.test(r.chips[0]) && /^2/.test(r.chips[1]) && r.ctl.includes('取消') && r.ctl.includes('立刻做') && r.afterCancel.join() === 'read,stretch,nap,eat,stretch' && r.chipH >= 30, { chips: r.chips, ctl: r.ctl, afterCancel: r.afterCancel, h: r.chipH });
       check('2c 取消正在做的那一個後，清單裡的下一個會在牠有空時自動交給牠（仍經過生活引擎）；清單存在角色身上；清空後 HUD 的清單收起', !r.afterCur.some((x) => /^read:/.test(x)) && /^stretch:(next|going|doing)$/.test(r.handed[0] || '') && r.saved.startsWith('[') && r.cleared === 0 && r.hidden === true, { afterCur: r.afterCur, handed: r.handed, saved: r.saved });
     }
 

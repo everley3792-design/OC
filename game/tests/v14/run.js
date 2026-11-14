@@ -89,34 +89,35 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         OC.Pages.open('charedit', { id: c.id }); return c.id;
       });
       await wait(page, 900);
-      await page.evaluate(() => { const sec = document.querySelector('[data-sec="image"]'); sec && sec.scrollIntoView({ block: 'center' }); }); await wait(page, 500);
-      const box = await page.evaluate(() => { const b = document.querySelector('.crop-box'); if (!b) return null; b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(), hs = Object.fromEntries(['l', 't', 'r', 'b'].map((k) => { const q = b.querySelector('.crop-h.' + k).getBoundingClientRect(); return [k, { x: q.x + q.width / 2, y: q.y + q.height / 2 }]; })); return { x: r.x, y: r.y, w: r.width, h: r.height, hs }; });
+      /* 16.3: the crop box became the framing table's 「裁切」 mode (same handles, on one big table above the panel) */
+      await page.evaluate(() => [...document.querySelectorAll('.fr-act')].find((x) => x.textContent.includes('裁切')).click()); await wait(page, 500);
+      const geo = () => page.evaluate(() => { const p = OC.Pages.pages.charedit, cv = document.querySelector('.page.open .fr-table canvas'); if (!cv || !p.table) return null; const r = cv.getBoundingClientRect(), g = p.table.geo(), R = g.rect; return { x0: r.left + R.x0, x1: r.left + R.x1, y0: r.top + R.y0, y1: r.top + R.y1, dw: g.doc.w * Math.abs(g.kx), dh: g.doc.h * g.ky }; });
+      const box = await geo();
       let res = { box: !!box };
       if (box) {
         const draft = () => page.evaluate(() => { const f = OC.Pages.pages.charedit.draft.appearance.frame || {}; return { crop: Object.assign({ l: 0, t: 0, r: 0, b: 0 }, f.crop), dx: f.dx || 0, dy: f.dy || 0, zoom: f.zoom || 1 }; });
-        /* drag the left handle a quarter of the width to the right, with real pointer events */
-        await page.mouse.move(box.hs.l.x, box.hs.l.y); await page.mouse.down(); await page.mouse.move(box.hs.l.x + box.w * 0.125, box.hs.l.y, { steps: 4 }); await page.mouse.move(box.hs.l.x + box.w * 0.25, box.hs.l.y, { steps: 4 }); await page.mouse.up(); await wait(page, 500);
+        const my = (box.y0 + box.y1) / 2, mx = (box.x0 + box.x1) / 2;
+        /* drag the left handle a quarter of the picture's width to the right, with real pointer events */
+        await page.mouse.move(box.x0, my); await page.mouse.down(); await page.mouse.move(box.x0 + box.dw * 0.125, my, { steps: 4 }); await page.mouse.move(box.x0 + box.dw * 0.25, my, { steps: 4 }); await page.mouse.up(); await wait(page, 500);
         res.afterCrop = await draft();
-        /* dragging far beyond the limit stops at 45 % */
-        const b2 = await page.evaluate(() => { const b = document.querySelector('.crop-box'); b.scrollIntoView({ block: 'end' }); /* the preview stage stays pinned at the top of this page: bring the top handle below it */ const q = b.querySelector('.crop-h.t').getBoundingClientRect(), r = b.getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2, h: r.height, cx: r.x + r.width * 0.62, cy: r.y + r.height * 0.75 }; });
-        await page.mouse.move(b2.x, b2.y); await page.mouse.down(); await page.mouse.move(b2.x, b2.y + b2.h * 0.9, { steps: 6 }); await page.mouse.up(); await wait(page, 500);
+        /* dragging far beyond the limit stops at 92 % minus the other side */
+        const b2 = await geo(); const mx2 = (b2.x0 + b2.x1) / 2;
+        await page.mouse.move(mx2, b2.y0); await page.mouse.down(); await page.mouse.move(mx2, b2.y0 + b2.dh * 1.4, { steps: 6 }); await page.mouse.up(); await wait(page, 500);
         res.clamped = await draft();
-        /* put the top edge back (a 90 % crop leaves a sliver the middle of which is covered by the handles) */
-        { const b4 = await page.evaluate(() => { const b = document.querySelector('.crop-box'); b.scrollIntoView({ block: 'center' }); const q = b.querySelector('.crop-h.t').getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2, h: b.getBoundingClientRect().height }; });
-          await page.mouse.move(b4.x, b4.y); await page.mouse.down(); await page.mouse.move(b4.x, b4.y - b4.h * 1.2, { steps: 6 }); await page.mouse.up(); await wait(page, 500); }
-        await page.evaluate(() => { const p = OC.Pages.pages.charedit, f = p.draft.appearance.frame; f.crop.t = 0; p.ctx.rebuild(); }); await wait(page, 400);
-        /* one finger inside the frame moves the character */
-        const b3 = await page.evaluate(() => { const b = document.querySelector('.crop-box'); b.scrollIntoView({ block: 'center' }); const q = b.querySelector('.crop-rect').getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2, h: b.getBoundingClientRect().height }; });
-        await page.mouse.move(b3.x, b3.y); await page.mouse.down(); await page.mouse.move(b3.x + 20, b3.y + 10, { steps: 4 }); await page.mouse.up(); await wait(page, 500);
+        await page.evaluate(() => { const p = OC.Pages.pages.charedit, f = p.draft.appearance.frame; f.crop.t = 0; p.table.redraw(); }); await wait(page, 300);
+        /* back to moving: one finger on the picture moves the character */
+        await page.evaluate(() => [...document.querySelectorAll('.fr-act')].find((x) => x.textContent.includes('完成裁切')).click()); await wait(page, 400);
+        const b3 = await geo(); const cx = (b3.x0 + b3.x1) / 2 + 6, cy = (b3.y0 + b3.y1) / 2;
+        await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 20, cy + 10, { steps: 4 }); await page.mouse.up(); await wait(page, 500);
         res.moved = await draft();
         res.saved = await page.evaluate((id) => { const c = OC.Chars.get(id); return { frame: c.appearance.frame || null, dirty: !!OC.Pages.pages.charedit.dirty }; }, id);
         res.original = await page.evaluate(async (id) => { const c = OC.Chars.get(id), r = OC.CharRender.spriteFor(c, { action: 'idle' }); return { w: r.doc.w, h: r.doc.h }; }, id);
       }
       await shot(page, '4-crop');
       await page.evaluate(() => { const p = OC.Pages.pages.charedit; p.dirty = false; }); await closeAll();
-      check('4a 圖片角色的編輯頁有裁切框，直接拖左邊的把手就裁掉左邊（約四分之一），其他三邊不變', res.box && Math.abs(res.afterCrop.crop.l - 0.25) < 0.04 && res.afterCrop.crop.t === 0 && res.afterCrop.crop.r === 0 && res.afterCrop.crop.b === 0, res.afterCrop || res);
+      check('4a 圖片角色的取景台「裁切」：直接拖左邊的把手就裁掉左邊（約四分之一），其他三邊不變（16.3 起取代舊的裁切框）', res.box && Math.abs(res.afterCrop.crop.l - 0.25) < 0.04 && res.afterCrop.crop.t === 0 && res.afterCrop.crop.r === 0 && res.afterCrop.crop.b === 0, res.afterCrop || res);
       check('4b 拖過頭會停在上限（16.0：每邊最多 92% 減去對邊），不會把整張圖裁光', res.box && res.clamped.crop.t > 0.85 && res.clamped.crop.t <= 0.92, res.clamped || res);
-      check('4c 在框內單指拖曳＝移動角色的位置（裁切不變）；還沒按儲存前只改草稿，角色本身沒被改動', res.box && res.moved.dx > 1 && res.moved.dy > 0.5 && Math.abs(res.moved.crop.l - res.clamped.crop.l) < 0.001 && res.saved.frame === null && res.saved.dirty, { moved: res.moved, saved: res.saved });
+      check('4c 在取景台上單指拖曳＝移動角色的位置（裁切不變）；還沒按儲存前只改草稿，角色本身沒被改動', res.box && res.moved.dx > 1 && res.moved.dy > 0.5 && Math.abs(res.moved.crop.l - res.clamped.crop.l) < 0.001 && res.saved.frame === null && res.saved.dirty, { moved: res.moved, saved: res.saved });
     }
 
     // ================= 5. the world: remodelled and baked =================

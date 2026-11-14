@@ -198,7 +198,7 @@
   }
   function updateHUD() {
     const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
-    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.act + x.state).join(',') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s, Wd.area && Wd.area.id, OC.Chars.all().map((x) => x.id + (x.status.onIsland ? 1 : 0) + (x.life.loc || '') + (x.updated || '')).join(), OC.LifeData.NEEDS.map((n) => (c.needs[n.id] || 0) < 25 ? 1 : 0).join('')].join('|');
+    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.k + x.state + (x.why || '') + (x.loop ? 'L' : '') + (x.prog == null ? '' : Math.round(x.prog * 10))).join(',') + (hud._qOpen || '') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s, Wd.area && Wd.area.id, OC.Chars.all().map((x) => x.id + (x.status.onIsland ? 1 : 0) + (x.life.loc || '') + (x.updated || '')).join(), OC.LifeData.NEEDS.map((n) => (c.needs[n.id] || 0) < 25 ? 1 : 0).join('')].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
     hud.name.textContent = OC.Chars.name(c); { const pz = placeOf(c).zh, d = doing || OC.Mind.label(c); hud.mood.textContent = pz ? pz + '・' + d : d; }
     /* the ring around the portrait is the mood; the little badge is the control mode; needs only show up when one is low */
@@ -215,10 +215,10 @@
           ...(more > 0 ? [h('span.np-mini.np-more', null, '+' + more)] : []));
         hud.others.setAttribute('aria-label', '切換操控角色：' + others.map((x) => OC.Chars.name(x)).join('、'));
         hud.others.hidden = !others.length; } }
-    { const ql = OC.Queue ? OC.Queue.list(c.id) : [], qk = ql.map((x) => x.act + x.state).join(',');
-      if (qk !== hud._qk) { hud._qk = qk; hud.queue.hidden = !ql.length;
-        hud.queue.replaceChildren(...ql.map((x, n) => h('button.q-chip' + (x.i < 0 ? '.now' : ''), { role: 'listitem', 'aria-label': `${x.zh}（${x.i < 0 ? (x.state === 'doing' ? '進行中' : '正要去') : '排第 ' + (n + 1)}）・點一下取消`, on: { click: () => { haptic('tick'); OC.Queue.cancel(c.id, x.i); toast(`取消：${x.zh}`, 'info'); lastHudKey = ''; } } },
-          h('span.q-n', null, x.i < 0 ? '▶' : String(n + 1)), h('span', null, x.zh), icon('close', 's')))); } }
+    /* 16.4: the action list — what it is doing for you first (▶ and a progress bar), then what waits; a refused one shows why (⚠).
+     * A tap opens its controls in place (立刻做・循環・強迫・取消); a long press lets you drag it up or down. Nothing pops up. */
+    { const ql = OC.Queue ? OC.Queue.list(c.id) : [], qk = ql.map((x) => x.k + x.state + (x.why || '') + (x.loop ? 'L' : '') + (x.prog == null ? '' : Math.round(x.prog * 10))).join(',') + '|' + (hud._qOpen || '');
+      if (qk !== hud._qk) { hud._qk = qk; hud.queue.hidden = !ql.length; hud.queue.replaceChildren(...ql.map((x, n) => qChip(c.id, x, n))); } }
     { const m = c.life.control || 'semi'; hud.ctl.hidden = m === 'semi'; hud.ctl.textContent = OC.LifeUI.ctlZh(m); hud.ctl.dataset.m = m; }
     hud.moodBar.style.width = Math.max(4, Math.min(100, mood)) + '%'; hud.moodBar.classList.toggle('low', mood < 30);
     hud.bell.hidden = !nn; hud.badge.textContent = nn > 9 ? '9+' : nn;
@@ -543,7 +543,10 @@
   const INVITE_ACT = { bench: 'rest', bookshelf: 'read', towel: 'nap', ride: 'ride' };
   function describe(it) {
     const d = describe0(it), act = INVITE_ACT[it.type];
-    if (d && act && OC.Will && presentHere().some((c) => actorOf(c.id))) { const at = it.at ? { x: it.at.x, y: it.at.y } : { x: it.x, y: it.y }; d.extra = (d.extra || []).concat([{ label: '邀請誰一起', run: () => OC.LifeUI.inviteSheet(act, at, d.title) }]); }
+    if (d && OC.Menu16) d.extra = (d.extra || []).concat(OC.Menu16.objectActs(it));   /* 16.4: what this thing offers, each one a request with this very object */
+    /* 16.4: inviting someone is one tap per person here (no sheet in between) */
+    if (d && act && OC.Will) { const at = it.at ? { x: it.at.x, y: it.at.y } : { x: it.x, y: it.y }, me0 = OC.Chars.get(S().activeId);
+      for (const c of presentHere().filter((x) => actorOf(x.id) && x.id !== S().activeId).slice(0, 3)) { const hh = OC.Will.hint(c, me0, OC.Will.jointKind(act)); d.extra.push({ label: `邀${OC.Chars.name(c)}一起${S().life.settings.willHint !== false ? ' ' + hh.face : ''}`, run: () => { const r = OC.Will.invite(S().activeId, c.id, act, at); if (!r.ok) toast(r.why, 'info'); else toast(`${OC.Chars.name(me0)}去邀請${OC.Chars.name(c)}`, 'users'); } }); } }
     return d;
   }
   function describe0(it) {
@@ -580,6 +583,28 @@
     if (it.type === 'tree') { const left = treeReadyIn(it); toast(left <= 0 ? `${it.label}・果實成熟了，點一下就能搖` : `${it.label}・還要約 ${Math.ceil(left)} 分鐘長出果實`, 'leaf'); return; }
     if (it.type === 'furn') { toast(`${Sty.ITEMS[it.id].zh}・開啟佈置模式即可移動`, 'sofa'); return; }
     toast(it.label || (it.type === 'self' ? `${OC.Chars.name(me())}・${OC.Chars.typeTitle(me())}` : '物品'), 'info');
+  }
+  /* 16.4 queue chips */
+  function qChip(id, x, n) {
+    const open = hud._qOpen === x.k, refused = x.state === 'refused';
+    const mark = x.i < 0 ? (x.state === 'doing' ? '▶' : '…') : refused ? '⚠' : x.state === 'waitfor' ? '⏳' : String(n + 1);
+    const act = (label, fn, cls) => h('button.q-act' + (cls ? '.' + cls : ''), { 'aria-label': label, on: { click: (e) => { e.stopPropagation(); haptic('tick'); fn(); hud._qOpen = null; lastHudKey = ''; hud._qk = ''; } } }, label);
+    const el = h('div.q-chip' + (x.i < 0 ? '.now' : '') + (refused ? '.refused' : '') + (open ? '.open' : '') + (x.loop ? '.loop' : ''), { role: 'listitem', 'data-k': x.k, 'aria-label': `${x.zh}（${x.i < 0 ? (x.state === 'doing' ? '進行中' : '正要去') : refused ? '不想做：' + x.why : x.state === 'waitfor' ? x.why : '排第 ' + (n + 1)}）` },
+      h('span.q-n', null, mark), h('span.q-ic', null, x.ic || ''), h('span.q-zh', null, x.zh), x.loop ? h('span.q-loop', { 'aria-label': '循環' }, '⟳') : null,
+      x.prog != null ? h('i.q-prog', { style: { width: Math.round(x.prog * 100) + '%' } }) : null,
+      (refused || x.state === 'waitfor') && x.why ? h('small.q-why', null, x.why) : null,
+      open ? h('div.q-acts', null,
+        x.i >= 0 ? act('立刻做', () => OC.Queue.now(id, x.n)) : null,
+        refused ? act('強迫', () => OC.Queue.force(id, x.n), 'warn') : null,
+        act(x.loop ? '不循環' : '循環', () => OC.Queue.loop(id, x.n)),
+        act('取消', () => { OC.Queue.cancel(id, x.i); toast(`取消：${x.zh}`, 'info'); }, 'x')) : null);
+    let lp = null, drag = null;
+    el.addEventListener('pointerdown', (e) => { if (e.target.closest('.q-act')) return; clearTimeout(lp); const y0 = e.clientY; lp = setTimeout(() => { if (x.i < 0) return; drag = { y0, from: x.n, pid: e.pointerId }; el.classList.add('drag'); try { el.setPointerCapture(e.pointerId); } catch (er) { /* */ } haptic('light'); }, 380); });
+    el.addEventListener('pointermove', (e) => { if (!drag) return; el.style.transform = `translateY(${e.clientY - drag.y0}px)`; });
+    const up = (e) => { clearTimeout(lp); if (!drag) return; const chips = [...hud.queue.children], h0 = el.getBoundingClientRect().height + 5, to = Math.max(0, Math.min(chips.length - 1, drag.from + Math.round((e.clientY - drag.y0) / h0)));   /* list index ± rows moved */ el.classList.remove('drag'); el.style.transform = ''; const d = drag; drag = null; el._dragged = true; setTimeout(() => { el._dragged = false; }, 50); if (to !== d.from && OC.Queue.move(id, d.from, to)) { haptic('confirm'); hud._qk = ''; lastHudKey = ''; } };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('click', (e) => { if (el._dragged || e.target.closest('.q-act')) return; haptic('tick'); hud._qOpen = open ? null : x.k; hud._qk = ''; lastHudKey = ''; });
+    return el;
   }
   let mk = null;
   /** 11.0: a ripple where you tapped (two rings + a dot that stays until the OC has arrived) */
@@ -685,31 +710,8 @@
         const held = !sl && OC.Brain.hold(id, 'menu'); if (held) { a.path = null; a.tFace = 0; a.tBack = 0; a.squashT = 0; }   // a sleeping OC is not woken by the menu
         OC.Radial.open({ x: pt.x, y: pt.y, title, sub: subTxt, target: id, track: () => (a.dead || a.hidden ? null : screenOf(a)), onClose: () => { if (held) OC.Brain.unhold(id, 'menu'); }, items });
       };
-      // 11.0: 親近 opens a second ring (pat · hug · high-five · poke · hold hands); the first ring keeps the everyday actions
-      const closeness = () => ring(OC.Chars.name(c), '想怎麼親近？', [
-        { ic: 'paw', label: '摸頭', main: true, off: sl, run: () => L.pet(id) },
-        { ic: 'heart', label: '抱抱', off: sl || busy, run: () => L.hug(id) },
-        { ic: 'hand', label: '擊掌', off: sl || busy, run: () => L.highfive(id) },
-        { ic: 'sparkle', label: '戳戳', off: sl || busy, run: () => L.poke(id) },
-        { ic: 'users', label: '牽手', off: self ? '自己牽不了自己' : (sl || busy), run: () => L.handhold(id) },
-      ]);
-      // 13.0: 玩耍 opens a ring of games you play WITH the character
-      const playRing = () => ring(OC.Chars.name(c), '想玩什麼？', [
-        { ic: 'dice', label: '陪牠玩', main: true, off: sl || busy, run: () => L.play(id) },
-        { ic: 'hand', label: '猜拳', off: sl || busy, run: () => OC.Fun.rps(id) },
-        { ic: 'eye', label: '躲貓貓', off: self ? '操控中的角色不能自己躲（找別的角色玩）' : (sl || busy), run: () => OC.Fun.hide(id) },
-      ]);
-      ring(OC.Chars.name(c), `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, [
-        self ? null : { ic: 'users', label: `${OC.Chars.name(me())}的互動`, main: true, off: busy, run: () => setTimeout(() => OC.LifeUI.socialSheet(id), 60) },   /* 16.2: what the character you play does with this one */
-        { ic: 'heart', label: '親近', main: self, run: () => setTimeout(closeness, 60) },
-        { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
-        { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
-        { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
-        { ic: 'dice', label: '玩耍', off: sl || busy, run: () => (!OC.Fun ? L.play(id) : setTimeout(playRing, 60)) },
-        self ? { ic: 'eye', label: '跟拍', run: () => setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L.call(id) },
-        { ic: 'person', label: '檔案', run: () => Pg.open('profile', { id }) },
-        { ic: 'more', label: '更多', run: () => L.interact(id) },
-      ]);
+      /* 16.4: one ring of everyday actions; categories open their items inside the same menu (OC.Menu16) — no second ring, no sheet */
+      const R16 = OC.Menu16.charRing(id); ring(R16.title, R16.sub, R16.items);
       St.emit('menu:open', { kind: 'oc', id });
       return;
     }
@@ -731,6 +733,7 @@
         { ic: 'walk', label: '走過去', main: true, off: ok ? null : '走不過去', run: () => { const t = Wd.nearestWalkable(q.x, q.y, 24); if (t && Wd.walkTo(player, t.x, t.y)) marker(t); } },
         { ic: 'hand', label: '大家過來', off: others.length ? null : '這裡沒有其他 OC', run: () => others.forEach((id, i) => setTimeout(() => OC.LifeUI.call(id), i * 250)) },
         { ic: 'sofa', label: '放家具', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => setDecorate(true) },
+        { ic: 'sparkle', label: '在這裡做', off: ok ? null : '走不過去', sub: () => OC.Menu16.groundAt(q) },
         { ic: 'eye', label: '看這裡', run: () => { setCamMode('free'); Wd.shot({ x: q.x, y: q.y, speed: 3 }); setTimeout(() => Wd.shot(null), 900); } },
       ] });
       St.emit('menu:open', { kind: 'ground' });

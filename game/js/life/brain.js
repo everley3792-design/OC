@@ -98,6 +98,7 @@
     }
     return b;
   }
+  const NEW16 = new Proxy({}, { get: (t, k) => !!(OC.Acts16 && OC.Acts16.NEW[k]) });
   const ACT_NEEDS_SLOT = (act) => { const v = D().ACTS[act].verb; return v && v !== 'wander' && v !== 'explore'; };
   function detach(id) { const b = brains[id]; if (!b) return; endConvOf(b); release(id); if (b.a) { b.a.brain = null; b.a.hidden = false; } b.a = null; if (b.st === 'go' || b.st === 'social' || b.st === 'event' || b.st === 'held') b.st = 'think'; }
   function detachAll() { for (const id of Object.keys(brains)) detach(id); }
@@ -234,12 +235,18 @@
       if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
       if (A.cmdOnly && b.queued !== act) continue;
+      if (OC.Acts16 && NEW16[act] && b.queued !== act && !OC.Acts16.auto(act)) continue;   /* 16.4: hugging a tree, a photo … only when asked; stars only at night */
       if (OC.People && !OC.People.canDo(c, act)) continue;   /* 16.1: a baby does not cook, a toddler does not go fishing */   /* 15.2: e.g. a part-time shift happens only when the player asks for it */
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
       if (manualIdle && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;   // manual: only what an urgent need asks for
       const sc = actScore(c, b, act); let target = null, ts = 0;
       if (A.verb === 'wander' || A.verb === 'explore') { const p = wanderPoint(c, b, A.verb === 'explore'); if (!p) continue; target = { pt: p }; }
-      else if (A.verb) { const bs = bestSlot(c, b, A.verb); if (!bs) continue; target = { slot: bs.slot }; ts = bs.s; }
+      else if (A.verb) {
+        /* 16.4: a request for THIS bench / bed / shelf (OC.Queue) goes to that one when it is free */
+        const qs = b.queued === act && b.queuedSlot ? findSlot(b.queuedSlot) : null;
+        const pick = qs ? (free(qs, b.id) ? qs : qs.obj.slots.find((s2) => free(s2, b.id))) : null;   /* that seat, or the other seat of the same thing */
+        if (pick) target = { slot: pick }; else if (qs) continue; else { const bs = bestSlot(c, b, A.verb); if (!bs) continue; target = { slot: bs.slot }; ts = bs.s; }
+      }
       else if (!clearPoint(b.a.x, b.a.y, c.id, 10)) continue;
       out.push({ kind: 'act', act, target, s: sc.s + ts, why: sc.why.concat(ts ? [`地點${ts > 0 ? '+' : ''}${ts.toFixed(2)}`] : []) });
     }
@@ -393,6 +400,12 @@
     if (b.st === 'do' && b.act !== act) finish(b, '玩家安排'); else if (b.st === 'go') abort(b, '玩家安排');
     if (b.st === 'social') endConvOf(b, 'interrupted');
     b.thinkAt = 0; b.cmdAt = b.manual ? -1e9 : b.cmdAt; if (b.manual) b.manualOverride = nowR() + 120; return true;
+  }
+  /** 16.4: the player asked for something at another place → walk out and go there (the trip resumes like the AI's own) */
+  function goPlace(id, place, act) {
+    const b = brains[id]; if (!b || !b.a || !D().ACTS[act] || !OC.Places.get(place)) return false;
+    if (b.st === 'do') finish(b, '玩家安排'); else if (b.st === 'go') abort(b, '玩家安排'); if (b.st === 'social') endConvOf(b, 'interrupted');
+    b.queued = null; startTravel(b, place, act); return true;
   }
   /** the player moved the played OC → abort its own activity */
   function playerAct(id) { const b = brains[id]; if (!b) return; b.cmdAt = nowR(); b.manualOverride = 0; b.queued = null; if (b.st === 'do' || b.st === 'go') { if (b.st === 'do') finish(b, '玩家操作'); else abort(b, '玩家操作'); } if (b.st === 'social') endConvOf(b, 'interrupted'); }
@@ -798,7 +811,7 @@
 
   OC.Brain = {
     init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); },
-    entryPoint, arrived, noticeNew, ctlOf, manualMode, setControl, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
+    goPlace, entryPoint, arrived, noticeNew, ctlOf, manualMode, setControl, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,
   };

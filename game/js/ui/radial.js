@@ -46,6 +46,7 @@
           e.stopPropagation(); if (!cur || cur.picking) return;
           if (OC.Pick && !OC.Pick.armed(el)) return;   /* 15.0: the finger that opened the ring cannot pick from it */
           if (it.off) { haptic('error'); b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); toast(it.off, 'info'); return; }
+          if (it.sub) { haptic('tick'); [...ring.querySelectorAll('.radial-btn.cat-on')].forEach((x) => x.classList.remove('cat-on')); b.classList.add('cat-on'); panel(it); return; }   /* 16.4: a category opens its items in the same menu */
           // the chosen button pops, the others tuck in, then the action runs as the ring fades
           cur.picking = true; haptic('confirm'); OC.Sound && OC.Sound.play('tap');
           b.classList.add('picked'); el.classList.add('picking');
@@ -55,6 +56,35 @@
       ring.append(b);
     });
     el.append(ring);
+    /* 16.4: one level of items under a category — a panel inside the same menu (no second ring, no sheet). A tap runs the item
+     * (requests go into the action list); a long press means 「立刻做」 (it goes first). Optional tabs switch the list in place. */
+    const pnl = h('div.radial-panel', { role: 'group' }); el.append(pnl);
+    function panel(cat) {
+      const spec = cat.sub(), tabs = spec.tabs || null; let tab = spec.tab || (tabs && tabs[0] && tabs[0][0]);
+      const draw = () => {
+        const items = (typeof spec.items === 'function' ? spec.items(tab) : spec.items || []).filter(Boolean);
+        pnl.replaceChildren(
+          h('div.rp-head', null, h('b', null, cat.label), spec.note ? h('small', null, spec.note) : null),
+          tabs ? h('div.rp-tabs', null, ...tabs.map(([k, zh]) => h('button.chip-btn' + (k === tab ? '.on' : ''), { 'data-tab': k, on: { click: (e) => { e.stopPropagation(); tab = k; draw(); } } }, zh))) : null,
+          items.length ? h('div.rp-items', null, ...items.map((x) => {
+            const bt = h('button.radial-btn.ri' + (x.off ? '.off' : ''), { 'data-item': x.id || x.label, 'aria-label': x.label + (x.off ? `（${x.off}）` : ''), 'aria-disabled': x.off ? 'true' : 'false' }, h('span.ri-ic', null, x.ic && x.ic.length <= 2 ? x.ic : OC.UI.stickerOr(x.ic || 'sparkle')), h('span', null, x.label), x.hint ? h('i.ri-hint', null, x.hint) : null, x.off ? OC.UI.icon('lock', 's') : null);
+            let lp = null, longed = false;
+            bt.addEventListener('pointerdown', () => { longed = false; clearTimeout(lp); if (x.now) lp = setTimeout(() => { longed = true; fire(true); }, 520); });
+            const cancelLp = () => clearTimeout(lp); bt.addEventListener('pointerup', cancelLp); bt.addEventListener('pointerleave', cancelLp); bt.addEventListener('pointercancel', cancelLp);
+            const fire = (now) => {
+              if (!cur || cur.picking) return; if (OC.Pick && !OC.Pick.armed(el)) return;
+              if (x.off) { haptic('error'); toast(x.off, 'info'); return; }
+              cur.picking = true; haptic(now ? 'heavy' : 'confirm'); OC.Sound && OC.Sound.play('tap'); bt.classList.add('picked');
+              setTimeout(() => { try { x.run({ now: !!now }); } catch (err) { console.error(err); } close(); }, 120);
+            };
+            bt.addEventListener('click', (e) => { e.stopPropagation(); if (longed) return; fire(false); });
+            return bt;
+          })) : h('div.rp-empty', null, spec.empty || '這裡沒有可以做的'),
+          spec.foot ? h('div.rp-foot', null, spec.foot) : null);
+        pnl.classList.add('on'); el.classList.add('has-panel');
+      };
+      draw(); if (OC.Pick) OC.Pick.guard(pnl, 250);
+    }
     el.addEventListener('pointerdown', (e) => { if (e.target === el) close(); });   /* a NEW finger outside always closes (the guard is only for the buttons)*/
     document.getElementById('app').append(el); if (OC.Pick) OC.Pick.guard(el);
     const layer = { scrim: false, close: () => close() }; OC.UI.pushLayer(layer);
@@ -76,5 +106,11 @@
     return el;
   }
 
-  OC.Radial = { open, close, get open_() { return !!cur; }, get target() { return cur && cur.target; } };
+  /** 16.4: 「已安排：…　復原」 — no confirmation before; one tap after to take it back */
+  let undoEl = null;
+  function undoToast(text, undo, ms = 4200) {
+    if (undoEl) undoEl.remove(); const el = h('div.undo-toast', { role: 'status' }, h('span.grow', null, text), undo ? h('button.btn.s', { on: { click: () => { try { undo(); } catch (e) { console.error(e); } el.remove(); haptic('tick'); } } }, '復原') : null);
+    document.getElementById('app').append(el); undoEl = el; requestAnimationFrame(() => el.classList.add('on')); setTimeout(() => { el.classList.remove('on'); setTimeout(() => el.remove(), 300); if (undoEl === el) undoEl = null; }, ms);
+  }
+  OC.Radial = { open, close, undoToast, get open_() { return !!cur; }, get target() { return cur && cur.target; } };
 })();
