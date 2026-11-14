@@ -44,6 +44,9 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
         await page.evaluate(() => { const nm = document.querySelector('.creator input[placeholder*="名字"], .creator input[aria-label*="名字"]'); if (nm && !nm.value) { nm.value = '小苔'; nm.dispatchEvent(new Event('input', { bubbles: true })); } });
         await page.click('.creator > .btn.primary', { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(300);
       }
+      /* 16.1: the opening (more islanders, roster, relationships, houses) — one islander is fine: step through */
+      await page.waitForSelector('.op16', { timeout: 15000 }).catch(() => null);
+      for (let i = 0; i < 8 && await page.$('.op16:not(.out)'); i++) { await page.click('.op16 [data-op=next]', { timeout: 3000 }).catch(() => {}); await wait(page, 500); }
       await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       await wait(page, 1200); await shot(page, '2-debut');
       const r = await page.evaluate(() => ({ chars: OC.Chars.all().map((c) => c.profile.name), mates: Object.keys(OC.App.mates).length, legacy: { npcs: OC.Store.s.npcs, residents: OC.Store.s.world.residents }, hasNpcApi: !!(OC.Game.NPCS || OC.App.npcs), v: OC.Store.s.v }));

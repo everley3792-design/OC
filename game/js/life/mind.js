@@ -229,7 +229,7 @@
     for (const [x, y] of both ? [[a, b], [b, a]] : [[a, b]]) { const r = rel(x, y); r.type = type; r.fixed = type !== 'auto'; r.custom = custom || ''; if (type === 'auto') { r.fixed = false; r.type = autoType(Object.assign({}, r, { type: 'stranger' })); } }
     St.touch('life', { relSet: a + '>' + b });
   }
-  function relLabel(r) { return r ? (r.type === 'custom' && r.custom ? r.custom : TYPES[r.type]) : TYPES.stranger; }
+  function relLabel(r) { return r ? (r.label16 && r.fixed ? r.label16 : r.type === 'custom' && r.custom ? r.custom : r.label16 && !['friend', 'bestfriend', 'lover', 'partner'].includes(r.type) ? r.label16 : TYPES[r.type]) : TYPES.stranger; }   /* 16.1: 爸媽、同學、前任… from the opening */
   function romanceOK(a, b) {
     const R = S().life.settings.romance; if (!R.enabled || !R.adult[a] || !R.adult[b]) return false;
     if (OC.People && (OC.People.minor(a) || OC.People.minor(b))) return false;   /* 16.1: under 18 by their age — never, whatever the settings say */

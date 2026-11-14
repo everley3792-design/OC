@@ -1099,6 +1099,7 @@
       if (!S().intro.seen) await OC.Intro.opening({ keepShot: true });
       await OC.Intro.welcome({ returning: false });
       await OC.Creator.start({ first: true });
+      if (OC.Opening && !OC.Intro.skipAll()) await OC.Opening.run();   /* 16.1: more islanders, how they know each other, where they live */
       Wd.shot(null);
     }
     if (S().legacyAnims && S().legacyAnims.length) OC.Chars.migrateLegacyAnims().then((n) => n && toast(`已把 ${n} 段舊作品搬到新的素材庫`, 'film')).catch((e) => console.error('[migrate]', e));

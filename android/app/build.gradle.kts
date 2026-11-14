@@ -12,8 +12,8 @@ android {
         applicationId = "app.ocshimeji"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "0.16.0-alpha"
+        versionCode = 28
+        versionName = "0.16.1-alpha"
     }
     buildFeatures { buildConfig = true }
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/game-assets"))

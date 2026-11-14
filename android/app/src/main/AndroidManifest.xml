@@ -4,8 +4,8 @@
      (foregroundServiceType) are resolved through android/tools/framework-extras (see docs/android-build.md). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.ocshimeji"
-    android:versionCode="27"
-    android:versionName="0.16.0-alpha">
+    android:versionCode="28"
+    android:versionName="0.16.1-alpha">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 

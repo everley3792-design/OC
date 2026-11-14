@@ -390,3 +390,31 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .species-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .species-pick .chip-btn.own { box-shadow: inset 0 0 0 2px var(--sun); }
 .species-pick .chip-btn.add { color: var(--accent); }
+
+/* 16.1 — the opening: islanders, roster, relationship map, houses */
+.toast-wrap { z-index: 97; }
+.op16 { overflow: hidden; gap: 10px; }
+.op16.out { opacity: 0; transition: opacity 300ms; }
+.op16-head h2 { margin: 6px 0 2px; font-size: var(--fs-xl); } .op16-head p { margin: 0; font-size: var(--fs-s); }
+.op16-head .dots { display: flex; gap: 6px; } .op16-head .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-3); } .op16-head .dots i.on { background: var(--accent); width: 20px; border-radius: 4px; }
+.op16-body { flex: 1; overflow-y: auto; margin: 0 -6px; padding: 4px 6px 12px; }
+.op16-foot { display: flex; justify-content: space-between; gap: 10px; }
+.op16-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0; }
+.op16-person { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: var(--r-m); background: var(--surface); box-shadow: var(--hl), 0 3px 0 var(--lip); border: 0; color: var(--ink); min-height: 120px; justify-content: center; }
+.op16-person canvas { border-radius: 50%; background: var(--surface-2); }
+.op16-person.add { color: var(--accent); border: 2px dashed var(--accent); background: none; box-shadow: none; }
+.op16-row { margin-bottom: 10px; } .op16-row canvas { border-radius: 50%; background: var(--surface-2); flex: none; }
+.op16-age { width: 72px; height: 40px; flex: none; } .op16-age input { width: 100%; text-align: center; }
+.op16-stage { color: var(--ink-2); min-width: 4.5em; text-align: right; }
+.op16-sub { margin-top: 8px; }
+.op16-map { position: relative; margin: 0 auto 8px; }
+.op16-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.op16-line { stroke-width: 4; stroke-linecap: round; } .op16-line.none { stroke: var(--line); stroke-dasharray: 2 6; stroke-width: 2; }
+.op16-line.g-0 { stroke: var(--sun); } .op16-line.g-1 { stroke: var(--heart, var(--alert)); } .op16-line.g-2 { stroke: var(--accent); } .op16-line.g-3 { stroke: var(--ink-3); }
+.op16-node { position: absolute; width: 52px; display: flex; flex-direction: column; align-items: center; } .op16-node canvas { border-radius: 50%; background: var(--surface); box-shadow: 0 2px 0 var(--lip); }
+.op16-node small { font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; }
+.op16-pairs { display: flex; flex-direction: column; gap: 6px; }
+.op16-pair { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 12px; border-radius: var(--r-m); border: 0; background: var(--surface); box-shadow: var(--hl), 0 2px 0 var(--lip); color: var(--ink); text-align: left; }
+.op16-kind { color: var(--ink-3); font-size: var(--fs-s); } .op16-kind.set { color: var(--ink); font-weight: 800; }
+.op16-house { margin-bottom: 10px; } .op16-house.over { box-shadow: var(--hl), 0 3px 0 var(--lip), inset 0 0 0 2px var(--alert); }
+.op16-residents { display: flex; flex-wrap: wrap; gap: 6px; }
