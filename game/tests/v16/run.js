@@ -9,7 +9,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
 (async () => {
   const { browser, page, errors } = await H.launch({ w: 393, h: 852 });
   try {
-    await H.boot(page, { chars: 4, hour: 10 });
+    await H.boot(page, { chars: 4, hour: 10, query: '?cal=settings' });   /* ?cal=settings: neither real nor game → the setting decides */
     if (want(1)) {
       const r = await page.evaluate(async (src) => {
         const id = await eval(src); OC.Chars.setActive(id); Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true }); OC.Store.s.settings.perf = 'balanced'; OC.App.applyPerf();
