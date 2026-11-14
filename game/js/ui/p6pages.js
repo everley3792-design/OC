@@ -90,7 +90,7 @@
       const todo = S().pet.tools.todos.filter((t) => !t.done).length;
       const APPS = [
         ['quests', '任務', 'flag', qc, null], ['req', '請求', 'chat', ro, null], ['ach', '成就', 'trophy', ac, null], ['coll', '圖鑑', 'collection', 0, null],
-        ['news', '島報', 'mail', OC.Island ? OC.Island.roomClaimable('home').length : 0, () => Pg().open('news')], ['camera', '拍照', 'camera', 0, () => (OC.Photo ? OC.Photo.open() : toast('拍照模式還沒準備好', 'info'))], ['album', '相簿', 'book', 0, () => Pg().open('album')], ['map', '地圖', 'compass', 0, () => OC.App.tab('explore')],
+        ['mailbox', '信箱', 'bell', OC.LifeUI.noticeCount(), () => OC.LifeUI.notices()], ['news', '島報', 'mail', OC.Island ? OC.Island.roomClaimable('home').length : 0, () => Pg().open('news')], ['camera', '拍照', 'camera', 0, () => (OC.Photo ? OC.Photo.open() : toast('拍照模式還沒準備好', 'info'))], ['album', '相簿', 'book', 0, () => Pg().open('album')], ['map', '地圖', 'compass', 0, () => OC.App.tab('explore')],
         ['bag', '背包', 'bag', 0, () => Pg().open('bag')], ['shop', '商店', 'shop', 0, () => Pg().open('shop', { shop: 'general' })],
         ['ledger', '帳本', 'coin', 0, () => Pg().open('ledger')], ['goals', '小島目標', 'star', 0, () => Pg().open('goals')],
         ['products', '工坊商品', 'gift', 0, () => Pg().open('products')], ['pet', '桌寵', 'paw', 0, () => Pg().open('petcenter')],

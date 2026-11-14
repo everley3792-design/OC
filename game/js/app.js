@@ -228,7 +228,7 @@
       }
       function draw(fromSlider) {
         const L = OC.Clock.label(), hh = OC.Clock.hour();
-        big.textContent = fmtH(hh); sub.textContent = `${L.date}（${L.week}）・${OC.Clock.PHASE_ZH[OC.Clock.phase(hh)]}・${{ real: '跟隨手機時間', cycle: st.timePaused ? '遊戲循環（暫停中）' : `遊戲循環 ×${st.timeSpeed || 1}・一天約 ${Math.round(24 / (st.timeSpeed || 1))} 分鐘`, fixed: '固定在這個時刻' }[st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed']}`;
+        big.textContent = fmtH(hh); sub.textContent = `${OC.Clock.calMode() === 'game' ? '第 ' + OC.Clock.cal().year + ' 年 ' : ''}${L.date}（${L.week}）・${OC.Clock.PHASE_ZH[OC.Clock.phase(hh)]}・${{ real: '跟隨手機時間', cycle: st.timePaused ? '遊戲循環（暫停中）' : `遊戲循環 ×${st.timeSpeed || 1}・一天約 ${Math.round(24 / (st.timeSpeed || 1))} 分鐘`, fixed: '固定在這個時刻' }[st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed']}`;
         modeSeg.set(st.time === 'cycle' ? 'cycle' : st.time === 'real' ? 'real' : 'fixed'); cycleBox.hidden = st.time !== 'cycle';
         if (!fromSlider) slider.value = String(Math.round(hh * 4) / 4);
         chips.replaceChildren(...TIME_PRESETS.map(([zh, v]) => h('button.chip-btn' + (Math.abs(hh - v) < 0.5 ? '.on' : ''), { on: { click: () => pick(v) } }, zh, h('small', null, ' ' + fmtH(v)))));
@@ -969,6 +969,7 @@
     OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
     if (now - presT > 1000) { presT = now; syncPresence(); }
     OC.Stage.tick(dt); OC.Sound.tick(dt); OC.PetSync.tick(dt); if (curTab === 'island') OC.Requests.frame();
+    if (OC.Budget && !paused) OC.Budget.tick(dt);
     if (now - reqT > 2000) { reqT = now; OC.Requests.tick(); OC.Quests.refresh(); }
     if (now - aspT > 20000) { aspT = now; OC.Growth.tick(); }
     const wx = OC.Clock.weather(); if (wx !== lastWx) { if (lastWx) St.emit('life:weather', { wx, from: lastWx }); lastWx = wx; }
@@ -1133,7 +1134,7 @@
     if (e.k === 'talks' && st.talks >= 20) OC.Chars.suggest(c, 'trait', 'social', '常常和 OC 聊天');
     if (e.k === 'shakes' && st.shakes >= 10) OC.Chars.suggest(c, 'hobby', '照顧果樹', '搖了很多次果樹');
   });
-  St.on('growthSuggest', (e) => { lastHudKey = ''; toast(`${OC.Chars.name(e.c)}好像${e.type === 'trait' ? '有了新的個性' : e.type === 'habit' ? '有了新習慣' : '發現了新興趣'}：「${(e.s && e.s.zh) || e.value}」（點右上角的鈴鐺決定）`, 'sparkle'); });
+  St.on('growthSuggest', (e) => { lastHudKey = ''; if (OC.Budget && OC.Budget.level() !== 'legacy') return; /* 16.0: it is in the mailbox (the bell shows a number); no toast in the middle of play */ toast(`${OC.Chars.name(e.c)}好像${e.type === 'trait' ? '有了新的個性' : e.type === 'habit' ? '有了新習慣' : '發現了新興趣'}：「${(e.s && e.s.zh) || e.value}」（點右上角的鈴鐺決定）`, 'sparkle'); });
 
   // ---- hooks used by the life engines (js/life/brain.js, events.js) ----
   const onScreen = (a) => { if (!a || curTab !== 'island') return false; const p = Wd.project(a.x, a.y, a.lvl); return p.x > -40 && p.x < innerWidth + 40 && p.y > -40 && p.y < innerHeight + 40; };

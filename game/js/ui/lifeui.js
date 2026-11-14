@@ -37,7 +37,7 @@
 
   // ============================== notices ==============================
   let transient = [], pill = null;
-  function noticeCount() { const now = Date.now(); transient = transient.filter((n) => now - n.at < 90000); return M().pending().length + S().life.notices.length + transient.length; }
+  function noticeCount() { const now = Date.now(); transient = transient.filter((n) => now - n.at < 90000); return M().pending().length + S().life.notices.length + transient.length + (OC.Budget ? OC.Budget.unread() : 0); }
   function pushNotice(n) {
     if (n.info) { toast(n.text, 'gift'); return; }
     n.at = Date.now(); if (n.watch) transient.push(n);
@@ -64,17 +64,21 @@
         h('button.btn.s', { on: { click: () => act('mute', `已關閉同類（${({ trait: '特質', hobby: '興趣', habit: '習慣' })[s.type]}）建議`) } }, '關閉同類建議')));
   }
   function notices() {
-    sheet('通知', (b, api) => {
+    sheet('信箱', (b, api) => {
       const render = () => {
-        const g = M().pending(), n = S().life.notices;
+        const g = M().pending(), n = S().life.notices, mail = OC.Budget ? OC.Budget.box() : [];
         b.replaceChildren(
-          !g.length && !n.length && !transient.length ? h('div.empty', null, '目前沒有需要你決定的事') : null,
+          !g.length && !n.length && !transient.length && !mail.length ? h('div.empty', null, '信箱是空的——目前沒有需要你決定的事') : null,
+          g.length || n.length || transient.length ? T('等你決定') : null,
           ...transient.map((t) => card(h('div.hstack', null, h('span.grow', null, t.text), h('button.btn.s.primary', { on: { click: () => { t.watch(); transient = transient.filter((x) => x !== t); api.close(); } } }, '看看')))),
           ...n.map((x) => card(h('b', null, x.title), h('p.muted', null, x.body), h('div.hstack', null, h('button.btn.block', { on: { click: () => { OC.Events.decide(x.id, false); toast('維持原本的關係', 'check'); render(); } } }, '不要'), h('button.btn.block.primary', { on: { click: () => { OC.Events.decide(x.id, true); toast('關係改變了', 'heart'); render(); } } }, '同意')))),
           ...g.map(({ c, s }) => suggestionCard(c, s, render)),
+          /* 16.0: letters — things that happened and do not need an answer (kept here instead of interrupting play) */
+          mail.length ? T('信件', `${mail.length} 封`) : null,
+          ...mail.map((m) => { const c = m.oc && Ch().get(m.oc); return h('div.card.mail-item' + (m.read ? '' : '.new'), { 'data-mail': m.id }, h('div.hstack', null, c ? avatarOf(c, 32) : icon('mail', 's'), h('b.grow', null, m.title), h('button.icon-btn', { 'aria-label': '刪除這封信', on: { click: () => { OC.Budget.remove(m.id); render(); } } }, icon('close', 's'))), h('p.muted', null, m.text)); }),
           T('最近的事件'), h('div.list', null, ...(S().life.ev.log.slice(0, 6).map((e) => row(null, e.zh, `${[Ch().get(e.a), Ch().get(e.b)].filter(Boolean).map(name).join('、')}・${ago(e.gm)}`))).concat(S().life.ev.log.length ? [] : [row(null, '還沒有發生事件', '大家生活一陣子之後就會有')])));
       };
-      render();
+      render(); if (OC.Budget) setTimeout(() => OC.Budget.readAll(), 600);
     });
   }
 
@@ -452,6 +456,7 @@
       const R = st.romance, chars = Ch().all();
       el.replaceChildren(
         T('對話語氣'), card(seg([['mature', '沉穩'], ['playful', '活潑']], st.tone === 'playful' ? 'playful' : 'mature', (v) => { set('tone', v); p.refresh(p); }), small(st.tone === 'playful' ? '角色們說話比較誇張、愛用語助詞。' : '角色們說話比較克制、具體，少用驚嘆號與語助詞（預設）。')),
+        T('熱鬧程度'), card(seg(['quiet', 'normal', 'lively'].map((k) => [k, OC.Budget.LEVELS[k].zh]), OC.Budget.level() === 'legacy' ? 'normal' : OC.Budget.level(), (v) => { set('lively', v); p.refresh(p); }), small(OC.Budget.LEVELS[OC.Budget.level()].d + '請求、來訪、要你回答的事件共用這個上限；不急的事會放進信箱（右上角的鈴鐺）。大家自己的生活不受影響。')),
         T('自主程度'), card(auto, small({ full: 'OC 會自己生活、社交、遇到事件。', lessSocial: '比較少主動找人聊天。', fewerEvents: '事件間隔拉長很多。', restricted: '只做吃飯、休息、睡覺等基本的事。', paused: '大家停下自主行動（需求仍會變化，你安排的活動仍會執行）。' }[st.autonomy])),
         T('細節'), card(
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),

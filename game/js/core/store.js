@@ -14,7 +14,7 @@
 
   function fresh() {
     return {
-      v: 7, created: Date.now(), onboarded: false,
+      v: 8, created: Date.now(), onboarded: false,
       // characters (schema: js/char/model.js) — every page reads these, never a copy
       chars: {}, roster: [], activeId: null, petId: null,
       animations: {},                // animation documents (js/char/anim.js); frames are asset ids
@@ -89,7 +89,8 @@
     if (data && data.v === 6) data = migrateV6(data);             // 7 → 8.0: residents opt-in (kept for saves that met them), intro done
     // 12.0: the resident NPCs are gone — their old friendship data and the opt-in flag are dropped on load (every other field is kept)
     if (data && data.v === 7) { delete data.npcs; if (data.world) delete data.world.residents; }
-    S = data && data.v === 7 ? deepMerge(fresh(), data) : fresh();
+    if (data && data.v === 7) data = migrateV7(data);             // 15.x → 16.0: calendar, the shared allowance, mailbox (additive)
+    S = data && data.v === 8 ? deepMerge(fresh(), data) : fresh();
     for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]);
     return S;
   }
@@ -154,9 +155,21 @@
   function mark() { dirty = true; }
   function stat(k, d = 1) { S.stats[k] = (S.stats[k] || 0) + d; touch('stat', { k, v: S.stats[k] }); }
 
+  /** v7 → v8 (16.0): additive. An existing island keeps the season it is in: the new game calendar starts on the first day of the season
+   *  the old game was showing (the chosen one, else by the real month), not back in spring. New fields get their defaults from fresh(). */
+  function migrateV7(d) {
+    d.v = 8; d.migratedV7 = Date.now();
+    d.settings = d.settings || {}; if (!d.settings.calendar) d.settings.calendar = 'game';
+    const L = d.life = d.life || {}, c = L.clock = L.clock || {}, SE = ['spring', 'summer', 'autumn', 'winter'];
+    if (c.cal0 == null) { const m = new Date().getMonth() + 1, cur = SE.includes(d.settings.season) ? d.settings.season : m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter';
+      const today = d.settings.time === 'cycle' && c.gm != null ? Math.floor(c.gm / 1440) : Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+      c.cal0pending = SE.indexOf(cur) * 28; void today; }
+    return d;
+  }
+
   function exportJSON() { return JSON.stringify(S); }
   function importJSON(json) {
-    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5, 6, 7].includes(d.v)) throw new Error(d && d.v > 7 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
+    let d = JSON.parse(json); if (!d || ![1, 2, 3, 4, 5, 6, 7, 8].includes(d.v)) throw new Error(d && d.v > 8 ? '這個存檔來自較新版本的 App，請先更新' : '不是有效的 OC Shimeji 存檔');
     if (d.v === 1) d = OC.Chars.migrateV1(d);
     if (d.v === 2) d = migrateV2(d);
     if (d.v === 3) d = migrateV3(d);
@@ -164,6 +177,7 @@
     if (d.v === 5) d = migrateV5(d);
     if (d.v === 6) d = migrateV6(d);
     delete d.npcs; if (d.world) delete d.world.residents;   // 12.0: no resident NPCs any more
+    if (d.v === 7) d = migrateV7(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }

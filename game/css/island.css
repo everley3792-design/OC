@@ -378,3 +378,7 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .use-now.on { transform: translate(-50%, 0); opacity: 1; }
 .use-now canvas { width: 36px; height: 36px; flex: none; }
 .use-now b { display: block; font-size: var(--fs-m); line-height: 1.15; } .use-now small { color: var(--ink-2); font-size: var(--fs-xs); }
+
+/* 16.0 — mailbox letters */
+.mail-item { margin-top: 8px; } .mail-item p { margin: 6px 0 0; font-size: var(--fs-s); line-height: 1.5; }
+.mail-item.new { box-shadow: var(--hl), 0 3px 0 var(--lip), inset 3px 0 0 var(--alert); }

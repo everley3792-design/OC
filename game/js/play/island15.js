@@ -62,10 +62,18 @@
 
   // ======================= birthdays =======================
   /** '3/14', '3月14日', '03-14' → { m, d } (null when it cannot be read) */
-  function parseBday(s) { const m = String(s || '').match(/(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/); if (!m) return null; const mo = +m[1], d = +m[2]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? { m: mo, d } : null; }
+  function parseBday(s) {
+    const g = String(s || '').match(/([春夏秋冬])\s*天?\s*(\d{1,2})/);   /* 16.0: a day of the game year, e.g. 春 12 */
+    if (g && +g[2] >= 1 && +g[2] <= 28) { const si = '春夏秋冬'.indexOf(g[1]), di = +g[2] - 1, mi = si * 3 + Math.floor(di / 28 * 3), fr = (di / 28 * 3) % 1; return { m: (mi + 2) % 12 + 1, d: 1 + Math.round(fr * 27), g: si * 28 + di }; }
+    const m = String(s || '').match(/(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/); if (!m) return null; const mo = +m[1], d = +m[2]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? { m: mo, d } : null;
+  }
   const isToday = (b, now = new Date()) => b && b.m === now.getMonth() + 1 && b.d === now.getDate();
   function birthdays(now = new Date()) {
     const out = [];
+    /* 16.0: with the game calendar a birthday is a day of the 112-day year — '春 12' as written, or a real date placed in its season */
+    if (OC.Clock.calMode() === 'game' && OC.Sim) { const t = OC.Clock.cal();
+      for (const c of OC.Chars.all()) { const b = parseBday(c.profile.birthday); if (!b) continue; const yd = b.g != null ? b.g : OC.Clock.toGameDay(b.m, b.d), days = (yd - t.yd + OC.Clock.YEAR) % OC.Clock.YEAR; out.push({ c, b, today: days === 0, days, text: OC.Clock.gameDayText(yd) }); }
+      return out.sort((a, b) => a.days - b.days); }
     for (const c of OC.Chars.all()) { const b = parseBday(c.profile.birthday); if (!b) continue; let nx = new Date(now.getFullYear(), b.m - 1, b.d); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()); if (nx < t0) nx = new Date(now.getFullYear() + 1, b.m - 1, b.d); out.push({ c, b, today: isToday(b, now), days: Math.round((nx - t0) / 864e5) }); }
     return out.sort((a, b) => a.days - b.days);
   }
@@ -75,9 +83,10 @@
     const now = new Date(); if (!force && Date.now() - lastCheck < 20000) return; lastCheck = Date.now();
     if (OC.Sim.catching) { lastCheck = 0; return; }
     for (const x of birthdays(now)) {
-      if (!x.today) continue; const key = `bday:${x.c.id}:${now.getFullYear()}`; if (S().ledger && S().ledger.keys && S().ledger.keys[key]) continue;
+      const yr = OC.Clock.calMode() === 'game' ? 'Y' + OC.Clock.cal().year : now.getFullYear();
+      if (!x.today) continue; const key = `bday:${x.c.id}:${yr}`; if (S().ledger && S().ledger.keys && S().ledger.keys[key]) continue;
       const r = OC.Tx.run(key, { get: { items: { cake: 1 } } }, `${name(x.c)}的生日蛋糕`); if (!r.ok) continue;
-      M().feel(x.c, 'happy', 0.7, '今天是生日'); M().remember(x.c, { type: 'event', imp: 0.85, text: `${now.getFullYear()} 年的生日。收到了蛋糕。`, key });
+      M().feel(x.c, 'happy', 0.7, '今天是生日'); M().remember(x.c, { type: 'event', imp: 0.85, text: OC.Clock.calMode() === 'game' ? `第 ${OC.Clock.cal().year} 年的生日。收到了蛋糕。` : `${now.getFullYear()} 年的生日。收到了蛋糕。`, key });
       OC.UI.toast(`今天是 ${name(x.c)} 的生日！背包裡多了一個蛋糕，可以送給${M().pron(x.c)}。`, 'gift');
       if (OC.Progress) OC.Progress.emit('birthday', { oc: x.c.id });
     }
@@ -86,7 +95,7 @@
   // ======================= the island paper =======================
   const ymd = (t) => { const d = new Date(t); return OC.Clock.dayKey(d); };
   function news(now = new Date()) {
-    const out = { date: now.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }), stories: [], deals: [], bdays: [] };
+    const out = { date: OC.Clock.calMode() === 'game' ? `第 ${OC.Clock.cal().year} 年　${OC.Clock.cal().text}　${OC.Clock.label().week}` : now.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' }), stories: [], deals: [], bdays: [] };
     const wx = OC.Clock.weather(), WX = OC.Clock.WX_ZH[wx] || wx;
     out.weather = { wx, text: { clear: '晴朗，適合出門。風車丘的風箏應該飛得很高。', cloudy: '多雲，散步剛剛好。', rain: '下雨。菜園會自己喝飽水，森林裡的蝸牛會出來。', fog: '有霧。森林和山丘會比較安靜。', snow: '下雪了。記得穿暖一點。' }[wx] || WX };
     // yesterday, from what really happened: each character's most important memory of the previous game day

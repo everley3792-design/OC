@@ -43,7 +43,9 @@
     const ok = onceKey(ev, A.id, Bc && Bc.id, ev.once === 'self+place' ? p.place : Bc ? daysKnown(A.id, Bc.id) : ''); if (ok && E().once[ok]) { why.push('已發生過'); return false; }
     return true;
   }
-  function gapOK(ev) { const g = GAP[S().life.settings.autonomy] || 120; if ((ev.prio || 1) >= 4) return S().life.settings.autonomy !== 'paused'; return Date.now() - (E().lastAny || 0) > g * 1000; }
+  function asks(ev) { return !!(ev.watch || ev.ask || (ev.steps || []).some((st) => st[0] === 'choice')); }
+  /* 16.0: the gap between events follows 熱鬧程度; an event that turns to the player (a question, "come and look") also needs room in the shared allowance */
+  function gapOK(ev) { const Bg = OC.Budget, g = (GAP[S().life.settings.autonomy] || 120) * (Bg ? Bg.eventGap() : 1); if (Bg && asks(ev) && !Bg.can('event')) return false; if ((ev.prio || 1) >= 4) return S().life.settings.autonomy !== 'paused'; return Date.now() - (E().lastAny || 0) > g * 1000; }
 
   /** a trigger happened. Returns true if an event started (or was applied silently) */
   function trigger(type, p = {}) {
@@ -71,7 +73,7 @@
       if ((ev.prio || 1) >= 4 || ev.trigger === 'relUp' || ev.trigger === 'meet') { mark(ev, A, Bc, p); results(ev, A, Bc, p, false); return true; }
       return false;
     }
-    mark(ev, A, Bc, p); E().lastAny = Date.now();
+    mark(ev, A, Bc, p); E().lastAny = Date.now(); if (OC.Budget && asks(ev)) OC.Budget.spend('event');
     if (ev.social) { const ok = B().Social.start(ba, bb, ev.social); if (ok) { applyFx(ev, A, Bc, p, { skipMem: true }); logEv(ev, A, Bc, '社交'); } return ok; }
     cur = { ev, steps: (ev.steps || []).slice(), A, Bc, p, i: 0, waitUntil: 0, watched: false, cast: { a: ba, b: bb }, t0: nowR() };   // 9.0: each run owns its step list (choices insert replies)
     B().hold(A.id, 'event'); if (Bc) B().hold(Bc.id, 'event');

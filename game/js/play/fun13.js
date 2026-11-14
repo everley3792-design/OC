@@ -145,7 +145,7 @@
   function visit(c, topic) {
     c = c || visitor(); if (!c || !canVisit()) return false;
     const id = c.id, a = A().actorOf(id), P = A().player; if (!a) return false;
-    topic = topic || pickTopic(c); const F = st13(); F.visitAt = Date.now(); F.lastTopic = topic; F.n.visits++;
+    topic = topic || pickTopic(c); const F = st13(); F.visitAt = Date.now(); F.lastTopic = topic; F.n.visits++; if (OC.Budget) OC.Budget.spend('visit');
     visiting = { id, topic, t0: performance.now() }; B().hold(id, 'game');
     const open = () => { if (!visiting || visiting.id !== id) return; B().face(a, P); P.tFace = a.x > P.x ? 0.5 : -0.5; talk(c, topic); };
     const tgt = W().nearestWalkable(P.x + (a.x < P.x ? -24 : 24), P.y + 2, 30) || { x: P.x, y: P.y };
@@ -204,7 +204,7 @@
   }
   function step(g) {
     vT += g; if (vT < 20) return; vT = 0;
-    try { checkDates(); if (!canVisit()) return; const F = st13(); if (S().life.settings.autonomy === 'paused' || S().life.settings.visits === false) return; if (Date.now() - Math.max(F.visitAt || 0, bootAt) < 4 * 60e3) return; /* nobody drops by in the first minutes after the game opens */ if (Math.random() < 0.3) visit(); } catch (e) { console.error('[fun13]', e); }
+    try { checkDates(); if (!canVisit()) return; const F = st13(); if (S().life.settings.autonomy === 'paused' || S().life.settings.visits === false) return; if (OC.Budget && !OC.Budget.can('visit')) return; if (Date.now() - Math.max(F.visitAt || 0, bootAt) < 4 * 60e3) return; /* nobody drops by in the first minutes after the game opens */ if (Math.random() < 0.3) visit(); } catch (e) { console.error('[fun13]', e); }
   }
   let bootAt = Date.now();
   function init() { bootAt = Date.now(); if (Sim().onStep) Sim().onStep(step); }

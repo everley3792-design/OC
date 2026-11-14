@@ -186,7 +186,14 @@
   const TYPES = { stranger: '陌生', acquaintance: '認識', friend: '朋友', bestfriend: '摯友', family: '家人', rival: '對手', lover: '戀人', partner: '伴侶', custom: '自訂' };
   function rel(a, b) {
     const R = S().life.rel, key = a + '>' + b;
-    return R[key] || (R[key] = { fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0, shared: [], mems: 0, type: 'stranger', fixed: false, custom: '', since: null, last: 0, talks: 0 });
+    if (R[key]) return R[key];
+    /* 16.0: looking at a relationship no longer creates it. Every score check between two characters who never met used to leave an empty
+     * record behind (N × N of them, saved forever). The blank one is handed out as a stand-in and is only stored the first time something
+     * is written to it (or its list of shared interests is touched). */
+    const blank = { fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0, shared: [], mems: 0, type: 'stranger', fixed: false, custom: '', since: null, last: 0, talks: 0 };
+    if (typeof Proxy !== 'function') return (R[key] = blank);
+    const keep = () => { const R2 = S().life.rel; if (!R2[key]) R2[key] = blank; };
+    return new Proxy(blank, { set(t, k, v) { t[k] = v; keep(); return true; }, get(t, k) { if (k === 'shared') keep(); return t[k]; }, deleteProperty(t, k) { delete t[k]; keep(); return true; } });
   }
   function relPeek(a, b) { return S().life.rel[a + '>' + b] || null; }
   function autoType(r) {
@@ -370,7 +377,15 @@
 
   // ======================= per-step / day hooks =======================
   function tick(c, g, ctx) { tickNeeds(c, g, ctx); tickEmotions(c, g); }
-  function dayStart(c) { consolidate(c); maybeWish(c); checkHabits(c); }
+  /* 16.0: habits are watched quietly and looked at once a week (every 7th game day per character) — the findings arrive together as one
+   * letter in the mailbox instead of a notice each morning. 'legacy' (old suites) keeps the daily check. */
+  function dayStart(c) {
+    consolidate(c); maybeWish(c);
+    const legacy = !OC.Budget || OC.Budget.level() === 'legacy', day = Math.floor(Sim().now() / 1440), R = c.life.rec;
+    if (legacy) { checkHabits(c); return; }
+    if (R.habitDay == null) R.habitDay = day; if (day - R.habitDay < 7) return; R.habitDay = day;
+    const found = checkHabits(c); if (found.length) { const zh = c.growth.suggestions.filter((s) => found.includes(s.value)).map((s) => `「${s.zh}」`).join('、'); OC.Budget.mail({ kind: 'growth', oc: c.id, title: `這週觀察到的${name(c)}`, text: `${name(c)}最近好像有了新的樣子：${zh}。要不要讓它成為${pron(c)}的一部分，由你決定（在下面的「等你決定」）。`, key: 'habit:' + c.id + ':' + day }); }
+  }
 
   OC.Mind = {
     NEED_IDS, TYPES, SKILLS, WISH, RANK, tick, tickNeeds, tickEmotions, needs, urgent, feel, dominant, intensity, emoValence, face, label,

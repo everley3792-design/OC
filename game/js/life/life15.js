@@ -133,7 +133,7 @@
    *  with a date = the calendar only (month → season, Saturday / Sunday) */
   function festival(d) {
     if (!d) { const k = Math.floor(Date.now() / 30000); if (festMemo && festMemo.k === k) return festMemo.v; const now = new Date(); let force = false; try { force = new URLSearchParams(location.search).get('fest') === '1'; } catch (e) { /* no location */ }
-      const w0 = now.getDay(), v = (w0 === 0 || w0 === 6 || force) ? Object.assign({ season: (OC.World && OC.World.season) || OC.Clock.season(now), date: OC.Clock.dayKey(now) }, FEST[(OC.World && OC.World.season) || OC.Clock.season(now)]) : null; festMemo = { k, v }; return v; }
+      const cl = OC.Clock.cal(), se = force ? ((OC.World && OC.World.season) || OC.Clock.season()) : OC.Clock.season(), v = (cl.weekend || force) ? Object.assign({ season: se, date: cl.key }, FEST[se]) : null;   /* 16.0: weekends of the calendar in use (game: days 6–7 of each week) */ festMemo = { k, v }; return v; }
     const w = d.getDay(); if (w !== 0 && w !== 6) return null; const m = d.getMonth() + 1, se = m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter';
     return Object.assign({ season: se, date: OC.Clock.dayKey(d) }, FEST[se]); }
   function festGift() {
@@ -166,6 +166,7 @@
     }
   }
   function onDay() {
+    seasonTurn();
     if (Sim().catching) return;
     for (const c of Ch().all()) {
       if (!c.status.onIsland) continue; const s = st(c), drive = 0.18 + (Ch().has(c, 'diligent') ? 0.15 : 0) + (Ch().has(c, 'competitive') ? 0.15 : 0) + (Ch().has(c, 'lazy') ? -0.1 : 0);
@@ -185,5 +186,12 @@
   /** the harvest bonus on festival days (used by OC.Places.harvest) */
   const harvestBonus = () => (festival() && festival().id === 'harvest' ? 1 : 0);
   function init() { Sim().onStep(step); Sim().onDay(onDay); P().on(onAct); setTimeout(() => { if (!Sim().catching) festGift(); }, 5000); }
-  OC.Life15 = { tickNow: () => { lastHour = -1; step(); }, FEARS, DREAM, DECL, STAGES, FEST, fears, activeFear, makeDream, declare, stage, growUp, festival, festGift, harvestBonus, st, init };
+  /* 16.0: the game calendar moves the season on. The world's colours are baked into the shaders when the game starts (15.3), so the scenery
+   * changes the next time the game opens — the letter says so, and offers nothing fake. */
+  function seasonTurn() {
+    if (!OC.World || !OC.World.season || OC.Sim.catching) return; const now = OC.Clock.season(); if (now === OC.World.season || seasonTurn.told === now) return; seasonTurn.told = now;
+    const zh = OC.Clock.SEASON_ZH[now]; if (OC.Budget) OC.Budget.mail({ kind: 'season', title: `${zh}天到了`, text: `日曆翻到了${zh}天。下次開啟遊戲時，島上的景色會換成${zh}天的樣子（也可以在「設定」按「現在換季」）。`, key: 'season:' + OC.Clock.cal().key });
+    OC.UI.toast(`${zh}天到了——下次開啟遊戲時景色會換季`, 'leaf');
+  }
+  OC.Life15 = { seasonTurn, tickNow: () => { lastHour = -1; step(); }, FEARS, DREAM, DECL, STAGES, FEST, fears, activeFear, makeDream, declare, stage, growUp, festival, festGift, harvestBonus, st, init };
 })();

@@ -43,11 +43,14 @@
   function tick() {
     const s = R(), now = Sim().now(); if (!s.nextAt) s.nextAt = now + 30;
     for (const r of s.list) {
-      if (r.state === 'offer' && now > r.until) { r.state = 'expired'; St.touch('play'); }
+      if (r.state === 'offer' && now > r.until) { r.state = 'expired'; St.touch('play'); const c0 = OC.Chars.get(r.oc); if (c0 && OC.Budget && OC.Budget.level() !== 'legacy') OC.Budget.mail({ kind: 'request', oc: r.oc, title: `${name(c0)}本來想找你`, text: `「${r.text}」——等了一陣子，${name(c0)}說沒關係了。`, key: 'reqx:' + r.id }); }
       if (r.state === 'active' && now > r.until) { r.state = 'expired'; const c = OC.Chars.get(r.oc); if (c) { M().note(c, 'request', `「${r.text}」的事，${name(c)}說沒關係了`); const ln = OC.Talk.say('req_expire', c, null); if (ln && A().actorOf(c.id)) A().bubble(A().actorOf(c.id), ln.text, name(c)); } St.touch('play'); }
     }
     if (S().life.settings.autonomy === 'paused' || S().life.settings.requests === false) return;
-    if (open().length < 2 && now >= s.nextAt) { const r = newRequest(); s.nextAt = now + (r ? 60 + Sim().rnd() * 90 : 20); }
+    /* 16.0: a request is one of the things that turn to the player — it needs room in the shared allowance (OC.Budget), and with the default
+     * setting only one is open at a time. The old suites run with 'legacy' (two open, every 60–150 game minutes). */
+    const Bg = OC.Budget, legacy = !Bg || Bg.level() === 'legacy';
+    if (open().length < (legacy ? 2 : Bg.maxOpen()) && now >= s.nextAt && (legacy || Bg.can('request'))) { const r = newRequest(); if (r && !legacy) Bg.spend('request'); s.nextAt = now + (r ? 60 + Sim().rnd() * 90 : 20); }
   }
 
   // ---------------- badges above OCs that have something to say ----------------

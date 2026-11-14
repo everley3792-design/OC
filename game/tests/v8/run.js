@@ -47,7 +47,7 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
       await page.waitForFunction(() => window.__ocReady === true, null, { timeout: 30000 });
       await wait(page, 1200); await shot(page, '2-debut');
       const r = await page.evaluate(() => ({ chars: OC.Chars.all().map((c) => c.profile.name), mates: Object.keys(OC.App.mates).length, legacy: { npcs: OC.Store.s.npcs, residents: OC.Store.s.world.residents }, hasNpcApi: !!(OC.Game.NPCS || OC.App.npcs), v: OC.Store.s.v }));
-      check('1c 創角後只有玩家自己的 OC；已經沒有居民（NPC）系統與存檔欄位', r.chars.length === 1 && r.mates === 0 && r.legacy.npcs === undefined && r.legacy.residents === undefined && !r.hasNpcApi && r.v === 7, r);
+      check('1c 創角後只有玩家自己的 OC；已經沒有居民（NPC）系統與存檔欄位', r.chars.length === 1 && r.mates === 0 && r.legacy.npcs === undefined && r.legacy.residents === undefined && !r.hasNpcApi && r.v === 8, r);
       await page.waitForSelector('.tut-card.on', { timeout: 15000 }).catch(() => null);
       const tut = await page.evaluate(() => ({ active: OC.Tutorial.active, step: OC.Tutorial.step }));
       check('2d 角色登場後，由這位 OC 開始新手教學', tut.active && tut.step === 0, tut);
@@ -259,7 +259,7 @@ const body = (page, id) => page.evaluate((i) => { const a = i ? OC.App.actorOf(i
         OC.Store.importJSON(JSON.stringify(s)); OC.Store.persist = keep;
         return { a, b };
       });
-      check('16a 0.7 存檔升級到 v7：舊的居民資料被丟棄、玩家的角色全部保留、已玩過的玩家不再播教學', r.a.v === 7 && r.a.residents === undefined && r.a.npcs === undefined && r.a.intro && r.a.chars === 3 && r.a.tut, r.a);
+      check('16a 0.7 存檔升級到 v8：舊的居民資料被丟棄、玩家的角色全部保留、已玩過的玩家不再播教學', r.a.v === 8 && r.a.residents === undefined && r.a.npcs === undefined && r.a.intro && r.a.chars === 3 && r.a.tut, r.a);
       check('16b 沒見過居民的舊存檔：同樣沒有居民欄位、角色保留', r.b.residents === undefined && r.b.npcs === undefined && r.b.chars === 3, r.b);
     }
 
