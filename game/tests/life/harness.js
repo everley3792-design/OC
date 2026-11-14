@@ -18,7 +18,7 @@ async function launch(o = {}) {
 }
 /** fresh game with N preset OCs (first one played) */
 async function boot(page, o = {}) {
-  const q = o.query || '';
+  const q0 = o.query || '', q = q0.includes('cal=') ? q0 : (q0 ? q0 + '&cal=real' : '?cal=real');   /* 16.0: the older suites assume the device's date (the world reads the season once at start) */
   if (!page.url().startsWith('http')) await page.goto(URL + q);
   await page.evaluate((o) => { if (window.OC && OC.Store) OC.Store.persist = () => {}; window.OCApp && (window.OCApp.lifecycle = () => {}); localStorage.clear(); if (!o.intro) localStorage.setItem('oc.skipIntro', '1'); indexedDB.deleteDatabase('oc-assets'); }, o);
   await page.goto(URL + q);

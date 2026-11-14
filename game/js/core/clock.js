@@ -53,7 +53,7 @@
    *                     A week is 7 days; days 6 and 7 are the weekend (festivals).
    *   'real':           the device's date — 12 months, seasons by month, real weekends; birthdays on their real dates.
    * cal(day) → { mode, year, season, day, weekday (0 = first day of the week), weekend, text, key } for a life-clock day (default: today). */
-  const calMode = () => (OC.Store.s.settings.calendar === 'real' ? 'real' : 'game');
+  const calMode = () => { let q = null; try { q = new URLSearchParams(location.search).get('cal'); } catch (e) { /* no location */ } return q === 'real' || q === 'game' ? q : OC.Store.s.settings.calendar === 'real' ? 'real' : 'game'; };   /* ?cal=real|game previews / tests */
   const monthSeason = (m) => (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter');
   const YEAR = 112, SEASON_DAYS = 28;
   function cal(day) {
