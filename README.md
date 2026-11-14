@@ -2,9 +2,10 @@
 
 > 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
 
-## 目前版本 0.15.5-alpha（15.5）
+## 目前版本 0.16.0-alpha（16.0）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.15.5-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.15.5-alpha-debug.apk)
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.16.0-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.16.0-alpha-debug.apk)
+- 16.0：角色用螢幕原本的解析度畫（匯入圖片不再糊）、圖片角色寬高分開調整且不會被切、左上角名牌卡、切換操控不再傳送、買東西／撿東西直接在介面完成、打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。計畫與後續版本：[`docs/v16-plan.md`](docs/v16-plan.md)；紀錄：[`docs/v16.0-report.md`](docs/v16.0-report.md)。**手機實機尚未驗證。**
 - 15.5：夢、宣言、怕的東西（陪牠就能克服）、人生階段、季節節日（禮物、夏夜煙火、豐收加成）、三段連續劇「說不出口的話」。紀錄：[`docs/v15.5-report.md`](docs/v15.5-report.md)
 - 15.4：創角大舞台、設計亭（畫圖樣穿在衣服上）、地圖路線與路程、桌寵中心三分頁。紀錄：[`docs/v15.4-report.md`](docs/v15.4-report.md)
 - 15.3：季節（依日期或自選；樹葉草地的顏色、花瓣／落葉／雪）、海面閃光、雲朵轉場、遊樂園夜晚燈光、遊樂園與風車丘的聲音、逐頁檢查。紀錄：[`docs/v15.3-report.md`](docs/v15.3-report.md)

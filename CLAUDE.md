@@ -27,7 +27,8 @@
 - **15.2（0.15.2-alpha）兩個新地點與島上生活**：開放**風車丘**（風車磨坊商店、薰衣草田、野餐墊、草原蚱蜢）與**彩虹遊樂園**（星光舞台演唱會小遊戲、摩天輪、旋轉木馬、套圈圈、點心攤）（`js/world/areas15.js`）；打工（`OC.Jobs`）、島報／房間評分／小島評價／生日（`OC.Island`）。夢境、宣言、連續劇、願望與恐懼、人生階段、季節活動未做。紀錄：`docs/v15.2-report.md`。
 - **15.3（0.15.3-alpha）視覺與動態打磨**：季節（`OC.Clock.season()`；色調烤進著色器、角色不套；`OC.Ambient` 的花瓣／落葉／雪與海面閃光）、雲朵轉場、遊樂園燈泡接夜晚燈光、遊樂園音樂盒與風車聲、逐頁檢查。地圖、桌寵中心、設計亭、創角大舞台、季節活動未做。紀錄：`docs/v15.3-report.md`。
 - **15.4（0.15.4-alpha）剩下的頁面**：創角大舞台＋分類列、設計亭（`OC.Design`：12×12 圖樣穿在上衣，`look.pattern = 'design:<id>'`，資料在 `S().designs`）、地圖路線與路程、桌寵中心三個分頁。紀錄：`docs/v15.4-report.md`。
-- **15.5（0.15.5-alpha）剩下的內容**：夢、宣言、恐懼、人生階段、季節活動（`OC.Life15`）、三段連續劇「說不出口的話」（`events15.js`）。紀錄：`docs/v15.5-report.md`。
+- **15.5（0.16.0-alpha）剩下的內容**：夢、宣言、恐懼、人生階段、季節活動（`OC.Life15`）、三段連續劇「說不出口的話」（`events15.js`）。紀錄：`docs/v15.5-report.md`。
+- **16.0（0.16.0-alpha）**（計畫 16.0–16.8 見 `docs/v16-plan.md`，玩家已確認）：角色畫在螢幕原本的解析度（兩段式繪製）、圖片角色寬高分開 20–400%／不被切、名牌卡（左上）、**切換操控不傳送**（鏡頭過去）、買東西／撿東西直接在介面完成、`OC.Budget` 打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。驗收：`node game/tests/v16/run.js`。紀錄：`docs/v16.0-report.md`。16.1 起（開局多角色與關係、年齡與物種、意願模型、對話引擎、住處、職業學業、遊樂設施重做、生老病死）**尚未做**。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -103,7 +104,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.15.5-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -223,3 +224,10 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **15.3 轉場**：`WorldUI.travel` 的雲朵只在轉場期間存在（不是常駐元素），結束時移除；減少動態時用原本的淡出淡入。夜晚會亮的材質一律放進 `OC.Models.night.windows`（每次載入地點都會清空，要在建場景時重新加入）。
 - **15.4 設計亭**（`js/ui/design15.js`）：圖樣是 144 個調色盤索引（不是圖片），存在 `S().designs`；草稿 `S().designDraft`；預覽用暫時的 `__draft`（離開時刪除）。**從外面關閉（`layer.close`，例如換分頁、返回鍵）不可以再跳確認視窗**——關閉的程式會一直關最上層，確認一跳出來就被關掉、又再問一次，會無限迴圈吃光記憶體（15.4 的教訓）；只有設計亭自己的返回鍵才問。新的全螢幕工具也要遵守。格子不要用全域已有的類別名稱（`.empty` 會帶進 padding）。
 - **15.5 內在生活**（`OC.Life15`，資料在 `c.life.l15`）：夢只在 `act` 進度事件（`sleep`、60 分以上）後產生；宣言的進度只從 `OC.Progress` 算，獎勵 `OC.Quests.grant('decl:<oc>:<made>')`；恐懼的克服只在恐懼正在發生時的 `pet`／`hug` 事件；**年齡（`profile.age`）是玩家的設定，只有玩家按「長大一歲」才改**（一年一次，key `age:<oc>:<年>`）。節日禮物 key `fest:<id>:<日期>`。`Life15.festival()`（今天，套用選擇的季節與 `?fest=1`）和 `festival(日期)`（只看日曆）不要混用。新的連續劇寫在事件資料（旗標串接），事件不給獎勵。
+
+- **16.0 角色畫質**：世界在 `quality.ratio` 畫進渲染目標、複製到畫面（顏色＋深度），角色（layer 1）用 `quality.cr`（螢幕原生解析度）畫在上面（`world.js` `renderWorld`／`setupTargets`，只有 WebGL 2，出錯自動退回單段）。**不要**再用 CSS 或第二個 canvas 疊角色；新的看板材質要 `m.layers.set(CHAR_LAYER)`。角色畫布大小由 `CharRender.extent(c)` 決定（`a.ext`），繪製單位是 `r / (120 * ext)`；放大圖片角色不要靠切邊。大圖縮小一律走 `CharRender.mipOf`（每段減半）。
+- **16.0 切換操控**：`Chars.setActive` 不移動任何人；只有「休息中」的角色（`Chars._joined`）才出現在玩家旁；別的地點用 `WorldUI.travel(loc, { pos, sw: true })`（`sw` 不觸發 arrive 事件）。新的全螢幕互動在 `refreshActors` 要拒絕切換（像摩天輪）。
+- **16.0 介面直接操作**：玩家做的買東西／撿／摘花／採集用 `App.direct`（設定 `walkTo` 回到走過去）；角色自己的活動仍走 `goThen`。撿到可用的東西呼叫 `App.offerUse(id)`。
+- **16.0 打擾預算**：任何會「轉向玩家」的東西（請求、來訪、要回答的事件、建議）一定先問 `OC.Budget.can(kind)`、做了就 `spend(kind)`；不需要回答的寫進 `OC.Budget.mail({kind,title,text,key})`（信箱；固定 key 只會有一封）。舊測試 harness 用 `life.settings.lively = 'legacy'`（舊節奏）與 `settings.calendar = 'real'`；新預設只由 `tests/v16` 驗收。**不要**再為某個系統另寫計時器去打擾玩家。
+- **16.0 關係**：`Mind.rel(a,b)` 讀取不再建立紀錄（回傳暫時的空紀錄，第一次寫入才存）；要知道有沒有紀錄用 `relPeek`。
+- **16.0 日曆**：`OC.Clock.cal()`（遊戲曆：一年 112 天、每季 28 天、一週 7 天、第 6–7 天週末；`life.clock.cal0` 是第 1 年春 1 日；實時曆＝手機日期）。節日、生日、日期顯示都問 `cal()`，不要直接用 `new Date()`。生日欄位可寫「春 12」或 3/14（`Island.parseBday`）。存檔 v8，`migrateV7` 不可移除。
