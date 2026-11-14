@@ -219,6 +219,7 @@
       if (OC.Clock.phase() === 'night' && OC.Clock.weather() !== 'rain' && r.aff >= 30) K('stargaze', s0 + 0.15, '夜空');
       if (myE === 'annoyed' && M().intensity(c, 'annoyed') > 0.35 && (r.conflict >= 15 || has(c, 'stubborn'))) K('argue', 0.3 + M().intensity(c, 'annoyed') * 0.5 + r.conflict / 200, '煩躁');
       if (OC.Social11) OC.Social11.cands(c, oc, r, s0, K, myE, oe);
+      if (OC.Will) OC.Will.cands(c, oc, r, s0, K);
       if (r.conflict >= 20 && myE !== 'annoyed' && (has(c, 'gentle') || r.aff >= 20 || r.trust >= 30) && (!c.life.apolAt || Sim().now() - c.life.apolAt > 240)) K('apologize', 0.5 + r.conflict / 120, '想和好');
     }
     return out;
@@ -570,6 +571,7 @@
       const c = charOf(bb), o = charOf(ba), r = M().rel(c.id, o.id), emo = M().dominant(c);
       if (bb.st === 'do' && D().ACTS[bb.act] && D().ACTS[bb.act].lock) return { ans: 'no', why: '正在' + D().ACTS[bb.act].zh, busy: true };
       if (bb.holds.size) return { ans: 'no', why: '在忙' };
+      if (OC.Will && (OC.Will.inter(kind) || (D().SOCIAL[kind] || {}).with16)) return OC.Will.respond(bb, ba, kind);   /* 16.2: one willingness model for every interaction */
       const rift = OC.Arcs && OC.Arcs.riftOf(c.id, o.id);   // 12.0: a cold war — only an apology has a chance, and a small one
       if (rift && rift.stage === 'cold' && kind !== 'apologize') return { ans: 'no', why: '還在冷戰', cold: true };
       const urg = M().urgent(c); if (urg && urg !== 'social' && !(kind === 'food' && urg === 'food') && !(D().SOCIAL[kind].joint === 'rest' && (urg === 'energy'))) return { ans: 'no', why: { food: '肚子太餓', sleep: '太睏了', energy: '太累了', fun: '提不起勁', comfort: '不太舒服' }[urg] || '不太方便', need: true };
@@ -602,6 +604,7 @@
       }
       const def = D().SOCIAL[kind];
       conv.answer = Social.respond(conv.b, conv.a, kind);
+      if (OC.Will && OC.Will.has(kind)) { OC.Will.script(conv, say, A, B); return L; }
       if (def.joint || kind === 'chat' || kind === 'share') {
         if (def.joint) say('a', 'invite', { act: def.joint });
         if (conv.answer.ans !== 'yes') { say('b', conv.answer.ans === 'later' ? 'later' : 'decline', { busy: conv.answer.busy, act: conv.b.act }); say('a', 'declined'); return L; }
@@ -679,6 +682,7 @@
     resolve(conv, early) {
       const A = charOf(conv.a), B = charOf(conv.b), kind = conv.kind, ans = conv.answer || { ans: 'yes' }, def = D().SOCIAL[kind];
       if (def.joint && ans.ans === 'yes' && conv.st === 'talk') { Social.beginJoint(conv); return; }
+      if (OC.Will && OC.Will.has(kind)) { OC.Will.resolve(conv, A, B); Social.end(conv, 'done'); return; }
       const now = Sim().now(); (A.life.socialAt = A.life.socialAt || {})[B.id] = now; (B.life.socialAt = B.life.socialAt || {})[A.id] = now;
       const shared = (text, imp, emo) => { const key = `${conv.id}`; const ma = M().remember(A, { type: kind === 'argue' ? 'conflict' : 'social', imp, who: [B.id], text: text.replace('{other}', OC.Chars.name(B)), key: key + 'a' }); const mb = M().remember(B, { type: kind === 'argue' ? 'conflict' : 'social', imp, who: [A.id], text: text.replace('{other}', OC.Chars.name(A)), key: key + 'b' }); M().rel(A.id, B.id).mems++; M().rel(B.id, A.id).mems++; return [ma, mb]; };
       const gain = (c, d) => { for (const [k, v] of Object.entries(d)) c.needs[k] = Math.max(0, Math.min(100, c.needs[k] + v)); };
@@ -725,7 +729,7 @@
       const def = D().SOCIAL[conv.kind], verb = D().ACTS[def.joint].verb;
       // find an object with two free slots near both
       let best = null;
-      for (const o of aff) { if (!o.verbs.includes(verb)) continue; const fr = o.slots.filter((s) => free(s, conv.a.id) || free(s, conv.b.id)); if (fr.length < 2) continue; const d = Math.hypot(o.x - conv.a.a.x, o.y - conv.a.a.y); if (!best || d < best.d) best = { o, fr, d }; }
+      for (const o of aff) { if (!o.verbs.includes(verb)) continue; const fr = o.slots.filter((s) => free(s, conv.a.id) || free(s, conv.b.id)); if (fr.length < 2) continue; const ref = conv.at || conv.a.a, d = Math.hypot(o.x - ref.x, o.y - ref.y); if (!best || d < best.d) best = { o, fr, d }; }   /* 16.2: an invitation at a facility uses that facility */
       if (!best) { Social.end(conv, 'noplace'); return; }
       conv.st = 'joint'; conv.joint = def.joint; conv.dur = def.dur[0] + Sim().rnd() * (def.dur[1] - def.dur[0]); conv.jt0 = nowR();
       [conv.a, conv.b].forEach((x, i) => { const s = best.fr[i]; release(x.id); res.set(s.k, x.id); x.slot = s; x.st = 'social'; Wd().setAction(x.a, 'idle'); Wd().walkTo(x.a, s.ax, s.ay, () => { if (Math.hypot(x.a.x - s.x, x.a.y - s.y) > 0.5) x.a.path = [{ x: s.x, y: s.y }]; }); });

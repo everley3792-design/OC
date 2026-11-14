@@ -63,6 +63,19 @@
     T('daydreamer', '愛發呆', '興趣', '常常望著遠方什麼都不做，卻很滿足', { act: { daydream: 0.55, observe: 0.3 }, need: { interest: 0.8 } }, ['restless']),
     T('storyteller', '愛說故事', '興趣', '喜歡分享見聞與興趣', { soc: { share: 0.55, chat: 0.2 } }, ['quiet']),
     T('neatfreak', '潔癖', '興趣', '看到亂就想整理；髒亂會不舒服', { act: { tidy: 0.6 }, need: { comfort: 1.25 } }, ['messy']),
+    // ---- 16.2 社交（和其他角色怎麼相處；全部有實際效果：社交選擇、接受度、情緒）
+    T('slowwarm', '慢熟', '社交', '和不熟的人保持距離；熟了以後很黏', { accept: -0.12, soc: { hello: 0.2, listen16: 0.2, handhold16: -0.2 }, emo: { shy: 1.3 } }, ['outgoing16']),
+    T('outgoing16', '自來熟', '社交', '第一次見面就像老朋友；常主動打招呼、聊天', { accept: 0.15, soc: { hello: 0.4, smalltalk: 0.35, askday: 0.25 } }, ['slowwarm']),
+    T('jealous16', '愛吃醋', '社交', '在意的人和別人太好會不開心', { emo: { jealous: 1.5, annoyed: 1.15 }, soc: { sulkat: 0.25, complain: 0.15 } }, ['easygoing']),
+    T('pleaser', '討好型', '社交', '很難拒絕別人；常常主動關心、送小東西', { accept: 0.25, soc: { askok: 0.3, flower16: 0.25, cheerup: 0.25 }, emo: { nervous: 1.15 } }, ['blunt']),
+    T('sharptongue', '毒舌', '社交', '說話很直，會取綽號、抱怨；但沒有惡意', { soc: { teasename: 0.4, complain: 0.25, compliment: -0.2 } }, ['tactful']),
+    T('lazysocial', '怕麻煩', '社交', '不太主動找人；被邀請時常說「改天」', { accept: -0.15, soc: { smalltalk: -0.2, chase: -0.3 }, act: { rest: 0.15 } }, ['outgoing16']),
+    T('caretaker', '愛照顧人', '社交', '看到別人累或難過就會靠過去', { soc: { askok: 0.45, restplease: 0.4, listen16: 0.3, comfort: 0.3 } }, []),
+    T('grudge', '記仇', '社交', '吵過的架不容易忘；和好比較慢', { soc: { forgive16: -0.4, offerhand: -0.3, ignore16: 0.2 }, emo: { annoyed: 1.2 } }, ['easygoing']),
+    T('easytocalm', '好哄', '社交', '生氣來得快去得也快，一點點心意就和好', { soc: { forgive16: 0.4, offerhand: 0.25 }, emo: { annoyed: 0.8 }, accept: 0.08 }, ['grudge']),
+    T('performer', '愛表演', '社交', '喜歡唱歌、變魔術、逗大家笑', { soc: { sing16: 0.45, magic: 0.4, funnyface: 0.3, drumbeat: 0.25 } }, []),
+    T('gossiper', '八卦', '社交', '消息很靈通，什麼事都想分享', { soc: { gossip: 0.45, askaround: 0.35 }, emo: { curious: 1.2 } }, []),
+    T('touchy', '愛撒嬌', '社交', '喜歡身體上的親近：蹭蹭、牽手、靠著', { soc: { nuzzle16: 0.35, handhold16: 0.3, leanOn: 0.25, hug: 0.2 } }, ['slowwarm']),
   ];
   // extra contradictions for the traits that already existed
   const EXTRA_X = { lazy: ['sporty', 'restless', 'energetic', 'diligent'], brave: ['timid'], stubborn: ['easygoing'], perfectionist: ['easygoing', 'messy'], tidy: ['messy'], clumsy: ['organized'], extrovert: ['aloof', 'introvert'], sleepy: ['lightsleeper'], shy: ['outgoing', 'talkative'], outgoing: ['shy', 'quiet'], introvert: ['extrovert', 'talkative'], cheerful: ['pessimist'], optimist: ['pessimist'] };

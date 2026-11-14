@@ -418,3 +418,13 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .op16-kind { color: var(--ink-3); font-size: var(--fs-s); } .op16-kind.set { color: var(--ink); font-weight: 800; }
 .op16-house { margin-bottom: 10px; } .op16-house.over { box-shadow: var(--hl), 0 3px 0 var(--lip), inset 0 0 0 2px var(--alert); }
 .op16-residents { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* 16.2 — the social sheet */
+.soc-cats { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; } .soc-cats .chip-btn { flex: none; }
+.soc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.soc-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 12px; border-radius: var(--r-m); border: 0; background: var(--surface); box-shadow: var(--hl), 0 2px 0 var(--lip); color: var(--ink); text-align: left; font: inherit; }
+.soc-row:active { transform: translateY(2px); box-shadow: var(--hl); transition-duration: var(--t-press); }
+.soc-row small { display: block; color: var(--ink-3); font-size: var(--fs-xs); }
+.soc-row.locked { opacity: .6; }
+.soc-ic { font-size: 22px; width: 28px; text-align: center; } .soc-hint { font-size: 20px; }
+.soc-row .grow { flex: 1; min-width: 0; }

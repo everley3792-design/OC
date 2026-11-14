@@ -519,7 +519,14 @@
       track: () => Wd.project(at.x, at.y, lv, 18), actions: [{ label: d.verb, primary: true, run: d.run, off: d.off }].concat(d.extra || []) });
   }
   /** what a thing in the world is called and what one press on its card does (the same actions as before 15.0, now behind a button) */
+  /* 16.2: a facility two can use together gets 「邀請誰一起」 (when someone else is here) — the invitation goes through the willingness model */
+  const INVITE_ACT = { bench: 'rest', bookshelf: 'read', towel: 'nap', ride: 'ride' };
   function describe(it) {
+    const d = describe0(it), act = INVITE_ACT[it.type];
+    if (d && act && OC.Will && presentHere().some((c) => actorOf(c.id))) { const at = it.at ? { x: it.at.x, y: it.at.y } : { x: it.x, y: it.y }; d.extra = (d.extra || []).concat([{ label: '邀請誰一起', run: () => OC.LifeUI.inviteSheet(act, at, d.title) }]); }
+    return d;
+  }
+  function describe0(it) {
     const P = OC.Places, zh = (id) => (P && P.get(id) ? P.get(id).zh : id);
     switch (it.type) {
       case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => direct(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
@@ -673,7 +680,8 @@
         { ic: 'eye', label: '躲貓貓', off: self ? '操控中的角色不能自己躲（找別的角色玩）' : (sl || busy), run: () => OC.Fun.hide(id) },
       ]);
       ring(OC.Chars.name(c), `${OC.Mind.label(c)}${OC.LifeUI.doingText(c) ? '・' + OC.LifeUI.doingText(c) : ''}`, [
-        { ic: 'heart', label: '親近', main: true, run: () => setTimeout(closeness, 60) },
+        self ? null : { ic: 'users', label: `${OC.Chars.name(me())}的互動`, main: true, off: busy, run: () => setTimeout(() => OC.LifeUI.socialSheet(id), 60) },   /* 16.2: what the character you play does with this one */
+        { ic: 'heart', label: '親近', main: self, run: () => setTimeout(closeness, 60) },
         { ic: 'chat', label: self ? '打招呼' : '聊天', off: sl || busy, run: () => (self ? greetFrom(a, c) : L.chat(id)) },
         { ic: 'apple', label: '餵食', off: busy, run: () => L.feed(id) },
         { ic: 'gift', label: '送禮', off: busy, run: () => L.gift(id) },
@@ -692,6 +700,7 @@
         { ic: 'move', label: '移動', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => startPlacement({ uid: it.uid }) },
         { ic: 'bag', label: '收回', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => { startPlacement({ uid: it.uid }); storeFurniture(); } },
         { ic: 'info', label: '資訊', run: () => OC.Pages.itemSheet ? OC.Pages.itemSheet(it.id) : toast(def.zh, 'info') },
+        (def.seats || 1) >= 2 && OC.Will && presentHere().some((c) => actorOf(c.id)) ? { ic: 'users', label: '邀請', run: () => OC.LifeUI.inviteSheet((def.verbs || []).includes('play') ? 'play' : 'rest', { x: it.x, y: it.y }, def.zh) } : null,   /* 16.2 */
       ] });
       St.emit('menu:open', { kind: 'furn' });
       return;
@@ -1081,7 +1090,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

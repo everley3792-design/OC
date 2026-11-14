@@ -457,6 +457,9 @@
       el.replaceChildren(
         T('對話語氣'), card(seg([['mature', '沉穩'], ['playful', '活潑']], st.tone === 'playful' ? 'playful' : 'mature', (v) => { set('tone', v); p.refresh(p); }), small(st.tone === 'playful' ? '角色們說話比較誇張、愛用語助詞。' : '角色們說話比較克制、具體，少用驚嘆號與語助詞（預設）。')),
         T('熱鬧程度'), card(seg(['quiet', 'normal', 'lively'].map((k) => [k, OC.Budget.LEVELS[k].zh]), OC.Budget.level() === 'legacy' ? 'normal' : OC.Budget.level(), (v) => { set('lively', v); p.refresh(p); }), small(OC.Budget.LEVELS[OC.Budget.level()].d + '請求、來訪、要你回答的事件共用這個上限；不急的事會放進信箱（右上角的鈴鐺）。大家自己的生活不受影響。')),
+        T('互動'), card(h('div.hstack', null, h('span.grow', null, '顯示對方大概的反應（😊 😐 🙁）'), toggle(st.willHint !== false, (v) => set('willHint', v))),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, `不照你的意思做的機率：${Math.round((st.defy != null ? st.defy : 0.06) * 100)}%`), seg([['0', '0'], ['0.03', '低'], ['0.06', '中'], ['0.12', '高']], String(st.defy != null ? st.defy : 0.06), (v) => { set('defy', +v); p.refresh(p); })),
+          small('你操控的角色偶爾會有自己的想法（固執的更常、心情不好也會），每次都會說出原因。設成 0 就一定照做。')),
         T('自主程度'), card(auto, small({ full: 'OC 會自己生活、社交、遇到事件。', lessSocial: '比較少主動找人聊天。', fewerEvents: '事件間隔拉長很多。', restricted: '只做吃飯、休息、睡覺等基本的事。', paused: '大家停下自主行動（需求仍會變化，你安排的活動仍會執行）。' }[st.autonomy])),
         T('細節'), card(
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),
@@ -551,5 +554,34 @@
     });
   }
   const avatarOf = (c, px) => { const cv = h('canvas', { width: px * 2, height: px * 2 }); cv.style.cssText = `width:${px}px;height:${px}px;border-radius:50%;background:var(--surface-2);flex:none`; A().live(cv, () => ({ char: Ch().get(c.id), pose: { face: 0.2 } })); return cv; };
-  OC.LifeUI = { controlSheet, ctlZh, CTL, routineCard, doingText, noticeCount, pushNotice, notices, interact, think, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
+  /* 16.2 — what the character you play can do with someone else. Twelve kinds of interaction; nothing is locked — each row shows how
+   * the other one is likely to take it (😊 😐 🙁, can be switched off in 生活設定). The two hard rules (romance needs romance on and two
+   * adults; never with minors) show as a lock with the reason. Choosing one sends your character over; the other decides. */
+  function socialSheet(bId) {
+    const aId = S().activeId, ca = Ch().get(aId), cb = Ch().get(bId); if (!ca || !cb || aId === bId) return;
+    const st = { cat: (S().life.ui16 && S().life.ui16.cat) || 'talk' };
+    sheet(`${name(ca)} → ${name(cb)}`, (b, api) => {
+      const head = h('div.muted', { style: { fontSize: 'var(--fs-s)', margin: '-4px 0 8px' } }, `${name(cb)}眼中的${name(ca)}：${M().relLabel(M().relPeek(bId, aId))}`);
+      const tabs = h('div.soc-cats'), list = h('div.soc-list');
+      const draw = () => {
+        tabs.replaceChildren(...OC.Will.CATS.map(([id, zh]) => h('button.chip-btn' + (st.cat === id ? '.on' : ''), { 'data-cat': id, on: { click: () => { st.cat = id; (S().life.ui16 = S().life.ui16 || {}).cat = id; draw(); } } }, zh)));
+        const showHint = S().life.settings.willHint !== false;
+        list.replaceChildren(...Object.values(OC.Will.INTER).filter((x) => x.cat === st.cat).map((x) => {
+          const hh = OC.Will.hint(cb, ca, x.id), lock = hh.face === '🔒' ? (OC.People && (OC.People.minor(ca) || OC.People.minor(cb)) ? '未成年不會有戀愛相關的互動' : '要在生活設定為兩人打開戀愛功能') : '';
+          return h('button.soc-row' + (lock ? '.locked' : ''), { 'data-int': x.id, disabled: !!lock, on: { click: () => { if (!OC.Pick || OC.Pick.armed(b)) { api.close(); const r = OC.Will.ask(aId, bId, x.id, { player: true }); if (!r.ok) { toast(r.why, r.defy ? 'info' : 'lock'); if (r.defy) { const a = A().actorOf(aId); if (a) { OC.World.setAction(a, 'shake', { dur: 1.2, priority: 4 }); A().bubble && A().bubble(a, r.why.replace(name(ca), '').replace(/^[，、]/, '') || '……', name(ca), 1.8, { thought: true }); } } } } } } },
+            h('span.soc-ic', null, x.ic), h('span.grow', null, x.zh, lock ? h('small', null, lock) : null), showHint && !lock ? h('span.soc-hint', { title: '大概的反應', 'aria-label': '對方大概的反應' }, hh.face) : null, lock ? icon('lock', 's') : null);
+        }));
+      };
+      b.append(head, tabs, list); draw(); if (OC.Pick) OC.Pick.guard(b);
+    });
+  }
+  /** invite someone here to an activity at a facility (bench, ride, picnic towel, bookshelf …) */
+  function inviteSheet(act, at, label) {
+    const aId = S().activeId, ca = Ch().get(aId), here = (A().presentHere ? A().presentHere() : []).filter((c) => A().actorOf(c.id)); const kind = OC.Will.jointKind(act); if (!kind) return;
+    sheet(`邀請誰一起${OC.LifeData.ACTS[act].zh}？`, (b, api) => {
+      b.append(h('p.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '-4px' } }, label || ''), here.length ? h('div.list', null, ...here.map((c) => { const hh = OC.Will.hint(c, ca, kind); return row(avatarOf(c, 36), name(c), `${M().label(c)}${doingText(c) ? '・' + doingText(c) : ''}`, S().life.settings.willHint !== false ? h('span.soc-hint', null, hh.face) : null, () => { api.close(); const r = OC.Will.invite(aId, c.id, act, at); if (!r.ok) toast(r.why, 'info'); else toast(`${name(ca)}去邀請${name(c)}`, 'users'); }); })) : h('div.empty', null, '這裡沒有其他角色'));
+      if (OC.Pick) OC.Pick.guard(b);
+    });
+  }
+  OC.LifeUI = { socialSheet, inviteSheet, controlSheet, ctlZh, CTL, routineCard, doingText, noticeCount, pushNotice, notices, interact, think, pet, hug, highfive, poke, handhold, endHand, tick, call, feed, gift, play, accompany, chat, schedule, lifeSection, relSection, memSection, suggestionCard, petState, replay, gmLabel, ago };
 })();
