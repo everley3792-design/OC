@@ -77,6 +77,26 @@
         if (!orphanSince[k]) orphanSince[k] = now; else if (now - orphanSince[k] > 2000) { delete orphanSince[k]; OC.Brain.unhold(b.id, r); }
       }
     }
+    actWatchdog(now);
+  }
+  /** 16.2.1 safety net for the body: an endless high-priority action (priority ≥ 5, no end time) blocks walking. Only a few UI paths
+   *  start one (carrying, a minigame, "test on the island"); if its owner is gone for 2 s the action is ended, so no character can
+   *  stay frozen in a pose because some path forgot to finish it */
+  const actOrphan = new WeakMap();
+  function actWatchdog(now) {
+    const owned = (a) => {
+      const n = a.act.action;
+      if (n === 'drag') return !!((carry && carry.a === a) || (OC.Touch && OC.Touch.flying));
+      if (OC.Mini && OC.Mini.active) return true;
+      if (testChar && a === player) return true;
+      const b = a.brain; if (b && (b.st === 'do' || b.st === 'social' || b.st === 'event' || (b.holds && b.holds.size))) return true;   /* a locked activity (sleep, eat…) / a scene / a hold owns its pose */
+      return false;
+    };
+    for (const a of [player, ...Object.values(mates)]) {
+      if (!a || !a.act || a.act.until != null || (a.act.priority || 0) < 5) { if (a) actOrphan.delete(a); continue; }
+      if (owned(a)) { actOrphan.delete(a); continue; }
+      const t0 = actOrphan.get(a); if (t0 == null) actOrphan.set(a, now); else if (now - t0 > 2000) { actOrphan.delete(a); const was = a.act.action; Wd.setAction(a, 'idle'); a.key = ''; (window.__ocActFix || (window.__ocActFix = [])).push(was); }
+    }
   }
   /** 10.0 sun glow over the world (soft-light): warm by day, golden in the afternoon, cool moonlight at night, faint in bad weather */
   let glowT = 0, glowKey = '';
@@ -746,18 +766,26 @@
   }
 
   // ---------- carry an OC (long-press + drag): interrupts what it was doing ----------
-  let carry = null;
+  let carry = null; const carried = new Map();   /* id → carry record, until it has landed (a throw can outlive the finger) */
   function startCarry(id) {
     const a = actorOf(id), c = OC.Chars.get(id); if (!a || !c) return null;
     if (a === player) standUp();
     const wasSleeping = a.brain && a.brain.st === 'do' && a.brain.act === 'sleep';
     OC.Brain.hold(id, 'drag'); a.path = null; a.seatY = 0; a.hidden = false; a.lift = 9; Wd.setAction(a, 'drag', { priority: 9 });
-    carry = { id, a, c, wasSleeping }; OC.Mind.feel(c, 'surprised', 0.6, '被抱起來'); return { drag: true };
+    carry = { id, a, c, wasSleeping, ox: a.x, oy: a.y }; carried.set(id, carry); OC.Mind.feel(c, 'surprised', 0.6, '被抱起來'); return { drag: true };
   }
   function dragMove(p) { if (!carry) return; const q = Wd.nearestWalkable(p.x, p.y + 14, 30); if (q) { carry.a.x = q.x; carry.a.y = q.y; } carry.a.lift = 9; }
   /** put an OC down. info.fling: 0 = set down, 1 = tossed (bounced), 2 = thrown hard — reactions follow personality */
   function dragEnd(p, info = {}) {
-    if (!carry) return; const { id, a, c, wasSleeping } = carry; carry = null; a.lift = 0; a.swing = 0; const fl = info.fling || 0;
+    /* 16.2.1: a thrown OC lands after the finger may already hold another one → end the carry of the one that landed (info.id) */
+    const rec = info.id ? carried.get(info.id) : carry; if (!rec) return; carried.delete(rec.id); if (carry === rec) carry = null;
+    const { id, a, c, wasSleeping } = rec; a.lift = 0;
+    /* 16.2.1: while held an OC can hang anywhere over the scene (the sea, a cliff); it must always come down on ground it can walk
+     * from — otherwise path finding starts on a blocked cell, every tap does nothing and it looks frozen. Nearest ground, else where it was picked up */
+    if (!Wd.walkable(a.x, a.y)) { const q = Wd.nearestWalkable(a.x, a.y, 80) || Wd.nearestWalkable(a.x, a.y, 260) || { x: rec.ox, y: rec.oy }; a.x = q.x; a.y = q.y; } a.swing = 0; const fl = info.fling || 0;
+    /* 16.2.1: end the endless 'drag' action (priority 9) first — otherwise the reaction below (priority 8) is refused, 'drag' stays,
+     * and the high-priority action blocks walking forever (the toss / throw freeze) */
+    Wd.setAction(a, 'idle');
     const b = OC.Chars.behavior(c); let cat = 'call';
     const brave = c.personality.energy > 60 || OC.Chars.has(c, 'energetic') || OC.Chars.has(c, 'brave');
     if (fl >= 2) { Wd.setAction(a, brave ? 'cheer' : 'hurt', { dur: 1.6, priority: 8 }); emote(a, brave ? '★' : '@'); }

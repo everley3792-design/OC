@@ -31,6 +31,7 @@
 - **16.0（0.16.0-alpha）**（計畫 16.0–16.8 見 `docs/v16-plan.md`，玩家已確認）：角色畫在螢幕原本的解析度（兩段式繪製）、圖片角色寬高分開 20–400%／不被切、名牌卡（左上）、**切換操控不傳送**（鏡頭過去）、買東西／撿東西直接在介面完成、`OC.Budget` 打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。驗收：`node game/tests/v16/run.js`。紀錄：`docs/v16.0-report.md`。16.3 起（對話引擎、自主與世界、住處、職業學業、遊樂設施重做、生老病死）**尚未做**。
 - **16.1（0.16.1-alpha）開局與人生**：開局建立多位島民＋島民名冊＋關係圖（有方向、可鎖定、背景故事）＋選房子（`ui/opening16.js`：`OC.Opening`、`OC.Homes`）；`OC.People`（`life/people16.js`）：20 種物種＋自訂物種、七個人生階段（含嬰兒）、生日長大（自動／按了才長／固定）、未滿 18 歲不涉戀愛。紀錄：`docs/v16.1-report.md`。
 - **16.2（0.16.2-alpha）意願模型與互動**：`OC.Will`（`life/will16.js`）——沒有門檻表，60 種互動（12 類）都能做，對方依關係／親近程度／個性／心情／需求／旁人／歷史決定，反應是光譜（熱情…哭了）各有後果；點別的角色＝社交選單（大概的反應 😊😐🙁）；設施「邀請誰一起」；小機率不照指令（有原因）；12 個社交特質。紀錄：`docs/v16.2-report.md`。
+- **16.2.1（0.16.2.1-alpha）拖曳後凍結**：輕拋／丟出後反應動作（優先 8）被還在的 `drag`（優先 9、沒有結束時間）擋掉 → 角色停在拖曳姿勢、走路被擋；丟到海上／懸崖時落在不能走的格子 → 點地面沒反應。修正＋通用安全網（`actWatchdog`）＋每隻各自的搬運紀錄。紀錄：`docs/v16.2.1-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -236,3 +237,4 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.1 物種與人生階段**（`OC.People`）：物種與階段的效果和特質同格式，經 `People.fxList(c)` 併入 `Traits13` 的 decay／act／soc／speed／sens／accept（不要另外寫判斷）；新物種只加資料。年齡只來自玩家寫的 `profile.age`；長大只經 `People.growUp`（一年一次，key `age:<oc>:<年>`），生日由 `Island.checkBirthdays` 呼叫 `People.birthday`；`c.life.age16.grow`：新角色 `auto`、舊存檔 `manual`。做不到的事一律問 `People.canDo(c, act)`（`Brain.candidates`、`abstractStep`、`Brain.command`、`Queue.add` 都有）、旅行問 `canTravel`。**未滿 18 歲絕不涉及戀愛**：`Mind.romanceOK` 先問 `People.minor`，任何新的戀愛／親密功能都要經 `romanceOK`。
 - **16.1 開局**：只在新遊戲且不是 `skipIntro`（測試）時出現；圖層 `dismissible:false`（返回鍵不做事，不可以跳確認視窗）。起始關係只經 `Opening.setStart`（`kind16`／`label16`／`fixed`，`relLabel` 顯示 `label16`）；戀愛類只能兩人都滿 18 歲。住處 `c.life.home16`，只經 `OC.Homes.assign`（檢查容量）；黃屋、紫屋的室內在 16.5 前不存在，**不要做假入口**。
 - **16.2 意願模型**（`OC.Will`）：**不要加門檻表**——任何角色對角色的互動都經 `Brain.Social.respond` → `Will.respond`（`willing` 算機率、`react` 選反應），新互動只在 `will16.js` 的 `NEW` 加一行資料＋`lines16.js` 的 `i16_<id>` 台詞；反應的台詞分類 `r16_<反應>`。唯一的硬規則是 `tone: 'love'` 一律先問 `Mind.romanceOK`（含未成年）。玩家要求的互動經 `Will.ask(a, b, kind, { player: true })`（會先問 `defies`，有原因）；設施邀請經 `Will.invite(a, b, act, at)`（`with_<act>` 共同活動，`beginJoint` 用 `conv.at` 選那個設施）。玩家安排的對話（`conv.byPlayer`）事件不會搶走。
+- **16.2.1 身體的安全網**：沒有結束時間、優先 ≥ 5 的動作會擋住走路。新開始這種動作的地方要有擁有者（搬運、小遊戲、島上試播、`brain` 的 do／social／event 或 hold），否則 `app.js` 的 `actWatchdog` 2 秒後結束它。換到更高優先的動作前先 `setAction(a, 'idle')`。放下／落地一律經 `dragEnd`（帶 `id`），保證落在可以走的格子（找不到就回到抱起的位置）。

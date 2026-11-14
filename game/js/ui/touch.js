@@ -228,7 +228,7 @@
     flights.delete(a); a.lift = 0; a.swing = 0;
     if (!Wd().walkable(a.x, a.y)) { const q = Wd().nearestWalkable(a.x, a.y, 80); if (q) { a.x = q.x; a.y = q.y; } }
     OC.UI.haptic(f.strong ? 'heavy' : 'light');
-    A().dragEnd(null, { fling: f.strong ? 2 : f.bounces ? 1 : 0 });
+    A().dragEnd(null, { fling: f.strong ? 2 : f.bounces ? 1 : 0, id: f.id });
     OC.Store.emit('touch:land', { id: f.id, strong: f.strong });
   }
 

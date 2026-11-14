@@ -237,6 +237,47 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       });
       check('14 設施可以邀請別人一起用：長椅的動作卡有「邀請誰一起」，對方答應後兩人坐在同一張長椅的兩個位子', r.ok && r.kind === 'with_rest' && r.started && r.slots[0] && r.slots[1] && r.slots[0] !== r.slots[1] && r.slots[0].split('#')[0] === r.slots[1].split('#')[0], r);
     }
+    if (want(15)) {
+      /* 16.2.1 drag freeze: real touch (CDP) — pick up, then set down / toss / throw; afterwards the character must walk again */
+      const cdp = await page.context().newCDPSession(page);
+      const T = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y]) => ({ x, y, id: 1, radiusX: 4, radiusY: 4, force: 1 })) });
+      await page.evaluate(async () => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); } const all = OC.Chars.all(); OC.Chars.setActive(all[0].id); all.forEach((c) => OC.Brain.setControl(c.id, 'manual')); OC.UI.stack.slice().forEach(() => OC.UI.popLayer && OC.UI.popLayer()); window.__ocActFix = []; });
+      await page.waitForTimeout(1500);
+      const where = (id) => page.evaluate((id) => { const a = id ? OC.App.actorOf(id) : OC.App.player; const s = OC.App.screenOf(a); const top = OC.World.project(a.x, a.y, a.lvl || 0, a.gy - (a.lvl || 0) * OC.World.HY + 40 * (a.tk || 1)); return { x: Math.round(top.x), y: Math.round(top.y), s }; }, id);
+      async function grabAndRelease(id, kind) {
+        const p = await where(id); await T('touchStart', [[p.x, p.y]]);
+        await page.waitForFunction((id) => { const a = id ? OC.App.actorOf(id) : OC.App.player; return a.act && a.act.action === 'drag'; }, id, { timeout: 15000 }).catch(() => {});
+        if (kind === 'down') { await T('touchMove', [[p.x + 2, p.y + 1]]); await page.waitForTimeout(300); await T('touchEnd', []); }
+        else { const n = 6, dx = kind === 'throw' ? 34 : 14; for (let i = 1; i <= n; i++) { await T('touchMove', [[p.x + i * dx, p.y - i * dx * 0.3]]); await page.waitForTimeout(16); } await T('touchEnd', []); }
+      }
+      const settled = (id) => page.waitForFunction((id) => { const a = id ? OC.App.actorOf(id) : OC.App.player; const b = OC.Brain.get((a.char && a.char().id) || OC.Store.s.activeId); return !OC.Touch.flying && !(a.act && a.act.action === 'drag') && !b.holds.has('drag'); }, id, { timeout: 30000 }).then(() => true).catch(() => false);
+      const walks = async () => {
+        /* tap the ground near the character (up to 3 spots: the first one may land on a tree or a mate) — it must start walking */
+        for (let k = 0; k < 3; k++) {
+          const g = await page.evaluate((k) => { const p = OC.App.player; const offs = [[70, 25], [-70, -25], [70, -25], [-70, 25], [0, 60], [0, -60], [40, 0], [-40, 0]]; let q = null, n = 0;
+            for (const [dx, dy] of offs) { const c = OC.World.nearestWalkable(p.x + dx, p.y + dy, 30); if (c && Math.hypot(c.x - p.x, c.y - p.y) > 35 && n++ === k) { q = c; break; } }
+            if (!q) return null; const s = OC.World.project(q.x, q.y, OC.World.levelAt(q.x, q.y), 0); window.__w0 = { x: p.x, y: p.y }; return { x: s.x, y: s.y }; }, k);
+          if (!g) { console.log('  no target', JSON.stringify(await page.evaluate(() => { const p = OC.App.player; let n = 0; for (let dx = -100; dx <= 100; dx += 10) for (let dy = -100; dy <= 100; dy += 10) if (OC.World.walkable(p.x + dx, p.y + dy)) n++; return { x: p.x, y: p.y, w: OC.World.walkable(p.x, p.y), n, lvl: p.lvl, area: OC.World.area.id }; }))); continue; } await page.touchscreen.tap(g.x, g.y);
+          const ok = await page.waitForFunction(() => { const p = OC.App.player; return Math.hypot(p.x - window.__w0.x, p.y - window.__w0.y) > 20; }, null, { timeout: 20000 }).then(() => true).catch(() => false);
+          if (ok) return true;
+          console.log('  walk diag', JSON.stringify(await page.evaluate(() => { const p = OC.App.player, b = OC.Brain.get(OC.Store.s.activeId); return { act: p.act, path: p.path, st: b.st, holds: [...b.holds], ui: OC.UI.stack.length, pick: OC.Pick && OC.Pick.open_ }; })));
+          await page.evaluate(() => { OC.Pick && OC.Pick.close && OC.Pick.close(); }); await page.waitForTimeout(500);
+        }
+        return false; };
+      const res = {};
+      for (const kind of ['down', 'toss', 'throw']) { await grabAndRelease(null, kind); res[kind] = { settled: await settled(null) }; await page.waitForTimeout(1500); res[kind].walks = await walks(); await page.waitForTimeout(800); }
+      check('15a 拖曳後放下、輕拋、用力丟出去：落地後動作結束、不再被保留，點地面就會走（真實觸控）', ['down', 'toss', 'throw'].every((k) => res[k].settled && res[k].walks), res);
+      /* throw one, grab another while the first is still in the air */
+      const ids = await page.evaluate(() => { const all = OC.Chars.all(); const p = OC.App.player, m = OC.App.actorOf(all[1].id); if (m) { let q = null; for (const [dx, dy] of [[-60, 0], [60, 0], [0, 50], [0, -50], [-45, 30], [45, -30]]) { q = OC.World.nearestWalkable(p.x + dx, p.y + dy, 30); if (q && Math.hypot(q.x - p.x, q.y - p.y) > 35) break; q = null; } if (q) { m.path = null; m.x = q.x; m.y = q.y; } } return [all[0].id, all[1].id]; });
+      await page.waitForTimeout(1200);
+      await grabAndRelease(null, 'throw'); const p2 = await where(ids[1]); await T('touchStart', [[p2.x, p2.y]]);
+      await page.waitForFunction(() => !OC.Touch.flying, null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600); await T('touchEnd', []);
+      const both = (await settled(null)) && (await settled(ids[1]));
+      const st = await page.evaluate((ids) => ids.map((id) => { const a = OC.App.actorOf(id); return { act: a.act && a.act.action, holds: [...OC.Brain.get(id).holds] }; }), ids);
+      check('15b 丟出一個、它還在空中時抓起另一個：兩個都正常結束（不會結束錯的那個）', both && st.every((s) => s.act !== 'drag' && !s.holds.includes('drag')), st);
+      const wd = await page.evaluate(async () => { const a = OC.App.player; OC.World.setAction(a, 'drag', { priority: 9 }); await new Promise((r) => setTimeout(r, 5000)); return { act: a.act && a.act.action, fixed: window.__ocActFix || [] }; });
+      check('15c 安全網：沒有擁有者的無限期高優先動作（會擋住走路）2 秒後自動結束', wd.act !== 'drag' && wd.fixed.includes('drag'), wd);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);
