@@ -419,6 +419,26 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       check('20c 條件成立才發生：變數 gate 還是 0 時不會演，設成 1 之後角色自己演出並把它改成 2', r.early === 0 && r.ran === 2, r);
       check('20d .ocpack 匯出再匯入：角色的事件、台詞、專屬互動都在', r.packed.s === 1 && r.packed.l === 1 && r.packed.i === 1, r.packed);
     }
+    if (want(21)) {
+      /* the creator's real import path: file chooser → background sheet (applied) → the look step shows the framing table */
+      const png = await page.evaluate(async () => { const cv = document.createElement('canvas'); cv.width = 240; cv.height = 300; const g = cv.getContext('2d'); g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, 240, 300); g.fillStyle = '#6a8fd0'; g.beginPath(); g.ellipse(120, 170, 70, 110, 0, 0, 7); g.fill(); return cv.toDataURL('image/png').split(',')[1]; });
+      const fs = require('fs'), path = require('path'), file = path.join(require('os').tmpdir(), 'oc16-import.png'); fs.writeFileSync(file, Buffer.from(png, 'base64'));
+      await page.evaluate(() => { OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back()); window.__cr = OC.Creator.start({}); });
+      await page.waitForSelector('.creator .cr-choice', { timeout: 15000 });
+      const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 15000 }), page.evaluate(() => [...document.querySelectorAll('.creator .cr-choice')].find((b) => b.textContent.includes('匯入圖片')).click())]);
+      await fc.setFiles(file);
+      const sheet = await page.waitForSelector('.fr-cut', { timeout: 30000 }).then(() => true).catch(() => false);
+      await page.screenshot({ path: 'deliverables/v16/21-cut.png' }).catch(() => {});
+      if (sheet) await page.evaluate(() => [...document.querySelectorAll('.fr-cut button')].find((b) => b.textContent.includes('套用')).click());
+      await page.waitForFunction(() => !document.querySelector('.fr-cut'), null, { timeout: 30000 }).catch(() => {});
+      await page.evaluate(() => [...document.querySelectorAll('.creator button')].find((b) => b.textContent.trim() === '下一步').click());
+      const look = await page.waitForSelector('.creator .cr-frame .fr-table canvas', { timeout: 20000 }).then(() => true).catch(() => false);
+      await page.waitForTimeout(800); await page.screenshot({ path: 'deliverables/v16/21-look.png' }).catch(() => {});
+      const st = await page.evaluate(() => { const body = document.querySelector('.creator'); return { acts: [...body.querySelectorAll('.fr-act small')].map((x) => x.textContent), face: /眼睛|耳朵|嘴巴/.test(body.textContent) }; });
+      check('21 創角匯入圖片：選檔 → 去背畫面（預覽、容許度、點掉空隙）→ 外觀步驟是取景台＋自動對齊／翻轉／裁切／重設，沒有捏臉選項', sheet && look && st.acts.includes('自動對齊') && !st.face, { sheet, look, st });
+      await page.evaluate(() => { const b = document.querySelector('.creator [aria-label=取消]'); if (b) b.click(); }); await page.waitForTimeout(500);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet button')].find((x) => x.textContent.includes('取消建立')); if (b) b.click(); });
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);
