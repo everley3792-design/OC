@@ -62,7 +62,7 @@
         return begin(ev, A, Bc, p);
       }
     }
-    return false;
+    return !!(OC.Script && OC.Script.trigger(type, p));   /* 16.3 player-made scripts after the built-in ones */
   }
   function mark(ev, A, Bc, p) { const gm = Sim().now(); E().last[ev.id + '|' + A.id] = gm; const ok = onceKey(ev, A.id, Bc && Bc.id, ev.once === 'self+place' ? (p && p.place) : Bc ? daysKnown(A.id, Bc.id) : ''); if (ok) E().once[ok] = gm; }
   /** start an event: staged if the cast is on screen and nothing else runs; otherwise apply its results quietly (milestones must not be lost) */
@@ -83,6 +83,21 @@
     St().emit('life:event', { id: ev.id, a: A.id, b: Bc && Bc.id, state: 'start' });
     return true;
   }
+  /** 16.3: start a player-made script with its whole cast (A…F) — same rules as a built-in event (one at a time, gaps, the allowance, holds) */
+  function beginScript(ev, X, o = {}) {
+    const bs = Object.values(X.brains);
+    if (cur || hooks.busy() || bs.some((b) => !b.a || b.holds.size || (b.conv && b.conv.byPlayer))) return false;
+    const asksP = !!ev.watch || ev.steps.some((x) => x.op === 'choice');
+    if (!o.test) { if (!gapOK({ prio: ev.prio, watch: ev.watch, steps: asksP ? [['choice']] : [] })) return false; E().lastAny = Date.now(); if (OC.Budget && asksP) OC.Budget.spend('event'); }
+    const okey = o.test ? null : OC.Script.mark(ev, X);
+    const A = X.chars.A, Bc = X.chars.B || null;
+    cur = { ev, prog: true, X, A, Bc, p: {}, waitUntil: 0, watched: false, test: !!o.test, okey, hooks, cast: { a: X.brains.A, b: X.brains.B || null, all: bs }, t0: nowR() };
+    for (const b of bs) B().hold(b.id, 'event');
+    OC.Script.start(cur);
+    if (!cur.watched && (ev.watch || ev.mode === 'cutscene')) hooks.notice({ text: fmt(ev.watch || `${chars().name(A)}：${ev.zh}`, A, Bc, {}), watch: () => { if (cur && cur.ev === ev) { cur.watched = true; hooks.cam(X.actors.A, true); OC.Stage && OC.Stage.controls(true); } } });
+    St().emit('life:event', { id: ev.id, a: A.id, b: Bc && Bc.id, state: 'start', script: true });
+    return true;
+  }
   const St = () => OC.Store;
   function fmt(t, A, Bc, p) { return String(t).replace(/\{name\}/g, chars().name(A)).replace(/\{other\}/g, Bc ? chars().name(Bc) : '').replace(/\{days\}/g, Bc ? daysKnown(A.id, Bc.id) : '').replace(/\{place\}/g, (p && p.placeZh) || '這裡'); }
 
@@ -92,6 +107,13 @@
     if (tickT > 4) { tickT = 0; periodic(); }
     if (!cur) return;
     const t = nowR(), c = cur;
+    if (c.prog) {   /* 16.3 script: longer scenes allowed; anyone of the cast leaving ends it */
+      if (t - c.t0 > 300) { end('timeout'); return; }
+      if (c.cast.all.some((m) => !m.a)) { end('left'); return; }
+      OC.Script.tickCaption(c, t);
+      if (OC.Script.step(c, t) === 'done') end('done');
+      return;
+    }
     if (t - c.t0 > 90) { end('timeout'); return; }
     // a participant left the scene (travelled away, or the player changed place): the scene cannot continue
     if ([c.cast.a, c.cast.b].some((m) => m && !m.a)) { end('left'); return; }
@@ -117,6 +139,11 @@
   function finish() { const c = cur; results(c.ev, c.A, c.Bc, c.p, true); end('done'); }
   function end(why) {
     const c = cur; if (!c) return; cur = null;
+    if (c.prog) {
+      if (c.fast && why !== 'left') { cur = c; c.pending = false; c.waitUntil = 0; for (let i = 0; i < 20 && OC.Script.step(c, Infinity) !== 'done'; i++) { c.pending = false; } cur = null; }   /* skipped: the data steps still happen */
+      OC.Script.stop(c); for (const b of c.cast.all) B().unhold(b.id, 'event');
+      hooks.cam(null, false); logEv({ id: c.ev.id, zh: c.ev.zh }, c.A, c.Bc, why); St().emit('life:event', { id: c.ev.id, a: c.A.id, b: c.Bc && c.Bc.id, state: why, script: true }); return;
+    }
     B().unhold(c.A.id, 'event'); if (c.Bc) B().unhold(c.Bc.id, 'event');
     hooks.cam(null, false); if (c.watched && OC.Stage) OC.Stage.controls(false);
     logEv(c.ev, c.A, c.Bc, why);
@@ -155,6 +182,7 @@
         for (const Bc of bs) { const why = []; const ok = check(ev, A, Bc, {}, why) && gapOK(ev); diag.push({ id: ev.id, a: A.id, b: Bc && Bc.id, ok, why: why.join('、') || (ok ? '' : '間隔') }); if (ok) { if (ev.chance != null && Sim().rnd() > ev.chance * 0.25) continue; if (begin(ev, A, Bc, {})) return; } }
       }
     }
+    if (OC.Script && vis.length) OC.Script.trigger('tick', { a: vis[Math.floor(Sim().rnd() * vis.length)].id });
   }
   /** the player answered a confirmation notice */
   function decide(nid, yes) {
@@ -167,6 +195,6 @@
 
   OC.Events = {
     init(h) { hooks = Object.assign(hooks, h || {}); St().on('life:relUp', (e) => trigger('relUp', e)); St().on('life:weather', (e) => { for (const b of Object.values(B().brains)) if (b.a) trigger('wxChange', { a: b.id, wx: e.wx }); }); Sim().onDay(() => { for (const c of chars().all()) trigger('dayStart', { a: c.id }); }); },
-    trigger, update, decide, check, defs, end, get current() { return cur; }, get diag() { return diag; },
+    trigger, update, decide, check, defs, end, beginScript, get current() { return cur; }, get diag() { return diag; },
   };
 })();

@@ -428,3 +428,10 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .soc-row.locked { opacity: .6; }
 .soc-ic { font-size: 22px; width: 28px; text-align: center; } .soc-hint { font-size: 20px; }
 .soc-row .grow { flex: 1; min-width: 0; }
+
+/* 16.3 script scenes: a fade layer and a caption line (only while a scene runs; opacity only — no filter / blend) */
+.ocs-ovl { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+.ocs-ovl > .blk { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .6s ease; }
+.ocs-ovl.dark > .blk { opacity: 1; }
+.ocs-ovl > .cap { position: absolute; left: 50%; bottom: calc(var(--sab, 0px) + 18%); transform: translateX(-50%); width: min(86vw, 520px); text-align: center; color: var(--balloon-ink); background: var(--balloon); box-shadow: 0 3px 0 var(--lip), var(--shadow-1); border-radius: 14px; padding: 10px 14px; font-size: var(--fs-m); line-height: 1.5; opacity: 0; transition: opacity .4s ease; }
+.ocs-ovl.cap > .cap { opacity: 1; }

@@ -222,7 +222,7 @@
     if (INTER[kind] && INTER[kind].tone === 'love' && !M().romanceOK(aId, bId)) return { ok: false, why: OC.People && (OC.People.minor(A) || OC.People.minor(B)) ? '未成年不會有戀愛相關的互動' : '戀愛功能沒有為他們打開（生活設定）' };
     if (OC.People && !OC.People.canDo(A, 'chat')) return { ok: false, why: OC.People.whyNot(A, 'chat') };
     if (o.player) { const no = defies(A, B, kind); if (no) { St.emit('will:defy', { a: aId, b: bId, kind, why: no }); return { ok: false, why: no, defy: true }; } }
-    { const ev = OC.Events && OC.Events.current; if (ev && ev.cast && [ev.cast.a, ev.cast.b].some((x) => x && (x.id === aId || x.id === bId))) return { ok: false, why: '他們正在經歷一件特別的事' }; }
+    { const ev = OC.Events && OC.Events.current; if (ev && ev.cast && (ev.cast.all || [ev.cast.a, ev.cast.b]).some((x) => x && (x.id === aId || x.id === bId))) return { ok: false, why: '他們正在經歷一件特別的事' }; }
     if (bb.holds.size || bb.st === 'event') return { ok: false, why: `${name(B)}在忙` };
     if (ba.st === 'do') OC.Brain.finish(ba, '玩家安排'); else if (ba.st === 'go') OC.Brain.abort(ba, '玩家安排');
     if (ba.st === 'social') return { ok: false, why: `${name(A)}正在和別人說話` };
