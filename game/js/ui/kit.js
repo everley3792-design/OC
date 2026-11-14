@@ -96,3 +96,34 @@
 
   Object.assign(OC.UI, { pickColor, colorField, slider, tagList, history, guardLeave, hex2rgb, rgb2hex, rgb2hsv, hsv2rgb });
 })();
+
+/* 16.1 — species picker: every species as a chip (wraps), its description under it, and 「自訂物種…」 to make one of your own */
+(function () {
+  'use strict';
+  const { h, icon, sheet, toast } = OC.UI;
+  function speciesPicker(value, onPick) {
+    const wrap = h('div.species-pick'), desc = h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } });
+    let cur = value;
+    const draw = () => {
+      const all = OC.People.all(), sp = OC.People.get(cur);
+      wrap.replaceChildren(...all.map((s) => h('button.chip-btn' + (s.id === cur ? '.on' : '') + (s.builtin ? '' : '.own'), { 'data-sp': s.id, on: { click: () => { cur = s.id; onPick(s.id); draw(); } } }, s.zh)),
+        h('button.chip-btn.add', { on: { click: () => makeSpecies((id) => { cur = id; onPick(id); draw(); }) } }, icon('plus', 's'), '自訂物種'));
+      desc.textContent = sp ? sp.d : '';
+    };
+    draw(); return h('div', null, wrap, desc);
+  }
+  function makeSpecies(done) {
+    sheet('自訂物種', (b, api) => {
+      const st = { zh: '', base: 'human', food: 1, sleep: 1, social: 1, energy: 1, speed: 1, span: 1 };
+      const name = h('input', { maxLength: 10, placeholder: '例如：雲朵族', 'aria-label': '物種名稱', on: { input: (e) => { st.zh = e.target.value; } } });
+      const sl = (label, k, min, max, step, fmt) => { const out = h('b.num', null, fmt(st[k])); const r = h('input', { type: 'range', min, max, step, value: st[k], 'aria-label': label, on: { input: (e) => { st[k] = +e.target.value; out.textContent = fmt(st[k]); } } }); return h('div.hstack', { style: { marginTop: '8px' } }, h('span', { style: { width: '6em' } }, label), h('div.grow', null, r), out); };
+      const pct = (v) => Math.round(v * 100) + '%';
+      b.append(h('div.field', null, name), h('div.muted', { style: { marginTop: '10px' } }, '從哪個物種開始'),
+        h('div.species-pick', null, ...OC.People.SPECIES.filter((s) => s[0] !== 'other').map(([id, zh]) => { const el = h('button.chip-btn' + (id === st.base ? '.on' : ''), { on: { click: () => { st.base = id; [...el.parentNode.children].forEach((x) => x.classList.toggle('on', x === el)); } } }, zh); return el; })),
+        sl('餓得快慢', 'food', 0.5, 1.5, 0.05, pct), sl('要睡多久', 'sleep', 0.3, 1.5, 0.05, pct), sl('想找人', 'social', 0.5, 1.5, 0.05, pct), sl('累得快慢', 'energy', 0.5, 1.5, 0.05, pct), sl('走路速度', 'speed', 0.8, 1.2, 0.02, pct), sl('壽命', 'span', 0.5, 10, 0.5, (v) => '×' + v),
+        h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } }, '數值越大，那個需求下降得越快。壽命在之後的「生老病死」才會用到（預設不會死亡）。'),
+        h('button.btn.primary.block', { style: { marginTop: '12px' }, on: { click: () => { const r = OC.People.addCustom(st); if (!r.ok) { toast(r.why, 'info'); return; } api.close(); toast(`新增了物種「${st.zh}」`, 'sparkle'); done(r.id); } } }, '建立這個物種'));
+    });
+  }
+  OC.UI.speciesPicker = speciesPicker; OC.UI.makeSpecies = makeSpecies;
+})();

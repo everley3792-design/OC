@@ -530,7 +530,7 @@
       case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => direct(it.at.x, it.at.y, () => tab('explore')) };
       case 'travelHome': return { title: '回晴日島', sub: '離開這裡', stk: 'island', verb: '回去', run: () => goThen(it.at.x, it.at.y, () => travel('isle')) };
       case 'exit': return { title: `往${zh(it.to)}`, sub: '離開這裡', stk: 'walk', verb: '前往', run: () => OC.WorldUI.tap(it) };
-      case 'shop': case 'counter': { const base = { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) direct(it.at.x, it.at.y, () => { OC.Pages.open('shop', { shop: 'general' }); }); } }; const jp = OC.Jobs && OC.Jobs.placeOfShop[it.shop]; if (jp && (it.type === 'counter' || it.shop !== 'cafe')) { const me = OC.Chars.active(), paid = me && OC.Jobs.paidToday(me.id, jp); base.extra = [{ label: paid ? '打工（今天已領過）' : '打工一班', run: () => { if (!OC.Queue) return; const r = OC.Queue.add(S().activeId, 'work'); toast(r === 'queued' ? '排進清單：打工' : r ? `${OC.Chars.name(me)}去打工了（約 30–40 分鐘${paid ? '；今天的工資已經領過' : ''}）` : '清單滿了，先取消一項', 'coin'); } }]; } return base; }
+      case 'shop': case 'counter': { const base = { title: it.label || '商店', sub: '看看賣什麼', stk: 'shop', verb: '逛逛', run: () => { if (!OC.WorldUI.tap(it)) direct(it.at.x, it.at.y, () => { OC.Pages.open('shop', { shop: 'general' }); }); } }; const jp = OC.Jobs && OC.Jobs.placeOfShop[it.shop]; if (jp && (it.type === 'counter' || it.shop !== 'cafe')) { const me = OC.Chars.active(), paid = me && OC.Jobs.paidToday(me.id, jp); base.extra = [{ label: paid ? '打工（今天已領過）' : '打工一班', run: () => { if (!OC.Queue) return; const r = OC.Queue.add(S().activeId, 'work'); if (r === 'young') return; toast(r === 'queued' ? '排進清單：打工' : r ? `${OC.Chars.name(me)}去打工了（約 30–40 分鐘${paid ? '；今天的工資已經領過' : ''}）` : '清單滿了，先取消一項', 'coin'); } }]; } return base; }
       case 'fishing': return { title: it.label || '釣魚點', sub: '甩竿試試', stk: 'fish', verb: '釣魚', run: () => OC.WorldUI.tap(it) };
       case 'stove': return { title: it.label || '爐台', sub: '做一道料理', stk: 'apple', verb: '做料理', run: () => OC.WorldUI.tap(it) };
       case 'plot': return { title: it.label || '菜園', sub: '播種、澆水、收成', stk: 'seed', verb: '照顧菜園', run: () => OC.WorldUI.tap(it) };
@@ -1081,7 +1081,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

@@ -156,6 +156,7 @@
   const active = () => S().chars[S().activeId] || all()[0] || null;
   function add(c, opts = {}) {
     normalize(c); S().chars[c.id] = c; if (!S().roster.includes(c.id)) S().roster.push(c.id);
+    if (c.life && !c.life.age16) c.life.age16 = { grow: 'auto' };   /* 16.1: someone new grows up on their birthdays (characters from older saves stay 'manual' until the player changes it) */
     if (opts.activate || !S().activeId) S().activeId = c.id;
     St.touch('chars', { id: c.id, added: true }); return c;
   }

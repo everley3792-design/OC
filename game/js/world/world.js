@@ -184,7 +184,7 @@
     const r = a.c.width, x = a.c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, r, r);
     if (a.pixel === undefined) pixelFilter(a);
     x.imageSmoothingEnabled = !a.pixel; x.imageSmoothingQuality = 'high';   // big player images are downsampled with a proper filter
-    const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / (120 * (a.ext || 1)), a.t);
+    const res = OC.CharRender.draw(x, ch, p, r / 2, r * FEET, r / (120 * (a.ext || 1)) * (OC.People ? OC.People.heightOf(ch) : 1), a.t);   /* 16.1: rig-drawn children are smaller */
     if (res && res.state) a.lastState = res.state;
     if (res && res.loading) a.key = '';   // try again next frame once the frames are decoded
     if (!pl.sprite && quality.fx !== false) toyShade(x, r, a.ext || 1);

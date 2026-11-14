@@ -75,14 +75,16 @@
 
   // ---- the hooks (cheap: a character has at most 5 traits)
   const list = (c) => (c && c.personality && c.personality.traits) || [];
-  const mult = (c, kind, key) => { let m = 1; for (const id of list(c)) { const f = byId[id] && byId[id].fx[kind]; if (f && f[key] != null) m *= f[key]; } return m; };
-  const sum = (c, kind, key) => { let s = 0; for (const id of list(c)) { const f = byId[id] && byId[id].fx[kind]; if (f && f[key] != null) s += f[key]; } return s; };
+  /* 16.1: species and life stage carry effects in the same format (OC.People.fxList) and are added to the traits' */
+  const extra = (c) => (OC.People && c && c.profile ? OC.People.fxList(c) : []);
+  const mult = (c, kind, key) => { let m = 1; for (const id of list(c)) { const f = byId[id] && byId[id].fx[kind]; if (f && f[key] != null) m *= f[key]; } for (const e of extra(c)) { const f = e.fx[kind]; if (f && f[key] != null) m *= f[key]; } return m; };
+  const sum = (c, kind, key) => { let s = 0; for (const id of list(c)) { const f = byId[id] && byId[id].fx[kind]; if (f && f[key] != null) s += f[key]; } for (const e of extra(c)) { const f = e.fx[kind]; if (f && f[key] != null) s += f[key]; } return s; };
   const decay = (c, need) => mult(c, 'need', need);
   const sens = (c, emo) => mult(c, 'emo', emo);
   const act = (c, a) => sum(c, 'act', a);
   const soc = (c, k) => sum(c, 'soc', k);
-  const speed = (c) => { let m = 1; for (const id of list(c)) if (byId[id] && byId[id].fx.speed) m *= byId[id].fx.speed; return m; };
-  const accept = (c) => { let s = 0; for (const id of list(c)) if (byId[id] && byId[id].fx.accept) s += byId[id].fx.accept; return s; };
+  const speed = (c) => { let m = 1; for (const id of list(c)) if (byId[id] && byId[id].fx.speed) m *= byId[id].fx.speed; for (const e of extra(c)) if (e.fx.speed) m *= e.fx.speed; return m; };
+  const accept = (c) => { let s = 0; for (const id of list(c)) if (byId[id] && byId[id].fx.accept) s += byId[id].fx.accept; for (const e of extra(c)) if (e.fx.accept) s += e.fx.accept; return s; };
   /** which of the character's traits explains a preference for this activity / social move (for the "想法" panel) */
   const why = (c, kind, key) => { const t = list(c).map((id) => byId[id]).find((t2) => t2 && t2.fx[kind] && t2.fx[kind][key] > 0); return t ? t.zh : ''; };
 

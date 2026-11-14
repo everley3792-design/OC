@@ -154,7 +154,7 @@
     template(c, x) {
       const box = h('div');
       box.append(T('從範本開始', '可再自由修改'), tiles(Object.entries(Sty().PRESETS).map(([k, v]) => [k, v.name]), null, (k) => { const keep = Ch().clone({ profile: c.profile, personality: c.personality, quirks: c.quirks, speech: c.speech, parts: c.parts, actions: c.actions }); Object.assign(c.look, Ch().clone(Ch().fromPreset(k).look)); Object.assign(c, keep); x.changed('look', 'happy'); x.rebuild(); }, (k) => mini(Ch().fromPreset(k))));
-      box.append(T('種族'), seg(Ch().SPECIES.slice(0, 4), c.profile.species, (v) => { c.profile.species = v; if (v === 'bunny') c.look.ears = 'bunny'; if (v === 'bear') c.look.ears = 'bear'; if (v === 'cat') c.look.ears = 'cat'; x.changed('look', 'surprised'); x.rebuild(); }));
+      box.append(T('物種'), seg(Ch().SPECIES.filter((s) => ['cat', 'bunny', 'bear', 'dog'].includes(s[0])), c.profile.species, (v) => { c.profile.species = v; if (v === 'bunny') c.look.ears = 'bunny'; if (v === 'bear') c.look.ears = 'bear'; if (v === 'cat') c.look.ears = 'cat'; x.changed('look', 'surprised'); x.rebuild(); }));
       box.append(h('button.btn.block', { style: { marginTop: '12px' }, on: { click: () => { randomize(c, x.level); x.changed('look', 'surprised'); x.rebuild(); } } }, icon('dice', 's'), '隨機搭配'));
       return box;
     },
@@ -338,7 +338,9 @@
       const P = c.profile, f = (label, k, o = {}) => { const inp = h(o.area ? 'textarea' : 'input', { value: P[k] || '', maxLength: o.max || 20, placeholder: o.ph || '（可略過）', 'aria-label': label, rows: o.area ? 3 : null, style: o.area ? { width: '100%', border: 0, outline: 'none', background: 'transparent', resize: 'vertical', font: 'inherit', padding: '10px 0' } : null, on: { input: (e) => { P[k] = e.target.value; x.changed('profile'); } } }); return h('div', { style: { marginTop: '10px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '4px' } }, label + (o.req ? '（必填）' : '')), h('div.field', { style: o.area ? { height: 'auto' } : null }, inp)); };
       const box = h('div', null, T('基本資料'), f('名字', 'name', { req: true, max: 12, ph: '例如：麻糬' }), f('暱稱', 'nickname', { max: 12 }));
       if (x.level === 'detailed' || x.full) box.append(f('代稱', 'pronoun', { max: 8, ph: '例如：她、他、祂、牠、他們' }), f('性別', 'gender', { max: 10 }), f('年齡', 'age', { max: 8 }), f('生日', 'birthday', { max: 10, ph: '例如：3/14' }),
-        h('div', { style: { marginTop: '10px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '4px' } }, '種族'), seg(Ch().SPECIES, P.species, (v) => { P.species = v; x.changed('profile'); })));
+        h('div', { style: { marginTop: '10px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '4px' } }, '物種'), OC.UI.speciesPicker(P.species, (v) => { P.species = v; x.changed('profile'); })),
+        h('div', { style: { marginTop: '10px' } }, h('div.muted', { style: { fontSize: 'var(--fs-s)', marginBottom: '4px' } }, '長大'), seg(OC.People.GROW, (c.life.age16 || { grow: 'auto' }).grow, (v) => { c.life.age16 = Object.assign({}, c.life.age16 || {}, { grow: v }); x.changed('profile'); }),
+          h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '4px' } }, '年齡決定人生階段（嬰兒 0–1、幼兒 2–3、兒童 4–12、青少年 13–17、成人 18–39、中年 40–59、長者 60+）；未滿 18 歲不會有任何戀愛相關的互動。')));
       box.append(f('一句話介紹', 'intro', { max: 40 }));
       if (x.level === 'detailed' || x.full) {
         box.append(f('背景故事', 'backstory', { area: true, max: 600 }), f('關係偏好', 'relationPref', { max: 30, ph: '例如：喜歡安靜的朋友' }));

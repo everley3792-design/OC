@@ -232,6 +232,7 @@
   function relLabel(r) { return r ? (r.type === 'custom' && r.custom ? r.custom : TYPES[r.type]) : TYPES.stranger; }
   function romanceOK(a, b) {
     const R = S().life.settings.romance; if (!R.enabled || !R.adult[a] || !R.adult[b]) return false;
+    if (OC.People && (OC.People.minor(a) || OC.People.minor(b))) return false;   /* 16.1: under 18 by their age — never, whatever the settings say */
     if (R.forbid.includes([a, b].sort().join('|'))) return false;
     const fa = R.fixed[a], fb = R.fixed[b]; if ((fa && fa !== b) || (fb && fb !== a)) return false;
     return true;

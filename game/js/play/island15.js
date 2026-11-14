@@ -86,6 +86,7 @@
       const yr = OC.Clock.calMode() === 'game' ? 'Y' + OC.Clock.cal().year : now.getFullYear();
       if (!x.today) continue; const key = `bday:${x.c.id}:${yr}`; if (S().ledger && S().ledger.keys && S().ledger.keys[key]) continue;
       const r = OC.Tx.run(key, { get: { items: { cake: 1 } } }, `${name(x.c)}的生日蛋糕`); if (!r.ok) continue;
+      if (OC.People) OC.People.birthday(x.c);   /* 16.1: a year older ('auto'), a letter ('manual') or nothing ('fixed') */
       M().feel(x.c, 'happy', 0.7, '今天是生日'); M().remember(x.c, { type: 'event', imp: 0.85, text: OC.Clock.calMode() === 'game' ? `第 ${OC.Clock.cal().year} 年的生日。收到了蛋糕。` : `${now.getFullYear()} 年的生日。收到了蛋糕。`, key });
       OC.UI.toast(`今天是 ${name(x.c)} 的生日！背包裡多了一個蛋糕，可以送給${M().pron(x.c)}。`, 'gift');
       if (OC.Progress) OC.Progress.emit('birthday', { oc: x.c.id });

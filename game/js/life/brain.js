@@ -232,7 +232,8 @@
     for (const act of Object.keys(D().ACTS)) {
       if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
-      if (A.cmdOnly && b.queued !== act) continue;   /* 15.2: e.g. a part-time shift happens only when the player asks for it */
+      if (A.cmdOnly && b.queued !== act) continue;
+      if (OC.People && !OC.People.canDo(c, act)) continue;   /* 16.1: a baby does not cook, a toddler does not go fishing */   /* 15.2: e.g. a part-time shift happens only when the player asks for it */
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
       if (manualIdle && !(low && A.fx[low] > 0 && A.cat !== 'fun')) continue;   // manual: only what an urgent need asks for
       const sc = actScore(c, b, act); let target = null, ts = 0;
@@ -386,6 +387,7 @@
   /** player schedules an activity → done next (interrupts unless locked) */
   function command(id, act) {
     const b = brains[id]; if (!b || !D().ACTS[act]) return false;
+    { const c0 = OC.Chars.get(id); if (OC.People && c0 && !OC.People.canDo(c0, act)) return false; }
     b.queued = act; if (b.st === 'do' && D().ACTS[b.act] && D().ACTS[b.act].lock) { dlog(b, '玩家安排（做完手上的事再去）：' + D().ACTS[act].zh); if (b.manual) b.manualOverride = nowR() + 600; return 'later'; }
     if (b.st === 'do' && b.act !== act) finish(b, '玩家安排'); else if (b.st === 'go') abort(b, '玩家安排');
     if (b.st === 'social') endConvOf(b, 'interrupted');
@@ -442,6 +444,7 @@
     // 13.0: the character you follow may lead the way when it is not in manual mode — the view goes along (hooks.lead); it stays a while
     // after arriving, and it only leaves while you are looking at the world (no page, sheet, dialogue or decorating in the way)
     if (!placeOK() || settings().travel === false || manualMode(b)) return [];
+    if (OC.People && !OC.People.canTravel(c)) return [];   /* 16.1: babies and toddlers do not set off on their own */
     if (b.manual && (settings().lead === false || !(hooks.canLead && hooks.canLead()) || Sim().now() - (b.ledAt || -1e9) < 120 || nowR() - b.cmdAt < 60)) return [];
     const st = settings(); if (st.autonomy === 'paused' || st.autonomy === 'restricted') return [];
     if (M().urgent(c) && M().urgent(c) !== 'social') return [];
@@ -525,8 +528,8 @@
       if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
       const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
-      let list = here2.filter((x) => D().ACTS[x] && !D().ACTS[x].cmdOnly && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
-      if (placeOK() && !o.offline && settings().travel !== false && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
+      let list = here2.filter((x) => D().ACTS[x] && !D().ACTS[x].cmdOnly && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x)) && (!OC.People || OC.People.canDo(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
+      if (placeOK() && !o.offline && settings().travel !== false && (!OC.People || OC.People.canTravel(c)) && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
       const ch = choose(c, list); if (!ch) return;

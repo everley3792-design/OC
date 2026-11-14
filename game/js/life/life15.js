@@ -110,9 +110,11 @@
 
   // ======================= life stages =======================
   const STAGES = [[0, 'child', '童年'], [13, 'teen', '少年'], [18, 'young', '青年'], [30, 'adult', '成年'], [60, 'elder', '長者']];
-  function stage(c) { const a = parseInt(String(c.profile.age || '').replace(/[^\d]/g, ''), 10); if (!(a >= 0 && a < 1000)) return null; let s = STAGES[0]; for (const x of STAGES) if (a >= x[0]) s = x; return { age: a, id: s[1], zh: s[2] }; }
+  /* 16.1: the stages live in OC.People (seven of them, 嬰兒 → 長者); this stays as the old entry point */
+  function stage(c) { if (OC.People) { const s = OC.People.stage(c); return s ? { age: s.age, id: s.id, zh: s.zh } : null; } const a = parseInt(String(c.profile.age || '').replace(/[^\d]/g, ''), 10); if (!(a >= 0 && a < 1000)) return null; let s = STAGES[0]; for (const x of STAGES) if (a >= x[0]) s = x; return { age: a, id: s[1], zh: s[2] }; }
   /** the player's choice on a birthday: one year older (once per year; key age:<oc>:<year>) */
   function growUp(c) {
+    if (OC.People) return OC.People.growUp(c, 'player');
     const s0 = stage(c); if (!s0) return { ok: false, why: '還沒有寫年齡' };
     const y = new Date().getFullYear(), k = `age:${c.id}:${y}`; const done = (S().play.aged = S().play.aged || {}); if (done[k]) return { ok: false, why: '今年已經長大過了' };
     c.profile.age = String(s0.age + 1); done[k] = Date.now(); Ch().save(c); const s1 = stage(c);

@@ -17,6 +17,7 @@
 
   function add(id, act) {
     const list = q(id), b = B().get(id); if (!list || !D().ACTS[act]) return false;
+    { const c = OC.Chars.get(id); if (OC.People && c && !OC.People.canDo(c, act)) { OC.UI.toast(`${OC.Chars.name(c)}：${OC.People.whyNot(c, act)}`, 'info'); return 'young'; } }   /* 16.1 */
     if (!current(b) && !list.length) { const r = B().command(id, act); if (r === false) return false; St.touch('life', { queue: id }); return 'now'; }
     if (list.length >= MAX) return false;
     list.push(act); St.touch('life', { queue: id }); return 'queued';

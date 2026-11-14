@@ -286,7 +286,7 @@
       b.append(small('牠會照你的安排去做（正在睡覺或吃飯時會先做完）。沒有自訂動畫時使用內建動作。'),
         h('div.act-grid', { style: { marginTop: '10px' } }, ...Object.entries(D().ACTS).map(([k, x]) => {
           const denied = S().life.settings.deny.includes(k);
-          return h('button.act-btn', { disabled: denied, on: { click: () => { api.close(); const r = OC.Queue ? OC.Queue.add(id, k) : B().command(id, k); toast(r === 'queued' ? `排進清單：${x.zh}（做完前面的就去）` : r ? `已安排：${x.zh}` : (OC.Queue && OC.Queue.list(id).length > OC.Queue.MAX ? '清單滿了，先取消一項' : '現在無法安排'), 'clock'); } } }, h('span.emoji', null, x.ic), h('span', null, x.zh));
+          return h('button.act-btn', { disabled: denied, on: { click: () => { api.close(); const r = OC.Queue ? OC.Queue.add(id, k) : B().command(id, k); if (r === 'young') return; toast(r === 'queued' ? `排進清單：${x.zh}（做完前面的就去）` : r ? `已安排：${x.zh}` : (OC.Queue && OC.Queue.list(id).length > OC.Queue.MAX ? '清單滿了，先取消一項' : '現在無法安排'), 'clock'); } } }, h('span.emoji', null, x.ic), h('span', null, x.zh));
         })));
     });
   }
@@ -471,7 +471,7 @@
         T('不做的活動', '勾掉的活動不會自動進行'), h('div.chips', null, ...Object.entries(D().ACTS).map(([k, x]) => { const on = !st.deny.includes(k); return h('button.chip-btn' + (on ? '.on' : ''), { on: { click: () => { st.deny = on ? st.deny.concat(k) : st.deny.filter((d) => d !== k); St.touch('life'); p.refresh(p); } } }, `${x.ic} ${x.zh}`); })),
         T('戀愛', '預設關閉'), card(h('div.hstack', null, h('span.grow', null, '允許戀愛相關事件'), toggle(R.enabled, (v) => { R.enabled = v; St.touch('life'); p.refresh(p); })),
           small('只有你標示為「成年」的角色才會參與；成為戀人或伴侶一定要經過你同意。也可以禁止特定配對。'),
-          R.enabled ? h('div', { style: { marginTop: '10px' } }, h('div.muted', null, '成年角色'), h('div.chips', null, ...chars.map((c) => h('button.chip-btn' + (R.adult[c.id] ? '.on' : ''), { on: { click: () => { R.adult[c.id] = !R.adult[c.id]; St.touch('life'); p.refresh(p); } } }, name(c) + (c.profile.age ? `（${c.profile.age}）` : ''))))) : null,
+          R.enabled ? h('div', { style: { marginTop: '10px' } }, h('div.muted', null, '成年角色'), h('div.chips', null, ...chars.map((c) => { const minor = OC.People && OC.People.minor(c); return h('button.chip-btn' + (R.adult[c.id] && !minor ? '.on' : ''), { disabled: minor, title: minor ? '未滿 18 歲' : null, on: { click: () => { if (minor) return; R.adult[c.id] = !R.adult[c.id]; St.touch('life'); p.refresh(p); } } }, name(c) + (c.profile.age ? `（${c.profile.age}）` : '') + (minor ? '・未成年' : '')); }))) : null,
           R.enabled && chars.length > 1 ? h('div', { style: { marginTop: '10px' } }, h('div.muted', null, '禁止的配對'), h('div.chips', null, ...pairs(chars).map(([a, b]) => { const k = [a.id, b.id].sort().join('|'), on = R.forbid.includes(k); return h('button.chip-btn' + (on ? '.on' : ''), { on: { click: () => { R.forbid = on ? R.forbid.filter((x) => x !== k) : R.forbid.concat(k); St.touch('life'); p.refresh(p); } } }, `${name(a)} × ${name(b)}`); }))) : null),
         T('內容'), h('div.list', null, row('chat', '對話與事件資料', '自訂台詞、匯入／匯出', null, () => Pg().open('dialogue')), S().settings.dev ? row('target', '開發者診斷', '需求、情緒、候選分數、事件條件', null, () => Pg().open('lifedev')) : null));
     },
