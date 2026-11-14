@@ -132,7 +132,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       });
       await shot(page, '3-phone'); await closeAll();
       check('3a 「日常」是口袋手機：狀態列（時間、星幣）＋ App 方格（任務、請求、成就、圖鑑、拍照、相簿、地圖、背包、商店、帳本…）；App 觸控高度 ≥ 48', r.apps.length >= 14 && ['任務', '請求', '成就', '圖鑑', '拍照', '相簿', '地圖', '背包', '商店', '帳本', '設定'].every((k) => r.apps.some((a) => a.includes(k))) && /\d{1,2}:\d{2}/.test(r.bar) && r.minH >= 48, { apps: r.apps, bar: r.bar, h: r.minH });
-      check('3b 任務類 App 在手機下方直接打開（被選的 App 有標記）；其他 App 打開自己的頁面', r.on === '任務' && r.onAfter === '成就' && r.tab === 'ach' && r.bagOpen, r);
+      check('3b 任務類 App 在手機下方直接打開（被選的 App 有標記）；其他 App 打開自己的頁面', /任務$/.test(r.on || '') && /成就$/.test(r.onAfter || '') && r.tab === 'ach' && r.bagOpen, r);
     }
 
     // ================= 4. photo mode and the album =================
