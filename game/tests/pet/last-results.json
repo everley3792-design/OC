@@ -1,158 +1,116 @@
 [
  {
-  "name": "2a 每個桌面動作都有影格組（46 個：21 個基本＋10 個 11.0 小動作＋15 個 12.0 雙人動作，含爬牆／吊掛／偷看／掉落）",
+  "name": "16a 音效清單和原生 PetSound.CLIPS 完全一致（改一邊沒改另一邊會被抓到）",
   "ok": true,
-  "detail": "idle,walk,run,sit,sleep,jump,fall,climb,hang,peek,drag,happy,pet,eat,surprised,talk,greet,sad,yawn,shy,cheer,wave,clap,giggle,sigh,sneeze,hiccup,aha,bow,spin,wiggle,hug,hugme,highfive,comfort,comforted,feedbite,bitefed,sidebyside,chase,argue,upset,apologize,accept,turnaway,listen"
+  "detail": {
+   "game": [
+    "tap_a",
+    "tap_b",
+    "purr",
+    "wake",
+    "jump",
+    "land",
+    "whoosh",
+    "talk_a",
+    "talk_b",
+    "talk_c",
+    "munch",
+    "gift",
+    "meet_good",
+    "meet_bad"
+   ],
+   "kotlin": [
+    "tap_a",
+    "tap_b",
+    "purr",
+    "wake",
+    "jump",
+    "land",
+    "whoosh",
+    "talk_a",
+    "talk_b",
+    "talk_c",
+    "munch",
+    "gift",
+    "meet_good",
+    "meet_bad"
+   ]
+  }
  },
  {
-  "name": "2a2 11.0 新增的 10 個小動作（揮手、拍手、咯咯笑、嘆氣、打噴嚏、打嗝、靈光一閃、鞠躬、轉圈、扭一扭）都輸出：4 格以上、播一次、畫面真的在變",
+  "name": "16b 每個音效都是合法的 16-bit 單聲道 WAV（22 050 Hz）、長度 0.05–1.2 秒、有聲音但不爆音（峰值 0.2–0.85）、頭尾沒有爆音；每隻不到 400 KB",
   "ok": true,
-  "detail": [
-   {
-    "k": "wave",
-    "n": 10,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
+  "detail": {
+   "bytes": 256290,
+   "ms": 92,
+   "bad": []
+  }
+ },
+ {
+  "name": "16c 同一隻每次輸出完全相同（重新輸出可以跳過）；不同的 OC 聲音不同（用牠自己的聲線）",
+  "ok": true,
+  "detail": {
+   "same": true,
+   "diff": 14,
+   "f0": [
+    341,
+    398
+   ]
+  }
+ },
+ {
+  "name": "16d 預設關閉：啟動桌寵不會輸出任何音效；設定檔裡 sound 是 false",
+  "ok": true,
+  "detail": {
+   "ok": true,
+   "sounds": 0,
+   "cfg": false
+  }
+ },
+ {
+  "name": "16e 打開「桌面音效」：每隻桌寵輸出 14 個音效（用 OCNative.petSounds）；設定檔帶上開關與音量；沒變就不重做",
+  "ok": true,
+  "detail": {
+   "k": 1,
+   "ids": 1,
+   "exported": 1,
+   "n": [
+    14
+   ],
+   "cfg": {
+    "on": true,
+    "vol": 0.6
    },
-   {
-    "k": "clap",
-    "n": 4,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
+   "same": true,
+   "again": 45
+  }
+ },
+ {
+  "name": "16f 音效輸出失敗不會讓桌寵起不來（只是安靜），並記在同步紀錄",
+  "ok": true,
+  "detail": {
+   "ok": true,
+   "running": true,
+   "log": [
+    "push:true",
+    "sounds:false",
+    "push:true"
+   ]
+  }
+ },
+ {
+  "name": "16g 寵物中心有「桌面音效」開關（預設關、沒有音量列）；打開後出現音量與「試聽」，並開始輸出音效",
+  "ok": true,
+  "detail": {
+   "ui0": {
+    "has": true,
+    "vol": false
    },
-   {
-    "k": "giggle",
-    "n": 5,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "sigh",
-    "n": 10,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "sneeze",
-    "n": 10,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "hiccup",
-    "n": 10,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "aha",
-    "n": 10,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "bow",
-    "n": 9,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "spin",
-    "n": 8,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
-   },
-   {
-    "k": "wiggle",
-    "n": 6,
-    "loop": "once",
-    "src": "rig",
-    "differs": true
+   "ui1": {
+    "on": true,
+    "vol": true,
+    "exported": 1
    }
-  ]
- },
- {
-  "name": "2b 玩家影格：順序（紅綠藍黃）與每格時長原樣保留",
-  "ok": true,
-  "detail": "100,010,001,110 300,100,100,100"
- },
- {
-  "name": "2c 循環模式、事件、優先級也帶到桌面",
-  "ok": true,
-  "detail": {
-   "frames": [
-    "walk_0.png",
-    "walk_1.png",
-    "walk_2.png",
-    "walk_3.png"
-   ],
-   "durs": [
-    300,
-    100,
-    100,
-    100
-   ],
-   "loop": "pingpong",
-   "repeat": 0,
-   "speed": 1,
-   "priority": 6,
-   "interruptible": true,
-   "events": [
-    {
-     "frame": 2,
-     "type": "bubble",
-     "data": "一二！"
-    }
-   ],
-   "oriented": false,
-   "src": "player",
-   "doc": "anmw8y8gjzwc4y"
-  }
- },
- {
-  "name": "2d 沒畫的動作沿用備用鏈：跑步 → 玩家的走路影格",
-  "ok": true,
-  "detail": "player"
- },
- {
-  "name": "2e 玩家畫的「攀爬」是為牆面畫的（oriented，不再旋轉）；備用的吊掛會旋轉",
-  "ok": true,
-  "detail": {
-   "climb": true,
-   "hang": [
-    "player",
-    false
-   ]
-  }
- },
- {
-  "name": "2f 完全沒有影格的動作用內建骨架（不會空白）",
-  "ok": true
- },
- {
-  "name": "2g 同一角色所有影格同一框與腳底點（切換動作不跳動）",
-  "ok": true
- },
- {
-  "name": "2h 動畫設定頁：可把桌面動作對應到任何動作，並「在桌面測試」",
-  "ok": true,
-  "detail": {
-   "mapped": "cheer",
-   "tests": [
-    [
-     "cmw8y7t6x2lc6",
-     "jump"
-    ]
-   ]
   }
  },
  {

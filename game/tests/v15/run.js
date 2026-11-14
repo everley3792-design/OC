@@ -391,7 +391,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       /* leaving with unsaved strokes asks; the draft comes back next time */
       await page.touchscreen.tap(...c2(5, 9)); await wait(page, 300);
       const ask = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('.onb.design .icon-btn').click(); await sleep(500); const d = [...document.querySelectorAll('.sheet')].find((x) => x.textContent.includes('離開設計亭')); return { asked: !!d, text: d ? d.textContent.slice(0, 40) : '' }; });
-      await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((x) => x.textContent === '離開'); if (b) b.click(); }); await wait(page, 500);
+      await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet .btn')].find((x) => x.textContent === '離開'); if (b) b.click(); }); await page.waitForFunction(() => !document.querySelector('.onb.design'), null, { timeout: 8000 }).catch(() => {});   /* it removes itself after its fade; at ~2 fps that can take longer than a fixed wait */
       const back = await page.evaluate(async () => { const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const gone = !document.querySelector('.onb.design'); OC.Design.open(); await sleep(700); const st = OC.Design.open_.state; return { gone, px: st.px[9 * 12 + 5], draft: !!OC.Store.s.designDraft }; });
       await closeAll(); await page.evaluate(() => { const x = document.querySelector('.onb.design'); if (x) x.remove(); });
       check('9c 沒儲存就離開會先問；草稿自動保存，下次打開還在', ask.asked && back.gone && back.px === '2' && back.draft, { ask, back });

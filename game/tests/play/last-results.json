@@ -1,44 +1,20 @@
 {
- "at": "2026-11-13T05:45:11.275Z",
+ "at": "2026-11-14T14:00:40.304Z",
  "results": [
   {
-   "name": "1a 不同個性的 OC 最想提出的請求不同",
+   "name": "11a 跳過演出：立刻結束，資料照樣正確（扣 1 個、品嚐紀錄、回憶各一次）",
    "ok": true,
-   "detail": "麻糬:visit/taste/toy 栗子:taste/toy/meet 小空:learn/taste/together"
+   "detail": "{\"ms\":50,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
   },
   {
-   "name": "1b 同一個請求，不同 OC 說法不同（聲線）",
-   "ok": false,
-   "detail": "麻糬「有件事想拜託你：想吃起司。若不方便，直接說。」 栗子「有件事想拜託你：想吃起司。若不方便，直接說。」 小空「有件事想拜託你：想吃起司。若不方便，直接說。」"
-  },
-  {
-   "name": "1c 演出版本依個性不同（活潑／害羞／冷靜…）",
+   "name": "11b 跳過後角色沒有卡在演出狀態",
    "ok": true,
-   "detail": "麻糬:bright 栗子:bright 小空:shy"
+   "detail": "[]"
   },
   {
-   "name": "1d 有請求的 OC 頭上出現泡泡（可以點）",
-   "ok": true
-  },
-  {
-   "name": "1e 接受 → 進行中 → 實際陪玩後完成",
+   "name": "11c 觀看中的特殊事件可以跳過：立刻結束、結果只套用一次、角色沒有卡住",
    "ok": true,
-   "detail": "想玩木頭積木：active → done"
-  },
-  {
-   "name": "1f 完成後：獎勵入帳一次、好感上升、寫入回憶",
-   "ok": true,
-   "detail": "{\"aff\":6,\"mem\":true,\"paid\":true,\"coins\":450,\"n\":1}"
-  },
-  {
-   "name": "1g 同一個請求就算再次觸發也不會重複給獎勵",
-   "ok": true,
-   "detail": "{\"coins\":0,\"state\":\"done\"}"
-  },
-  {
-   "name": "1h 婉拒：有冷卻、不扣好感（只有符合個性的小反應）",
-   "ok": true,
-   "detail": "{\"state\":\"declined\",\"cd\":true,\"affSame\":true}"
+   "detail": "{\"started\":true,\"id\":\"lonelyMoment\",\"ms\":150,\"ended\":true,\"logged\":1,\"why\":\"done\",\"held\":[],\"ui\":false}"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",
