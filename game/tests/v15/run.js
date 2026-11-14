@@ -447,7 +447,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       check('10e 怕的東西：每個角色 0–2 個（勇敢的沒有）；在怕的情況會緊張；在那時候摸摸牠三次就不怕了（留下回憶）', fr.counts.every((n) => n >= 0 && n <= 2) && fr.brave === 0 && fr.nowFear === 'thunder' && fr.lv === 0 && fr.mem, fr);
       /* life stages: from the age the player wrote; one year older only by the player's choice, once a year */
       const ls = await page.evaluate(() => { const L = OC.Life15, c = OC.Chars.active(); c.profile.age = '12'; const s0 = L.stage(c); const r1 = L.growUp(c); const r2 = L.growUp(c); c.profile.age = ''; return { s0: s0 && s0.zh, r1: r1.ok && r1.to.zh + r1.to.age, r2: r2.ok, none: L.stage(c) }; });
-      check('10f 人生階段：依你寫的年齡（童年→少年→青年→成年→長者）；只有你按下才會長大一歲，一年一次；沒寫年齡就沒有階段', ls.s0 === '童年' && ls.r1 === '少年13' && ls.r2 === false && ls.none === null, ls);
+      check('10f 人生階段：依你寫的年齡（16.1 起七個：嬰兒→幼兒→兒童→青少年→成人→中年→長者）；按下才會長大一歲，一年一次；沒寫年齡就沒有階段', ls.s0 === '兒童' && ls.r1 === '青少年13' && ls.r2 === false && ls.none === null, ls);
       /* the serial story: three parts carried by flags; part two asks you, and your answer picks the ending */
       const sr = await page.evaluate(() => { const ids = OC.Events.defs().map((e) => e.id); const t2 = OC.Events.defs().find((e) => e.id === 'thank2'); const ch = t2.steps.find((s) => s[0] === 'choice'); const lines = ['ev_thank1', 'ev_thank2', 'ev_thank3', 'ev_thank3_r', 'ev_thank3w'].every((k) => OC.LifeData.LINES.some((l) => l.cat === k));
         return { has: ['thank1', 'thank2', 'thank3', 'thank3w'].every((k) => ids.includes(k)), opts: ch[2].map((o) => o.fx.flag), lines }; });
