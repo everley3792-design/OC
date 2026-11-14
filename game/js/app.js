@@ -128,7 +128,8 @@
       hud.me.addEventListener('pointerdown', (e) => { hud._lp = false; sx = e.clientX; clearTimeout(lp); lp = setTimeout(() => { hud._lp = true; sx = null; haptic('long'); OC.LifeUI.controlSheet(); }, 520); });
       hud.me.addEventListener('pointermove', (e) => { if (sx == null) return; const d = e.clientX - sx; if (Math.abs(d) > 34) { clearTimeout(lp); sx = null; hud._lp = true; switchBy(d < 0 ? 1 : -1); } });
       for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hud.me.addEventListener(ev, () => { clearTimeout(lp); sx = null; }); }
-    hud.others = h('div.np-others', { role: 'list', 'aria-label': '其他角色' });
+    /* one button for the whole stack (the HUD keeps its few controls): tap = the list of everyone to play, swiping the name card = the next / previous one */
+    hud.others = h('button.np-others', { 'aria-label': '切換操控角色', on: { click: () => { haptic('tick'); toggleStatus(true); } } });
     hud.time = h('span.num'); hud.wx = h('span'); hud.wxIc = h('span.hud-wx');
     hud.timeBtn = h('button.hud-time', { 'aria-label': '時間與天氣', on: { click: () => { haptic('tick'); timePanel(); } } }, hud.wxIc, h('div', null, h('b', null, hud.wx), hud.time));
     hud.badge = h('span.badge.num');
@@ -190,8 +191,9 @@
       const ok = others.map((x) => [x.id, x.updated, x.status.onIsland ? 1 : 0, (x.life.loc || 'isle') === here ? 1 : 0, x.life.trip && x.life.trip.eta > now ? 1 : 0, OC.Brain.get(x.id) && OC.Brain.get(x.id).conv ? 1 : 0].join(':')).join('|');
       if (ok !== hud._ok) { hud._ok = ok; const show = others.slice(0, 4), more = others.length - show.length;
         hud.others.replaceChildren(...show.map((x) => { const cv = h('canvas', { width: 72, height: 72 }); OC.CharRender.portrait(cv, x, { pose: { mouth: 'smile' } }); const pz = placeOf(x), away = x.status.onIsland && pz.id !== here, b = OC.Brain.get(x.id);
-          return h('button.np-mini' + (x.status.onIsland ? '' : '.rest') + (away ? '.away' : '') + (b && b.conv ? '.chat' : ''), { role: 'listitem', 'data-id': x.id, 'aria-label': `操控${OC.Chars.name(x)}（${x.status.onIsland ? (x.life.trip && x.life.trip.eta > now ? '在路上' : pz.zh) : '休息中'}）`, on: { click: () => switchTo(x.id) } }, cv, h('i')); }),
-          ...(more > 0 ? [h('button.np-mini.np-more', { 'aria-label': `還有 ${more} 位`, on: { click: () => { haptic('tick'); toggleStatus(true); } } }, '+' + more)] : []));
+          return h('span.np-mini' + (x.status.onIsland ? '' : '.rest') + (away ? '.away' : '') + (b && b.conv ? '.chat' : ''), { 'data-id': x.id }, cv, h('i')); }),
+          ...(more > 0 ? [h('span.np-mini.np-more', null, '+' + more)] : []));
+        hud.others.setAttribute('aria-label', '切換操控角色：' + others.map((x) => OC.Chars.name(x)).join('、'));
         hud.others.hidden = !others.length; } }
     { const ql = OC.Queue ? OC.Queue.list(c.id) : [], qk = ql.map((x) => x.act + x.state).join(',');
       if (qk !== hud._qk) { hud._qk = qk; hud.queue.hidden = !ql.length;
@@ -417,7 +419,8 @@
   function presentHere() { const now = OC.Sim.now(); return OC.Chars.all().filter((c) => c.id !== S().activeId && c.status.onIsland && (c.life.loc || 'isle') === Wd.area.id && !(c.life.trip && c.life.trip.eta > now)).slice(0, MAX_MATES); }
   /** someone arrived / left while we are here → add / remove actors (arrivals walk in from the door) */
   function syncPresence() {
-    if (!Wd.area || !player) return; const want = presentHere().map((c) => c.id);
+    if (!Wd.area || !player || player.cid !== S().activeId) return;   /* 16.0: while the played character is being swapped (refreshActors runs a moment after setActive) leave the mates alone — the one about to be played is still standing here as a mate */
+    const want = presentHere().map((c) => c.id);
     for (const id of Object.keys(mates)) if (!want.includes(id)) { const b = OC.Brain.get(id); if (b && b.leaving) continue; OC.Brain.detach(id); Wd.removeActor(mates[id]); delete mates[id]; }
     want.forEach((id, i) => { if (mates[id]) return; const c = OC.Chars.get(id), tr = c.life.trip; addMate(c, i, tr ? OC.Brain.entryPoint(tr.from) : null); if (tr) OC.Brain.arrived(id); });
   }

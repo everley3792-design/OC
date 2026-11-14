@@ -43,8 +43,8 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       const need = await page.evaluate(() => document.querySelectorAll('.np-need').length);
       check('3a 名牌卡：心情色環、操控模式小圖示、「地點・在做什麼」、其他角色小頭像', r.n === r.want && r.ring && r.badge && r.hasPlace, r);
       check('3b 需求偏低時才浮出需求小圖示', need >= 1, need);
-      const sw = await page.evaluate(async () => { const was = OC.Store.s.activeId; document.querySelector('.np-mini').click(); await new Promise((r) => setTimeout(r, 1500)); return { changed: OC.Store.s.activeId !== was }; });
-      check('3c 點後面的小頭像＝切換操控', sw.changed, sw);
+      const sw = await page.evaluate(async () => { const was = OC.Store.s.activeId; document.querySelector('.np-others').click(); await new Promise((r) => setTimeout(r, 900)); const pick = [...document.querySelectorAll('.sc-pick')].find((b) => !b.classList.contains('on')); if (pick) pick.click(); await new Promise((r) => setTimeout(r, 1500)); return { opened: !!pick, changed: OC.Store.s.activeId !== was, buttons: document.querySelectorAll('#hud button').length }; });
+      check('3c 點小頭像疊＝打開狀態卡的角色清單，選一位＝切換操控；整疊只算一個按鈕', sw.opened && sw.changed, sw);
     }
     if (want(4)) {
       await page.evaluate(() => { const S = OC.Store.s; if (OC.World.area.id !== 'isle') OC.WorldUI.travel('isle'); S.settings.walkTo = false; });

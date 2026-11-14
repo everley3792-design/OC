@@ -382,3 +382,6 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 /* 16.0 — mailbox letters */
 .mail-item { margin-top: 8px; } .mail-item p { margin: 6px 0 0; font-size: var(--fs-s); line-height: 1.5; }
 .mail-item.new { box-shadow: var(--hl), 0 3px 0 var(--lip), inset 3px 0 0 var(--alert); }
+
+.np-others { background: none; border: 0; padding: 0; } .np-others::after { content: ""; position: absolute; inset: -6px; }
+.np-mini { display: inline-block; }

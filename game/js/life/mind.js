@@ -192,9 +192,14 @@
      * is written to it (or its list of shared interests is touched). */
     const blank = { fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0, shared: [], mems: 0, type: 'stranger', fixed: false, custom: '', since: null, last: 0, talks: 0 };
     if (typeof Proxy !== 'function') return (R[key] = blank);
-    const keep = () => { const R2 = S().life.rel; if (!R2[key]) R2[key] = blank; };
-    return new Proxy(blank, { set(t, k, v) { t[k] = v; keep(); return true; }, get(t, k) { if (k === 'shared') keep(); return t[k]; }, deleteProperty(t, k) { delete t[k]; keep(); return true; } });
+    /* the same stand-in is handed out for the same pair until something is written, so two readers of one pair never see different records */
+    const hit = standIn.get(key); if (hit && hit.rel === R) return hit.p;
+    const keep = () => { const R2 = S().life.rel; if (!R2[key]) R2[key] = blank; standIn.delete(key); };
+    const p = new Proxy(blank, { set(t, k, v) { t[k] = v; keep(); return true; }, get(t, k) { if (k === 'shared') keep(); return t[k]; }, deleteProperty(t, k) { delete t[k]; keep(); return true; } });
+    standIn.set(key, { rel: R, p }); if (standIn.size > 200) standIn.clear();
+    return p;
   }
+  const standIn = new Map();
   function relPeek(a, b) { return S().life.rel[a + '>' + b] || null; }
   function autoType(r) {
     if (r.fixed || ['lover', 'partner', 'family', 'custom'].includes(r.type)) return r.type;
