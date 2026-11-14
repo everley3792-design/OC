@@ -69,6 +69,8 @@
   function begin(ev, A, Bc, p) {
     const ba = visible(A.id), bb = Bc ? visible(Bc.id) : null;
     const canStage = !cur && ba && (!Bc || bb) && !hooks.busy() && gapOK(ev) && B().available(ba) !== false && (!bb || !bb.holds.size) && !ba.holds.size;
+    /* 16.2: something the player asked for (an interaction, an invitation) is not taken over by an event — the event waits */
+    if ([ba, bb].some((x) => x && ((x.conv && x.conv.byPlayer) || (x.invited && x.invited.byPlayer)))) return false;
     if (!canStage) {
       if ((ev.prio || 1) >= 4 || ev.trigger === 'relUp' || ev.trigger === 'meet') { mark(ev, A, Bc, p); results(ev, A, Bc, p, false); return true; }
       return false;

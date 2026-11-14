@@ -109,6 +109,7 @@
     let p = 0.58;
     if (it.tone === 'love' && !M().romanceOK(A.id, B.id)) return { p: 0, parts: [['戀愛的條件不成立', -1]], hard: true };
     p += add('好感', (r.aff - 30) / 120); p += add('信任', (r.trust - 10) / 400); p += add('熟悉', r.fam / 500); p -= -add('不合', -r.conflict / 80);
+    if (it.intim <= 0.1 && it.tone !== 'neg') p += add('只是很普通的事', (0.12 - it.intim) * 2.2);   /* a hello or a chat about the weather is fine with almost anyone */
     const cl = closeness(r), gap = it.intim - cl;
     if (gap > 0) p += add('太快、太親近', -gap * 1.4 * (has(B, 'shy') ? 1.4 : 1) * (it.tone === 'love' ? 1.2 : 1));
     else if (it.intim > 0.3) p += add('剛剛好的距離', Math.min(0.12, -gap * 0.2));
@@ -221,6 +222,8 @@
     if (INTER[kind] && INTER[kind].tone === 'love' && !M().romanceOK(aId, bId)) return { ok: false, why: OC.People && (OC.People.minor(A) || OC.People.minor(B)) ? '未成年不會有戀愛相關的互動' : '戀愛功能沒有為他們打開（生活設定）' };
     if (OC.People && !OC.People.canDo(A, 'chat')) return { ok: false, why: OC.People.whyNot(A, 'chat') };
     if (o.player) { const no = defies(A, B, kind); if (no) { St.emit('will:defy', { a: aId, b: bId, kind, why: no }); return { ok: false, why: no, defy: true }; } }
+    { const ev = OC.Events && OC.Events.current; if (ev && ev.cast && [ev.cast.a, ev.cast.b].some((x) => x && (x.id === aId || x.id === bId))) return { ok: false, why: '他們正在經歷一件特別的事' }; }
+    if (bb.holds.size || bb.st === 'event') return { ok: false, why: `${name(B)}在忙` };
     if (ba.st === 'do') OC.Brain.finish(ba, '玩家安排'); else if (ba.st === 'go') OC.Brain.abort(ba, '玩家安排');
     if (ba.st === 'social') return { ok: false, why: `${name(A)}正在和別人說話` };
     ba.st = 'think';

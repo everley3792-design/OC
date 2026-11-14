@@ -26,7 +26,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
     }
     if (want(2)) {
       const r = await page.evaluate(async () => {
-        const all = OC.Chars.all(); const act0 = OC.Store.s.activeId; all.forEach((c) => OC.Brain.setControl(c.id, 'manual')); all[2].life.loc = 'cafe'; all[2].life.pos = null; OC.App.syncPresence();
+        const all = OC.Chars.all(); const act0 = OC.Store.s.activeId; all.forEach((c) => OC.Brain.setControl(c.id, 'manual')); for (const c of all) { const bb = OC.Brain.get(c.id); if (!bb) continue; if (bb.conv) OC.Brain.Social.end(bb.conv, 't'); if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); const a = OC.App.actorOf(c.id); if (a) a.path = null; } await new Promise((r) => setTimeout(r, 600)); all[2].life.loc = 'cafe'; all[2].life.pos = null; OC.App.syncPresence();
         const before = all.map((c) => { const a = OC.App.actorOf(c.id); return a ? [Math.round(a.x), Math.round(a.y)] : null; });
         OC.Chars.setActive(all[1].id); await new Promise((r) => setTimeout(r, 1500));
         const after = all.map((c) => { const a = OC.App.actorOf(c.id); return a ? [Math.round(a.x), Math.round(a.y)] : null; });
@@ -177,6 +177,65 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       check('11a 生日自動長大：12 → 13 歲並進入青少年（一年一次，再叫一次不會再長）；留下回憶', r.a1 === '13' && r.a2 === '13' && r.mem, r);
       check('11b 「我按了才長大」：生日只寄一封信，按下才長一歲（一年一次）；「固定年齡」不變', r.m1 === '20' && r.letter && r.g && r.m2 === '21' && !r.again && r.e === '40', r);
       check('11c 舊存檔的角色不會突然自己長大（預設「我按了才長大」）', r.oldGrow === 'manual', r);
+    }
+    if (want(12)) {
+      /* 16.2 the willingness model: nothing is locked, the answer depends on the other one */
+      const r = await page.evaluate(() => {
+        const fresh16 = (c) => { c.life.emo.list = []; c.life.emo.dom = 'neutral'; c.personality.traits = []; c.personality.social = 55; c.personality.expression = 55; c.profile.species = 'human'; c.profile.age = '25'; Object.assign(c.needs, { food: 90, sleep: 90, energy: 80, fun: 70, social: 60, comfort: 80, interest: 70, active: 70 }); c.life.w16 = { rej: {}, last: {} }; }; const [a, b] = OC.Chars.all(), W = OC.Will, M = OC.Mind; fresh16(a); fresh16(b); a.profile.age = '25'; b.profile.age = '24';
+        const set = (v) => { for (const [x, y] of [[a, b], [b, a]]) Object.assign(M.rel(x.id, y.id), { fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0 }, v); };
+        set({}); const hugStranger = W.willing(b, a, 'hug').p, helloStranger = W.willing(b, a, 'hello').p;
+        set({ fam: 85, aff: 85, trust: 75, intim: 60 }); const hugFriend = W.willing(b, a, 'hug').p;
+        const shy0 = b.personality.traits.slice(); b.personality.traits = ['shy']; set({ fam: 30, aff: 30, trust: 30, intim: 5 }); const hugShy = W.willing(b, a, 'hug').p; b.personality.traits = []; const hugNotShy = W.willing(b, a, 'hug').p; b.personality.traits = shy0;
+        set({ fam: 30, aff: 25, trust: 20 }); const p0 = W.willing(b, a, 'chat').p; b.life.emo.list = []; OC.Mind.feel(b, 'annoyed', 1, 'test'); b.life.emo.dom = 'annoyed'; const dom = OC.Mind.dominant(b), pAnn = W.willing(b, a, 'chat').p; b.life.emo.dom = 'neutral'; b.life.emo.list = [];
+        W.inter('kisscheek'); const R = OC.Store.s.life.settings.romance; R.enabled = true; R.adult[a.id] = R.adult[b.id] = true; set({ fam: 80, aff: 85, trust: 70, intim: 75 }); const kissAdult = W.hint(b, a, 'kisscheek').face;
+        b.profile.age = '15'; const kissMinor = W.hint(b, a, 'kisscheek').face, mOK = M.romanceOK(a.id, b.id); b.profile.age = '24'; R.enabled = false; const kissOff = W.hint(b, a, 'kisscheek').face;
+        set({ fam: 20, aff: 20, trust: 20 }); a.life.w16 = { rej: {}, last: { [b.id]: { kind: 'hello', at: OC.Sim.now() } } }; const rep = W.willing(b, a, 'hello').p; a.life.w16.last = {}; const fresh = W.willing(b, a, 'hello').p;
+        const reacts = new Set(); set({ fam: 30, aff: 20, trust: 20, intim: 0 }); for (let i = 0; i < 200; i++) { const roll = i / 200; reacts.add(W.react(b, a, 'hug', W.willing(b, a, 'hug').p, roll)); reacts.add(W.react(b, a, 'chat', W.willing(b, a, 'chat').p, roll)); reacts.add(W.react(b, a, 'shove', 0.3, roll)); }
+        return { dom, n: Object.keys(W.INTER).length, cats: W.CATS.length, hugStranger, helloStranger, hugFriend, hugShy, hugNotShy, p0, pAnn, kissAdult, kissMinor, mOK, kissOff, rep, fresh, reacts: [...reacts] };
+      });
+      check('12a 60 種互動、12 類；沒有鎖——和陌生人打招呼大概可以、抱陌生人幾乎一定被拒，和好朋友抱抱很樂意', r.n >= 60 && r.cats === 12 && r.helloStranger > 0.4 && r.hugStranger < 0.1 && r.hugFriend > 0.8, r);
+      check('12b 個性與心情會改變反應：害羞的更難接受太親近的事；心情不好時連聊天都不想', r.hugShy < r.hugNotShy && r.pAnn < r.p0 - 0.2, r);
+      check('12c 硬規則：戀愛互動要戀愛開啟＋兩人都成年；未滿 18 歲永遠不行（🔒）', r.kissAdult !== '🔒' && r.kissMinor === '🔒' && !r.mOK && r.kissOff === '🔒', r);
+      check('12d 一直做同樣的事會比較不想；反應不只接受／拒絕（光譜）', r.rep < r.fresh && r.reacts.length >= 6, r);
+    }
+    if (want(13)) {
+      /* the social sheet with real taps: one that goes well, one that is too much too soon */
+      const ids = await page.evaluate(() => { const fresh16 = (c) => { c.life.emo.list = []; c.life.emo.dom = 'neutral'; c.personality.traits = []; c.personality.social = 55; c.personality.expression = 55; c.profile.species = 'human'; c.profile.age = '25'; Object.assign(c.needs, { food: 90, sleep: 90, energy: 80, fun: 70, social: 60, comfort: 80, interest: 70, active: 70 }); c.life.w16 = { rej: {}, last: {} }; }; const all = OC.Chars.all(); all.forEach(fresh16); if (OC.World.area.id !== 'isle') OC.WorldUI.travel('isle', { instant: true }); all.forEach((c) => OC.Brain.setControl(c.id, 'manual')); OC.Store.s.life.settings.defy = 0; window.__done = []; OC.Store.on('will:done', (e) => window.__done.push(e)); OC.Chars.setActive(all[0].id); return all.map((c) => c.id); });
+      await page.waitForTimeout(1500);
+      const [A, B] = ids;
+      const run = async (cat, kind, rel) => {
+        await page.evaluate(() => { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; });
+        await page.evaluate(([a, b, v]) => { for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x, y), { fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0 }, v); OC.Chars.get(b).life.emo.list = []; window.__done = []; const bb = OC.Brain.get(b); if (bb.st !== 'think') { bb.st = 'think'; } }, [A, B, rel]);
+        await page.evaluate((b) => OC.LifeUI.socialSheet(b), B); await page.waitForSelector(`.sheet [data-cat="${cat}"]`); await page.waitForTimeout(450);
+        await page.click(`.sheet [data-cat="${cat}"]`); await page.waitForTimeout(450); await page.click(`.sheet [data-int="${kind}"]`);
+        await page.waitForFunction(() => window.__done.length > 0, null, { timeout: 90000 }).catch(() => {});
+        return page.evaluate(([a, b]) => ({ done: window.__done[0], ab: OC.Mind.relPeek(b, a), mem: OC.Mind.memories(OC.Chars.get(b)).slice(0, 3).map((m) => m.text) }), [A, B]);
+      };
+      const good = await run('close', 'handhold16', { fam: 90, aff: 90, trust: 80, intim: 70 });
+      const bad = await run('close', 'handhold16', { fam: 5, aff: 5, trust: 10, intim: 0 });
+      check('13a 點別的角色 → 互動選單：你的角色走過去做，關係很好時對方開心接受、好感上升、留下回憶', good.done && good.done.ok && good.ab.aff > 90 && good.mem.some((t) => t.includes('牽了手')), good);
+      check('13b 太快、太親近：對方拒絕（害羞閃躲／愣住…），好感下降、記住「突然」', bad.done && !bad.done.ok && bad.ab.aff < 5 && bad.mem.some((t) => t.includes('突然')), bad);
+      const d = await page.evaluate(([a, b]) => { OC.Store.s.life.settings.defy = 1; const r1 = OC.Will.ask(a, b, 'hello', { player: true }); OC.Store.s.life.settings.defy = 0; return { r1 }; }, [A, B]);
+      check('13c 小機率不照你的意思做（這裡設成 100%）：會說出原因，什麼都沒發生', d.r1.ok === false && d.r1.defy && d.r1.why.length > 2, d);
+      const ai = await page.evaluate(([a, b]) => { OC.Brain.setControl(b, 'auto'); const bb = OC.Brain.get(b); const kinds = new Set(); for (let i = 0; i < 30; i++) for (const x of OC.Brain.candidates(bb)) if (x.kind === 'social') kinds.add(x.social); OC.Brain.setControl(b, 'manual'); return [...kinds].filter((k) => OC.Will.has(k)).length; }, [A, B]);
+      check('13d 角色自己生活時也會選新的互動', ai >= 3, ai);
+    }
+    if (want(14)) {
+      /* inviting someone to a bench (the action card's 「邀請誰一起」) */
+      const r = await page.evaluate(async () => {
+        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6;
+        const fresh16 = (c) => { c.life.emo.list = []; c.life.emo.dom = 'neutral'; c.personality.traits = []; c.personality.social = 55; c.personality.expression = 55; c.profile.species = 'human'; c.profile.age = '25'; Object.assign(c.needs, { food: 90, sleep: 90, energy: 80, fun: 70, social: 60, comfort: 80, interest: 70, active: 70 }); c.life.w16 = { rej: {}, last: {} }; }; const all = OC.Chars.all(), [a, b] = all; all.forEach(fresh16);
+        if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((res) => setTimeout(res, 2500)); }
+        OC.Chars.setActive(a.id); await new Promise((res) => setTimeout(res, 800));
+        { const pa = OC.App.player, bm = OC.App.actorOf(b.id); for (const bb of [OC.Brain.get(a.id), OC.Brain.get(b.id)]) { if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); } if (bm) { const q = OC.World.nearestWalkable(pa.x + 40, pa.y, 40); if (q) { bm.path = null; bm.x = q.x; bm.y = q.y; } } } for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 80, aff: 85, trust: 70, intim: 30, conflict: 0 });
+        for (const c of [a, b]) Object.assign(c.needs, { energy: 40, comfort: 40, food: 90, sleep: 90 });
+        const bench = OC.World.interacts.find((i) => i.type === 'bench'); const d = OC.App.describe(bench);
+        const r = OC.Will.invite(a.id, b.id, 'rest', bench.at); const conv = OC.Brain.convs.find((x) => x.kind === 'with_rest');
+        const t0 = Date.now(); while (Date.now() - t0 < 150000) { const c2 = OC.Brain.convs.find((x) => x.kind === 'with_rest'); if (c2 && c2.st === 'joint' && c2.started) break; await new Promise((res) => setTimeout(res, 500)); }
+        const c3 = OC.Brain.convs.find((x) => x.kind === 'with_rest'), ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id);
+        return { ok: r.ok, extra: d && (d.extra || []).map((e) => e.label), kind: conv && conv.kind, joint: c3 && c3.st, started: c3 && c3.started, slots: [ba.slot && ba.slot.k, bb.slot && bb.slot.k] };
+      });
+      check('14 設施可以邀請別人一起用：長椅的動作卡有「邀請誰一起」，對方答應後兩人坐在同一張長椅的兩個位子', r.ok && r.kind === 'with_rest' && r.started && r.slots[0] && r.slots[1] && r.slots[0] !== r.slots[1] && r.slots[0].split('#')[0] === r.slots[1].split('#')[0], r);
     }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
