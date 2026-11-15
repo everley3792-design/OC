@@ -63,7 +63,7 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         const ids = OC.Chars.all().map((c) => c.id), a = OC.App.actorOf(ids[1]) || OC.App.player, p = OC.App.screenOf(a), ran = [];
         const open0 = OC.Radial.open; OC.Radial.open = function (cfg) { cfg.items = cfg.items.map((it) => it && Object.assign({}, it, { run: () => ran.push(it.label) })); return open0.call(this, cfg); };
         OC.App.menuFor(a === OC.App.player ? { type: 'self' } : { type: 'mate', id: ids[1] }, p);
-        const btns = [...document.querySelectorAll('.radial-btn:not(.off)')]; const el = document.querySelector('.radial');
+        const el = document.querySelector('.radial'); const direct = [...el.querySelectorAll('.radial-btn:not(.off)')].filter((b) => !b.classList.contains('cat')); const btns = direct.length ? direct : [...el.querySelectorAll('.radial-btn:not(.off)')];   /* 16.4: categories open a panel instead of running */
         const armed0 = OC.Pick.armed(el); btns[0].click(); const early = ran.length;
         await new Promise((r2) => setTimeout(r2, 500)); const armed1 = OC.Pick.armed(el); btns[0].click(); await new Promise((r2) => setTimeout(r2, 400));
         OC.Radial.open = open0; return { n: btns.length, armed0, early, armed1, late: ran.length };

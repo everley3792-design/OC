@@ -39,7 +39,7 @@
     items.forEach((it, i) => {
       const a = n >= 7 ? start + (i / n) * span : start + (n === 1 ? span / 2 : (i / (n - 1)) * span);
       const a0 = a - 0.55, r0 = R * 0.28;   // they start a little "behind" on the circle → a gentle swirl outwards
-      const b = h('button.radial-btn' + (it.off ? '.off' : '') + (it.main ? '.main' : ''), {
+      const b = h('button.radial-btn' + (it.off ? '.off' : '') + (it.main ? '.main' : '') + (it.sub ? '.cat' : ''), {
         role: 'menuitem', 'aria-label': it.label + (it.off ? `（${it.off}）` : ''), 'aria-disabled': it.off ? 'true' : 'false',
         style: { '--x': Math.cos(a) * R + 'px', '--y': Math.sin(a) * R + 'px', '--x0': Math.cos(a0) * r0 + 'px', '--y0': Math.sin(a0) * r0 + 'px', '--d': 40 + i * 28 + 'ms', '--dc': (n - 1 - i) * 16 + 'ms' },
         on: { click: (e) => {
