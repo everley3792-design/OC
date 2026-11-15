@@ -1098,7 +1098,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       if (await page.evaluate(() => OC.World.area.id) !== 'fair') { await page.evaluate(() => OC.WorldUI.travel('fair', { instant: true })); await page.waitForTimeout(3500); }
       const res = {};
       for (const g of ['coaster', 'bumper', 'haunted', 'shoot', 'hoops', 'teacup', 'maze']) {
-        const s0 = await page.evaluate((g) => { const c0 = OC.Store.s.coins; const r = OC.Fair16.play(g, { skipSetup: true }); const c1 = OC.Store.s.coins; if (OC.Fair16.cur) OC.Fair16.cur.dur = 12; return { ok: r.ok, ticket: c0 - c1 }; }, g);
+        const s0 = await page.evaluate((g) => { if (OC.Fair16.cur) OC.Fair16.finish('end'); const c0 = OC.Store.s.coins; const r = OC.Fair16.play(g, { skipSetup: true }); const c1 = OC.Store.s.coins; if (OC.Fair16.cur) OC.Fair16.cur.dur = 12; return { ok: r.ok, ticket: c0 - c1 }; }, g);
         await page.waitForFunction(() => document.querySelector('.mini.f16.open canvas'), null, { timeout: 8000 }).catch(() => {});
         const box = await page.evaluate(() => { const r = document.querySelector('.mini.f16 canvas').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
         const P = (x, y) => [box.x + x / 600 * box.w, box.y + y / 600 * box.h];
@@ -1106,7 +1106,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         let path = null;
         const t0 = Date.now();
         while (Date.now() - t0 < 16000) {
-          const s = await st(); if (!s) break;
+          const s = await st(); if (!s) break; if (s.game !== g) { await page.waitForTimeout(200); continue; }
           if (g === 'coaster') { const star = (s.st.items || []).filter((i) => i.star && i.y < 500).sort((a, b) => b.y - a.y)[0]; await page.mouse.move(...P(star ? star.x : 300, 500)); if (!s.st.__d) { await page.mouse.down(); await page.evaluate(() => (OC.Fair16.cur.st.__d = 1)); } }
           else if (g === 'bumper') { const car = s.st.cars[0]; await page.mouse.move(...P(s.st.me.x, s.st.me.y)); await page.mouse.down(); await page.mouse.move(...P(car.x, car.y), { steps: 3 }); await page.mouse.up(); }
           else if (g === 'haunted') { const gh = (s.st.ghosts || [])[0]; if (gh) { await page.mouse.click(...P(gh.x, gh.y)); } }

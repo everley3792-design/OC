@@ -1,5 +1,5 @@
 {
- "at": "2026-11-14T11:46:59.420Z",
+ "at": "2026-11-15T16:04:19.925Z",
  "results": [
   {
    "name": "T1 交易：同一個 key 只會入帳一次（防重複獎勵）",
@@ -34,24 +34,32 @@
    "ok": true
   },
   {
-   "name": "12a 來回 32 次換場景：共用快取暖機後幾何數不再成長（第 3→4 輪 ≤ +10）",
+   "name": "2a 不在玩家身邊的 OC 會自己決定去別的地方（26 遊戲小時內）",
    "ok": true,
-   "detail": "283→283→283→282"
+   "detail": "栗子:isle/fair/cafe/street 小空:library/cafe/isle"
   },
   {
-   "name": "12b 材質數有上限（第 3→4 輪 ≤ +2，總數 < 40）",
-   "ok": true,
-   "detail": "22→21→22→21"
+   "name": "2b 行程寫進生活紀錄（前往…）",
+   "ok": true
   },
   {
-   "name": "12c JS heap 穩定（< +40MB）",
-   "ok": true,
-   "detail": "36MB→36MB→36MB→36MB"
+   "name": "2c 不同個性的 OC 去的地方不完全一樣",
+   "ok": true
   },
   {
-   "name": "12d 每個場景只載入自己的模型（新場景 draw calls < 250）",
+   "name": "2d 地圖上的「大家在哪裡」列出每個 OC 的所在地與活動",
    "ok": true,
-   "detail": "{\"isle\":139,\"street\":81,\"beach\":66,\"forest\":113,\"cafe\":167,\"home\":142,\"library\":213}"
+   "detail": "在晴日商店街・事件中 | 在晴日商店街 | 在葉影圖書館・在葉影圖書館的閱讀書桌閱讀"
+  },
+  {
+   "name": "2e OC 走到出口後離開目前的場景（行程：海灘・釣魚）",
+   "ok": true,
+   "detail": "{\"from\":\"isle\",\"to\":\"beach\",\"act\":\"fish\",\"eta\":29914264.157728955}"
+  },
+  {
+   "name": "2f 玩家跟過去：在海灘看到栗子從門口走進來並在那裡活動",
+   "ok": true,
+   "detail": "go/nap"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",
