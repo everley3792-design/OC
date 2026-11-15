@@ -33,6 +33,7 @@
 - **16.2（0.16.2-alpha）意願模型與互動**：`OC.Will`（`life/will16.js`）——沒有門檻表，60 種互動（12 類）都能做，對方依關係／親近程度／個性／心情／需求／旁人／歷史決定，反應是光譜（熱情…哭了）各有後果；點別的角色＝社交選單（大概的反應 😊😐🙁）；設施「邀請誰一起」；小機率不照指令（有原因）；12 個社交特質。紀錄：`docs/v16.2-report.md`。
 - **16.2.1（0.16.2.1-alpha）拖曳後凍結**：輕拋／丟出後反應動作（優先 8）被還在的 `drag`（優先 9、沒有結束時間）擋掉 → 角色停在拖曳姿勢、走路被擋；丟到海上／懸崖時落在不能走的格子 → 點地面沒反應。修正＋通用安全網（`actWatchdog`）＋每隻各自的搬運紀錄。紀錄：`docs/v16.2.1-report.md`。
 - **16.3（0.16.3-alpha）角色工作室**：編輯頁分兩區（舞台與分頁固定，只有面板捲動——修掉滑動跑版）；圖片角色有自己的分頁（取景台、去背、自動對齊、動畫來源「全部預設／混合／全部自己匯入」＋一鍵全選與批次匯入），沒有捏臉選項；角色自己的台詞（`c.lines16`）、專屬互動（`c.inter16` → `OC.Will`）、自訂事件腳本（`c.scripts16`／全島 `save.life.scripts16`，`OC.Script`，格式 `docs/oc-script.md`，不限數量、可匯入）。紀錄：`docs/v16.3-report.md`。
+- **16.4（0.16.4-alpha）互動選單＋動作清單**：角色的環保留常用動作，分類在同一個選單裡展開項目面板（不再有第二個環或表單）、項目一按就做（「復原」提示、長按＝立刻做）；`OC.Queue` 依模擬市民重寫（`life/queue16.js`：帶目標／地點／對象、8 個、排序、立刻做、循環、進度、不想做會說原因＋強迫、跨地點、等對方有空）；物件會列出能做的事；長按地面「在這裡做」；11 個新活動（`life/acts16.js`）與梳毛／打氣／蓋被子。紀錄：`docs/v16.4-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -215,7 +216,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **14.2 效能規則**：(1) 會被上傳成 WebGL 貼圖的 2D 畫布，第一次 `getContext('2d')` 就要帶 `{ willReadFrequently: true }`（CPU 畫布；GPU 畫布上傳時要讀回，手機上很慢）。(2) `paintActor` 一幀最多兩次（`paintsLeft`），操控中的角色與正在被摸的不受限。(3) 會各自擺動的小東西不要每個一組網格——同一叢合成一個再擺（花圃：`flowerBed` 的 `cluster`）；v14 測試 5 要求整個小島 ≤ 200 個繪製呼叫。(4) 不要對 WebView 設 `setLayerType`。(5) `World.perfStats()` 的可重設計數器只給 FPS 讀數用，測試用 `totalPaints／totalFrames`。(6) `adaptStep` 有三級，第三級關陰影、草、點光源。
 
 - **15.0 點選 ≠ 執行**：世界裡的東西被點一下時，`onTap` 只呼叫 `describe(it)` 取得名稱與動作，交給 `OC.Pick.show()` 顯示動作卡；**不得**再讓單點直接走過去執行（設定 `quickTap` 開啟時例外）。新的可互動物件類型要在 `describe()` 加一筆（名稱、說明、動詞、`run`）。任何新出現在手指下的選單（卡片、環、選項、表單）都要 `OC.Pick.guard(el)`，按鈕處理要先檢查 `OC.Pick.armed(el)`。舊的測試套件經 harness 預設 `quickTap: true`；新預設由 v15 測試（真實觸控）。
-- **15.0 動作清單**：玩家安排的活動一律 `OC.Queue.add(id, act)`（不要直接 `Brain.command`，否則會跳過清單）；清單存在 `c.life.q15`，最多 4 個等候；交給引擎只在 `Sim.onStep` 且角色沒有被保留、沒有玩家安排的事時。
+- **15.0 → 16.4 動作清單**：玩家安排的事一律 `OC.Queue.add(id, spec, { now })`（spec＝活動 id 或 `{ kind: 'act'|'social'|'go', act, slot, pt, place, other, social }`；不要直接 `Brain.command`）；清單存在 `c.life.q16`（舊 `q15` 自動轉換），最多 8 個等候。交給引擎只在 `Sim.onStep`：活動用 `b.queuedSlot`＋`Brain.command`（那個位子有人就坐同一個東西的另一個位子，都滿了就拒絕）、別的地點用 `Brain.goPlace`、跟人用 `Will.ask`。不想做的理由寫在 `Queue.refusal`（被拒絕的不擋後面、20 秒後移除，「強迫」照做），不要在別處另寫。
 - **15.0 拍照**：照片一律 `OC.Assets.put`（kind `photo`），`S().photos` 只放 id／時間／地點／濾鏡／相框；拍照模式是唯一允許在 `#world` 上用 CSS `filter` 的地方（只在模式開著時，`close()` 一定要清掉）。
 - **15.1 牆壁與地板**：可佈置的室內地點（`interior({ decor: true })`）讀 `S().surfaces[id] = { wall, stripe, floor, tile }` 覆蓋原本的顏色；只是外觀，不經 `OC.Tx`、不是物品；改了之後用 `loadArea(id, 目前位置)` 在淡出淡入中重建（不重建 renderer）。房間材質的 `userData.key` 標出是哪一張紋理（測試用）。
 - **15.1 試衣間**：預覽服裝一律畫在角色的**淺拷貝**上（`Object.assign({}, c, { look: … })`），絕不改 `save.chars`；真正穿上仍走 `OC.Use` 的 `wear`。
@@ -244,3 +245,4 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.3 動畫來源**：`c.appearance.anim16 = { src: 'preset'｜'mixed'｜'custom', preset: { 動作: true } }`，只在 `CharRender.spriteFor`（preset／被設回預設的動作 → 用待機圖由 Puppet 表演）與 `Puppet.active`（custom → 不表演）判斷，不要在別處另寫。
 - **16.3 角色台詞**：`c.lines16 = [{ id, cat, text, c }]`、`c.lines16mode[cat] = 'only'`；由 `OC.Talk.lines()` 的 `charLines()` 併入（`char` 限定說話者）。專屬互動 `c.inter16` 由 `OC.Will.sync()` 登記成 `INTER['u16_<角色>_<id>']`（`own`＝只有擁有者能發起，分類 `own`「專屬」），台詞分類 `i16_<kind>`、`<kind>_yes`／`_no`；數值有上限（關係 ±12、需求 ±30）。
 - **16.3 事件腳本**（`OC.Script`，`life/script16.js`）：腳本是資料，**不得**加入能執行程式碼、給物品／星幣、改關係類型的指令；未成年不改親密；回憶 key 固定。由 `OC.Events.beginScript` 執行（一次一個、間隔、打擾預算、全部角色 hold、跳過時資料步驟照做），`Events.trigger`／`periodic` 在內建事件之後再試腳本。新指令要同時加 parser（`parseStep`）、執行（`step`）、驗證（`finishEvent`）、積木（`studio16.js` 的 `BLOCKS`／`toBlocks`／`toSrc`）與 `docs/oc-script.md`。
+- **16.4 選單**：角色的環由 `OC.Menu16.charRing(id)` 產生；有 `sub` 的項目在 `OC.Radial` 的面板裡展開（一層分類、一層項目，可有分頁），面板項目一律 `.radial-btn.ri`、`now: true` 才支援長按立刻做。**不要再加第二個環或表單**；只有刪除／清除類才確認。安排一律經 `OC.Menu16.request`（排進清單＋「復原」提示）。物件能做的事由可供性的 verbs 自動列出（`OC.Menu16.objectActs`），新設施只要在 `Brain.rebuild` 給 verbs。新活動放 `life/acts16.js`（`menuOnly` 的只有玩家安排才做；`night`／`day` 由 `Acts16.fits` 判斷）。HUD 清單的操作在原地展開，不跳視窗。
