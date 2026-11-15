@@ -1,47 +1,78 @@
 {
- "at": "2026-11-15T02:54:06.459Z",
+ "at": "2026-11-15T04:32:24.180Z",
  "results": [
   {
-   "name": "13a 對話資料：錯誤檔案被拒絕並說明原因",
+   "name": "3a 兩個 OC 相遇並聊天（輪流說話、面對面）",
+   "ok": true,
+   "detail": "fam 6 → 10"
+  },
+  {
+   "name": "3b 雙方都留下共同回憶",
    "ok": true,
    "detail": {
-    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
-    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
-    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
-    "added": 1,
-    "said": "測試台詞小空！",
-    "exported": 1,
-    "cool": 12,
-    "picks": 12,
-    "eligible": 12,
-    "det": true
+    "a": [
+     "和小空聊天"
+    ],
+    "b": [
+     "和栗子聊天"
+    ]
    }
   },
   {
-   "name": "13b 匯入角色專屬台詞後真的會被說出、可再匯出",
+   "name": "3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）",
    "ok": true,
    "detail": {
-    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
-    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
-    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
-    "added": 1,
-    "said": "測試台詞小空！",
-    "exported": 1,
-    "cool": 12,
-    "picks": 12,
-    "eligible": 12,
-    "det": true
+    "sa": "bench@356#0",
+    "sb": "bench@356#1",
+    "d": 18,
+    "dbg": {
+     "st": [
+      "social",
+      "social",
+      null,
+      null
+     ],
+     "holds": [
+      [],
+      []
+     ],
+     "conv": {
+      "st": "joint",
+      "kind": "restTogether",
+      "started": true
+     },
+     "ev": null,
+     "log": [
+      "栗子:和小空一起休息（長椅）",
+      "栗子:去找小空一起休息",
+      "栗子:社交結束（done）",
+      "小空:栗子的情緒感染了牠",
+      "小空:栗子的情緒感染了牠",
+      "小空:栗子的情緒感染了牠",
+      "栗子:去找小空聊天",
+      "小空:放棄：test"
+     ]
+    }
    }
   },
   {
-   "name": "13c 台詞冷卻：可選的台詞全部用過之前不重複",
+   "name": "3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）",
    "ok": true,
-   "detail": "12 種／12 次（可選 12 句）"
+   "detail": {
+    "aff": "49 vs 0",
+    "score": "朋友 0.59 > 其他 0.30",
+    "mem": "和小空一起休息"
+   }
   },
   {
-   "name": "13d 決策在相同種子下可重現",
+   "name": "3e 成為朋友 → 里程碑事件與回憶",
    "ok": true,
-   "detail": true
+   "detail": {
+    "t": "friend",
+    "m": [
+     "和小空成為了朋友"
+    ]
+   }
   },
   {
    "name": "沒有 JavaScript 錯誤",

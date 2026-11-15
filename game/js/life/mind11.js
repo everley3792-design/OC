@@ -222,7 +222,7 @@
   function onDay() {
     for (const c of Ch().all()) {
       const k = st(c), T = k.today, acts = Object.entries(T.acts).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([a]) => D().ACTS[a] && D().ACTS[a].zh).filter(Boolean);
-      const bits = []; if (acts.length) bits.push(acts.join('、')); const soc = T.social.filter((s) => s.kind !== 'greet'); if (soc.length) { const o = Ch().get(soc[soc.length - 1].other); if (o) bits.push(`和${nm(o)}${D().SOCIAL[soc[soc.length - 1].kind].zh}`); }
+      const bits = []; if (acts.length) bits.push(acts.join('、')); const soc = T.social.filter((s) => s.kind !== 'greet'); if (soc.length) { const o = Ch().get(soc[soc.length - 1].other); if (o) bits.push(`和${nm(o)}${(D().SOCIAL[soc[soc.length - 1].kind] || {}).zh || '待在一起'}`); }
       const pl = T.plans.filter((p) => p.ok).map((p) => `完成了「${p.zh}」`); if (pl.length) bits.push(pl[0]); if (T.goals.length) bits.push(`做到了「${T.goals[0].replace('{other}', '')}」`);
       if (bits.length >= 2) M().remember(c, { type: 'activity', imp: 0.25, text: '昨天：' + bits.join('，') + '。', key: 'diary:' + (Sim().day() - 1) });
       k.today = { acts: {}, plans: [], goals: [], social: [] };

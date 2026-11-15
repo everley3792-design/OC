@@ -119,7 +119,9 @@ const release = (page, list) => page.evaluate((L) => { for (const id of L) { con
       check('3b 料理升級解鎖新食譜（Lv.1 鬆餅布丁、Lv.2 咖哩水果塔）', !r.recipe0 && r.recipe1 && r.recipe2 && r.cookLv === 2, JSON.stringify(r));
       await page.evaluate(() => OC.Mini.cooking()); await wait(page, 600);
       const rows = await page.evaluate(() => [...document.querySelectorAll('.sheet.open .row')].map((x) => x.textContent));
-      check('3c 料理清單：學會的可以做，還沒學會的明確顯示「還不會」與需要的等級', rows.some((t) => t.includes('咖哩') && !t.includes('還不會')) && rows.some((t) => t.includes('烤魚') && t.includes('還不會')), rows.filter((t) => /咖哩|烤魚/.test(t)).join(' | '));
+      /* 16.5：廚房改成食譜書——還沒到等級的食譜顯示鎖頭與需要的等級（Lv.N），鹽烤魚改成 Lv.1 */
+      const lockedRows = rows.filter((t) => /Lv\.([3-9]|\d\d)/.test(t) && (/？？？|起/.test(t) || !/做$/.test(t)));
+      check('3c 料理清單：學會的可以做，還沒學會的明確顯示鎖住與需要的等級', rows.some((t) => t.includes('咖哩') && !/Lv\.\d/.test(t)) && lockedRows.length > 0, rows.filter((t) => /咖哩/.test(t)).concat(lockedRows.slice(0, 2)).join(' | '));
       await shot(page, '3-recipes'); await page.evaluate(() => OC.UI.back()); await wait(page, 300);
       // an OC really does the new activity on its own once allowed (scenic spot verb 'observe')
       const k2 = I['栗子']; await gather(page, [k2]);

@@ -32,7 +32,7 @@
           const state = F().state(r.id), locked = r.lv > lv, bk = F().book()[r.id] || {};
           const need = Object.entries(r.need).map(([k, n]) => h('span.k16-need' + (haveFor(k, n) ? '.ok' : '.no'), null, (haveFor(k, n) ? '✓' : '✗') + needZh(k, n)));
           const ing = !locked && state !== 'unknown' ? F().pick(r) : null;
-          if (state === 'unknown') { rows.append(OC.UI.row(h('span.k16-q', null, '？'), '？？？', `${F().METHODS[r.method][0]}・用到${needZh(Object.keys(r.need)[0], 1)}…（自由料理時發現）`, null)); continue; }
+          if (state === 'unknown') { rows.append(OC.UI.row(h('span.k16-q', null, '？'), '？？？', `${F().METHODS[r.method][0]}・用到${needZh(Object.keys(r.need)[0], 1)}…（自由料理時發現${r.lv > lv ? '・料理 Lv.' + r.lv + ' 起' : ''}）`, null)); continue; }
           rows.append(OC.UI.row(img(r.id), `${r.zh}${bk.best ? ' ' + '★'.repeat(bk.best) : ''}`, h('span.k16-needs', null, h('small', null, `${F().METHODS[r.method][0]}・${r.serv} 份　`), ...need),
             locked ? h('span.tag', null, icon('lock', 's'), `Lv.${r.lv}`) : ing ? h('button.btn.s.primary', { 'data-cook': r.id, on: { click: () => { api.close(); start(c, { recipe: r.id }); } } }, '做') : h('span.tag', null, '材料不足')));
         }

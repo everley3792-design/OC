@@ -91,6 +91,12 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
       await page.evaluate(([a, b]) => { for (const id of [a, b]) { const br = OC.Brain.get(id); if (br.st === 'social') OC.Brain.Social.end(br.conv || OC.Brain.convs.find((x) => x.a === br || x.b === br), 't'); if (br.st === 'do' || br.st === 'go') OC.Brain.abort(br, 'test'); br.st = 'think'; br.thinkAt = 1e9; } OC.Chars.get(b).personality.social = 90; OC.Brain.Social.start(OC.Brain.get(a), OC.Brain.get(b), 'chat'); }, [A, B]);
       const startDiag = await page.evaluate(([a, b]) => [a, b].map((id) => { const x = OC.Brain.get(id); return `${OC.Chars.name(OC.Chars.get(id))}:st=${x.st} holds=${[...x.holds]} q=${x.queued} lv=${!!x.leaving} inv=${!!x.invited} bp=${!!x.byPlayer} conv=${OC.Brain.convs.length}`; }).join(' ; '), [A, B]);
       const talked = await until(page, ([a]) => !OC.Brain.convs.some((c) => c.a.id === a), [A], 40000);
+      /* 16.5: the answer to an invitation is a seeded roll (Will) — a "no" is a valid outcome, so ask again (up to 5 times) instead of depending on how many random draws came before */
+      for (let t = 0; t < 4; t++) {
+        const ok = await page.evaluate(([a, b, f0]) => OC.Mind.rel(a, b).fam > f0, [A, B, pre.r.fam]); if (ok) break;
+        await page.evaluate(([a, b]) => { for (const id of [a, b]) { const br = OC.Brain.get(id); if (br.st === 'social') OC.Brain.Social.end(br.conv || OC.Brain.convs.find((x) => x.a === br || x.b === br), 't'); if (br.st === 'do' || br.st === 'go') OC.Brain.abort(br, 'test'); br.st = 'think'; br.thinkAt = 1e9; } OC.Chars.get(a).life.laterWith = {}; OC.Brain.Social.start(OC.Brain.get(a), OC.Brain.get(b), 'chat'); }, [A, B]);
+        await until(page, ([a]) => !OC.Brain.convs.some((c) => c.a.id === a), [A], 40000);
+      }
       const post = await page.evaluate(([a, b]) => ({ r: OC.Mind.rel(a, b), rb: OC.Mind.rel(b, a), ma: OC.Mind.memories(OC.Chars.get(a), { who: b }).map((m) => m.text), mb: OC.Mind.memories(OC.Chars.get(b), { who: a }).map((m) => m.text) }), [A, B]);
       check('3a 兩個 OC 相遇並聊天（輪流說話、面對面）', talked && post.r.fam > pre.r.fam, `fam ${pre.r.fam} → ${post.r.fam}` + (post.r.fam > pre.r.fam ? '' : ' ｜ ' + startDiag + ' ｜ ' + await page.evaluate(([a, b]) => OC.Brain.log.filter((l) => l.who === a || l.who === b).slice(0, 10).map((l) => OC.Chars.name(OC.Chars.get(l.who)) + ':' + l.text).join(' / '), [A, B])));
       check('3b 雙方都留下共同回憶', post.ma.length > 0 && post.mb.length > 0, { a: post.ma.slice(0, 2), b: post.mb.slice(0, 2) });
