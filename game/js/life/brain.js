@@ -281,7 +281,8 @@
     if (OC.Mind11) list = OC.Mind11.shape(c, b, list);                                     // 11.0: plans · goals · knowledge
     if (OC.Arcs) list = OC.Arcs.shape(c, b, list);                                         // 12.0: a cold war keeps two OCs apart
     if (OC.Aware) list = OC.Aware.shape(c, b, list);
-    if (OC.House16) list = OC.House16.shape(c, b, list);   /* 16.8: looking after the baby, housemates */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
+    if (OC.House16) list = OC.House16.shape(c, b, list);   /* 16.8: looking after the baby, housemates */
+    if (OC.Career16) list = OC.Career16.shape(c, b, list);   /* 16.9: homework, freelance work */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (OC.Aware && ch) OC.Aware.chosen(c, b, ch);
@@ -320,6 +321,7 @@
     if (A.verb === 'explore' && b.dest && b.dest.k) (c.life.rec.visit || (c.life.rec.visit = {}))[b.dest.k] = Sim().now();
     if (!resumed) { b.t0 = Sim().now(); b.until = b.act === 'sleep' ? wakeAt(c) : b.t0 + durOf(c, b.act); }
     b.st = 'do'; b.soloAt = nowR() + 4 + Math.random() * 10;
+    if (A.away && a) { a.hidden = true; hooks.hide(a, true); }   /* 16.9: work / school happen out of sight (rabbit hole) */
     c.life.cur = { act: b.act, slot: s ? s.k : null, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '', until: b.until, t0: b.t0 };
     if (!b.aligning) anim(b); else Wd().setAction(a, 'idle'); St().mark();
     if (!resumed) OC.Events && OC.Events.trigger('actStart', { a: c.id, act: b.act, place: s ? s.obj.id : null, placeZh: s ? s.obj.zh : '' });

@@ -612,3 +612,21 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .h16-person { display: inline-flex; align-items: center; gap: 4px; }
 .h16-person .h16-av { width: 32px; height: 32px; }
 .h16-heart { color: var(--alert); }
+
+/* 16.9 工作與學校 */
+.c16-who { margin: 0 4px 10px; flex-wrap: wrap; }
+.c16-card { margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+.c16-status { margin: 2px 0; }
+.c16-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; min-width: 60px; }
+.c16-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.c16-grades { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.c16-g { display: flex; align-items: center; gap: 6px; font-size: var(--fs-s); }
+.c16-g span { min-width: 2.6em; }
+.c16-sec { margin-top: 4px; font-size: var(--fs-s); }
+.c16-lines { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.c16-line { min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 6px 10px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--ink); text-align: left; box-shadow: 0 3px 0 var(--lip); }
+.c16-line small { color: var(--ink-soft, var(--ink)); opacity: .75; }
+.c16-line.locked { opacity: .5; }
+.c16-case, .c16-work { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px dashed var(--lip); }
+.c16-work { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.c16-note { font-size: var(--fs-s); }

@@ -1125,7 +1125,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

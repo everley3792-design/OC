@@ -954,6 +954,127 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       }, ids);
       check('48 家庭（預設關閉，打開才會問）：同住的伴侶想要孩子 → 先問你（三個選項），答應幾天後寶寶出生、住進同一間房、關係是父母與孩子；也可以從房子領養（未成年不行）；家族樹分代、伴侶有 ♥', !r.offAsk && r.asked && r.pending === 1 && r.born && r.kidHome === 'purple' && r.label === '孩子' && r.kidSees === '爸媽' && r.adopt && /成年/.test(r.minor || '') && r.gens >= 2 && r.treeGens >= 2 && r.hearts >= 1 && r.n === 2, r);
     }
+    /* ================================================================ 16.9 職業與學業 */
+    const prep169 = () => page.evaluate(async () => {
+      if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back());
+      if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); }
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      for (const c of all) { c.profile.age = '25'; c.life.c16 = null; c.life.cur = null; const b = OC.Brain.get(c.id); if (b) { [...b.holds].forEach((x) => OC.Brain.unhold(c.id, x)); if (b.st === 'do') OC.Brain.finish(b, 't'); else if (b.st === 'go') OC.Brain.abort(b, 't'); } if (OC.Queue) (c.life.q16 || []).length = 0; }
+      OC.Store.s.settings.calendar = 'game'; OC.Store.s.life.clock.cal0 = OC.Sim.day();   /* the game calendar, today is its first weekday */
+      return all.map((c) => c.id);
+    });
+    if (want(49)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const C = OC.Career16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        out.lines = C.LINES.length; out.titles = C.LINES.every((l) => l.titles.length >= 8); out.subj = C.SUBJ.length; out.emp = C.LINES.filter((l) => l.type === 'emp').length;
+        b.profile.age = '12'; out.kid = C.canTake(b, 'chef'); b.profile.age = '16'; out.teenEmp = C.canTake(b, 'chef'); C.takeJob(b.id, 'chef'); out.cap = C.jobOf(b).cap; b.profile.age = '25';
+        /* the old part-time job becomes level 1 「兼職」 */
+        a.life.rec.act.work = { n: 3, gm: 90, last: 0, ctx: {}, place: { 'place:cafe': 3 } }; C.st(a).migrated = false; C.st(a).job = null; C.migrate();
+        out.mig = C.jobOf(a) && [C.jobOf(a).line, C.title(a), C.jobOf(a).migrated];
+        /* the page */
+        OC.Pages.open('career16', { id: a.id }); await new Promise((res) => setTimeout(res, 700)); const pg = document.querySelector('.page.open[data-page=career16]');
+        out.cards = [...pg.querySelectorAll('[data-card]')].map((e) => e.dataset.card); pg.querySelector('[data-act=change]').click(); await new Promise((res) => setTimeout(res, 300));
+        out.choices = pg.querySelectorAll('[data-line]').length; pg.querySelector('[data-line=writer]').click(); await new Promise((res) => setTimeout(res, 300));
+        out.now = C.jobOf(a).line; OC.UI.back(); return out;
+      }, ids);
+      check('49 職業 17 條（受僱 8、自由業 9，每條 8 個職稱）、15 個科目；未滿 15 歲不能工作、16–17 歲只能兼職；以前的打工變成咖啡館店員 Lv.1「兼職」；「工作與學校」頁可以換工作', r.lines === 17 && r.titles && r.subj === 15 && r.emp === 8 && /太小/.test(r.kid || '') && r.teenEmp === null && r.cap === 2 && r.mig && r.mig[0] === 'barista' && r.mig[1] === '兼職' && r.cards.join() === 'school,job' && r.choices === 17 && r.now === 'writer', r);
+    }
+    if (want(50)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), C = OC.Career16, [a] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id), out = {};
+        C.takeJob(a.id, 'barista'); OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0; Object.assign(a.needs, { food: 90, sleep: 90, energy: 90, fun: 80 });
+        const t0 = OC.Store.s.settings.time, h0 = OC.Store.s.settings.fixedHour; OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = 9.2;
+        const coins0 = OC.Store.s.coins; C.step(); out.queued = (a.life.q16 || []).map((e) => e.act);
+        let t = Date.now(); while (!(ba.st === 'do' && ba.act === 'work16') && Date.now() - t < 60000) await sleep(300);
+        out.doing = ba.act; out.hidden = !!(ba.a && ba.a.hidden);
+        C.step(); out.again = (a.life.q16 || []).filter((e) => e.act === 'work16' && !e.st).length;   /* once a day */
+        ba.t0 = OC.Sim.now() - 300; ba.until = OC.Sim.now(); t = Date.now(); while (ba.act === 'work16' && Date.now() - t < 30000) await sleep(300);
+        out.back = !(ba.a && ba.a.hidden); out.paid = (C.st(a).paid || {})[OC.Sim.day()] || 0; out.coins = OC.Store.s.coins - coins0; out.perf = C.jobOf(a).perf;
+        OC.Store.s.settings.time = t0; OC.Store.s.settings.fixedHour = h0; OC.Brain.setControl(a.id, 'manual');
+        return out;
+      }, ids);
+      check('50 受僱的兔子洞：平日 9 點自己去上班（走到告示牌旁就看不到了），一天一次；下班回來、拿到薪水（經交易）、表現增加', r.doing === 'work16' && r.hidden && r.again === 0 && r.back && r.paid > 0 && r.coins >= r.paid && r.perf > 0, r);
+    }
+    if (want(51)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const C = OC.Career16, [a] = ids.map((id) => OC.Chars.get(id)), out = {}, day = OC.Sim.day();
+        C.takeJob(a.id, 'nurse'); const c0 = OC.Store.s.coins;
+        OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 }); OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 });
+        out.once = OC.Store.s.coins - c0;
+        const j = C.jobOf(a); j.perf = 25 + j.lv * 10; j.days = 3; delete C.st(a).paid[day]; OC.Tx && null;
+        /* a new day's shift with enough performance → promotion */
+        const k = `c16pay:${a.id}:${day}`; if (OC.Store.s.ledger && OC.Store.s.ledger.keys) delete OC.Store.s.ledger.keys[k];
+        OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 });
+        out.lv = j.lv; out.title = C.title(a); out.mem = OC.Mind.memories(a, {}).map((m) => m.text).find((t) => /升為/.test(t));
+        out.short = (() => { const c1 = OC.Store.s.coins; OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 20 }); return OC.Store.s.coins - c1; })();
+        return out;
+      }, ids);
+      check('51 薪水一天只付一次（固定 key）；做得好會升職（職稱、回憶、信）；沒做滿一小時不算', r.once > 0 && r.lv === 2 && r.title === '照護助理' && /升為照護助理/.test(r.mem || '') && r.short === 0, r);
+    }
+    if (want(52)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const C = OC.Career16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        b.profile.age = '8'; const sc = C.schoolOf(b); out.auto = [sc.status, sc.level]; a.profile.age = '30'; out.adult = C.schoolOf(a).status;
+        const g0 = Object.values(sc.grades).reduce((x, y) => x + y, 0); OC.Progress.emit('act', { oc: b.id, act: 'school16', min: 300 });
+        out.grades = Object.values(sc.grades).reduce((x, y) => x + y, 0) > g0; out.att = !!(C.st(b).att || {})[OC.Sim.day()];
+        /* the status buttons on the page */
+        OC.Pages.open('career16', { id: b.id }); await new Promise((res) => setTimeout(res, 700)); const pg = document.querySelector('.page.open[data-page=career16]');
+        pg.querySelector('[data-who="' + b.id + '"]').click(); await new Promise((res) => setTimeout(res, 300));
+        pg.querySelector('[data-status=self]').click(); await new Promise((res) => setTimeout(res, 300)); out.self = C.schoolOf(b).status; out.selfNote = /不和同學比較/.test(pg.textContent);
+        const s0 = C.schoolOf(b).self; OC.Progress.emit('act', { oc: b.id, act: 'study', min: 60 }); out.selfUp = C.schoolOf(b).self > s0;
+        const keep = JSON.stringify(C.schoolOf(b).grades); pg.querySelector('[data-status=leave]').click(); await new Promise((res) => setTimeout(res, 200)); out.leaveKeeps = JSON.stringify(C.schoolOf(b).grades) === keep;
+        pg.querySelector('[data-status=enrolled]').click(); await new Promise((res) => setTimeout(res, 200)); OC.UI.back();
+        /* exams and graduation */
+        const X = C.schoolOf(b); for (const s2 of Object.keys(X.grades)) X.grades[s2] = 80; X.terms = C.LEVELS.elem.terms - 1;
+        C.exam(b, 500, { key: 't', day: 27 }); out.exam = X.exams[0] && X.exams[0].score; out.grad = X.grad.includes('elem'); out.mem = OC.Mind.memories(b, {}).map((m) => m.text).find((t) => /小學畢業/.test(t));
+        /* self-study exam: graded on its own progress */
+        C.setSchool(b.id, 'self'); X.self = 30; C.exam(b, 501, { key: 't2', day: 27 }); out.selfFail = X.exams[0].pass === false && X.exams[0].self;
+        b.profile.age = '25'; return out;
+      }, ids);
+      check('52 上學：小孩自動在學、大人預設不上學；上學一天成績上升、記出席；在學／休學／自學可以在頁面切換（休學保留成績、自學有自己的進度與成績）；期末考、畢業成為回憶', r.auto[0] === 'enrolled' && r.auto[1] === 'elem' && r.adult === 'none' && r.grades && r.att && r.self === 'self' && r.selfNote && r.selfUp && r.leaveKeeps && r.exam >= 50 && r.grad && r.mem && r.selfFail, r);
+    }
+    if (want(53)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const C = OC.Career16, [a] = ids.map((id) => OC.Chars.get(id)), out = {}, day = OC.Sim.day();
+        C.takeJob(a.id, 'illustrator'); C.commissions(a, day, { weekday: 0 }); const k = C.jobOf(a).cases[0]; out.case = k && [k.client, k.topic, k.fee > 0, k.due > day];
+        const c0 = OC.Store.s.coins; OC.Progress.emit('act', { oc: a.id, act: 'freelance16', min: 400 });
+        out.paid = OC.Store.s.coins - c0; out.fee = k.fee; out.works = C.st(a).works.length; out.rep = C.st(a).rep;
+        const w = C.st(a).works[0]; const L = await C.listWork(a.id, w.id); out.listed = L.ok && OC.Shops.stock('gift').includes(L.item) && OC.Store.count(L.item) === 0;
+        /* a missed deadline costs reputation */
+        C.commissions(a, day + 1, { weekday: 0 }); const k2 = C.jobOf(a).cases[0]; const rep0 = C.st(a).rep; C.commissions(a, k2.due + 1, { weekday: 3 });
+        out.late = !C.jobOf(a).cases.includes(k2) && C.st(a).rep < rep0;
+        /* out of ideas → asks you (once in a while, through the allowance) */
+        const can0 = OC.Budget.can, lv0 = OC.Store.s.life.settings.lively; OC.Budget.can = () => true; OC.Store.s.life.settings.lively = 'normal'; C.commissions(a, day + 20, { weekday: 0 }); C.st(a).insp = 10; C.st(a).askedInsp = null;
+        const ba = OC.Brain.get(a.id); OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0; OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = 11;
+        const cands = C.shape(a, ba, []); out.cand = cands.some((x) => x.act === 'freelance16');
+        await new Promise((res) => setTimeout(res, 400)); const btn = document.querySelector('.sheet.open [data-insp]'); out.asked = !!btn; if (btn) btn.click(); await new Promise((res) => setTimeout(res, 300));
+        out.insp = C.st(a).insp; out.held = OC.Brain.get(a.id).holds.has('menu');
+        OC.Budget.can = can0; OC.Store.s.life.settings.lively = lv0; OC.Store.s.settings.time = 'cycle'; OC.Brain.setControl(a.id, 'manual');
+        return out;
+      }, ids);
+      check('53 自由業：有委託人、主題、截止日、酬勞的案件；工作到完成就交件拿錢（經交易）、作品進作品集、信譽上升；作品可以上架到商店（只登記，不產生庫存）；錯過截止日扣信譽；沒靈感時來問你，給了就恢復', r.case && r.case[2] && r.case[3] && r.paid === r.fee && r.works === 1 && r.rep > 0 && r.listed && r.late && r.cand && r.asked && r.insp >= 60 && !r.held, r);
+    }
+    if (want(54)) {
+      const ids = await prep169();
+      const r = await page.evaluate(async (ids) => {
+        const C = OC.Career16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        b.profile.age = '9'; C.schoolOf(b); const bb = OC.Brain.get(b.id); OC.Brain.setControl(b.id, 'semi'); bb.manualOverride = 0;
+        OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = 16; Object.assign(b.needs, { energy: 80 });
+        const cand = C.shape(b, bb, []).find((x) => x.act === 'homework16'); out.cand = cand && cand.why[0];
+        out.menu = JSON.stringify(OC.Menu16.charRing(b.id)).includes('homework16') || JSON.stringify(OC.Menu16.charRing(b.id)).includes('work16');
+        OC.Progress.emit('act', { oc: b.id, act: 'homework16', min: 30 }); out.done = C.shape(b, bb, []).some((x) => x.act === 'homework16');
+        /* weekend: nobody goes to school */
+        OC.Store.s.life.clock.cal0 = OC.Sim.day() - 5; OC.Store.s.settings.fixedHour = 8.2; C.st(b).went = {}; C.step(); out.weekend = (b.life.q16 || []).some((e) => e.act === 'school16');
+        OC.Store.s.settings.time = 'cycle'; OC.Store.s.life.clock.cal0 = OC.Sim.day(); b.profile.age = '25'; OC.Brain.setControl(b.id, 'manual');
+        return out;
+      }, ids);
+      check('54 放學後寫作業（每天一次，認真的更想寫）；上班、上學、作業不出現在安排選單；週末不上學', /作業/.test(r.cand || '') && !r.menu && !r.done && !r.weekend, r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);
