@@ -356,7 +356,7 @@ const setHour = (page, h) => page.evaluate((hh) => { const c = OC.Store.s.life.c
         const c = OC.Chars.all()[1], o = OC.Chars.all()[2];
         const bad = OC.Talk.validate('{"format":"x"}'), broken = OC.Talk.validate('{oops'), newer = OC.Talk.validate({ format: 'ocshimeji-life', version: 99, lines: [] });
         const ok = OC.Talk.importData(JSON.stringify({ format: 'ocshimeji-life', version: 1, lines: [{ cat: 'greet', text: '測試台詞{other}！', char: c.id, w: 50, c: { phase: ['morning', 'noon', 'dusk', 'night'] } }] }));
-        const said = OC.Talk.say('greet', c, o);
+        let said = null; for (let i = 0; i < 5 && !(said && /測試台詞/.test(said.text)); i++) said = OC.Talk.say('greet', c, o);   /* weighted pick: the seeded random stream decides the first draw */
         const ex = JSON.parse(OC.Talk.exportData());
         const X = OC.Talk.ctx(c, o), eligible = OC.Talk.lines().filter((l) => l.cat === 'talk_r' && !l.char && OC.Talk.test(l.c, X)).length;
         const seen = new Set(); let n = 0; for (let i = 0; i < eligible; i++) { const l = OC.Talk.pick('talk_r', c, o); if (l) { seen.add(l.line.id); n++; } }

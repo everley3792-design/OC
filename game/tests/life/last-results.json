@@ -1,74 +1,47 @@
 {
- "at": "2026-11-14T05:02:10.664Z",
+ "at": "2026-11-15T02:54:06.459Z",
  "results": [
   {
-   "name": "3a 兩個 OC 相遇並聊天（輪流說話、面對面）",
-   "ok": true,
-   "detail": "fam 6 → 10"
-  },
-  {
-   "name": "3b 雙方都留下共同回憶",
+   "name": "13a 對話資料：錯誤檔案被拒絕並說明原因",
    "ok": true,
    "detail": {
-    "a": [
-     "和小空聊天"
-    ],
-    "b": [
-     "和栗子聊天"
-    ]
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！",
+    "exported": 1,
+    "cool": 12,
+    "picks": 12,
+    "eligible": 12,
+    "det": true
    }
   },
   {
-   "name": "3c 邀請 → 一起坐在同一張長椅（不同位子、不重疊）",
-   "ok": false,
-   "detail": {
-    "sa": "home#1",
-    "sb": "stall#1",
-    "d": 54.46360948984852,
-    "dbg": {
-     "st": [
-      "go",
-      "go",
-      "sleep",
-      "drink"
-     ],
-     "holds": [
-      [],
-      []
-     ],
-     "conv": null,
-     "ev": null,
-     "log": [
-      "栗子:睡覺（需求 sleep0.22 energy0.35 comfort0.10、作息+1.70、地點-0.33）",
-      "栗子:結束 吃飯（done，32 分鐘）",
-      "小空:喝飲料（需求 food0.98 fun0.34、地點-0.14）",
-      "小空:結束 休息（急需social，8 分鐘）",
-      "小空:休息（需求 energy0.69 comfort0.30、情緒+0.30、地點-0.03）",
-      "栗子:吃飯（需求 food1.28 comfort0.13、貪吃+0.15、地點-0.04）",
-      "栗子:結束 喝飲料（急需energy，4 分鐘）",
-      "小空:結束 閱讀（急需energy，4 分鐘）"
-     ]
-    }
-   }
-  },
-  {
-   "name": "3d 關係與回憶影響之後的互動（更想找熟的朋友聊天、對話可引用共同回憶）",
-   "ok": false,
-   "detail": {
-    "aff": "45 vs 0",
-    "score": "朋友 0.40 > 其他 0.21",
-    "mem": null
-   }
-  },
-  {
-   "name": "3e 成為朋友 → 里程碑事件與回憶",
+   "name": "13b 匯入角色專屬台詞後真的會被說出、可再匯出",
    "ok": true,
    "detail": {
-    "t": "friend",
-    "m": [
-     "和小空成為了朋友"
-    ]
+    "bad": "不是 OC Shimeji 對話／事件檔（format 應為 ocshimeji-life）",
+    "broken": "不是有效的 JSON：Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+    "newer": "檔案版本 99 比 App 支援的 1 新，請先更新 App",
+    "added": 1,
+    "said": "測試台詞小空！",
+    "exported": 1,
+    "cool": 12,
+    "picks": 12,
+    "eligible": 12,
+    "det": true
    }
+  },
+  {
+   "name": "13c 台詞冷卻：可選的台詞全部用過之前不重複",
+   "ok": true,
+   "detail": "12 種／12 次（可選 12 句）"
+  },
+  {
+   "name": "13d 決策在相同種子下可重現",
+   "ok": true,
+   "detail": true
   },
   {
    "name": "沒有 JavaScript 錯誤",

@@ -50,11 +50,14 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
       /* the things that used to take you away with one tap: the door of your home */
       await closeAll(); await page.evaluate(() => { const p = OC.App.player; if (p.mode === 'sit') { p.mode = 'idle'; p.seatY = 0; } p.path = null; }); await wait(page, 400);
       /* walk the view over to the house first (it is at the top of the island, outside the first screen) */
-      await page.evaluate(() => { const it = (OC.World.interacts || []).find((x) => x.type === 'home'); if (!it) return; const t = OC.World.nearestWalkable(it.at.x, it.at.y + 46, 60) || it.at; const p = OC.App.player; p.x = t.x; p.y = t.y; p.path = null; });
+      await page.evaluate(() => { const it = (OC.World.interacts || []).find((x) => x.type === 'home'); if (!it) return; const t = OC.World.nearestWalkable(it.at.x, it.at.y + 46, 60) || it.at; const p = OC.App.player; p.x = t.x; p.y = t.y; p.path = null;
+        /* the others stay out of the way: a mate standing in front of the door would take the tap (that is the right behaviour) */
+        OC.Chars.all().forEach((c, i) => { if (c.id === OC.Store.s.activeId) return; OC.Brain.hold(c.id, 'test'); const a = OC.App.actorOf(c.id); const q = a && OC.World.nearestWalkable(it.at.x - 120 + i * 240, it.at.y + 260, 80); if (a && q) { a.x = q.x; a.y = q.y; a.path = null; } }); });
       await page.waitForFunction(() => { const it = (OC.World.interacts || []).find((x) => x.type === 'home'); if (!it) return true; const p = OC.World.project(it.at.x, it.at.y, OC.World.levelAt(it.at.x, it.at.y), 10); return p.y > 200 && p.y < innerHeight - 200 && p.x > 50 && p.x < innerWidth - 50; }, null, { timeout: 20000 }).catch(() => {});
       await wait(page, 800);
       const home = await find('home'); const h2 = { home: !!home };
-      if (home) { await page.touchscreen.tap(home.x, home.y); await page.waitForFunction(() => OC.Pick.open_, null, { timeout: 10000 }).catch(() => {}); await wait(page, 2500); h2.s = await state(); }
+      if (home) { h2.hit = await page.evaluate(([x, y]) => { const k = OC.World.pick(x, y), p = OC.App.player; return { it: k.it && (k.it.type + ':' + (k.it.id || '')), p: [Math.round(p.x), Math.round(p.y)], ring: OC.Radial.open_ }; }, [home.x, home.y]); await page.evaluate(() => { window.__ocInputLog = []; }); await page.touchscreen.tap(home.x, home.y); await page.waitForFunction(() => OC.Pick.open_, null, { timeout: 10000 }).catch(() => {}); await wait(page, 2500); h2.s = await state(); h2.log = await page.evaluate(() => ({ input: (window.__ocInputLog || []).slice(-8), hub: (document.querySelector('.radial-hub b') || {}).textContent || null })); }
+      await page.evaluate(() => OC.Chars.all().forEach((c) => OC.Brain.unhold(c.id, 'test')));
       check('1d 點到「我的家」的門不會直接換地點：先出現「進去」的動作卡，人還在原地', !!home && h2.s.pick && h2.s.verb === '進去' && h2.s.area === 'isle' && !h2.s.walking, h2);
 
       /* the ring menu of a character: the finger that opened it cannot pick from it */
