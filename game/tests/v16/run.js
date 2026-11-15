@@ -1075,6 +1075,131 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       }, ids);
       check('54 放學後寫作業（每天一次，認真的更想寫）；上班、上學、作業不出現在安排選單；週末不上學', /作業/.test(r.cand || '') && !r.menu && !r.done && !r.weekend, r);
     }
+    /* ================================================================ 16.10 遊樂設施與邀約 */
+    const prep1610 = () => page.evaluate(async () => {
+      if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back());
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      for (const c of all) { c.profile.age = '25'; c.life.c16 = null; Object.assign(c.needs, { sleep: 90, energy: 90, food: 90, fun: 50 }); c.personality.traits = c.personality.traits.filter((t) => !['timid', 'shy', 'nervous', 'brave', 'adventurous', 'homebody', 'lazy', 'moody', 'restless'].includes(t)); const b = OC.Brain.get(c.id); if (b) [...b.holds].forEach((x) => OC.Brain.unhold(c.id, x)); }
+      OC.Store.s.settings.calendar = 'game'; OC.Store.s.life.clock.cal0 = OC.Sim.day();
+      OC.Tx.run(OC.Tx.uid('t'), { get: { coins: 500 } }, 't');
+      return all.map((c) => c.id);
+    });
+    if (want(55)) {
+      await prep1610();
+      const r = await page.evaluate(async () => {
+        OC.WorldUI.travel('fair', { instant: true }); await new Promise((res) => setTimeout(res, 3500));
+        const it = OC.World.interacts.filter((i) => i.type === 'fair16');
+        return { area: OC.World.area.id, n: it.length, games: it.map((i) => i.game).sort(), aff: OC.Brain.aff.filter((o) => o.kind === 'fair16').length, desc: OC.App.describe(it[0]).title, walk: it.every((i) => OC.World.walkable(i.at.x, i.at.y)), total: OC.Fair16.GAMES.length + 4 };
+      });
+      check('55 遊樂園多了 7 個攤位（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮），加上原本的 4 個共 11 個設施；每個都點得到、走得到，角色也會自己去玩', r.area === 'fair' && r.n === 7 && r.aff === 7 && r.total === 11 && r.walk && !!r.desc, r);
+    }
+    if (want(56)) {
+      await prep1610();
+      if (await page.evaluate(() => OC.World.area.id) !== 'fair') { await page.evaluate(() => OC.WorldUI.travel('fair', { instant: true })); await page.waitForTimeout(3500); }
+      const res = {};
+      for (const g of ['coaster', 'bumper', 'haunted', 'shoot', 'hoops', 'teacup', 'maze']) {
+        const s0 = await page.evaluate((g) => { const c0 = OC.Store.s.coins; const r = OC.Fair16.play(g, { skipSetup: true }); const c1 = OC.Store.s.coins; if (OC.Fair16.cur) OC.Fair16.cur.dur = 12; return { ok: r.ok, ticket: c0 - c1 }; }, g);
+        await page.waitForFunction(() => document.querySelector('.mini.f16.open canvas'), null, { timeout: 8000 }).catch(() => {});
+        const box = await page.evaluate(() => { const r = document.querySelector('.mini.f16 canvas').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+        const P = (x, y) => [box.x + x / 600 * box.w, box.y + y / 600 * box.h];
+        const st = () => page.evaluate(() => OC.Fair16.state());
+        let path = null;
+        const t0 = Date.now();
+        while (Date.now() - t0 < 16000) {
+          const s = await st(); if (!s) break;
+          if (g === 'coaster') { const star = (s.st.items || []).filter((i) => i.star && i.y < 500).sort((a, b) => b.y - a.y)[0]; await page.mouse.move(...P(star ? star.x : 300, 500)); if (!s.st.__d) { await page.mouse.down(); await page.evaluate(() => (OC.Fair16.cur.st.__d = 1)); } }
+          else if (g === 'bumper') { const car = s.st.cars[0]; await page.mouse.move(...P(s.st.me.x, s.st.me.y)); await page.mouse.down(); await page.mouse.move(...P(car.x, car.y), { steps: 3 }); await page.mouse.up(); }
+          else if (g === 'haunted') { const gh = (s.st.ghosts || [])[0]; if (gh) { await page.mouse.click(...P(gh.x, gh.y)); } }
+          else if (g === 'shoot') { const tg = (s.st.tg || [])[0]; if (tg) await page.mouse.click(...P(tg.x + tg.v * 0.08, tg.y)); }
+          else if (g === 'hoops') { if (!s.st.ball) { await page.mouse.move(...P(300, 540)); await page.mouse.down(); await page.mouse.move(...P(300 + (s.st.hoopX - 300) * 0.08, 300), { steps: 2 }); await page.mouse.up(); } }
+          else if (g === 'teacup') { await page.mouse.move(...P(450, 330)); await page.mouse.down(); for (let i = 0; i < 24; i++) { const a = i / 12 * Math.PI * 2; await page.mouse.move(...P(300 + Math.cos(a) * 150, 330 + Math.sin(a) * 150)); await page.waitForTimeout(90); } await page.mouse.up(); }
+          else if (g === 'maze') {
+            if (!path) path = await page.evaluate(() => { const s = OC.Fair16.cur.st, N = s.N, prev = new Array(N * N).fill(-1), q = [0], seen = new Set([0]); while (q.length) { const i = q.shift(); const w = s.cells[i].w; for (const [j, k] of [[i - N, 0], [i + 1, 1], [i + N, 2], [i - 1, 3]]) if (!w[k] && !seen.has(j)) { seen.add(j); prev[j] = i; q.push(j); } } const p = []; for (let i = N * N - 1; i !== -1; i = prev[i]) p.unshift(i); return { p, N, cs: s.cs, ox: s.ox, oy: s.oy }; });
+            await page.mouse.move(...P(path.ox + 0.5 * path.cs, path.oy + 0.5 * path.cs)); await page.mouse.down();
+            for (const i of path.p.slice(1)) { await page.mouse.move(...P(path.ox + (i % path.N + 0.5) * path.cs, path.oy + (((i / path.N) | 0) + 0.5) * path.cs)); await page.waitForTimeout(40); }
+            await page.mouse.up(); await page.waitForTimeout(800);
+          }
+          await page.waitForTimeout(g === 'shoot' || g === 'haunted' ? 60 : 120);
+        }
+        await page.mouse.up().catch(() => {});
+        await page.waitForFunction(() => !OC.Fair16.cur, null, { timeout: 20000 }).catch(() => {});
+        res[g] = await page.evaluate((s0) => { const L = OC.Fair16.last; return { started: s0.ok, paid: s0.ticket === OC.Fair16.TICKET, score: L && L.score, prize: L && L.prize }; }, s0);
+      }
+      const again = await page.evaluate(async () => { const one = () => { OC.Fair16.play('hoops', { skipSetup: true }); OC.Fair16.cur.score = 99; OC.Fair16.cur.t = 5; OC.Fair16.finish('end'); return OC.Fair16.last.prize; }; one(); return one(); });   /* twice in a row: the second one has no prize */
+      const held = await page.evaluate(() => [...OC.Brain.get(OC.Store.s.activeId).holds]);
+      check('56 七個遊戲都用真的觸控玩得到分數（機器人照畫面上的東西點、拖、滑、畫圓、走迷宮），買票經交易，有獎品；同一天同一個遊戲第二次不再給獎品；結束後角色不再被保留', Object.values(res).every((x) => x.started && x.paid && x.score > 0) && Object.values(res).some((x) => x.prize) && again === null && !held.includes('game'), { res, again, held });
+    }
+    if (want(57)) {
+      const ids = await prep1610();
+      const r = await page.evaluate(async (ids) => {
+        const F = OC.Fair16, [a, b, c] = ids.map((id) => OC.Chars.get(id)), out = {};
+        if (OC.World.area.id !== 'fair') { OC.WorldUI.travel('fair', { instant: true }); await new Promise((res) => setTimeout(res, 3500)); }
+        OC.Chars.setActive(a.id); await new Promise((res) => setTimeout(res, 600)); for (const x of [b, c]) { x.life.loc = 'fair'; x.life.trip = null; x.life.cur = null; } OC.App.syncPresence(); await new Promise((res) => setTimeout(res, 1500)); b.personality.traits.push('timid');
+        out.timid = F.refuses(b, F.G.coaster); out.timidOk = F.refuses(b, F.G.shoot); c.personality.traits.push('adventurous');
+        out.near = F.nearby(a.id).map((x) => x.id).sort().join() === [b.id, c.id].sort().join();
+        /* the setup card: choose who comes along (the timid one is greyed out with the reason) */
+        F.play('coaster'); await new Promise((res) => setTimeout(res, 500)); const sh = document.querySelector('.sheet.open');
+        out.locked = !!sh.querySelector(`[data-with="${b.id}"][disabled]`); sh.querySelector(`[data-with="${c.id}"]`).click(); await new Promise((res) => setTimeout(res, 400)); sh.querySelector('[data-f16=start]').click(); await new Promise((res) => setTimeout(res, 500));
+        out.mates = F.cur && F.cur.mates.map((m) => m.id); out.heldMate = OC.Brain.get(c.id).holds.has('game');
+        const f0 = OC.Mind.relPeek(a.id, c.id) ? OC.Mind.relPeek(a.id, c.id).fam : 0; F.cur.score = 20; F.cur.t = 5; F.finish('end');
+        out.fam = [f0, OC.Mind.relPeek(a.id, c.id).fam]; out.mem = OC.Mind.memories(c, {}).map((m) => m.text).find((t) => /一起玩雲霄飛車/.test(t)); out.released = !OC.Brain.get(c.id).holds.has('game');
+        /* a contest with a companion reports the companion's own score */
+        F.play('bumper', { skipSetup: true, with: [c.id] }); F.cur.score = 30; F.cur.t = 5; F.finish('end'); out.rivals = (F.last.rivals || []).length;
+        /* the AI: the timid one does not choose the scary rides */
+        const bb = OC.Brain.get(b.id); OC.Brain.setControl(b.id, 'semi'); bb.manualOverride = 0;
+        const ba2 = OC.Brain.aff.find((o) => o.kind === 'fair16' && o.game === 'coaster'); const fake = [{ kind: 'act', act: 'fairride16', target: { slot: ba2.slots[0] }, s: 1, why: [] }];
+        const sh9 = OC.Fair16.shape(b, bb, fake)[0]; out.ai = [sh9.why[0], !OC.Fair16.G[sh9.target.slot.obj.game].scary]; OC.Brain.setControl(b.id, 'manual');
+        return out;
+      }, ids);
+      check('57 一起玩：開始前選同伴（膽小的不坐雲霄飛車、不進鬼屋，並說原因）；同伴一起被保留、結束後放開，更熟、留下回憶；比賽類有同伴的分數；角色自己逛遊樂園時，膽小的改玩不可怕的', /太高太快/.test(r.timid || '') && r.timidOk === null && r.near && r.locked && JSON.stringify(r.mates) === JSON.stringify([ids[2]]) && r.heldMate && r.fam[1] > r.fam[0] && r.mem && r.released && r.rivals === 1 && r.ai && /怕雲霄飛車，改玩/.test(r.ai[0]) && r.ai[1], r);
+    }
+    if (want(58)) {
+      const ids = await prep1610();
+      const r = await page.evaluate(async (ids) => {
+        const O = OC.Outing16, [a, b, c] = ids.map((id) => OC.Chars.get(id)), out = {}, day = OC.Sim.day();
+        if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((res) => setTimeout(res, 3000)); } for (const x of [a, b, c]) { x.life.loc = 'isle'; x.life.trip = null; } OC.App.syncPresence(); await new Promise((res) => setTimeout(res, 1500));
+        for (const [x, y] of [[a, b], [b, a], [a, c], [c, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 60, aff: 70, trust: 60, conflict: 0, type: 'friend' });
+        const r1 = O.invite({ host: a.id, guests: [b.id, c.id], place: 'beach', day: day + 1, hour: 14 }); out.r1 = r1.ok && Object.values(r1.plan.rsvp).map((x) => x.yes);
+        OC.Career16.takeJob(b.id, 'chef'); const r2 = O.invite({ host: a.id, guests: [b.id], place: 'cafe', day: day + 1, hour: 10 }); out.busy = r2.plan.rsvp[b.id].why; OC.Career16.quitJob(b.id);
+        out.date = O.invite({ host: a.id, guests: [b.id], place: 'hill', day: day + 1, hour: 14, kind: 'date' }).why;
+        /* the day comes: everyone sets off, then it is settled */
+        /* the character you play is reminded, not moved: here the host is someone else */
+        const d4 = OC.Chars.get(ids[3]); for (const [x, y] of [[b, c], [c, b], [b, d4], [d4, b]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 60, aff: 70, trust: 60, conflict: 0, type: 'friend' });
+        const p = O.invite({ host: b.id, guests: [c.id, d4.id], place: 'beach', day: day + 1, hour: 14 }).plan; for (const g of p.guests) { p.rsvp[g].yes = true; p.rsvp[g].flake = g === d4.id; }   /* d says yes but will not come */
+        p.day = day; p.hour = 10; OC.Store.s.settings.time = 'fixed'; OC.Store.s.settings.fixedHour = 9.6; O.step();
+        out.going = p.status; out.locs = [b, c, d4].map((x) => { const bx = OC.Brain.get(x.id); return bx && bx.leaving ? bx.leaving.to : x.life.trip ? x.life.trip.to : x.life.loc; });
+        OC.Store.s.settings.fixedHour = 11.2; O.step();
+        out.done = p.status; out.came = (p.came || []).length; out.noShow = p.noShow; out.mem = OC.Mind.memories(c, {}).map((m) => m.text).find((t) => /星砂海灘出去玩/.test(t));
+        out.stood = OC.Mind.memories(b, {}).map((m) => m.text).find((t) => /沒有出現/.test(t)); out.trust = OC.Mind.relPeek(b.id, d4.id).trust;
+        OC.Store.s.settings.time = 'cycle';
+        for (const x of [a, b, c, d4]) { x.life.loc = 'isle'; x.life.trip = null; }
+        return out;
+      }, ids);
+      check('58 邀約：被邀的人依關係與個性回答（上班的時間會說「要上班」；約會要兩人都成年且打開戀愛）；時間到大家出發，到了的人更熟、留下回憶；說好卻沒來的＝放鴿子，等的人失望、信任下降', r.r1 && r.busy === '那時候要上班' && /約會/.test(r.date || '') && r.going === 'going' && r.locs[0] === 'beach' && r.locs[1] === 'beach' && r.locs[2] !== 'beach' && r.done === 'done' && r.came === 2 && r.noShow.length === 1 && r.mem && r.stood && r.trust < 60, r);
+    }
+    if (want(59)) {
+      const ids = await prep1610();
+      const r = await page.evaluate(async (ids) => {
+        const O = OC.Outing16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 60, aff: 70, trust: 60, conflict: 0, type: 'friend' });
+        OC.Store.s.life.plans16 = []; let d = OC.Sim.day() + 100; while (!O.plans().length && d < OC.Sim.day() + 400) { O.dayStep(d); d++; }
+        out.ai = O.plans()[0] && O.plans()[0].by;
+        /* the 行程 app: a new invitation with real buttons */
+        OC.Career16.takeJob(a.id, 'barista');
+        OC.Pages.open('plan16'); await new Promise((res) => setTimeout(res, 700)); const pg = document.querySelector('.page.open[data-page=plan16]');
+        out.today = /上班/.test(pg.querySelector('[data-card=today]').textContent);
+        pg.querySelector(`[data-host="${a.id}"]`).click(); await new Promise((res) => setTimeout(res, 200));
+        pg.querySelector(`[data-guest="${b.id}"]`).click(); await new Promise((res) => setTimeout(res, 200));
+        pg.querySelector('[data-place=fair]').click(); await new Promise((res) => setTimeout(res, 200)); pg.querySelector('[data-when="2"]').click(); await new Promise((res) => setTimeout(res, 200));
+        out.dateLocked = !!pg.querySelector('[data-kind=date][disabled]');
+        pg.querySelector('[data-p16=send]').click(); await new Promise((res) => setTimeout(res, 400));
+        out.msg = (pg.querySelector('.p16-msg') || {}).textContent; out.n = O.plans().length;
+        const mine = O.plans().find((x) => x.by === 'player'); const btn = pg.querySelector(`[data-cancel="${mine.id}"]`); out.listed = !!pg.querySelector(`[data-plan="${mine.id}"]`);
+        if (btn) btn.click(); await new Promise((res) => setTimeout(res, 300)); out.cancelled = mine.status;
+        OC.Career16.quitJob(a.id); OC.UI.back(); return out;
+      }, ids);
+      check('59 「行程」App：今天的上班、上學與約定；用按鈕送出邀約（約會要條件成立才能選），立刻看到每個人的回答；可以取消；朋友也會自己約出去玩（寄信告訴你）', r.ai === 'ai' && r.today && r.dateLocked && /送出了邀請/.test(r.msg || '') && r.listed && r.cancelled === 'cancelled', r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);

@@ -573,6 +573,7 @@
       case 'ride': return { title: it.label || '旋轉木馬', sub: '坐進前面的馬車，轉一圈', stk: 'star', verb: '坐一圈', run: () => OC.WorldUI.tap(it) };
       case 'wheel': return { title: it.label || '摩天輪', sub: '搭一圈，從高處看整座遊樂園', stk: 'star', verb: '搭一圈', run: () => OC.WorldUI.tap(it) };
       case 'stage': return { title: it.label || '舞台', sub: '開一場演唱會（跟著節奏按）', stk: 'music', verb: '上台表演', run: () => OC.WorldUI.tap(it) };
+      case 'fair16': { const g = OC.Fair16.G[it.game]; return { title: g.zh, sub: `${g.d}・一張票 ${OC.Fair16.TICKET} 星幣`, stk: 'gift', verb: '玩一場', run: () => OC.WorldUI.tap(it) }; }
       case 'toss': return { title: it.label || '套圈圈', sub: '一次 3 個圈，20 星幣', stk: 'gift', verb: '玩一局', run: () => OC.WorldUI.tap(it) };
       default: return { title: it.label || '這個東西', sub: null, stk: 'hand', verb: '使用', run: () => OC.WorldUI.tap(it) };
     }
@@ -1125,7 +1126,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

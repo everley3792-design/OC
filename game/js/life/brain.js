@@ -50,6 +50,7 @@
       if (it.type === 'wheel' || it.type === 'stage') add({ id: it.type + '@' + it.x, kind: it.type, zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['view'], slots: [-18, 0, 18].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y + 6, ax: it.at.x + dx, ay: it.at.y + 6, fx: 0, back: 1 })) });
       /* 15.2: part-time jobs behind the café counter, the mill and the fair snack stand */
       if ((it.type === 'counter' && it.shop === 'cafe') || (it.type === 'shop' && (it.shop === 'mill' || it.shop === 'fair'))) add({ id: 'job:' + it.shop, kind: 'job', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['work'], slots: [{ i: 0, x: it.at.x + 22, y: it.at.y - 6, ax: it.at.x + 22, ay: it.at.y - 6, fx: 0, back: 1 }] });
+      if (it.type === 'fair16') add({ id: 'fair16@' + it.game, kind: 'fair16', game: it.game, zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['ride16'], slots: [-12, 12].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });   /* 16.10: the new fair booths */
       if (it.type === 'toss') add({ id: 'toss@' + it.x, kind: 'toss', zh: it.label, x: it.x, y: it.y, lvl: L, verbs: ['play'], slots: [-12, 12].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: 0, back: 1 })) });
       if (it.type === 'bed') add({ id: it.id, kind: 'flowers', zh: '花圃', x: it.x, y: it.y, lvl: L, verbs: ['tend', 'view'], slots: [-10, 10].map((dx, i) => ({ i, x: it.at.x + dx, y: it.at.y, ax: it.at.x + dx, ay: it.at.y, fx: -dx / 12, back: 1 })) });
     }
@@ -282,7 +283,8 @@
     if (OC.Arcs) list = OC.Arcs.shape(c, b, list);                                         // 12.0: a cold war keeps two OCs apart
     if (OC.Aware) list = OC.Aware.shape(c, b, list);
     if (OC.House16) list = OC.House16.shape(c, b, list);   /* 16.8: looking after the baby, housemates */
-    if (OC.Career16) list = OC.Career16.shape(c, b, list);   /* 16.9: homework, freelance work */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
+    if (OC.Career16) list = OC.Career16.shape(c, b, list);   /* 16.9: homework, freelance work */
+    if (OC.Fair16) list = OC.Fair16.shape(c, b, list);   /* 16.10: the timid skip the coaster and the haunted house */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (OC.Aware && ch) OC.Aware.chosen(c, b, ch);
@@ -349,6 +351,7 @@
       if (OC.Growth && gm > 0.5) OC.Growth.onFinish(c, act, b, gm);
       if (OC.Aware) OC.Aware.onFinish(c, act, b, gm);
       if (OC.House16) OC.House16.onFinish(c, act, b, gm);
+      if (OC.Fair16) OC.Fair16.onFinish(c, act, b, gm);
       if (s && s.obj.kind === 'plot' && act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
       if (act === 'sleep') OC.Events && OC.Events.trigger('wake', { a: c.id });
     }

@@ -99,6 +99,7 @@
       case 'wheel': goThen(it, () => OC.Mini.wheel(it)); return true;
       case 'stage': goThen(it, () => OC.Mini.concert(it)); return true;
       case 'toss': goThen(it, () => OC.Mini.toss(it)); return true;
+      case 'fair16': goThen(it, () => OC.Fair16.play(it.game)); return true;
     }
     if (it.type === 'furn') { const d = I(it.id) || {}; if ((d.verbs || []).includes('cook')) { A().goThen(it.x, it.y + 14, () => OC.Mini.cooking(it)); return true; } if ((d.verbs || []).includes('study')) { A().goThen(it.x, it.y + 14, () => useBy('study', it)); return true; } if ((d.verbs || []).includes('read') && !d.sit) { A().goThen(it.x, it.y + 14, () => useBy('read', it)); return true; } if ((d.verbs || []).includes('play') && !d.sit) { A().goThen(it.x, it.y + 14, () => useBy('play', it)); return true; } if (d.sleep || it.id === 'bed') { A().goThen(it.x + 16, it.y + 6, () => useBy('sleep', it)); return true; } }
     return false;

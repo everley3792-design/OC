@@ -258,7 +258,7 @@
     },
   };
 
-  Object.assign(OC.Areas, { hill, fair });
+  Object.assign(OC.Areas, { hill, fair, _fair: { booth, PLAZA, place: (ctx, o, x, y, l, up) => place(ctx, o, x, y, l, up) } });   /* 16.10: more booths (fair16.js) */
   OC.Models15 = { windmill, carousel, ferrisWheel, stage, booth, rainbowGate, balloons, picnic };
   void mix; void P;
 })();

@@ -39,6 +39,7 @@
 - **16.7（0.16.7-alpha）自主與世界**（原計畫 16.4）：`OC.Aware`（`life/aware16.js`＋台詞 `aware16d.js`）：感知與注意力（看到難過的、被丟出去的、睡覺的、吃東西的、地上的東西、下雨 → 焦點）、社交維繫（好久沒說話的朋友）、情境判斷（有人睡覺不吵、圖書館安靜、下雨不在室外、不對難過的人開玩笑）、重新規劃（位子被佔走會記住並說明）、地上的東西（`save.ground16`，放下／丟掉，角色依個性吃／玩／收拾／看看）、其他地點的設施容量（`FAC`）與遇到聊天；12 樣新道具（`items/props16.js`）。紀錄：`docs/v16.7-report.md`。
 - **16.8（0.16.8-alpha）住處與家庭**（依玩家定案藍圖 `docs/v16-blueprint.md`）：`OC.House16`（`life/home16.js`）：黃屋頂小屋（`yhouse`）、紫屋頂連棟屋（`phouse`）室內、回自己的家睡、四種新床（`models16.js`：雙人床／上下舖／兒童床／嬰兒床，同床看關係）、入住管理頁 `homes16`（原住戶反應＋強制入住的後果）、同居日常與摩擦（每週一封信）、照顧寶寶與五個成長紀念、孩子與領養（預設關閉、一定先問玩家）、家族樹。紀錄：`docs/v16.8-report.md`。
 - **16.9（0.16.9-alpha）職業與學業**：`OC.Career16`（`life/career16.js`）：17 條職業線（受僱 8、自由業 9，各 8 個職稱）、兔子洞上班上學（走到告示牌旁就看不到）、薪水／升遷、自由業案件（委託人、截止日、信譽、靈感、作品集、上架成工坊商品）、學校（幼兒園／小學／中學／成人進修、15 科、在學／休學／自學、作業、期末考、畢業、校慶）、打工轉 Lv.1「兼職」；頁面 `career16`。紀錄：`docs/v16.9-report.md`。
+- **16.10（0.16.10-alpha）遊樂設施與邀約**：`OC.Fair16`（`ui/fair16.js`）：遊樂園 7 個新攤位（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮；共 11 個設施），真實觸控小遊戲、選同伴一起玩（膽小的不坐可怕的）、票與一天一次的獎品；`OC.Outing16`（`life/outing16.js`）：邀約／約會／出遊（立刻回答、到時出發、結算、放鴿子）、角色自己約、手機「行程」App（`plan16`）。紀錄：`docs/v16.10-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -47,7 +48,7 @@
 game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
-  js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）  js/life/home16.js OC.House16（16.8）  js/world/models16.js（16.8 床）  js/life/career16.js OC.Career16（16.9）
+  js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）  js/life/home16.js OC.House16（16.8）  js/world/models16.js（16.8 床）  js/life/career16.js OC.Career16（16.9）  js/ui/fair16.js OC.Fair16、js/life/outing16.js OC.Outing16（16.10）
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
@@ -115,7 +116,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.9-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.10-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -256,4 +257,5 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.7 自主與世界**（`OC.Aware`）：只在 `Brain.decide` 裡經 `Aware.shape` 調整候選分數（在 `Mind11`／`Arcs` 之後），手動操控與玩家安排的不動；失敗經 `Aware.failed`（`Brain.start` 位子被佔、`abort` 的路線問題），選擇後 `Aware.chosen` 寫出「改變計畫」。地上的東西只經 `Aware.put`／`take`（`OC.Tx` key `g16put:`／`g16take:`／`g16back:<uid>`），存 `save.ground16[地點]`，畫面是 `World.spawnDrop(…, { icon: true })`（`d.g16`），玩家走過去**不**自動撿。地上物品的活動（`ACTS.g16_*`，`aw16: true`）不出現在任何選單、AI 只經 `Aware.groundCands` 帶目標點（`pt.k = 'g16:<uid>'`），完成時 `Brain.finish` 呼叫 `Aware.onFinish`。其他地點的設施容量只寫在 `Aware.FAC`（`abstractStep` 經 `absFilter`／`absStart`）；遇到聊天 `Aware.talkAway` 只經 `Mind.relPair`，不給獎勵。台詞變數用 `{thing}`（`{item}` 是對話引擎內建的）。
 - **16.8 住處**（`OC.House16`）：角色住哪裡只看 `c.life.home16`（`OC.Homes.assign(c, hid)`；玩家搬家經 `House16.moveIn(id, hid, { force })`，反應在 `reaction()`，**不跳確認視窗**）；回家睡覺的地點一律問 `House16.placeOf(c)`（不要再寫死 `'home'`）；床的位子由 `House16.bedSlots`、能不能用由 `House16.slotOK`（自己的房子、年齡、同床看 `shareOK`，未成年和非家人的大人絕不同床）。新的室內用 `OC.Areas._interior()`（`areas2.js`）。照顧寶寶的活動 `babycare16`（`aw16: true`，不在選單）只由 `House16.shape` 帶目標點提供。**新角色只能因為玩家同意才建立**（孩子：`answerChild('yes')`；領養：頁面按鈕）——都經 `House16.makeChild`，關係經 `Opening.setStart('parent'／'sibling')`；`settings.family16` 預設關閉；未成年不能領養、戀愛相關一律經 `Mind.romanceOK`。
 - **16.9 職業與學業**（`OC.Career16`）：工作與學校是兔子洞（`ACTS.work16`／`school16`，`away: true` → 抵達後看不到；`aw16: true` 不在選單），在你身邊的經 `OC.Queue.add`（帶目標點）、不在身邊的直接設 `c.life.cur`；**結果只從 `OC.Progress` 的 `act` 事件算**（薪水 `c16pay:<oc>:<日>`、案件 `case16:<id>`，都經 `OC.Tx`；離線補算沒有事件＝不付錢）。新職業／科目只加 `LINES`／`SUBJ`／`LEVELS` 資料；時間用 `OC.Clock.cal()` 與 `hour()`（測試要用遊戲曆，實時曆可能剛好是週末）。字串的穩定亂數用檔案內的 `hs()`（`OC.hash` 只接受數字）。作品上架只經 `OC.Items.saveCustom`（不產生庫存）。
+- **16.10 遊樂設施與邀約**：新的遊樂園小遊戲只加在 `fair16.js` 的 `GAMES`（攤位位置、可怕／比賽旗標）與 `GAME[id]`（init／update／draw／down／move／up，座標是 600×600 畫布）；`OC.Fair16.state()` 只給測試機器人讀。票經 `OC.Tx`、獎品 key `fair16:<遊戲>:<角色>:<日>`；同伴在遊戲中 `hold('game')`，`finish()` 一定放開。邀約只經 `Outing16.invite`（回答在當下決定一次、爽約也是），結算只經 `settle`（`Mind.relPair`／`relChange`，不碰 `fixed`），約會一律 `Mind.romanceOK`；你操控的角色不會被自動移走（只提醒）。被選中的 `.chip` 用 `.on`（陽光黃，`island.css`）。
 - **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。
