@@ -1,29 +1,20 @@
 {
- "at": "2026-11-15T04:07:45.124Z",
+ "at": "2026-11-15T13:29:14.769Z",
  "results": [
   {
-   "name": "3a 藝術 Lv.1 前不會畫素描，升級後解鎖新活動",
+   "name": "11a 跳過演出：立刻結束，資料照樣正確（扣 1 個、品嚐紀錄、回憶各一次）",
    "ok": true,
-   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+   "detail": "{\"ms\":55,\"used\":1,\"tx\":1,\"holds\":[],\"tasted\":1,\"mem\":1}"
   },
   {
-   "name": "3b 料理升級解鎖新食譜（Lv.1 鬆餅布丁、Lv.2 咖哩水果塔）",
+   "name": "11b 跳過後角色沒有卡在演出狀態",
    "ok": true,
-   "detail": "{\"sketch0\":false,\"recipe0\":false,\"sketch1\":true,\"recipe1\":true,\"recipe2\":true,\"cookLv\":2,\"ups\":2}"
+   "detail": "[]"
   },
   {
-   "name": "3c 料理清單：學會的可以做，還沒學會的明確顯示鎖住與需要的等級",
+   "name": "11c 觀看中的特殊事件可以跳過：立刻結束、結果只套用一次、角色沒有卡住",
    "ok": true,
-   "detail": "晴日咖哩煮・3 份　✗白米✗馬鈴薯✗胡蘿蔔材料不足 | ？？？？煮・用到任何蔬菜…（自由料理時發現・料理 Lv.3 起） | ？？？？烘焙・用到起司…（自由料理時發現・料理 Lv.3 起）"
-  },
-  {
-   "name": "3d 升級後生活 AI 會把新活動列入考慮",
-   "ok": true
-  },
-  {
-   "name": "3e 技能升級有演出卡片（含解鎖內容）",
-   "ok": true,
-   "detail": "麻糬的藝術 Lv.1 | 麻糬的料理 Lv.2"
+   "detail": "{\"started\":true,\"id\":\"lonelyMoment\",\"ms\":108,\"ended\":true,\"logged\":1,\"why\":\"done\",\"held\":[],\"ui\":false}"
   },
   {
    "name": "全程沒有 JavaScript 錯誤",

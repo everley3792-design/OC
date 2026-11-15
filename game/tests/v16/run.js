@@ -1000,11 +1000,11 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
     if (want(51)) {
       const ids = await prep169();
       const r = await page.evaluate(async (ids) => {
-        const C = OC.Career16, [a] = ids.map((id) => OC.Chars.get(id)), out = {}, day = OC.Sim.day();
+        const C = OC.Career16, a = OC.Chars.get(ids[1]), out = {}, day = OC.Sim.day();   /* not the one who already worked today in test 50 */
         C.takeJob(a.id, 'nurse'); const c0 = OC.Store.s.coins;
         OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 }); OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 });
         out.once = OC.Store.s.coins - c0;
-        const j = C.jobOf(a); j.perf = 25 + j.lv * 10; j.days = 3; delete C.st(a).paid[day]; OC.Tx && null;
+        const j = C.jobOf(a); j.perf = 25 + j.lv * 10; j.days = 3; if (C.st(a).paid) delete C.st(a).paid[day];
         /* a new day's shift with enough performance → promotion */
         const k = `c16pay:${a.id}:${day}`; if (OC.Store.s.ledger && OC.Store.s.ledger.keys) delete OC.Store.s.ledger.keys[k];
         OC.Progress.emit('act', { oc: a.id, act: 'work16', min: 300 });
