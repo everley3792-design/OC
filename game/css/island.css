@@ -582,3 +582,8 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .k16-fridge { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
 .k16-fi { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; background: var(--surface); box-shadow: 0 2px 0 var(--lip); font-size: 12px; text-align: center; }
 .k16-fi .btn { min-height: 48px; }
+
+/* 16.6 keyword bubbles: a conversation you are not part of shows an emoji and the topic (偷聽 shows the words) */
+.speech.kw { font-size: 15px; padding: 5px 10px; }
+.speech.kw .who { display: none; }
+.t16-lines > div { margin-top: 4px; line-height: 1.5; }

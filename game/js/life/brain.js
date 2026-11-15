@@ -626,8 +626,8 @@
       } else if (conv.answer.ans !== 'yes' && !['comfort', 'apologize', 'argue', 'prank'].includes(kind)) { say('b', 'decline', { busy: conv.answer.busy, act: conv.b.act }); say('a', 'declined'); return L; }
       const deep = (A.personality.social + B.personality.social) / 2 > 55 || r.aff > 40;
       switch (kind) {
-        case 'chat': say('a', 'talk'); say('b', 'talk_r'); if (deep) { say('b', 'talk'); say('a', 'talk_r'); } break;
-        case 'share': say('a', 'share'); say('b', 'share_r'); break;
+        case 'chat': if (OC.Topic && S().life.settings.topics !== false && OC.Topic.script(conv, say, A, B, r)) break; say('a', 'talk'); say('b', 'talk_r'); if (deep) { say('b', 'talk'); say('a', 'talk_r'); } break;   /* 16.6: a real topic, each line answering the last */
+        case 'share': if (OC.Topic && S().life.settings.topics !== false && OC.Topic.script(conv, say, A, B, r)) break; say('a', 'share'); say('b', 'share_r'); break;
         case 'compliment': say('a', 'compliment', r.aff >= 40 ? { anim: 'pat', other: 'patted', dur: 1.6, nudge: 0.4 } : null); say('b', 'compliment_r', { anim: has(B, 'shy') ? 'shy' : 'happy' }); break;
         case 'comfort': say('a', 'comfort', { anim: 'comfort', other: 'comforted', dur: 2.2, nudge: 0.6 }); say('b', 'comfort_r', { anim: 'nod' }); break;
         case 'joke': { say('a', 'joke'); const fun = (B.personality.expression - 30) / 100 + r.aff / 150 + (Sim().rnd() - 0.4) * 0.6; conv.funny = fun > 0.2; say('b', conv.funny ? 'laugh' : 'flat', { anim: conv.funny ? 'laugh' : 'shrug', dur: 1.6 }); break; }
@@ -672,7 +672,9 @@
           // 11.0 paired gestures: the other one performs the complementary action at the same time, and they step toward each other
           if (ln.extra && ln.extra.other) Wd().setAction(ot.a, ln.extra.other, { dur: adur, priority: 3 });
           { const dir = Math.sign(ot.a.x - sp.a.x) || 1, nd = (ln.extra && ln.extra.nudge) || 0; sp.a.nudgeT = nd * 5 * dir; ot.a.nudgeT = -nd * 5 * dir; sp.a.nudgeUntil = ot.a.nudgeUntil = (nd ? Math.max(sp.a.t, ot.a.t) + adur + 0.2 : 0); }
-          const d = out ? hooks.say(sp.a, out.text, OC.Chars.name(charOf(sp)), null, { conv: conv.id }) : 0.4;
+          const kw = out && ln.extra && ln.extra.kw && OC.Topic && !OC.Topic.full(conv) ? ln.extra.kw : null;   /* 16.6: a talk you are not part of shows keywords (偷聽 shows the words) */
+          if (out && conv.t16 && OC.Topic) OC.Topic.spoke(conv, ln.who, out.text);
+          const d = out ? hooks.say(sp.a, kw || out.text, OC.Chars.name(charOf(sp)), kw ? 1.6 : null, { conv: conv.id, kw: !!kw, full: out.text }) : 0.4;
           if (out && out.reply && (!conv.lines[conv.i] || conv.lines[conv.i].who === ln.who)) conv.lines.splice(conv.i, 0, { who: ln.who === 'a' ? 'b' : 'a', cat: out.reply });   // data-driven branch
           conv.nextAt = t + Math.max(d + 0.35, (ln.extra && ln.extra.dur) ? ln.extra.dur + 0.25 : 0);
           continue;
@@ -707,7 +709,7 @@
         gain(A, { social: 4 });
       } else {
         const R = {
-          chat: [{ fam: 4, aff: 3, trust: 1 }, { social: 18, fun: 6 }, '和{other}聊天', 0.3, 'happy'],
+          chat: [{ fam: 4, aff: 3, trust: 1 }, { social: 18, fun: 6 }, conv.t16 ? '和{other}聊了' + conv.t16.zh : '和{other}聊天', 0.3, 'happy'],
           share: [{ fam: 4, aff: 4, intim: 2 }, { social: 16, interest: 10 }, '和{other}分享興趣', 0.4, 'happy'],
           compliment: [{ fam: 2, aff: 5 }, { social: 12 }, '被{other}稱讚', 0.45, 'shy'],
           comfort: [{ fam: 3, aff: 6, trust: 6, intim: 2 }, { social: 16 }, '{other}來安慰', 0.55, 'calm'],
@@ -721,6 +723,7 @@
         }[kind] || (OC.Social11 && OC.Social11.fx(kind, conv)) || [{ fam: 2 }, { social: 8 }, '和{other}相處', 0.25, 'happy'];
         const [rd, nd, text, imp, emo] = R;
         M().relPair(A.id, B.id, rd, D().SOCIAL[kind].zh);
+        if (conv.t16 && OC.Topic) { try { OC.Topic.resolve(conv, A, B); } catch (e) { console.error('[topic]', e); } }   /* 16.6 */
         gain(A, nd); gain(B, Object.assign({}, nd, kind === 'food' ? { food: 14 } : {}));
         if (emo) { M().feel(A, kind === 'compliment' ? 'happy' : emo, 0.4, `${D().SOCIAL[kind].zh}・${OC.Chars.name(B)}`, B.id); M().feel(B, emo, 0.45, `${D().SOCIAL[kind].zh}・${OC.Chars.name(A)}`, A.id); }
         if (kind === 'comfort' || kind === 'hug' || kind === 'leanOn' || kind === 'pat') { for (const x of B.life.emo.list) if (!x.need && D().EMOTIONS[x.id].v < 0) x.k *= 0.5; }

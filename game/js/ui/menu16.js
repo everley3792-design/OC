@@ -91,11 +91,13 @@
       { ic: 'gift', label: '送禮', off: busy, sub: () => ({ items: bagItems(['gift', 'material', 'toy', 'sea', 'bug', 'crop'], (k) => (OC.Items.useKind(k) === 'play' ? OC.Use.play(id, k) : OC.Use.give(id, k))), empty: '背包裡沒有可以送的東西' }) },
       { ic: 'dice', label: '玩耍', off: sl || busy, sub: () => ({ items: [{ ic: 'dice', label: '陪牠玩', run: () => L().play(id) }, OC.Fun ? { ic: 'hand', label: '猜拳', run: () => OC.Fun.rps(id) } : null, OC.Fun && !self ? { ic: 'eye', label: '躲貓貓', run: () => OC.Fun.hide(id) } : null] }) },
       { ic: 'clock', label: '安排', sub: () => arrange(id) },
+      OC.Topic && OC.Topic.convOf(id) && OC.Topic.convOf(id).t16 && !OC.Topic.full(OC.Topic.convOf(id)) ? { ic: 'eye', label: '偷聽', run: () => { OC.Topic.listen(id); OC.UI.toast(`你悄悄聽著${name(c)}在聊什麼`, 'info'); } } : null,
       self ? { ic: 'eye', label: '跟拍', run: () => A().setCamMode('focus', a) } : { ic: 'hand', label: '叫過來', off: busy, run: () => L().call(id) },
       { ic: 'person', label: '檔案', run: () => OC.Pages.open('profile', { id }) },
       { ic: 'more', label: '更多', sub: () => ({ items: [
         { ic: 'sparkle', label: '在想什麼', run: () => L().think(id) },
         { ic: 'eye', label: '觀察', run: () => A().observe(id) },
+        OC.Topic ? { ic: 'chat', label: '最近的對話', run: () => OC.Topic.logSheet(id) } : null,
         self ? null : { ic: 'users', label: '陪伴', run: () => L().accompany(id) },
         self ? null : { ic: 'person', label: '改操控牠', run: () => { Ch().setActive(id); } },
         { ic: 'brush', label: '編輯角色', run: () => OC.Pages.open('charedit', { id }) },

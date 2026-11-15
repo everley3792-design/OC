@@ -77,13 +77,15 @@
         case 'flag': if (!any(v).every((f) => S().life.flags[f])) return fail(k); break;
         case 'noflag': if (any(v).some((f) => S().life.flags[f])) return fail(k); break;
         case 'romance': if (!ot || !ot.id || M().romanceOK(sp.id, ot.id) !== !!v) return fail(k); break;
+        case 'tk': if (!X.tk || !any(v).includes(X.tk)) return fail(k); break;   /* 16.6: the kind of topic (OC.Topic) */
+        case 'ts': if (!X.ts || !any(v).includes(X.ts)) return fail(k); break;   /* 16.6: the speaker's stance on it: pos neu neg */
         case 'chance': if (Sim().rnd() > v) return fail(k); break;
         default: break;   // unknown keys are ignored (forward compatible); the validator warns about them
       }
     }
     return true;
   }
-  const KNOWN = ['voice', 'trait', 'notrait', 'otrait', 'style', 'quirk', 'emo', 'otherEmo', 'phase', 'wx', 'hour', 'need', 'oneed', 'rel', 'aff', 'fam', 'trust', 'intim', 'conflict', 'days', 'aff_player', 'hasMem', 'hasWish', 'hasShared', 'hasRecent', 'hasRecentWith', 'hasHabit', 'busy', 'app', 'item', 'place', 'act', 'char', 'other', 'flag', 'noflag', 'romance', 'chance'];
+  const KNOWN = ['voice', 'trait', 'notrait', 'otrait', 'style', 'quirk', 'emo', 'otherEmo', 'phase', 'wx', 'hour', 'need', 'oneed', 'rel', 'aff', 'fam', 'trust', 'intim', 'conflict', 'days', 'aff_player', 'hasMem', 'hasWish', 'hasShared', 'hasRecent', 'hasRecentWith', 'hasHabit', 'busy', 'app', 'item', 'place', 'act', 'char', 'other', 'flag', 'noflag', 'romance', 'tk', 'ts', 'chance'];
 
   /** variables → text; returns null when a variable has no value (that line is skipped) */
   function fill(text, X) {

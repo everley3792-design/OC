@@ -598,6 +598,90 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       });
       check('30 廚房：食譜清單（有材料的可以直接做）、自由料理即時告訴你會做出什麼、冰箱就是背包裡的食物；咖啡館點餐＝付錢、拿到、當場吃', r.rows >= 1 && /炒飯|？？？/.test(r.say || '') && r.fridge >= 3 && r.order && r.paid > 0, r);
     }
+    /* ============================== 16.6 the dialogue engine ============================== */
+    if (want(31)) {
+      await calm16();
+      const r = await page.evaluate(() => {
+        const T = OC.Topic, cs = OC.Chars.all(), A = cs[0], B = cs[1], out = {};
+        out.cands = T.candidates(A, B).length; out.abstract = OC.Topic16Data.ABSTRACT.length; out.lines = OC.Topic16Data.count;
+        /* stance follows what the character really likes: a food the player marked as a favourite, an interest, a liked person */
+        OC.Taste.setPref(A, 'curry', 2, true); out.food = T.stance(A, T.topic('food:curry'));
+        OC.Taste.setPref(A, 'tomato', -2, true); out.foodBad = T.stance(A, T.topic('food:tomato'));
+        A.profile.hobbies = (A.profile.hobbies || []).concat('觀星'); out.hobby = T.stance(A, T.topic('hobby:觀星'));
+        OC.Mind.relChange(A.id, B.id, { aff: 40 }, 't'); out.person = T.stance(A, T.topic('person:' + B.id));
+        /* a conversation is a chain: every behaviour answers the previous one; every line is found for every voice */
+        const NEXT = { raise: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh', 'switch'], gossip: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh'], recall: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh'], ask: ['explain'], explain: ['react', 'build', 'agree'], share: ['react', 'build', 'agree'], agree: ['build', 'share'], build: ['build', 'share'], disagree: ['defend', 'concede'], defend: ['concede', 'disagree'], joke: ['laugh', 'flat'], laugh: ['build'], flat: ['build'], react: ['build'], concede: ['build'], meh: ['switch'], switch: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh', 'switch'] };
+        let chains = 0, bad = [], missing = new Set(), behs = new Set();
+        for (let k = 0; k < 60; k++) {
+          const a = cs[k % cs.length], b = cs[(k + 1) % cs.length], L = [], conv = { kind: k % 3 ? 'chat' : 'share' };
+          if (!T.script(conv, (who, cat, extra) => L.push({ who, cat, extra }), a, b, OC.Mind.rel(a.id, b.id))) continue; chains++;
+          for (let i = 0; i < L.length; i++) { const beh = L[i].cat.slice(4); behs.add(beh); if (i && beh !== 'wrap' && L[i - 1].cat !== 't16_switch') { const pv = L[i - 1].cat.slice(4); if (!(NEXT[pv] || []).includes(beh)) bad.push(pv + '→' + beh); } if (i && L[i].who === L[i - 1].who) bad.push('same speaker');
+            const sp = L[i].who === 'a' ? a : b, ot = L[i].who === 'a' ? b : a; if (!OC.Talk.pick(L[i].cat, sp, ot, L[i].extra)) missing.add(L[i].cat + '/' + L[i].extra.tk + '/' + L[i].extra.ts); }
+        }
+        Object.assign(out, { chains, bad: bad.slice(0, 5), missing: [...missing].slice(0, 6), behs: [...behs].sort() });
+        /* the typed answer finds a topic offline */
+        out.m1 = T.match('今天吃了咖哩'); out.m2 = T.match('我好想去星砂海灘'); out.m3 = T.match('最近都睡不好'); out.m4 = T.match('嗯'); out.m5 = T.match('跟' + OC.Chars.name(B) + '吵架了');
+        return out;
+      });
+      check('31a 話題來自角色身邊的事（剛做的事、共同興趣、回憶、天氣、季節、地點、吃過的東西、朋友、約 60 個日常話題）；立場依真的喜好（最愛的菜、討厭的菜、興趣、喜歡的人）', r.cands >= 6 && r.abstract >= 55 && r.food > 0.5 && r.foodBad < -0.5 && r.hobby > 0.5 && r.person > 0.4, r);
+      check('31b 對話是一串回應：每一句都是對上一句的反應（提起→附和／反對／追問／分享／玩笑…），輪流說話，每一種情況都找得到台詞', r.chains >= 55 && !r.bad.length && !r.missing.length && r.behs.length >= 10, r);
+      check('31c 打字回答用離線字典找到話題（咖哩→食物、海灘→地點、睡不好→睡覺、名字→那個人；認不出來就是沒有）', r.m1 === 'food:curry' && /^place:beach/.test(r.m2 || '') && r.m3 === 'x:sleep' && r.m4 === null && /^person:/.test(r.m5 || ''), r);
+    }
+    if (want(32)) {
+      const ids = await calm16();
+      const r = await page.evaluate(async (ids) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); const me = OC.Store.s.activeId;
+        const [A, B] = ids.filter((id) => id !== me).map((id) => OC.Chars.get(id)); for (const c of [A, B]) OC.Brain.setControl(c.id, 'semi'); const ba = OC.Brain.get(A.id), bb = OC.Brain.get(B.id);
+        OC.Store.s.life.settings.chatView = 'kw';
+        OC.Mind.relPair(A.id, B.id, { fam: 40, aff: 50, trust: 40 }, 't'); B.personality.social = 90; A.needs.social = 20; B.needs.social = 20;
+        for (const b of [ba, bb]) { if (b.st === 'do') OC.Brain.finish(b, 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'social') OC.Brain.Social.end(OC.Brain.convs.find((x) => x.a === b || x.b === b), 't'); b.st = 'think'; b.thinkAt = 1e9; }
+        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; await sleep(300); for (const b of [ba, bb]) [...b.holds].forEach((x) => OC.Brain.unhold(b.id, x));
+        const diag = [ba, bb].map((b) => [b.st, !!b.a, [...b.holds].join('|'), !!b.queued, !!b.leaving, !!b.byPlayer, !!b.invited].join(',')); const okStart = OC.Brain.Social.start(ba, bb, 'chat'); const conv = OC.Brain.convs.find((x) => x.a === ba);
+        for (let i = 0; i < 100 && conv && conv.st === 'approach'; i++) await sleep(100);
+        const out = { t16: !!(conv && conv.t16), topic: conv && conv.t16 && conv.t16.zh, okStart, diag };
+        let kw = 0, words = 0, li = -1; for (let i = 0; i < 120 && conv && OC.Brain.convs.includes(conv); i++) { if (li < 0) kw += document.querySelectorAll('.speech.kw').length ? 1 : 0; if (li < 0 && (kw >= 2 || i === 80)) { out.listen = OC.Topic.listen(A.id); li = i; } if (li >= 0 && i > li + 2) words += document.querySelectorAll('.speech:not(.kw)').length ? 1 : 0; await sleep(250); }
+        for (let i = 0; i < 240 && conv && OC.Brain.convs.includes(conv); i++) await sleep(250);
+        const e = OC.Topic.entries(A.id)[0] || {}; out.log = { heard: e.heard, lines: (e.lines || []).length, topics: e.topics };
+        out.know = Object.keys(OC.Topic.st(A).know[B.id] || {}).length; out.knowB = Object.keys(OC.Topic.st(B).know[A.id] || {}).length; out.still = OC.Brain.convs.includes(conv); out.st = conv && conv.st;
+        out.mem = OC.Mind.memories(A, { who: B.id }).map((m) => m.text).slice(0, 3); out.kw = kw; out.words = words;
+        for (const c of [A, B]) OC.Brain.setControl(c.id, 'manual');
+        return out;
+      }, ids);
+      check('32a 角色自己聊天：有話題（不是固定的一句「聊天」），回憶寫「和…聊了＜話題＞」，雙方記得對方對話題的立場', r.t16 && r.know >= 1 && r.knowB >= 1 && r.mem.some((t) => /聊了/.test(t)), r);
+      check('32b 你沒有參與的對話只顯示關鍵字泡泡（表情＋話題）；「偷聽」之後顯示真的話，對話紀錄也看得到內容', r.kw > 0 && r.listen && r.words > 0 && r.log.heard && r.log.lines >= 3, r);
+    }
+    if (want(33)) {
+      await calm16();
+      const r = await page.evaluate(() => {
+        const cs = OC.Chars.all(), [A, B, C] = cs, T = OC.Topic, M = OC.Mind, out = {};
+        M.relChange(B.id, A.id, { trust: 60 }, 't'); M.relChange(A.id, C.id, { aff: -60, conflict: 30 }, 't'); M.relChange(B.id, C.id, { aff: 10 }, 't');
+        const conv = () => ({ id: 'tc' + Math.random(), a: OC.Brain.get(A.id), b: OC.Brain.get(B.id), t16: { key: 'person:' + C.id, zh: OC.Chars.name(C), keys: ['person:' + C.id], topics: ['person:' + C.id], gossip: C.id, agree: 0, disagree: 0, concede: 0, beh: [] } });
+        out.stance = T.stance(A, T.topic('person:' + C.id));
+        const a0 = M.relPeek(B.id, C.id).aff; T.resolve(conv(), A, B); const a1 = M.relPeek(B.id, C.id).aff; T.resolve(conv(), A, B); const a2 = M.relPeek(B.id, C.id).aff;
+        out.first = a1 - a0; out.again = a2 - a1; out.type = M.relPeek(B.id, C.id).type;
+        /* a relationship the player fixed is never moved by gossip */
+        B.life.t16.gos = {}; M.setRelType(B.id, C.id, 'friend', '', false); const f0 = M.relPeek(B.id, C.id).aff; T.resolve(conv(), A, B); out.fixed = M.relPeek(B.id, C.id).aff - f0;
+        /* no trust → no effect */
+        M.setRelType(B.id, C.id, 'auto', '', false); B.life.t16.gos = {}; M.relChange(B.id, A.id, { trust: -100 }, 't'); const n0 = M.relPeek(B.id, C.id).aff; T.resolve(conv(), A, B); out.noTrust = M.relPeek(B.id, C.id).aff - n0;
+        return out;
+      });
+      check('33 八卦：說的人討厭第三個人 → 信任說話者的聽眾對那個人好感 −1（一天一次）；玩家固定的關係、不信任說話者時都不受影響；不改關係類型', r.stance < -0.3 && r.first < 0 && r.again === 0 && r.fixed === 0 && r.noTrust === 0, r);
+    }
+    if (want(34)) {
+      await calm16();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); const c = OC.Chars.all().find((x) => x.id !== OC.Store.s.activeId) || OC.Chars.all()[0];
+        const out = {}; const sh = OC.Topic.askPlayer(c, { force: true }); await sleep(500);
+        const el = document.querySelector('.sheet.open'); out.open = !!el; out.chips = el ? el.querySelectorAll('[data-t16]').length : 0; out.held = OC.Brain.get(c.id).holds.has('menu');
+        const inp = el.querySelector('input'); inp.value = '今天吃了咖哩'; el.querySelector('[data-t16send]').click(); await sleep(600);
+        out.closed = !document.querySelector('.sheet.open'); out.released = !OC.Brain.get(c.id).holds.has('menu');
+        out.mem = OC.Mind.memories(c, {}).map((m) => m.text).find((t) => /和你聊了/.test(t)); out.player = (c.life.t16.player || {})['food:curry'] || 0;
+        out.again = OC.Topic.canAsk(c);   /* once a day */
+        OC.Store.s.life.settings.askChat = false; out.off = OC.Topic.canAsk(c); OC.Store.s.life.settings.askChat = true;
+        return out;
+      });
+      check('34 沒話題時來問你：可以選話題或打字（離線字典認出「咖哩」），角色回應、記得你說過什麼；問的時候角色停下、關掉就放開；一天一次、可以在生活設定關掉', r.open && r.chips >= 2 && r.held && r.closed && r.released && /咖哩/.test(r.mem || '') && r.player === 1 && r.again === false && r.off === false, r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);

@@ -768,7 +768,7 @@
     // 11.0: every spoken line has a voice (thoughts are silent): a babble shaped by who it is and how they feel
     if (!o.thought && text && OC.Sound && OC.Sound.speak) { try { const c = a.char && a.char(), at = OC.Sound.placement(a); if (c && at) OC.Sound.speak(c, text, { emo: o.emo || (OC.Mind && c.life ? OC.Mind.dominant(c) : 'neutral'), pan: at.pan, vol: at.vol }); } catch (e) { /* silent */ } }
     for (let i = floats.length - 1; i >= 0; i--) if (floats[i].a === a && floats[i].keep) { floats[i].el.remove(); floats.splice(i, 1); }
-    const el = h('div.speech' + (o.thought ? '.thought' : ''), null, name ? h('b.who', null, name) : null, h('span', null, text));
+    const el = h('div.speech' + (o.thought ? '.thought' : '') + (o.kw ? '.kw' : ''), null, name ? h('b.who', null, name) : null, h('span', null, text));
     overlays().append(el); floats.push({ el, a, up: 52, t: 0, dur: d, keep: true }); return d;
   }
 
