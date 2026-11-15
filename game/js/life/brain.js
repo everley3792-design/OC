@@ -247,6 +247,7 @@
         const pick = qs ? (free(qs, b.id) ? qs : qs.obj.slots.find((s2) => free(s2, b.id))) : null;   /* that seat, or the other seat of the same thing */
         if (pick) target = { slot: pick }; else if (qs) continue; else { const bs = bestSlot(c, b, A.verb); if (!bs) continue; target = { slot: bs.slot }; ts = bs.s; }
       }
+      else if (b.queued === act && b.queuedPt) target = { pt: { x: b.queuedPt.x, y: b.queuedPt.y } };   /* 16.4: do it at the spot you chose (under that tree, right here) */
       else if (!clearPoint(b.a.x, b.a.y, c.id, 10)) continue;
       out.push({ kind: 'act', act, target, s: sc.s + ts, why: sc.why.concat(ts ? [`地點${ts > 0 ? '+' : ''}${ts.toFixed(2)}`] : []) });
     }
@@ -279,7 +280,7 @@
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
-    b.byPlayer = !!(b.queued && ch.kind === 'act' && ch.act === b.queued); if (b.queued) b.queued = null;
+    b.byPlayer = !!(b.queued && ch.kind === 'act' && ch.act === b.queued); if (b.queued) { b.queued = null; b.queuedSlot = null; b.queuedPt = null; }
     b.dbg.reason = `${ch.kind === 'act' ? D().ACTS[ch.act].zh : ch.kind === 'travel' ? '去' + OC.Places.get(ch.place).zh + D().ACTS[ch.act].zh : D().SOCIAL[ch.social].zh}（${ch.why.slice(0, 3).join('、')}）`;
     dlog(b, b.dbg.reason);
     if (ch.kind === 'social') { if (!Social.start(b, brains[ch.other], ch.social)) b.thinkAt = nowR() + 1; return; }

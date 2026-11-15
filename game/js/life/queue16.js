@@ -52,7 +52,7 @@
   function interrupt(id) {
     const list = q(id), b = B().get(id), ai = list ? act0(list) : -1;
     if (ai >= 0) list.splice(ai, 1);
-    if (b) { b.queued = null; b.queuedSlot = null; if (b.byPlayer && (b.st === 'go' || b.st === 'do')) { if (b.st === 'do') B().finish(b, '玩家改安排'); else B().abort(b, '玩家改安排'); b.byPlayer = false; } }
+    if (b) { b.queued = null; b.queuedSlot = null; b.queuedPt = null; if (b.byPlayer && (b.st === 'go' || b.st === 'do')) { if (b.st === 'do') B().finish(b, '玩家改安排'); else B().abort(b, '玩家改安排'); b.byPlayer = false; } }
   }
 
   // ---------------------------------------------------------------- the refusal (it does not want to)
@@ -92,10 +92,7 @@
       if (!r.ok) { e.st = 'refused'; e.why = r.why || '做不到'; St.touch('life', { queue: c.id }); return; }
       e.st = 'doing'; e.t0 = nowR(); St.touch('life', { queue: c.id }); return;
     }
-    if (e.pt && !e.walked) {   /* an in-place activity at a chosen spot (under that tree, by those flowers) — walk there first */
-      const a = b.a; e.walked = true; if (Math.hypot(a.x - e.pt.x, a.y - e.pt.y) > 14 && OC.World.walkTo(a, e.pt.x, e.pt.y)) { e.st = 'going'; e.t0 = nowR(); e.toAct = true; St.touch('life', { queue: c.id }); return; }
-    }
-    b.queuedSlot = e.slot || null;
+    b.queuedSlot = e.slot || null; b.queuedPt = e.pt || null;
     const r = B().command(c.id, e.act); if (r === false) { e.st = 'refused'; e.why = '現在做不了'; St.touch('life', { queue: c.id }); return; }
     e.st = 'handed'; e.t0 = nowR(); St.touch('life', { queue: c.id });
   }
