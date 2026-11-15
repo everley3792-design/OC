@@ -471,6 +471,7 @@
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '顯示自言自語泡泡'), toggle(st.bubbles, (v) => set('bubbles', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色自己下廚、端上桌'), toggle(st.aiCook !== false, (v) => set('aiCook', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色會注意身邊的事（別人的心情、地上的東西、下雨、有人在睡覺）'), toggle(st.aware16 !== false, (v) => set('aware16', v))),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '伴侶、子女與領養（同住的情侶可能想要孩子，一定會先問你）'), toggle(!!st.family16, (v) => set('family16', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '別人聊天時顯示完整的話（關＝只顯示關鍵字，可以偷聽）'), toggle(st.chatView === 'full', (v) => set('chatView', v ? 'full' : 'kw'))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '沒話題時來找你聊天'), toggle(st.askChat !== false, (v) => set('askChat', v))),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '成長建議（新習慣／特質）'), toggle(st.growth, (v) => set('growth', v))),

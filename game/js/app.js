@@ -558,7 +558,7 @@
       case 'tree': { const left = treeReadyIn(it); return { title: it.label || '果樹', sub: left <= 0 ? '果實成熟了' : `還要約 ${Math.ceil(left)} 分鐘長出果實`, stk: 'apple', verb: '搖一搖', run: () => goThen(it.at.x, it.at.y, () => shakeTree(it)) }; }
       case 'bed': return { title: it.label || '花圃', sub: it.item ? `可以摘一束${(Sty.ITEMS[it.item] || {}).zh || '花'}` : '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => direct(it.at.x, it.at.y, () => pickFlower(it)) };
       case 'bench': return { title: it.label || '長椅', sub: '坐下來休息', stk: 'sofa', verb: '坐下', run: () => goThen(it.at.x, it.at.y, () => sit(it.seat)) };
-      case 'home': return { title: '我的家', sub: '走進去', stk: 'home', verb: '進去', run: () => goThen(it.at.x, it.at.y, () => travel('home')) };
+      case 'home': { const to = it.to || 'home', hs = OC.House16 ? OC.House16.residents(OC.House16.HOUSE_OF[to]).map((c) => OC.Chars.name(c)) : []; return { title: it.to ? it.label : '我的家', sub: hs.length ? `住著：${hs.join('、')}` : '走進去', stk: 'home', verb: '進去', run: () => goThen(it.at.x, it.at.y, () => travel(to)) }; }
       case 'travel': return { title: it.label || '路牌', sub: '看看可以去哪裡', stk: 'map', verb: '打開地圖', run: () => direct(it.at.x, it.at.y, () => tab('explore')) };
       case 'travelHome': return { title: '回晴日島', sub: '離開這裡', stk: 'island', verb: '回去', run: () => goThen(it.at.x, it.at.y, () => travel('isle')) };
       case 'exit': return { title: `往${zh(it.to)}`, sub: '離開這裡', stk: 'walk', verb: '前往', run: () => OC.WorldUI.tap(it) };
@@ -1125,7 +1125,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

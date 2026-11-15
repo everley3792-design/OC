@@ -168,5 +168,5 @@
     ctx.interact({ type: 'fishing', water: 'pond', x: 214, y: 368, hit: { w: 40, h: 22, d: 8 }, at: { x: 214, y: 372 }, label: '池塘釣魚點' });
   }
 
-  Object.assign(OC.Areas, { home, cafe, library, street, beach, isleExtra, forestExtra, SHOP_BUILDINGS: SHOPS });
+  Object.assign(OC.Areas, { home, cafe, library, street, beach, isleExtra, forestExtra, SHOP_BUILDINGS: SHOPS, _interior: interior });   /* 16.8: more interiors (home16.js) */
 })();

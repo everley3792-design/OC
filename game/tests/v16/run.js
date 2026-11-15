@@ -819,6 +819,139 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       });
       check('41 新道具：12 樣都有原創圖示、都買得到；地上物品的動作都有動畫；每一種反應都找得到台詞；這些動作不會出現在安排選單', r.n === 12 && r.drawn === 12 && r.sold === 12 && !r.badAnim.length && r.cats >= 14 && !r.missing.length && !r.inMenu, r);
     }
+    /* ================================================================ 16.8 住處與家庭 */
+    const prep168 = () => page.evaluate(async () => {
+      if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back());
+      if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); }
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      for (const c of all) { c.life.home16 = null; c.life.h16 = null; c.profile.age = '25'; c.personality.traits = c.personality.traits.filter((t) => !['neatfreak', 'messy', 'homebody', 'aloof', 'independent', 'slowwarm', 'caring', 'easygoing', 'outgoing', 'caretaker', 'organized', 'tidy'].includes(t)); }
+      for (const a of all) for (const b of all) if (a !== b) { const r = OC.Mind.rel(a.id, b.id); Object.assign(r, { type: 'stranger', fam: 0, aff: 0, trust: 10, intim: 0, conflict: 0, fixed: false, kind16: '', label16: '' }); }
+      OC.Store.s.life.h16 = null; OC.Store.s.life.settings.family16 = false;
+      return all.map((c) => c.id);
+    });
+    if (want(42)) {
+      await prep168();
+      const r = await page.evaluate(async () => {
+        const out = {}; out.doors = OC.World.interacts.filter((i) => i.type === 'home').map((i) => i.to || 'home').sort();
+        out.desc = OC.App.describe(OC.World.interacts.find((i) => i.to === 'phouse')).title;
+        for (const pl of ['yhouse', 'phouse']) { OC.WorldUI.travel(pl, { instant: true }); await new Promise((r) => setTimeout(r, 2600)); out[pl] = { area: OC.World.area.id, furn: OC.World.furn.map((f) => f.id), beds: OC.Brain.aff.filter((o) => OC.House16.BED[o.kind]).map((o) => o.kind + ':' + o.slots.length), exit: OC.World.interacts.some((i) => i.type === 'exit') }; }
+        OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2600)); out.back = OC.World.area.id;
+        out.shop = ['bed2', 'bunk', 'kidbed', 'crib'].every((id) => OC.Shops.stock('furniture').includes(id));
+        out.open = ['coral', 'yellow', 'purple'].map((k) => OC.Homes.HOUSES[k].open && OC.Places.open(OC.Homes.HOUSES[k].place));
+        return out;
+      });
+      check('42 三棟房子都能走進去：黃屋頂小屋（雙人床）、紫屋頂連棟屋（上下舖＋床）和原本的大家庭宅；新床在家具行買得到', JSON.stringify(r.doors) === JSON.stringify(['home', 'phouse', 'yhouse']) && r.yhouse.area === 'yhouse' && r.yhouse.beds.includes('bed2:2') && r.phouse.beds.includes('bunk:2') && r.yhouse.exit && r.back === 'isle' && r.shop && r.open.every(Boolean) && /紫屋頂/.test(r.desc), r);
+    }
+    if (want(43)) {
+      const ids = await prep168();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.House16, [a, b, c, d] = ids.map((id) => OC.Chars.get(id)), out = {};
+        H.moveIn(a.id, 'yellow', { force: true }); H.moveIn(b.id, 'purple', { force: true });
+        out.place = [H.placeOf(a), H.placeOf(b), H.placeOf(c)];
+        OC.WorldUI.travel('yhouse', { instant: true }); await new Promise((r) => setTimeout(r, 2600));
+        const bed = OC.Brain.aff.find((o) => o.kind === 'bed2'); out.own = H.slotOK(a, bed, bed.slots[0], 'sleep'); out.guest = H.slotOK(b, bed, bed.slots[0], 'sleep'); out.guestNap = H.slotOK(b, bed, bed.slots[0], 'nap');
+        /* sharing the double bed depends on the relationship */
+        OC.Brain.reserve(bed.slots[0], a.id); H.moveIn(c.id, 'yellow', { force: true });
+        out.stranger = H.slotOK(c, bed, bed.slots[1], 'sleep');
+        OC.Opening.setStart(a.id, c.id, 'spouse'); out.partner = H.slotOK(c, bed, bed.slots[1], 'sleep');
+        c.profile.age = '15'; OC.Mind.rel(a.id, c.id).type = 'friend'; OC.Mind.rel(c.id, a.id).type = 'friend'; out.minor = H.shareOK(c, a);
+        c.profile.age = '0'; out.babyBed = H.slotOK(c, bed, bed.slots[1], 'sleep'); c.profile.age = '25';
+        OC.Brain.release(a.id);
+        OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2600));
+        /* away from the player, sleep is at your own house */
+        const tc = OC.Brain.travelCands ? null : null; void tc;
+        out.door = OC.Brain.aff.filter((o) => o.kind === 'home').map((o) => o.place).sort();
+        const doorY = OC.Brain.aff.find((o) => o.place === 'yhouse'); out.doorOwn = H.slotOK(a, doorY, doorY.slots[0], 'sleep'); out.doorOther = H.slotOK(b, doorY, doorY.slots[0], 'sleep');
+        return out;
+      }, ids);
+      check('43 每個人回自己的家睡：只有住戶能睡那間房子的床（客人可以打盹）；島上每扇門只給自己家的人進去睡', JSON.stringify(r.place) === JSON.stringify(['yhouse', 'phouse', 'home']) && r.own && !r.guest && r.guestNap && r.doorOwn && !r.doorOther, r);
+      check('44 同床共枕看關係：陌生人不睡同一張雙人床，伴侶可以；未成年和不是家人的大人不同床；嬰兒只睡嬰兒床', r.stranger === false && r.partner === true && r.minor === false && r.babyBed === false, r);
+    }
+    if (want(45)) {
+      const ids = await prep168();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.House16, [a, b, c] = ids.map((id) => OC.Chars.get(id)), out = {};
+        H.moveIn(a.id, 'yellow'); a.personality.traits.push('homebody');
+        Object.assign(OC.Mind.rel(a.id, b.id), { aff: -20, conflict: 40, type: 'rival' });
+        const r1 = H.moveIn(b.id, 'yellow'); out.r1 = { ok: r1.ok, why: r1.why, can: r1.canForce, re: (r1.reactions || []).map((x) => x.r + ':' + x.why) };
+        /* the page: try the move, see the reaction, force it */
+        OC.Pages.open('homes16'); await new Promise((res) => setTimeout(res, 700)); const pg = document.querySelector('.page.open[data-page=homes16]');
+        pg.querySelector(`[data-res="${b.id}"] .h16-who`).click(); await new Promise((res) => setTimeout(res, 300));
+        pg.querySelector(`[data-res="${b.id}"] [data-move=yellow]`).click(); await new Promise((res) => setTimeout(res, 300));
+        out.shown = [...pg.querySelectorAll('.h16-react')].map((e) => e.dataset.r); out.dialogs = document.querySelectorAll('.sheet.open, .confirm.open').length;
+        const c0 = OC.Mind.relPeek(a.id, b.id).conflict; pg.querySelector('[data-force]').click(); await new Promise((res) => setTimeout(res, 300));
+        out.moved = H.houseOf(b); out.conflict = [c0, OC.Mind.relPeek(a.id, b.id).conflict]; out.mem = OC.Mind.memories(a, {}).map((m) => m.text).find((t) => /不顧我的意思/.test(t));
+        /* a friendly move is welcomed; a full house says so */
+        for (const [x, y] of [[a, c], [c, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { aff: 80, fam: 80, type: 'family' });
+        const r3 = H.moveIn(c.id, 'yellow'); out.full = r3.why;
+        const r4 = H.moveIn(c.id, 'purple'); out.empty = r4.ok;
+        OC.UI.back();
+        return out;
+      }, ids);
+      check('45 入住管理：搬進有人住的房子，原住戶依關係和個性反應（這次「不想」並說原因）；在頁面上看到反應、可以強制入住（不跳確認視窗），之後關係變差、留下回憶；房子滿了會說', !r.r1.ok && r.r1.can && r.r1.re[0].startsWith('refuse') && r.shown.includes('refuse') && r.dialogs === 0 && r.moved === 'yellow' && r.conflict[1] > r.conflict[0] && r.mem && /最多住 2 人/.test(r.full || '') && r.empty, r);
+    }
+    if (want(46)) {
+      const ids = await prep168();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.House16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {}, mail0 = (OC.Store.s.mail || []).length;
+        H.moveIn(a.id, 'purple'); H.moveIn(b.id, 'purple'); a.personality.traits.push('neatfreak'); b.personality.traits.push('messy');
+        const r0 = Object.assign({}, OC.Mind.relPeek(a.id, b.id)); for (let d = 0; d < 7; d++) H.dayStep(700 + d);
+        const r1 = OC.Mind.relPeek(a.id, b.id); out.fam = [r0.fam, r1.fam]; out.conflict = [r0.conflict, r1.conflict];
+        out.mail = JSON.stringify(OC.Store.s.mail || OC.Store.s.life.mail || []).includes('紫屋頂連棟屋的這一週') || JSON.stringify(OC.Store.s).includes('連棟屋的這一週');
+        out.mem = OC.Mind.memories(a, {}).map((m) => m.text).filter((t) => /亂不亂/.test(t)).length;
+        void mail0; return out;
+      }, ids);
+      check('46 同居日常：住在一起每天更熟；生活習慣不合（潔癖對邋遢）會累積摩擦、有時留下回憶；每週收到一封「這一週」的信', r.fam[1] >= r.fam[0] + 7 && r.conflict[1] > r.conflict[0] && r.mail, r);
+    }
+    if (want(47)) {
+      const ids = await prep168();
+      const r = await page.evaluate(async (ids) => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), H = OC.House16, [a, b] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id), out = {};
+        H.moveIn(a.id, 'coral'); b.profile.age = '0'; H.moveIn(b.id, 'coral', { force: true });
+        const q = OC.World.nearestWalkable(ba.a.x + 40, ba.a.y, 40); bb.a.path = null; bb.a.x = q.x; bb.a.y = q.y;
+        Object.assign(b.needs, { food: 20, social: 30, comfort: 30 }); OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0;
+        const cand = H.shape(a, ba, []).find((x) => x.act === 'babycare16'); out.cand = cand && cand.why[0];
+        out.notMenu = !JSON.stringify(OC.Menu16.charRing(a.id)).includes('babycare16');
+        if (ba.st === 'do') OC.Brain.finish(ba, 't'); else if (ba.st === 'go') OC.Brain.abort(ba, 't');
+        ba.queuedPt = cand.target.pt; OC.Brain.command(a.id, 'babycare16');
+        const t0 = Date.now(); while (!(H.st(b).cared) && Date.now() - t0 < 90000) await sleep(300);
+        out.cared = H.st(b).cared || 0; out.food = b.needs.food;
+        /* milestones become memories (after enough days and care) */
+        H.st(b).cared = 20; for (let d = 0; d < 21; d++) H.babies(900 + d);
+        out.ms = Object.keys(H.st(b).ms || {}); out.mem = OC.Mind.memories(a, {}).map((m) => m.text).filter((t) => t.includes(OC.Chars.name(b))).slice(0, 3);
+        b.profile.age = '25'; OC.Brain.setControl(a.id, 'manual');
+        return out;
+      }, ids);
+      check('47 寶寶：同住的大人看到寶寶需要照顧就去照顧（餵、抱、哄；不出現在選單），寶寶的需求回升；翻身、爬、站、走、第一句話會變成全家的回憶', r.cand && r.notMenu && r.cared >= 1 && r.food > 20 && r.ms.length === 5 && r.mem.length >= 1, r);
+    }
+    if (want(48)) {
+      const ids = await prep168();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.House16, [a, b, c] = ids.map((id) => OC.Chars.get(id)), out = {}, n0 = OC.Chars.all().length, can0 = OC.Budget.can;
+        H.moveIn(a.id, 'purple'); H.moveIn(b.id, 'purple', { force: true }); OC.Opening.setStart(a.id, b.id, 'spouse');
+        OC.Budget.can = () => true;
+        /* off by default: nothing is asked */
+        for (let d = 0; d < 40; d++) H.family(1000 + d); out.offAsk = !!(H.SAVE().asking);
+        OC.Store.s.life.settings.family16 = true;
+        let d = 1100; while (!H.SAVE().asking && d < 1400) { H.family(d); d += 1; } out.asked = !!H.SAVE().asking;
+        await new Promise((res) => setTimeout(res, 400)); out.sheet = !!document.querySelector('.sheet.open [data-h16=yes]');
+        if (out.sheet) document.querySelector('.sheet.open [data-h16=yes]').click(); else H.answerChild('yes');
+        await new Promise((res) => setTimeout(res, 300)); out.pending = H.SAVE().pending.length;
+        H.family(H.SAVE().pending[0].due); const kid = OC.Chars.all().find((x) => !ids.includes(x.id) && x.profile.age === '0');
+        out.born = !!kid; out.kidHome = kid && H.houseOf(kid); out.label = kid && OC.Mind.relPeek(a.id, kid.id).label16; out.kidSees = kid && OC.Mind.relPeek(kid.id, a.id).label16;
+        /* adoption from a house; a minor cannot adopt */
+        H.moveIn(c.id, 'coral'); const ad = H.adopt({ parents: [c.id], stage: 'child', name: '小葵', hid: 'coral' }); out.adopt = ad.ok;
+        c.profile.age = '15'; out.minor = H.adopt({ parents: [c.id], stage: 'child', hid: 'coral' }).why; c.profile.age = '25';
+        const T = H.tree(); out.gens = T.rows.length; out.n = OC.Chars.all().length - n0;
+        OC.Pages.open('homes16'); await new Promise((res) => setTimeout(res, 500)); const pg = document.querySelector('.page.open[data-page=homes16]'); pg.querySelector('[data-tab=tree]').click(); await new Promise((res) => setTimeout(res, 400));
+        out.treeGens = pg.querySelectorAll('.h16-gen').length; out.hearts = pg.querySelectorAll('.h16-heart').length; OC.UI.back();
+        OC.Budget.can = can0; OC.Store.s.life.settings.family16 = false;
+        /* clean up the new characters so later tests keep their cast */
+        for (const x of OC.Chars.all()) if (!ids.includes(x.id) && (x.profile.age === '0' || x.profile.name === '小葵')) OC.Chars.remove ? OC.Chars.remove(x.id) : null;
+        return out;
+      }, ids);
+      check('48 家庭（預設關閉，打開才會問）：同住的伴侶想要孩子 → 先問你（三個選項），答應幾天後寶寶出生、住進同一間房、關係是父母與孩子；也可以從房子領養（未成年不行）；家族樹分代、伴侶有 ♥', !r.offAsk && r.asked && r.pending === 1 && r.born && r.kidHome === 'purple' && r.label === '孩子' && r.kidSees === '爸媽' && r.adopt && /成年/.test(r.minor || '') && r.gens >= 2 && r.treeGens >= 2 && r.hearts >= 1 && r.n === 2, r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);
