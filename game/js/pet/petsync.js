@@ -135,11 +135,19 @@
     return { foods: foods.slice(0, 12), gifts: gifts.slice(0, 12) };
   }
 
+  /** 16.11: what the desktop pet should know about the character's life right now: age stage, illness, at work / school, and
+   *  the relationship words to the other pets (the native side only adjusts pace and rest; it never changes anything) */
+  function lifeStatus(c, others) {
+    const st = OC.People && OC.People.stage(c), H = OC.Health16, b = OC.Brain.get(c.id), cur = c.life.cur;
+    const act = b && b.st === 'do' ? b.act : cur && cur.until > OC.Sim.now() ? cur.act : null;
+    const rel = {}; for (const o of others) { const r = M().relPeek(c.id, o.id); if (r) rel[o.id] = M().relLabel(r); }
+    return { stage: st ? st.id || '' : '', stageZh: st ? st.zh : '', age: st ? st.age : null, sick: H && H.sick(c) ? H.label(c) || '' : '', busy: act === 'work16' ? 'work' : act === 'school16' ? 'school' : '', rel };
+  }
   function config() {
     const p = P(), ids = on(), data = {}, aff = {};
     for (const id of ids) {
       const c = Ch().get(id), others = ids.filter((x) => x !== id).map((x) => Ch().get(x)).filter(Boolean);
-      data[id] = Object.assign({ name: name(c), traits: traits(c), mood: mood(c), lines: renderLines(c, others), title: OC.Growth ? OC.Growth.titleOf(c) || null : null, at: Date.now() }, bagFor(c));
+      data[id] = Object.assign({ name: name(c), traits: traits(c), mood: mood(c), lines: renderLines(c, others), title: OC.Growth ? OC.Growth.titleOf(c) || null : null, status: lifeStatus(c, others), at: Date.now() }, bagFor(c));
       for (const o of others) { const r = M().relPeek(id, o.id); aff[`${id}>${o.id}`] = r ? Math.max(-1, Math.min(1, (r.aff - r.conflict) / 100)) : 0; }
     }
     return {

@@ -1200,6 +1200,202 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       }, ids);
       check('59 「行程」App：今天的上班、上學與約定；用按鈕送出邀約（約會要條件成立才能選），立刻看到每個人的回答；可以取消；朋友也會自己約出去玩（寄信告訴你）', r.ai === 'ai' && r.today && r.dateLocked && /送出了邀請/.test(r.msg || '') && r.listed && r.cancelled === 'cancelled', r);
     }
+    const prep1611 = () => page.evaluate(async () => {
+      if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back());
+      if (OC.Theatre && OC.Theatre.cur) OC.Theatre.finish();
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      for (const c of all) { c.profile.age = '25'; c.life.h16 = null; Object.assign(c.needs, { sleep: 90, energy: 90, food: 60, fun: 50, comfort: 80 }); }
+      const st = OC.Store.s.life.settings; st.health16 = true; st.death16 = false; st.theatre16 = true; OC.Store.s.settings.weather = 'clear';
+      OC.Store.s.settings.calendar = 'game'; OC.Store.s.life.clock.cal0 = OC.Sim.day();
+      OC.Tx.run(OC.Tx.uid('t'), { get: { coins: 800 } }, 't');
+      return all.map((c) => c.id);
+    });
+    if (want(60)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.Health16, [a, b, c3] = ids.map((id) => OC.Chars.get(id)), out = {};
+        /* thrown hard: a bruise sooner or later (each landing is its own fixed roll) */
+        for (let i = 0; i < 25 && !H.H(a).conds.length; i++) OC.Store.emit('touch:land', { id: a.id, strong: true });
+        out.bruise = H.H(a).conds.map((x) => x.id); out.bruiseCause = (H.H(a).conds[0] || {}).cause;
+        /* eating three times in two hours while full → a stomach ache */
+        b.needs.food = 100; for (let i = 0; i < 3; i++) OC.Progress.emit('eat', { oc: b.id, item: 'bread', by: 'player' });
+        out.tummy = H.H(b).conds.map((x) => x.id);
+        /* spoiled food on the ground (half a day old) */
+        const G = OC.Store.s.ground16 = OC.Store.s.ground16 || {}; const loc = c3.life.loc || 'isle'; G[loc] = G[loc] || []; let hit = null;
+        for (let i = 0; i < 12 && !hit; i++) { const uid = 'tsp' + i; G[loc].push({ uid, id: 'bread', x: 0, y: 0, at: OC.Sim.now() - 900, by: 'player' }); H.onFinish(c3, 'g16_eat', { dest: { k: 'g16:' + uid } }); hit = H.H(c3).conds.find((x) => x.id === 'tummy'); }
+        out.spoiled = hit && hit.cause; G[loc] = G[loc].filter((x) => !String(x.uid).startsWith('tsp'));
+        /* rain: an hour and a half outside → one roll (the exposure is counted and reset) */
+        OC.Store.s.settings.weather = 'rain'; const d = OC.Chars.all().find((x) => !ids.slice(0, 3).includes(x.id)) || a; H.H(d).exp.rain = 0; d.life.loc = 'isle';
+        let peak = 0; for (let i = 0; i < 9; i++) { H.step(10); peak = Math.max(peak, H.H(d).exp.rain); } out.rain = [peak, H.H(d).exp.rain]; OC.Store.s.settings.weather = 'clear';
+        /* effects: needs drain; the AI prefers rest and skips running about */
+        const e0 = b.needs.comfort; H.step(30); out.drain = e0 - b.needs.comfort;
+        const list = [{ kind: 'act', act: 'rest', s: 1, why: [] }, { kind: 'act', act: 'explore', s: 1, why: [] }];
+        H.shape(b, null, list); out.shape = list.map((x) => [x.act, +x.s.toFixed(2), x.why[0]]);
+        /* immortal never falls ill; the setting off → nobody is ill */
+        H.setMode(a, 'immortal'); out.imm = H.H(a).conds.length; for (let i = 0; i < 25; i++) OC.Store.emit('touch:land', { id: a.id, strong: true }); out.imm2 = H.H(a).conds.length; H.setMode(a, 'nodeath');
+        OC.Store.s.life.settings.health16 = false; out.off = H.sick(b); OC.Store.s.life.settings.health16 = true;
+        return out;
+      }, ids);
+      check('60 生病有真實的原因：被用力丟出去會擦傷、兩小時內吃三次會肚子痛、地上放太久的東西會吃壞肚子、淋雨一個半小時會擲一次感冒；生病時需求慢慢下降、想休息不想跑跳；「不會生病」的角色不會生病、關掉設定就沒人生病',
+        r.bruise.includes('bruise') && /丟/.test(r.bruiseCause) && r.tummy.includes('tummy') && /放太久/.test(r.spoiled || '') && r.rain[0] >= 80 && r.rain[1] < r.rain[0] && r.drain > 0.5
+        && r.shape[0][0] === 'rest' && r.shape[0][1] > 1.2 && r.shape[1][1] < 0.6 && /肚子痛/.test(r.shape[0][2]) && r.imm === 0 && r.imm2 === 0 && r.off === false, r);
+    }
+    if (want(61)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.Health16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        OC.Chars.setActive(a.id); await new Promise((res) => setTimeout(res, 800));
+        out.shop = OC.Shops.SHOPS.general.items.includes('coldmed16') && OC.Shops.SHOPS.general.items.includes('bandage16');
+        H.catchIt(a, 'cold', '測試', 't61:' + Date.now()); const left0 = H.H(a).conds[0].until - OC.Sim.now();
+        OC.Tx.run(OC.Tx.uid('t'), { pay: { coins: 60 }, get: { items: { coldmed16: 1, bandage16: 1, patch16: 1 } } }, 'buy');
+        const b0 = OC.Brain.get(a.id); b0.holds.clear(); a.needs.food = 50;
+        const ok = await OC.Use.feed(a.id, 'coldmed16'); const x = H.H(a).conds.find((k) => k.id === 'cold');
+        out.fed = ok; out.left = [Math.round(left0), x ? Math.round(x.until - OC.Sim.now()) : 0];
+        /* a plaster for a bruise (given) */
+        H.catchIt(b, 'bruise', '測試', 't61b:' + Date.now()); const br = H.H(b).conds.find((k) => k.id === 'bruise'), bl0 = br.until - OC.Sim.now(); OC.Progress.emit('gift', { oc: b.id, item: 'bandage16' }); out.bandage = [Math.round(bl0), Math.round(br.until - OC.Sim.now())];
+        /* a chronic ache: the patch relieves it for a day (still there, not active) */
+        H.catchIt(b, 'joints', '上了年紀', 't61c:' + Date.now()); OC.Progress.emit('gift', { oc: b.id, item: 'patch16' }); out.chronic = [H.H(b).conds.some((k) => k.id === 'joints'), H.active(b).some((k) => k.id === 'joints')];
+        /* recovery by time: resting makes it pass faster */
+        const y = H.H(a).conds.find((k) => k.id === 'cold'); if (y) { y.until = OC.Sim.now() - 1; H.step(1); } out.well = H.sick(a);
+        /* a sick day is not a missed day */
+        OC.Career16.takeJob(b.id, 'barista'); H.catchIt(b, 'fever', '測試', 't61d:' + Date.now()); const X = OC.Career16.st(b); X.went = {}; OC.Brain.get(b.id) && OC.Brain.get(b.id).holds.clear(); b.life.cur = null;
+        const went = OC.Career16.goAway ? OC.Career16.goAway(b, 'work16') : null; out.sickDay = [went, X.sick16 && X.sick16[OC.Sim.day()]];
+        const j = X.job, miss0 = j.miss; X.sick16 = { [OC.Sim.day() - 1]: 'w' }; X.paid = {}; j.since = OC.Sim.day() - 5; const cal = OC.Clock.cal(OC.Sim.day() - 1);
+        if (!cal.weekend) { OC.Career16.dayStep(OC.Sim.day()); out.miss = [miss0, j.miss, j.sick]; } else out.miss = 'weekend';
+        OC.Career16.quitJob(b.id); H.H(b).conds = [];
+        return out;
+      }, ids);
+      check('61 治療：雜貨攤買得到藥；餵感冒藥會大幅縮短感冒、OK 繃治擦傷、貼布讓老毛病緩解一天（還在、但不發作）；時間到就好；發燒那天不去上班＝病假，不算缺勤',
+        r.shop && r.fed && r.left[1] < r.left[0] * 0.4 && r.bandage[1] < r.bandage[0] * 0.4 && r.chronic[0] && !r.chronic[1] && r.well === false && r.sickDay[1] === 'w' && (r.miss === 'weekend' || (r.miss[1] === r.miss[0] && r.miss[2] >= 1)), r);
+    }
+    if (want(62)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.Health16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 50, aff: 60, trust: 40, conflict: 0, type: 'friend' });
+        H.catchIt(b, 'cold', '測試', 't62:' + Date.now());
+        const care = Object.keys(OC.Will.INTER).find((k) => OC.Will.INTER[k].cat === 'care'), play = Object.keys(OC.Will.INTER).find((k) => OC.Will.INTER[k].cat === 'play');
+        const list = [{ kind: 'social', other: b.id, social: care, s: 1, why: [] }, { kind: 'social', other: b.id, social: play, s: 1, why: [] }];
+        H.shape(a, null, list); out.care = list.map((x) => [x.social, +x.s.toFixed(2), x.why[0]]);
+        /* catching a cold from someone standing close */
+        const ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id); out.both = !!(ba && ba.a && bb && bb.a);
+        if (out.both) { ba.a.x = bb.a.x + 20; ba.a.y = bb.a.y; H.H(a).exp.germ = 0; H.step(10); out.germ = H.H(a).exp.germ; }
+        /* the 健康 app: who is ill and with what, what helps, the life mode */
+        OC.Pages.open('health16'); await new Promise((res) => setTimeout(res, 600)); const pg = document.querySelector('.page.open[data-page=health16]');
+        out.row = !!pg.querySelector(`[data-hc="${b.id}"] [data-cond=cold]`) && /感冒藥/.test(pg.querySelector(`[data-hc="${b.id}"]`).textContent);
+        pg.querySelector(`[data-hc="${a.id}"] [data-mode=natural]`).click(); await new Promise((res) => setTimeout(res, 300)); out.mode = H.modeOf(a); H.setMode(a, 'nodeath');
+        OC.UI.back(); H.H(b).conds = [];
+        return out;
+      }, ids);
+      check('62 朋友生病了：關心的角色更想去照顧（照顧類互動分數提高、寫出原因），玩鬧的不會；靠很近會累積被傳染的機會；「健康」App 列出誰生了什麼病、什麼有幫助，可以改每個角色的壽命設定',
+        r.care[0][1] > 1.3 && /感冒/.test(r.care[0][2] || '') && r.care[1][1] === 1 && (!r.both || r.germ >= 10) && r.row && r.mode === 'natural', r);
+    }
+    if (want(63)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.Health16, [a, b, c3] = ids.map((id) => OC.Chars.get(id)), out = {}, st = OC.Store.s.life.settings, day = OC.Sim.day();
+        OC.Chars.setActive(b.id);
+        for (const x of [b, c3]) Object.assign(OC.Mind.rel(x.id, a.id), { fam: 60, aff: 60, trust: 50, conflict: 0, type: 'friend' });
+        a.profile.age = String(H.lifespan(a) + 1);
+        /* off by default: nothing happens */
+        H.setMode(a, 'natural'); H.dayStep(day); out.offTw = !!H.H(a).twilight;
+        st.death16 = true; H.setMode(a, 'nodeath'); H.dayStep(day); out.nodeathTw = !!H.H(a).twilight;
+        H.setMode(a, 'natural'); H.dayStep(day); out.tw = !!H.H(a).twilight; out.mail = (OC.Store.s.life.mail || []).some((m) => /常常說累/.test(m.title));
+        /* switching back ends the twilight (revocable) */
+        H.setMode(a, 'nodeath'); out.cancel = !H.H(a).twilight; H.setMode(a, 'natural'); H.dayStep(day);
+        /* seven days later: the farewell */
+        H.H(a).twilight.since = day - 7; const n0 = OC.Chars.all().length, keep0 = OC.Store.count('keepsake16');
+        H.dayStep(day); out.gone = !OC.Chars.get(a.id) && OC.Chars.all().length === n0 - 1;
+        out.passed = !!H.passed()[a.id]; out.keep = OC.Store.count('keepsake16') - keep0;
+        out.grief = [!!H.H(b).grief, (b.life.mem.recent.concat(b.life.mem.long)).some((m) => /道別/.test(m.text))];
+        out.scene = (OC.Store.s.life.theatre16 || []).some((t) => t.kind === 'farewell' && t.lines.length >= 2);
+        if (OC.Theatre.cur) OC.Theatre.finish();
+        /* bring them back */
+        out.restore = H.restore(a.id); out.back = !!OC.Chars.get(a.id) && H.modeOf(OC.Chars.get(a.id)) === 'nodeath' && !H.H(b).grief;
+        /* the last character never passes */
+        out.lastRule = (() => { const saved = OC.Store.s.roster.slice(); OC.Store.s.roster = [a.id]; const ok = H.farewell(a); OC.Store.s.roster = saved; return ok; })();
+        st.death16 = false; a.profile.age = '25'; await new Promise((res) => setTimeout(res, 300));
+        return out;
+      }, ids);
+      check('63 壽命與告別：預設關閉、「會生病不會離開」的不會進入；打開且選「自然」的長者過了壽命會先常說累（寄信），改回設定就取消；七天後道別：朋友逐一說再見（小劇場）、留下紀念相框、朋友會難過一週並記得；紀念欄可以讓牠回來；最後一個角色永遠不會離開',
+        !r.offTw && !r.nodeathTw && r.tw && r.mail && r.cancel && r.gone && r.passed && r.keep === 1 && r.grief[0] && r.grief[1] && r.scene && r.restore && r.back && r.lastRule === false, r);
+    }
+    if (want(64)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b, m] = ids.map((id) => OC.Chars.get(id)), out = {}, F = OC.Feud16, Ar = OC.Arcs;
+        OC.Store.s.life.settings.lockRel = false; OC.Store.s.life.settings.autonomy = 'normal';
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 40, aff: 20, trust: 20, conflict: 50, type: 'friend', fixed: false });
+        for (const x of [a, b]) Object.assign(OC.Mind.rel(m.id, x.id), { fam: 50, aff: 50, trust: 20, conflict: 0, type: 'friend', fixed: false });
+        const k = [a.id, b.id].sort().join('|'); delete Ar.state.rifts[k];
+        Ar.step(31); const rf = Ar.riftOf(a.id, b.id); out.rift = rf && rf.stage;
+        F.feudStep(31); out.cause = rf && rf.cause16;
+        /* refused: the willingness model says 還在冷戰 */
+        const w = OC.Will.willing(b, a, 'chat'); out.refuse = w.parts.some((p) => p[0] === '還在冷戰');
+        /* talking behind the back: the friend believes it (thinks less of b) */
+        const before = OC.Mind.rel(m.id, b.id).aff; F.backbite(a, b, m, rf, OC.Sim.day()); out.bb = [before, OC.Mind.rel(m.id, b.id).aff, (rf.talk16 || []).length];
+        /* a gift softens the cold war */
+        const left0 = rf.until - OC.Sim.now(); OC.Store.emit('will:done', { a: a.id, b: b.id, kind: 'note', ok: true }); out.gift = [Math.round(left0), Math.round(rf.until - OC.Sim.now())];
+        /* the 健康 app: what you can do */
+        OC.Pages.open('health16'); await new Promise((res) => setTimeout(res, 600)); const pg = document.querySelector('.page.open[data-page=health16]');
+        const row = pg.querySelector(`[data-rift="${rf.a}|${rf.b}"]`); out.row = !!row && /起因/.test(row.textContent) && /抱怨/.test(row.textContent);
+        out.medBtn = !!row.querySelector('[data-fd=med]');
+        row.querySelector('[data-fd=sorryA]').click(); await new Promise((res) => setTimeout(res, 400));
+        out.q = OC.Queue.list(rf.a).some((x) => x.act === 'apologize');
+        OC.UI.back();
+        /* making it up is a small scene */
+        Ar.reconcile(rf, 'gift'); F.feudStep(31); out.scene = (OC.Store.s.life.theatre16 || []).some((t) => t.kind === 'reconcile' && /和好/.test(t.title));
+        if (OC.Theatre.cur) OC.Theatre.finish(); OC.Queue.clear && OC.Queue.clear(rf.a);
+        return out;
+      }, ids);
+      check('64 壞關係：吵到冷戰會記下起因；冷戰中拒絕聊天（意願寫「還在冷戰」）；會在朋友面前說對方壞話（朋友對他的印象變差並記下）；送小禮物讓冷戰縮短；「健康」App 的關係問題可以請一方道歉（排進動作清單）或請共同朋友幫忙；和好時有小劇場',
+        r.rift === 'cold' && !!r.cause && r.refuse && r.bb[1] < r.bb[0] && r.bb[2] >= 1 && r.gift[1] < r.gift[0] && r.row && r.medBtn && r.q && r.scene, r);
+    }
+    if (want(65)) {
+      await prep1611();
+      const r = await page.evaluate(async () => {
+        const T = OC.Theatre, out = {}, [a, b] = OC.Chars.all(); OC.App.tab('island');
+        for (let i = 0; i < 60 && !T.present(); i++) await new Promise((res) => setTimeout(res, 500));   /* a reaction from an earlier test may still be playing */
+        const coins = OC.Store.s.coins;
+        const e = T.play({ kind: 'reconcile', title: '測試小劇場', sub: 't', ocs: [a.id, b.id], lines: [{ who: a.id, text: '一' }, { who: b.id, text: '二' }, { who: a.id, text: '三' }], key: 't65:' + Date.now() });
+        for (let i = 0; i < 100 && !document.querySelector('.th16:not(.closing) .th16-say'); i++) await new Promise((res) => setTimeout(res, 50)); const el = document.querySelector('.th16:not(.closing)');
+        out.shown = !!el && !!el.querySelector('.th16-bar.top') && /測試小劇場/.test(el.textContent); out.held = OC.Brain.get(a.id).holds.has('stage');
+        const at = () => { const s = el.querySelector('.th16-say'); return s ? [+s.dataset.i, s.querySelector('p').textContent] : [-1, '']; };
+        out.line1 = at(); el.click(); await new Promise((res) => setTimeout(res, 150)); out.line2 = at();
+        el.querySelector('[data-th16=speed]').click(); out.speed = T.cur && T.cur.speed;
+        el.querySelector('[data-th16=skip]').click(); await new Promise((res) => setTimeout(res, 500));
+        out.closed = !document.querySelector('.th16:not(.closing)') && !T.cur; out.released = !OC.Brain.get(a.id).holds.has('stage'); out.coins = OC.Store.s.coins === coins;
+        /* not watching (a page is open) → missed: a letter and a new item in 回放 */
+        OC.Pages.open('bag'); await new Promise((res) => setTimeout(res, 400));
+        const e2 = T.play({ kind: 'date', title: '錯過的小劇場', ocs: [a.id], lines: [{ who: a.id, text: '在嗎' }], key: 't65b:' + Date.now() });
+        out.missed = !document.querySelector('.th16:not(.closing)') && !e2.seen && (OC.Store.s.life.mail || []).some((m) => /錯過了：錯過的小劇場/.test(m.title));
+        out.once = T.play({ kind: 'date', title: '錯過的小劇場', key: e2.key }) === null;
+        OC.UI.back(); OC.Pages.open('theatre16'); await new Promise((res) => setTimeout(res, 500));
+        const pg = document.querySelector('.page.open[data-page=theatre16]'); const it = pg.querySelector(`[data-th="${e2.id}"]`); out.listed = !!it && it.classList.contains('new');
+        it.click(); await new Promise((res) => setTimeout(res, 1900)); out.replay = !!document.querySelector('.th16:not(.closing)') && /錯過的小劇場/.test(document.querySelector('.th16:not(.closing)').textContent) && !OC.Brain.get(a.id).holds.has('stage');
+        T.finish(); await new Promise((res) => setTimeout(res, 400)); out.seen = e2.seen;
+        return out;
+      });
+      check('65 小劇場：在島上時播放（上下黑邊、標題、一句一句、點一下下一句、×2、跳過）、播放中角色不會走開、結束一定放開、不改任何資料；在別的頁面時＝錯過，寄信並在「回放」標新的；同一件事只記一次；回放可以再看',
+        r.shown && r.held && r.line1[0] >= 0 && r.line2[0] === r.line1[0] + 1 && ['一', '二', '三'][r.line2[0]] === r.line2[1] && r.speed === 2 && r.closed && r.released && r.coins && r.missed && r.once && r.listed && r.replay && r.seen, r);
+    }
+    if (want(66)) {
+      const ids = await prep1611();
+      const r = await page.evaluate(async (ids) => {
+        const H = OC.Health16, [a, b] = ids.map((id) => OC.Chars.get(id)), out = {};
+        OC.Chars.setActive(a.id); a.profile.age = '70'; H.catchIt(a, 'cold', '淋了雨', 't66:' + Date.now());
+        const P0 = OC.Store.s.pet, on0 = P0.on.slice(), mx0 = P0.global.maxPets; P0.global.maxPets = 3; P0.on = [a.id, b.id]; const cfg = OC.PetSync.config(); const s = cfg.data[a.id] && cfg.data[a.id].status;
+        out.pet = s && [s.stage, s.sick, s.busy, s.age, Object.keys(s.rel || {}).length];
+        await new Promise((res) => setTimeout(res, 600)); out.hud = /感冒/.test(document.querySelector('.hud-moodtxt').textContent);
+        /* the phone: 健康 shows how many are ill; 回放 is there */
+        OC.Pages.open('more'); await new Promise((res) => setTimeout(res, 500));
+        const pg = document.querySelector('.page.open[data-page=more]'); out.apps = [!!pg.querySelector('[data-v=health]'), !!pg.querySelector('[data-v=replay]'), (pg.querySelector('[data-v=health] .badge') || {}).textContent];
+        OC.UI.back(); H.H(a).conds = []; a.profile.age = '25'; P0.on = on0; P0.global.maxPets = mx0;
+        return out;
+      }, ids);
+      check('66 桌寵同步：桌寵知道角色的人生階段、年齡、生病、上班上學與和其他桌寵的關係（原生只改步調與休息）；名牌卡顯示生病；口袋手機有「健康」（顯示生病人數）與「回放」',
+        r.pet && r.pet[0] === 'elder' && r.pet[1] === '感冒' && r.pet[3] === 70 && r.hud && r.apps[0] && r.apps[1] && r.apps[2] === '1', r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);

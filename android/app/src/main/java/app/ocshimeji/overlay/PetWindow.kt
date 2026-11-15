@@ -56,6 +56,7 @@ class PetWindow(private val svc: OverlayPetService, val id: String, seed: Int) {
         if (data != null) {
             data.optJSONObject("traits")?.let { t -> brain.traits = PetBrain.Traits(t.f("energy", .5f), t.f("social", .5f), t.f("curious", .5f), t.f("shy", .3f), t.f("pace", .5f)) }
             data.optJSONObject("mood")?.let { m -> brain.mood = PetBrain.Mood(m.f("energy", .7f), m.f("play", .6f), m.f("hunger", .7f), m.f("social", .6f), m.optString("emotion", "neutral")) }
+            data.optJSONObject("status")?.let { s -> brain.status = PetBrain.Status(s.optString("stage"), s.optString("sick"), s.optString("busy")) } ?: run { brain.status = PetBrain.Status() }
             data.optJSONObject("lines")?.let { l -> val out = HashMap<String, List<String>>(); for (k in l.keys()) { val a = l.optJSONArray(k) ?: continue; out[k] = (0 until a.length()).map { a.optString(it) } }; actor.talk.pools = out }
             fun stock(k: String) = data.optJSONArray(k)?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map { o -> PetActor.Stock(o.optString("id"), o.optString("zh"), o.optInt("n"), o.optInt("lv", 0)) } } ?: emptyList()
             actor.stock(stock("foods"), stock("gifts"), data.optLong("at"))

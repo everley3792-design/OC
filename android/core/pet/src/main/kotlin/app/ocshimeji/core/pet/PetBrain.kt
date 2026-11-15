@@ -33,8 +33,14 @@ class PetBrain(seed: Int = 7) {
     /** which autonomous behaviours the player allows; level 0 = calm, 1 = normal, 2 = lively, -1 = stays put */
     data class Allow(val level: Int = 1, val climb: Boolean = true, val ceiling: Boolean = true, val peek: Boolean = true, val run: Boolean = true, val jump: Boolean = true)
 
+    /** 16.11: the character's life right now (from the game): age stage id, illness (empty = well), work / school ("" = free) */
+    data class Status(val stage: String = "", val sick: String = "", val busy: String = "")
+
     var traits = Traits()
     var mood = Mood()
+    var status = Status()
+    /** 16.11: ill or old → slower; at work / school → quieter; ill → rests far more and never runs, jumps or climbs */
+    fun paceFactor(): Float = (if (status.sick.isNotEmpty()) 0.6f else 1f) * (if (status.stage == "elder") 0.8f else 1f)
     var allow = Allow()
     /** local hour 0..23 (set by the host once a minute) */
     var hour = 12
@@ -173,7 +179,7 @@ class PetBrain(seed: Int = 7) {
         swingVel += (-swing * 60f - swingVel * 6f) * dt
         swing = (swing + swingVel * dt).coerceIn(-0.7f, 0.7f)
         squash = 1f
-        val speed = sz * (0.35f + traits.pace * 0.3f)
+        val speed = sz * (0.35f + traits.pace * 0.3f) * paceFactor()
         when (state) {
             State.IDLE, State.SIT, State.SLEEP -> if (stateT > stateLen) decide()
             State.WALK, State.RUN -> {
@@ -283,8 +289,9 @@ class PetBrain(seed: Int = 7) {
     private fun decide() {
         if (allow.level < 0) { set(State.SIT, 30f); return }
         val night = hour >= 23 || hour < 7
-        val tired = (1f - mood.energy) + if (night) 0.6f else 0f
-        val lively = (traits.energy * 0.6f + mood.play * 0.2f + (if (mood.emotion in HAPPY) 0.3f else 0f)) * (0.6f + allow.level * 0.3f)
+        val sick = status.sick.isNotEmpty()
+        val tired = (1f - mood.energy) + (if (night) 0.6f else 0f) + (if (sick) 0.8f else 0f)
+        val lively = (traits.energy * 0.6f + mood.play * 0.2f + (if (mood.emotion in HAPPY) 0.3f else 0f)) * (0.6f + allow.level * 0.3f) * (if (sick) 0.35f else if (status.busy.isNotEmpty()) 0.6f else 1f)
         val w = linkedMapOf(
             State.WALK to 1.2f + lively,
             State.RUN to if (allow.run && allow.level >= 1) lively * 0.5f else 0f,
@@ -298,7 +305,8 @@ class PetBrain(seed: Int = 7) {
             State.REACT to 0.25f + traits.social * 0.25f,
         )
         if (allow.level == 0) { w[State.RUN] = 0f; w[State.JUMP] = 0f; w[State.CLIMB] = 0f; w[State.WALK] = (w[State.WALK] ?: 0f) * 0.5f }
-        if (state == State.SLEEP && !night) w[State.SLEEP] = 0.1f
+        if (state == State.SLEEP && !night) w[State.SLEEP] = if (sick) 0.6f else 0.1f
+        if (sick) { w[State.RUN] = 0f; w[State.JUMP] = 0f; w[State.CLIMB] = 0f }
         val total = w.values.sum(); var r = rnd.nextFloat() * total; var pick = State.IDLE
         for ((k, v) in w) { r -= v; if (r <= 0f) { pick = k; break } }
         when (pick) {

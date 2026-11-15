@@ -284,7 +284,8 @@
     if (OC.Aware) list = OC.Aware.shape(c, b, list);
     if (OC.House16) list = OC.House16.shape(c, b, list);   /* 16.8: looking after the baby, housemates */
     if (OC.Career16) list = OC.Career16.shape(c, b, list);   /* 16.9: homework, freelance work */
-    if (OC.Fair16) list = OC.Fair16.shape(c, b, list);   /* 16.10: the timid skip the coaster and the haunted house */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
+    if (OC.Fair16) list = OC.Fair16.shape(c, b, list);
+    if (OC.Health16) list = OC.Health16.shape(c, b, list);   /* 16.11: rest when ill, look after an ill friend, grief, the twilight */   /* 16.10: the timid skip the coaster and the haunted house */   /* 16.7: perception · upkeep · judgement · replanning · the ground */
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
     if (OC.Aware && ch) OC.Aware.chosen(c, b, ch);
@@ -349,6 +350,7 @@
       if (first || gm > 60 || Sim().rnd() < 0.08) M().remember(c, { type: 'activity', imp: first ? 0.45 : 0.3, place: s ? s.obj.id : '', text: `${s ? '在' + s.obj.zh : ''}${A.zh}${first ? '（第一次）' : ''}`, data: { act, gm: Math.round(gm) }, key: first ? `first:${act}:${s.obj.id}` : undefined });
       M().wishEvent(c, { type: 'act', act });
       if (OC.Growth && gm > 0.5) OC.Growth.onFinish(c, act, b, gm);
+      if (OC.Health16) OC.Health16.onFinish(c, act, b, gm);   /* 16.11: before Aware removes it — was it spoiled? */
       if (OC.Aware) OC.Aware.onFinish(c, act, b, gm);
       if (OC.House16) OC.House16.onFinish(c, act, b, gm);
       if (OC.Fair16) OC.Fair16.onFinish(c, act, b, gm);

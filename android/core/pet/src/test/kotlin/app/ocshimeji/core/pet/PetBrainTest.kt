@@ -20,6 +20,23 @@ class PetBrainTest {
         }
     }
 
+    /** 16.11: the game says the character is ill → the pet never runs, rests far more and walks slower */
+    @Test fun sickPetRestsAndNeverRuns() {
+        fun restShare(sick: Boolean): Float {
+            var rest = 0; var n = 0
+            for (seed in 1..6) {
+                val b = brain(seed).apply { traits = PetBrain.Traits(energy = 0.9f, curious = 0.6f); allow = PetBrain.Allow(level = 2); hour = 14; status = PetBrain.Status(stage = "adult", sick = if (sick) "感冒" else "") }
+                repeat(60 * 600) { b.update(1f / 60f); n++; if (b.state == PetBrain.State.SIT || b.state == PetBrain.State.SLEEP || b.state == PetBrain.State.IDLE) rest++; if (sick) assertTrue(b.state != PetBrain.State.RUN, "an ill pet ran") }
+            }
+            return rest.toFloat() / n
+        }
+        val well = restShare(false); val ill = restShare(true)
+        assertTrue(ill > well + 0.1f, "ill $ill should rest clearly more than well $well")
+        val b = brain().apply { status = PetBrain.Status(stage = "elder", sick = "感冒") }
+        assertEquals(0.48f, b.paceFactor(), 0.001f)
+        assertEquals(1f, brain().paceFactor(), 0.001f)
+    }
+
     @Test fun usesEveryShimejiSurface() {
         val seen = HashSet<PetBrain.State>(); val surfaces = HashSet<PetBrain.Surface>()
         for (seed in 1..8) {

@@ -198,9 +198,10 @@
   }
   function updateHUD() {
     const L = OC.Clock.label(), c = me(), doing = OC.LifeUI.doingText(c), nn = OC.LifeUI.noticeCount(), q = questCard(), mood = Math.round(c.needs.mood || 0);
-    const key = [OC.Queue ? OC.Queue.list(c.id).map((x) => x.k + x.state + (x.why || '') + (x.loop ? 'L' : '') + (x.prog == null ? '' : Math.round(x.prog * 10))).join(',') + (hud._qOpen || '') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s, Wd.area && Wd.area.id, OC.Chars.all().map((x) => x.id + (x.status.onIsland ? 1 : 0) + (x.life.loc || '') + (x.updated || '')).join(), OC.LifeData.NEEDS.map((n) => (c.needs[n.id] || 0) < 25 ? 1 : 0).join('')].join('|');
+    const sk = OC.Health16 && OC.Health16.sick(c) ? OC.Health16.worst(c) : null, skT = sk ? OC.Health16.CONDS[sk.id].ic + OC.Health16.CONDS[sk.id].zh : '';   /* 16.11: an illness shows on the name tag */
+    const key = [skT, OC.Queue ? OC.Queue.list(c.id).map((x) => x.k + x.state + (x.why || '') + (x.loop ? 'L' : '') + (x.prog == null ? '' : Math.round(x.prog * 10))).join(',') + (hud._qOpen || '') : '', OC.Chars.name(c), c.life.control || 'semi', OC.Mind.label(c), doing, L.time, L.wx, L.phase, S().coins, L.date, nn, mood, q && q.t + q.s, Wd.area && Wd.area.id, OC.Chars.all().map((x) => x.id + (x.status.onIsland ? 1 : 0) + (x.life.loc || '') + (x.updated || '')).join(), OC.LifeData.NEEDS.map((n) => (c.needs[n.id] || 0) < 25 ? 1 : 0).join('')].join('|');
     if (key === lastHudKey) return; lastHudKey = key;
-    hud.name.textContent = OC.Chars.name(c); { const pz = placeOf(c).zh, d = doing || OC.Mind.label(c); hud.mood.textContent = pz ? pz + '・' + d : d; }
+    hud.name.textContent = OC.Chars.name(c); { const pz = placeOf(c).zh, d = doing || OC.Mind.label(c); hud.mood.textContent = (skT ? skT + '・' : '') + (pz ? pz + '・' + d : d); }
     /* the ring around the portrait is the mood; the little badge is the control mode; needs only show up when one is low */
     { const ml = mood < 30 ? 'low' : mood < 60 ? 'mid' : 'good'; if (hud.ring.dataset.mood !== ml) hud.ring.dataset.mood = ml;
       const m = c.life.control || 'semi'; if (hud.modeIc.dataset.m !== m) { hud.modeIc.dataset.m = m; const ct = OC.LifeUI.CTL.find((x) => x[0] === m); hud.modeIc.replaceChildren(icon(ct ? ct[2] : 'sparkle', 's')); }
@@ -1126,7 +1127,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

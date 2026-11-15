@@ -127,6 +127,7 @@
   function goAway(c, act) {
     const b = B().get(c.id), day = Sim().day(), X = st(c), k = act === 'work16' ? 'w' : 's';
     if ((X.went || {})[k] === day) return false;
+    if (OC.Health16 && OC.Health16.staysHome(c)) { if (!(X.sick16 = X.sick16 || {})[day]) { X.sick16[day] = k; const ks = Object.keys(X.sick16); if (ks.length > 14) delete X.sick16[ks[0]]; OC.Store.touch('life'); } return false; }   /* 16.11: a sick day, not a missed one */
     if (busyNow(c, b)) return false;
     (X.went = X.went || {})[k] = day;
     if (b && b.a) {
@@ -154,8 +155,8 @@
     if (Sim().catching) return; const cal = OC.Clock.cal ? OC.Clock.cal(day) : { weekday: day % 7, weekend: false, day: 1, season: 'spring' }, prev = day - 1, pcal = OC.Clock.cal ? OC.Clock.cal(prev) : cal;
     for (const c of Ch().all()) {
       const X = st(c), j = X.job, sc = schoolOf(c);
-      if (j && LINE[j.line].type === 'emp' && !pcal.weekend) { if ((X.paid || {})[prev]) j.att++; else if (j.since < prev) { j.miss++; j.perf = Math.max(0, j.perf - 5); } }
-      if (sc.status === 'enrolled' && !pcal.weekend && sc.level) { if ((X.att || {})[prev]) sc.att.days++; else sc.att.missed++; }
+      if (j && LINE[j.line].type === 'emp' && !pcal.weekend) { if ((X.paid || {})[prev]) j.att++; else if ((X.sick16 || {})[prev]) j.sick = (j.sick || 0) + 1; else if (j.since < prev) { j.miss++; j.perf = Math.max(0, j.perf - 5); } }
+      if (sc.status === 'enrolled' && !pcal.weekend && sc.level) { if ((X.att || {})[prev]) sc.att.days++; else if ((X.sick16 || {})[prev]) sc.att.sick = (sc.att.sick || 0) + 1; else sc.att.missed++; }
       X.insp = Math.min(100, X.insp + 12 + (any(c, ['daydreamer', 'creative']) ? 6 : 0));
       if (j && LINE[j.line].type === 'free') commissions(c, day, cal);
       if (cal.day === 27) exam(c, day, cal);
@@ -189,6 +190,7 @@
       X.grad.push(X.level); M().remember(c, { type: 'bond', imp: 0.85, text: `${LEVELS[X.level].zh}畢業了`, key: `grad:${c.id}:${X.level}` });
       OC.Budget && OC.Budget.mail({ kind: 'school', title: `${name(c)}${LEVELS[X.level].zh}畢業了`, text: `${name(c)}${X.status === 'self' ? '自學' : ''}完成了${LEVELS[X.level].zh}。`, key: `grad:${c.id}:${X.level}` });
       OC.Progress && OC.Progress.emit('graduate', { oc: c.id, level: X.level });
+      OC.Store.emit('career16:grad', { id: c.id, level: LEVELS[X.level].zh });   /* 16.11: a small scene (OC.Theatre) */
       if (X.level === 'adult') X.status = 'none';
     }
   }

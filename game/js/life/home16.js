@@ -292,7 +292,7 @@
     M().remember(nc, { type: 'bond', imp: 0.8, who: parents.map((p) => p.id), text: o.adopt ? `來到了新的家` : `出生了`, key: `born:${nc.id}` });
     if (OC.Budget && OC.Budget.mail) OC.Budget.mail({ kind: 'family', title: o.adopt ? `${name(nc)}來到了家裡` : `${name(nc)}出生了`, text: `${parents.map(name).join('和')}${o.adopt ? '領養了' : '迎接了'}${name(nc)}。${hid ? '住在' + H().HOUSES[hid].zh + '。' : '家裡已經滿了，還沒有住處。'}`, key: `child:${nc.id}` });
     OC.App && OC.App.syncPresence && setTimeout(() => OC.App.syncPresence(), 0);
-    St().touch('chars'); St().emit('home16:child', { id: nc.id, adopt: !!o.adopt });
+    St().touch('chars'); St().emit('home16:child', { id: nc.id, adopt: !!o.adopt, parents: parents.map((p) => p.id) });
     return nc;
   }
   function birth(a, b) { return makeChild({ parents: [a.id, b.id], stage: 'baby' }); }

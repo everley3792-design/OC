@@ -362,7 +362,7 @@
   }
   /** 12.0: the few moments that earn a short phrase in the key of the music — one table, one cool-down (never two phrases on top of each other),
    *  nothing while sound is off / the page is hidden / the game is catching up offline. `delay` lets the small sound effect of the same moment finish first. */
-  const CUES = { skill: ['win', 0.25], asp: ['win', 0.3], claim: ['win', 0.15], mini: ['win', 0.2], req: ['warm', 0.2], relUp: ['warm', 0.4], reconcile: ['warm', 0.3], photo: ['warm', 0.2], discover: ['wonder', 0.2], taste: ['wonder', 0.2] };
+  const CUES = { skill: ['win', 0.25], asp: ['win', 0.3], claim: ['win', 0.15], mini: ['win', 0.2], req: ['warm', 0.2], relUp: ['warm', 0.4], reconcile: ['warm', 0.3], farewell: ['wonder', 0.25], photo: ['warm', 0.2], discover: ['wonder', 0.2], taste: ['wonder', 0.2] };
   let cueAt = -1e9; stats.cues = {};
   function cue(name) {
     const c = CUES[name]; if (!c || !ctx || !unlocked || !cfg().on || document.hidden || (OC.Sim && OC.Sim.catching)) return false;
