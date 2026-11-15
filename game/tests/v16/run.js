@@ -550,7 +550,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         const free1 = F.preview({ potato: 1, carrot: 1, onion: 1 }, 'boil'), free2 = F.preview({ tomato: 1, flour: 1 }, 'drink'), free3 = F.preview({ carrot: 1, tomato: 1 }, 'fry');
         const b = F.cook(c, { recipe: free1.recipe.id, ingr: { potato: 1, carrot: 1, onion: 1 }, score: 0.5, free: true });
         const burnt = F.cook(c, { recipe: 'scrambled', score: 0.05 });
-        return { a: { ok: a.ok, out: a.out, n: a.n, q: a.q }, n0, after, free1: free1.recipe && free1.recipe.id, free2: free2.out, free3: free3.recipe ? free3.recipe.id : free3.out, b: { ok: b.ok, discovered: b.discovered, state: F.state('potato_stew') }, burnt: { ok: burnt.ok, eggs: OC.Store.count('egg') }, ledger: OC.Store.s.ledger ? OC.Store.s.ledger.slice(0, 3).map((x) => x.reason || x.why) : [] };
+        return { a: { ok: a.ok, out: a.out, n: a.n, q: a.q }, n0, after, free1: free1.recipe && free1.recipe.id, free2: free2.out, free3: free3.recipe ? free3.recipe.id : free3.out, b: { ok: b.ok, discovered: b.discovered, state: F.state('potato_stew') }, burnt: { ok: burnt.ok, eggs: OC.Store.count('egg') }, ledger: ((OC.Store.s.ledger || {}).log || []).slice(-3).map((x) => x.reason || x.why) };
       });
       check('27a 照食譜做：用掉材料（交易紀錄），做出 ★★★ 的料理（完美時多一份）', r.a.ok && r.a.q === 3 && r.a.out === 'fried_rice_q3' && r.after.dish === r.a.n && r.after.rice === r.n0.rice - 1 && r.after.egg === r.n0.egg - 1, r);
       check('27b 自由料理：材料＋做法對上沒做過的食譜＝發現它；對不上＝家常料理或奇妙的料理；燒焦不扣材料', r.free1 === 'potato_stew' && r.b.ok && r.b.discovered && r.b.state === 'made' && r.free2 === 'weird_dish' && /^(stir_veg|home_fry)$/.test(r.free3) && !r.burnt.ok && r.burnt.eggs === r.after.egg - 0, r);
@@ -590,7 +590,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         /* the kitchen sheet: recipe list with ✓/✗, free cooking preview, fridge view */
         OC.Kitchen.open(null); await sleep(500); const sh = document.querySelector('.sheet.open, .sheet'); const rows = sh.querySelectorAll('[data-cook]').length;
         const segs = [...sh.querySelectorAll('.seg button')]; segs.find((x) => x.textContent === '自由料理').click(); await sleep(300);
-        for (const id of ['rice', 'egg', 'carrot']) { const b = sh.querySelector(`[data-ing=${id}]`); b && b.click(); await sleep(120); }
+        for (const id of ['rice', 'egg', 'carrot']) { const b = sh.querySelector(`[data-ing=${id}]`); b && b.click(); await sleep(120); } const fry = sh.querySelector('[data-method=fry]'); fry && fry.click(); await sleep(150);
         const say = (sh.querySelector('.k16-say') || {}).textContent; [...sh.querySelectorAll('.seg button')].find((x) => x.textContent === '冰箱').click(); await sleep(300); const fridge = sh.querySelectorAll('.k16-fi').length;
         OC.UI.stack.slice().forEach(() => OC.UI.back());
         const c0 = OC.Store.s.coins; const o = OC.Food16.order(OC.Store.s.activeId, 'latte'); await sleep(200);

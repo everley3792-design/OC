@@ -227,7 +227,7 @@
 
   // ---------------------------------------------------------------- the café: order one, eat it there
   function order(ocId, id) {
-    const it = I[id], price = OC.Shops && OC.Shops.price ? OC.Shops.price('cafe', id) : it && it.price; if (!it || !price) return { ok: false, why: '這裡沒有賣' };
+    const it = I[id], pr = it && OC.Shops && OC.Shops.price ? OC.Shops.price('cafe', id) : null, price = pr ? pr.price : it && it.price;   /* Shops.price gives { price, base, tag } */ if (!it || !price) return { ok: false, why: '這裡沒有賣' };
     const tx = OC.Tx.run(OC.Tx.uid('order'), { pay: { coins: price }, get: { items: { [id]: 1 } } }, `咖啡館點餐：${it.zh}`, {}); if (!tx.ok) return { ok: false, why: tx.why[0] };
     OC.Use && OC.Use.feed(ocId, id); return { ok: true, price };
   }

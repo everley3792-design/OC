@@ -34,6 +34,7 @@
 - **16.2.1（0.16.2.1-alpha）拖曳後凍結**：輕拋／丟出後反應動作（優先 8）被還在的 `drag`（優先 9、沒有結束時間）擋掉 → 角色停在拖曳姿勢、走路被擋；丟到海上／懸崖時落在不能走的格子 → 點地面沒反應。修正＋通用安全網（`actWatchdog`）＋每隻各自的搬運紀錄。紀錄：`docs/v16.2.1-report.md`。
 - **16.3（0.16.3-alpha）角色工作室**：編輯頁分兩區（舞台與分頁固定，只有面板捲動——修掉滑動跑版）；圖片角色有自己的分頁（取景台、去背、自動對齊、動畫來源「全部預設／混合／全部自己匯入」＋一鍵全選與批次匯入），沒有捏臉選項；角色自己的台詞（`c.lines16`）、專屬互動（`c.inter16` → `OC.Will`）、自訂事件腳本（`c.scripts16`／全島 `save.life.scripts16`，`OC.Script`，格式 `docs/oc-script.md`，不限數量、可匯入）。紀錄：`docs/v16.3-report.md`。
 - **16.4（0.16.4-alpha）互動選單＋動作清單**：角色的環保留常用動作，分類在同一個選單裡展開項目面板（不再有第二個環或表單）、項目一按就做（「復原」提示、長按＝立刻做）；`OC.Queue` 依模擬市民重寫（`life/queue16.js`：帶目標／地點／對象、8 個、排序、立刻做、循環、進度、不想做會說原因＋強迫、跨地點、等對方有空）；物件會列出能做的事；長按地面「在這裡做」；11 個新活動（`life/acts16.js`）與梳毛／打氣／蓋被子。紀錄：`docs/v16.4-report.md`。
+- **16.5（0.16.5-alpha）飲食與烹飪**：`OC.Food16`（`items/food16.js`）：食材分類、10 種新食材、80 個食譜、7 種做法、品質 ★1–★3（`_q2`／`_q3` 是各自的物品）、自由料理與發現、食譜書、自動做、冷熱與物種口味、端上桌與剩菜、角色自己下廚（一天最多兩次）、咖啡館點餐；廚房介面 `OC.Kitchen`（`ui/cook16.js`：食譜／自由料理／冰箱）。**沒有新的廚房家具模型。** 紀錄：`docs/v16.5-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -109,7 +110,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.2-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.5-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -246,3 +247,4 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.3 角色台詞**：`c.lines16 = [{ id, cat, text, c }]`、`c.lines16mode[cat] = 'only'`；由 `OC.Talk.lines()` 的 `charLines()` 併入（`char` 限定說話者）。專屬互動 `c.inter16` 由 `OC.Will.sync()` 登記成 `INTER['u16_<角色>_<id>']`（`own`＝只有擁有者能發起，分類 `own`「專屬」），台詞分類 `i16_<kind>`、`<kind>_yes`／`_no`；數值有上限（關係 ±12、需求 ±30）。
 - **16.3 事件腳本**（`OC.Script`，`life/script16.js`）：腳本是資料，**不得**加入能執行程式碼、給物品／星幣、改關係類型的指令；未成年不改親密；回憶 key 固定。由 `OC.Events.beginScript` 執行（一次一個、間隔、打擾預算、全部角色 hold、跳過時資料步驟照做），`Events.trigger`／`periodic` 在內建事件之後再試腳本。新指令要同時加 parser（`parseStep`）、執行（`step`）、驗證（`finishEvent`）、積木（`studio16.js` 的 `BLOCKS`／`toBlocks`／`toSrc`）與 `docs/oc-script.md`。
 - **16.4 選單**：角色的環由 `OC.Menu16.charRing(id)` 產生；有 `sub` 的項目在 `OC.Radial` 的面板裡展開（一層分類、一層項目，可有分頁），面板項目一律 `.radial-btn.ri`、`now: true` 才支援長按立刻做。**不要再加第二個環或表單**；只有刪除／清除類才確認。安排一律經 `OC.Menu16.request`（排進清單＋「復原」提示）。物件能做的事由可供性的 verbs 自動列出（`OC.Menu16.objectActs`），新設施只要在 `Brain.rebuild` 給 verbs。新活動放 `life/acts16.js`（`menuOnly` 的只有玩家安排才做；`night`／`day` 由 `Acts16.fits` 判斷）。HUD 清單的操作在原地展開，不跳視窗。
+- **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。

@@ -545,7 +545,7 @@
     const d = describe0(it), act = INVITE_ACT[it.type];
     if (d && OC.Menu16) d.extra = (d.extra || []).concat(OC.Menu16.objectActs(it));
     /* 16.5: order at the café counter and eat it there (pay → get → eat; no shop page in between) */
-    if (d && OC.Food16 && it.shop === 'cafe') for (const id of ['latte', 'cocoa', 'pancake', 'curry']) { const it2 = Sty.ITEMS[id], pr = OC.Shops.price('cafe', id); if (it2 && pr) d.extra.push({ label: `點${it2.zh}・${pr}幣`, run: () => { const r = OC.Food16.order(S().activeId, id); if (!r.ok) toast(r.why, 'info'); } }); }   /* 16.4: what this thing offers, each one a request with this very object */
+    if (d && OC.Food16 && it.shop === 'cafe') for (const id of ['latte', 'cocoa', 'pancake', 'curry']) { const it2 = Sty.ITEMS[id], pr = it2 && OC.Shops.price('cafe', id); if (it2 && pr) d.extra.push({ label: `點${it2.zh}・${pr.price}幣`, run: () => { const r = OC.Food16.order(S().activeId, id); if (!r.ok) toast(r.why, 'info'); } }); }   /* 16.4: what this thing offers, each one a request with this very object */
     /* 16.4: inviting someone is one tap per person here (no sheet in between) */
     if (d && act && OC.Will) { const at = it.at ? { x: it.at.x, y: it.at.y } : { x: it.x, y: it.y }, me0 = OC.Chars.get(S().activeId);
       for (const c of presentHere().filter((x) => actorOf(x.id) && x.id !== S().activeId).slice(0, 3)) { const hh = OC.Will.hint(c, me0, OC.Will.jointKind(act)); d.extra.push({ label: `邀${OC.Chars.name(c)}一起${S().life.settings.willHint !== false ? ' ' + hh.face : ''}`, run: () => { const r = OC.Will.invite(S().activeId, c.id, act, at); if (!r.ok) toast(r.why, 'info'); else toast(`${OC.Chars.name(me0)}去邀請${OC.Chars.name(c)}`, 'users'); } }); } }
