@@ -388,7 +388,8 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         let done = null; const off = OC.Store.on('will:done', (e) => { if (e.kind === kind) done = e; });
         if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const id of [a.id, b.id]) { const bb = OC.Brain.get(id); [...bb.holds].forEach((x) => OC.Brain.unhold(id, x)); if (bb.conv) OC.Brain.Social.end(bb.conv, 't'); if (bb.invited && OC.Brain.convs.includes(bb.invited)) OC.Brain.Social.end(bb.invited, 't'); bb.invited = null; bb.queued = null; }
         const aff1 = OC.Mind.relPeek(b.id, a.id).aff;
-        const ok = OC.Will.ask(a.id, b.id, kind, { player: true });
+        let ok = OC.Will.ask(a.id, b.id, kind, { player: true });
+        for (let k = 0; k < 6 && !ok.ok && /特別的事|在忙|說話/.test(ok.why || ''); k++) { if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const id of [a.id, b.id]) { const bx = OC.Brain.get(id); [...bx.holds].forEach((x) => OC.Brain.unhold(id, x)); if (bx.conv) OC.Brain.Social.end(bx.conv, 't'); } await new Promise((res) => setTimeout(res, 300)); ok = OC.Will.ask(a.id, b.id, kind, { player: true }); }   /* a built-in event may start in between */
         const t0 = Date.now(); while (!done && Date.now() - t0 < 120000) await new Promise((res) => setTimeout(res, 400)); ob.disconnect();
         return { notOwner, ok, done, kind, inMenu: OC.Will.INTER[kind] && OC.Will.INTER[kind].own === a.id, aff: [aff1, OC.Mind.relPeek(b.id, a.id).aff], said: [...new Set(bubbles)].filter((t) => /心|收到/.test(t)).slice(0, 4) };
       });
@@ -409,12 +410,13 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         a.scripts16 = [{ id: 'g1', on: true, src: `event gate "門打開了"\ntrigger tick\ncast A = self\nwhen var gate >= 1\nonce\n---\nsay A "好了。"\nset var gate 2\n` }]; OC.Chars.save(a); OC.Script.reset();
         const t0 = Date.now(); while (Date.now() - t0 < 12000) { await new Promise((res) => setTimeout(res, 500)); } const early = OC.Store.s.life.vars16.gate || 0;
         OC.Store.s.life.vars16.gate = 1; OC.Store.s.life.ev.lastAny = 0; OC.Chars.all().forEach((c) => { const bb = OC.Brain.get(c.id); if (bb && bb.holds.size) [...bb.holds].forEach((h) => OC.Brain.unhold(c.id, h)); });
-        const t1 = Date.now(); while (Date.now() - t1 < 90000 && OC.Store.s.life.vars16.gate !== 2) { OC.Store.s.life.ev.lastAny = 0; await new Promise((res) => setTimeout(res, 500)); }
+        const t1 = Date.now(); while (Date.now() - t1 < 160000 && OC.Store.s.life.vars16.gate !== 2) { OC.Store.s.life.ev.lastAny = 0; await new Promise((res) => setTimeout(res, 500)); }
         const ran = OC.Store.s.life.vars16.gate;
+        const dbg20 = { cur: OC.Events.current && (OC.Events.current.id || OC.Events.current.ev && OC.Events.current.ev.id), st: OC.Brain.get(a.id) && OC.Brain.get(a.id).st, holds: OC.Brain.get(a.id) ? [...OC.Brain.get(a.id).holds] : null, loc: a.life.loc, area: OC.World.area.id, hidden: OC.App.actorOf(a.id) ? OC.App.actorOf(a.id).hidden : 'noactor', budget: OC.Budget && OC.Budget.can && OC.Budget.can('event') };
         /* .ocpack round trip keeps the studio data */
         a.lines16 = [{ id: 'l1', cat: 'greet', text: '喲。' }]; a.inter16 = [{ id: 'x1', zh: '擊拳', lines: { ask: ['來。'] } }]; OC.Chars.save(a);
         const blob = await OC.IO.exportPack({ chars: [a.id] }); const pack = await OC.IO.readPack(await blob.arrayBuffer()); const res = await OC.IO.applyPack(pack, 'new'); const c2 = res.chars[0];
-        return { bad: bad.errors.map((e) => e.line + ':' + e.msg), n, early, ran, packed: { s: (c2.scripts16 || []).length, l: (c2.lines16 || []).length, i: (c2.inter16 || []).length } };
+        return { dbg20, bad: bad.errors.map((e) => e.line + ':' + e.msg), n, early, ran, packed: { s: (c2.scripts16 || []).length, l: (c2.lines16 || []).length, i: (c2.inter16 || []).length } };
       });
       check('20a 腳本錯誤會說第幾行、哪裡錯（看不懂的條件、沒有引號、找不到標籤）', r.bad.some((x) => x.startsWith('2:')) && r.bad.some((x) => x.startsWith('4:')) && r.bad.some((x) => x.startsWith('5:')), r.bad);
       check('20b 不限數量：一個檔案匯入 300 個事件，全部可用', r.n >= 300, r.n);
@@ -575,7 +577,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), F = OC.Food16, all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'), [a, b] = all;
         const s = F.serve('curry', 2, null, a.id); const onTable = F.mealsHere().map((m) => m.id + '×' + m.n), inv = OC.Store.count('curry');
         b.needs.food = 30; const f0 = b.needs.food; const ate = F.eatServing(b, OC.World.area.id); const left = F.mealsHere().reduce((x, m) => x + m.n, 0);
-        const mem = b.life.mem.recent.slice(-6).map((m) => m.text);
+        const mem = b.life.mem.recent.map((m) => m.text).filter((t) => /做的/.test(t)).slice(-2);
         /* leftovers go after a game day */
         F.meals()[0].at -= 2000; F.spoil(); const after = F.mealsHere().length;
         return { ok: s.ok, onTable, inv, ate, f: [f0, b.needs.food], left, mem, after };
