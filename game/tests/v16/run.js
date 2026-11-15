@@ -616,10 +616,12 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         let chains = 0, bad = [], missing = new Set(), behs = new Set();
         for (let k = 0; k < 200 && !(k >= 60 && behs.size >= 10); k++) {   /* 60 conversations, more if the sample happened to be very agreeable */
           const a = cs[k % cs.length], b = cs[(k + 1) % cs.length], L = [], conv = { kind: k % 3 ? 'chat' : 'share' };
+          if (k === 60) for (const x of cs) { x.__p = { e: x.personality.expression, t: x.personality.traits.slice() }; x.personality.expression = 90; if (!x.personality.traits.includes('stubborn')) x.personality.traits.push('stubborn'); }   /* a livelier, more opinionated sample */
           if (!T.script(conv, (who, cat, extra) => L.push({ who, cat, extra }), a, b, OC.Mind.rel(a.id, b.id))) continue; chains++;
           for (let i = 0; i < L.length; i++) { const beh = L[i].cat.slice(4); behs.add(beh); if (i && beh !== 'wrap' && L[i - 1].cat !== 't16_switch') { const pv = L[i - 1].cat.slice(4); if (!(NEXT[pv] || []).includes(beh)) bad.push(pv + '→' + beh); } if (i && L[i].who === L[i - 1].who) bad.push('same speaker');
             const sp = L[i].who === 'a' ? a : b, ot = L[i].who === 'a' ? b : a; if (!OC.Talk.pick(L[i].cat, sp, ot, L[i].extra)) missing.add(L[i].cat + '/' + L[i].extra.tk + '/' + L[i].extra.ts); }
         }
+        for (const x of cs) if (x.__p) { x.personality.expression = x.__p.e; x.personality.traits = x.__p.t; delete x.__p; }
         Object.assign(out, { chains, bad: bad.slice(0, 5), missing: [...missing].slice(0, 6), behs: [...behs].sort() });
         /* the typed answer finds a topic offline */
         out.m1 = T.match('今天吃了咖哩'); out.m2 = T.match('我好想去星砂海灘'); out.m3 = T.match('最近都睡不好'); out.m4 = T.match('嗯'); out.m5 = T.match('跟' + OC.Chars.name(B) + '吵架了');
