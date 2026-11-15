@@ -231,7 +231,7 @@
     if (ba.st === 'social') return { ok: false, why: `${name(A)}正在和別人說話` };
     ba.st = 'think';
     const ok = OC.Brain.Social.start(ba, bb, kind);
-    if (!ok) return { ok: false, why: bb.holds.size ? `${name(B)}在忙` : '走不過去' };
+    if (!ok) { const Br = OC.Brain; return { ok: false, why: bb.st === 'social' || (bb.invited && Br.convs.includes(bb.invited)) ? `${name(B)}正在和別人說話` : bb.holds.size || !Br.available(bb) ? `${name(B)}在忙` : '走不過去' }; }
     const conv = OC.Brain.convs.find((x) => x.a === ba); if (conv) { conv.byPlayer = !!o.player; if (o.at) conv.at = o.at; }
     return { ok: true };
   }

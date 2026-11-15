@@ -360,9 +360,11 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         a.lines16mode = {}; const mix = new Set(); for (let i = 0; i < 30; i++) { OC.Store.s.life.said[a.id] = {}; const l = OC.Talk.say('greet', a, b); if (l) mix.add(l.text.includes('今天也在') ? 'own' : 'builtin'); }
         const other = new Set(); for (let i = 0; i < 12; i++) { OC.Store.s.life.said[b.id] = {}; const l = OC.Talk.say('greet', b, a); if (l && l.text.includes('今天也在')) other.add('leak'); }
         /* the studio: open 台詞, add a line through the real buttons, save */
-        OC.Pages.open('charedit', { id: b.id, tab: 'lines' }); await new Promise((res) => setTimeout(res, 1200)); const pg = document.querySelector('.page.open[data-page=charedit]');
-        pg.querySelector('[data-cat=bye]').click(); await new Promise((res) => setTimeout(res, 200)); pg.querySelector('[data-add=bye]').click(); await new Promise((res) => setTimeout(res, 200));
-        const inp = pg.querySelector('.ln16-body .ln16-line input'); inp.value = '我先走囉。'; inp.dispatchEvent(new Event('change')); pg.querySelector('[data-act=save]').click(); await new Promise((res) => setTimeout(res, 300)); OC.UI.back();
+        const until = async (fn, ms = 8000) => { const t0 = Date.now(); let v; while (!(v = fn()) && Date.now() - t0 < ms) await new Promise((res) => setTimeout(res, 100)); return v; };
+        OC.Pages.open('charedit', { id: b.id, tab: 'lines' }); await new Promise((res) => setTimeout(res, 600)); const pg = document.querySelector('.page.open[data-page=charedit]');
+        (await until(() => pg.querySelector('[data-cat=bye]'))).click();
+        (await until(() => pg.querySelector('[data-add=bye]'))).click();
+        const inp = await until(() => pg.querySelector('.ln16-body .ln16-line input')); inp.value = '我先走囉。'; inp.dispatchEvent(new Event('change')); pg.querySelector('[data-act=save]').click(); await new Promise((res) => setTimeout(res, 300)); OC.UI.back();
         return { only: [...said], mix: [...mix], leak: [...other], saved: (OC.Chars.get(b.id).lines16 || []).map((l) => l.cat + ':' + l.text) };
       });
       check('18a 角色自己的台詞：「只用我寫的」時只說自己的（套用說話方式），混合時兩種都會出現；別的角色不會說', r.only.length >= 1 && r.only.every((t) => t.includes('今天也在')) && r.mix.includes('own') && r.mix.includes('builtin') && !r.leak.length, r);
@@ -384,7 +386,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 80, aff: 70, trust: 60, intim: 30, conflict: 0 });
         const aff0 = OC.Mind.relPeek(b.id, a.id).aff; const bubbles = []; const ob = new MutationObserver(() => document.querySelectorAll('.speech').forEach((e) => bubbles.push(e.textContent))); ob.observe(document.body, { childList: true, subtree: true, characterData: true });
         let done = null; const off = OC.Store.on('will:done', (e) => { if (e.kind === kind) done = e; });
-        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const id of [a.id, b.id]) { const bb = OC.Brain.get(id); [...bb.holds].forEach((x) => OC.Brain.unhold(id, x)); }
+        if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; for (const id of [a.id, b.id]) { const bb = OC.Brain.get(id); [...bb.holds].forEach((x) => OC.Brain.unhold(id, x)); if (bb.conv) OC.Brain.Social.end(bb.conv, 't'); if (bb.invited && OC.Brain.convs.includes(bb.invited)) OC.Brain.Social.end(bb.invited, 't'); bb.invited = null; bb.queued = null; }
         const aff1 = OC.Mind.relPeek(b.id, a.id).aff;
         const ok = OC.Will.ask(a.id, b.id, kind, { player: true });
         const t0 = Date.now(); while (!done && Date.now() - t0 < 120000) await new Promise((res) => setTimeout(res, 400)); ob.disconnect();
@@ -573,7 +575,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), F = OC.Food16, all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'), [a, b] = all;
         const s = F.serve('curry', 2, null, a.id); const onTable = F.mealsHere().map((m) => m.id + '×' + m.n), inv = OC.Store.count('curry');
         b.needs.food = 30; const f0 = b.needs.food; const ate = F.eatServing(b, OC.World.area.id); const left = F.mealsHere().reduce((x, m) => x + m.n, 0);
-        const mem = b.life.mem.recent.slice(-2).map((m) => m.text);
+        const mem = b.life.mem.recent.slice(-6).map((m) => m.text);
         /* leftovers go after a game day */
         F.meals()[0].at -= 2000; F.spoil(); const after = F.mealsHere().length;
         return { ok: s.ok, onTable, inv, ate, f: [f0, b.needs.food], left, mem, after };
@@ -612,7 +614,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         /* a conversation is a chain: every behaviour answers the previous one; every line is found for every voice */
         const NEXT = { raise: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh', 'switch'], gossip: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh'], recall: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh'], ask: ['explain'], explain: ['react', 'build', 'agree'], share: ['react', 'build', 'agree'], agree: ['build', 'share'], build: ['build', 'share'], disagree: ['defend', 'concede'], defend: ['concede', 'disagree'], joke: ['laugh', 'flat'], laugh: ['build'], flat: ['build'], react: ['build'], concede: ['build'], meh: ['switch'], switch: ['agree', 'disagree', 'ask', 'share', 'joke', 'meh', 'switch'] };
         let chains = 0, bad = [], missing = new Set(), behs = new Set();
-        for (let k = 0; k < 60; k++) {
+        for (let k = 0; k < 200 && !(k >= 60 && behs.size >= 10); k++) {   /* 60 conversations, more if the sample happened to be very agreeable */
           const a = cs[k % cs.length], b = cs[(k + 1) % cs.length], L = [], conv = { kind: k % 3 ? 'chat' : 'share' };
           if (!T.script(conv, (who, cat, extra) => L.push({ who, cat, extra }), a, b, OC.Mind.rel(a.id, b.id))) continue; chains++;
           for (let i = 0; i < L.length; i++) { const beh = L[i].cat.slice(4); behs.add(beh); if (i && beh !== 'wrap' && L[i - 1].cat !== 't16_switch') { const pv = L[i - 1].cat.slice(4); if (!(NEXT[pv] || []).includes(beh)) bad.push(pv + '→' + beh); } if (i && L[i].who === L[i - 1].who) bad.push('same speaker');

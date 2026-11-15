@@ -86,7 +86,7 @@
     if (!b.a) return;   /* not on screen here: waits until it is (another place's AI handles it through goPlace) */
     if (e.kind === 'go') { const a = b.a; if (OC.World.walkTo(a, e.pt.x, e.pt.y)) { B().playerAct && B().playerAct(c.id); OC.World.walkTo(a, e.pt.x, e.pt.y); e.st = 'going'; e.t0 = nowR(); } else { e.st = 'refused'; e.why = '走不過去'; } St.touch('life', { queue: c.id }); return; }
     if (e.kind === 'social') {
-      const ob = B().get(e.other); const ready = ob && ob.a && !ob.holds.size && ob.st !== 'social' && ob.st !== 'event';
+      const ob = B().get(e.other); const ready = ob && ob.a && !ob.holds.size && ob.st !== 'social' && ob.st !== 'event' && !(ob.invited && (B().convs || []).includes(ob.invited));
       if (!ready) { if (!e.waitAt) e.waitAt = Sim().now(); e.st = 'waitfor'; e.why = `等${Ch().name(Ch().get(e.other)) || '對方'}有空`; if (Sim().now() - e.waitAt > WAIT_SOCIAL) { e.st = 'refused'; e.refAt = nowR(); e.why = `${Ch().name(Ch().get(e.other)) || '對方'}一直沒空`; } St.touch('life', { queue: c.id }); return; }
       const r = OC.Will ? OC.Will.ask(c.id, e.other, e.social, { player: true, at: e.at2 }) : { ok: false, why: '' };
       if (!r.ok) { e.st = 'refused'; e.why = r.why || '做不到'; St.touch('life', { queue: c.id }); return; }
