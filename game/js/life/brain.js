@@ -130,7 +130,7 @@
     const sleepy = M().sleepTime(c, h);
     if (act === 'sleep') { if (sleepy) add(c.needs.sleep < 85 ? 1.1 + (c.needs.sleep < 50 ? 0.6 : 0) : 0.2, '作息'); else add(c.needs.sleep < 15 ? 0.4 : -1.2, '白天'); if (c.needs.food < 25) add(-1.6, '太餓睡不著'); }
     if (act === 'nap') { if (sleepy) add(-0.4, '該睡覺了'); if (has(c, 'lazy') || has(c, 'sleepy')) add(0.15, '個性'); if (c.needs.sleep > 70 && c.needs.energy > 60) add(-0.4, '不睏'); }
-    if (act === 'eat') { const meal = (h >= 7 && h < 9) || (h >= 12 && h < 13.5) || (h >= 18 && h < 20); if (meal && c.needs.food < 80) add(0.3, '用餐時間'); if (c.needs.food > 85) add(-0.8, '吃飽了'); if (has(c, 'foodie')) add(0.15, '貪吃'); }
+    if (act === 'eat') { const meal = (h >= 7 && h < 9) || (h >= 12 && h < 13.5) || (h >= 18 && h < 20); if (meal && c.needs.food < 80) add(0.3, '用餐時間'); if (OC.Food16 && c.needs.food < 85 && OC.Food16.mealsHere(b.a && OC.World.area ? OC.World.area.id : null).length) add(0.35, '桌上有菜'); if (c.needs.food > 85) add(-0.8, '吃飽了'); if (has(c, 'foodie')) add(0.15, '貪吃'); }
     if (act === 'drink' && has(c, 'foodie')) add(0.12, '貪吃');
     if (sleepy && !['sleep', 'read', 'rest', 'daydream'].includes(act) && !((act === 'eat' || act === 'drink') && c.needs.food < 30)) add(-0.35, '睡覺時間');
     if (sleepy && act === 'read' && has(c, 'bookworm')) add(0.15, '睡前');

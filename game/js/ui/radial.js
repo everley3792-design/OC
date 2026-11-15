@@ -108,8 +108,8 @@
 
   /** 16.4: 「已安排：…　復原」 — no confirmation before; one tap after to take it back */
   let undoEl = null;
-  function undoToast(text, undo, ms = 4200) {
-    if (undoEl) undoEl.remove(); const el = h('div.undo-toast', { role: 'status' }, h('span.grow', null, text), undo ? h('button.btn.s', { on: { click: () => { try { undo(); } catch (e) { console.error(e); } el.remove(); haptic('tick'); } } }, '復原') : null);
+  function undoToast(text, undo, ms = 4200, label = '復原') {
+    if (undoEl) undoEl.remove(); const el = h('div.undo-toast', { role: 'status' }, h('span.grow', null, text), undo ? h('button.btn.s', { on: { click: () => { try { undo(); } catch (e) { console.error(e); } el.remove(); haptic('tick'); } } }, label) : null);
     document.getElementById('app').append(el); undoEl = el; requestAnimationFrame(() => el.classList.add('on')); setTimeout(() => { el.classList.remove('on'); setTimeout(() => el.remove(), 300); if (undoEl === el) undoEl = null; }, ms);
   }
   OC.Radial = { open, close, undoToast, get open_() { return !!cur; }, get target() { return cur && cur.target; } };

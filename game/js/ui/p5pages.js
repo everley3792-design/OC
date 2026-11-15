@@ -195,6 +195,7 @@
         if (t.lv >= 2) fx.mood = (fx.mood || 0) + 10; if (t.lv === 1) fx.mood = (fx.mood || 0) + 4; if (t.lv <= -1) { fx.mood = (fx.mood || 0) - (t.lv === -2 ? 10 : 4); if (fx.food) fx.food = Math.round(fx.food * 0.7); }
         if (OC.Chars.has(c, 'foodie') && t.lv >= 0) fx.mood = (fx.mood || 0) + 4;
         M().needs(c, fx, it.zh);
+        { const bf = OC.Food16 && OC.Food16.buff(c, id); if (bf) { M().needs(c, bf.fx, bf.why); M().feel(c, bf.emo[0], bf.emo[1], bf.why); A().floatText && A().floatText(a, bf.fx.comfort >= 8 ? '♨' : '❄', 'var(--sun)'); } }   /* 16.5 warm food on a cold day, cool on a hot one */
         const emo = { 2: ['excited', 0.75], 1: ['happy', 0.5], 0: ['content', 0.25], '-1': ['confused', 0.35], '-2': ['annoyed', 0.55] }[t.lv];
         M().feel(c, emo[0], emo[1], `吃了${it.zh}`); M().player(c, { aff: t.lv >= 1 ? 3 : t.lv === 0 ? 1 : 0, fam: 1 }); M().wishEvent(c, { type: 'fed', item: id }, 'player');
         if (t.first || t.lv === 2 || t.lv === -2) M().remember(c, { type: 'player', imp: t.lv === 2 ? 0.7 : t.first ? 0.5 : 0.55, text: `${t.first ? '第一次吃' : '吃了'}你給的${it.zh}，${OC.Taste.LV[t.lv]}${t.lv >= 1 ? '！' : '…'}`, data: { item: id, lv: t.lv }, key: r.entry.key });

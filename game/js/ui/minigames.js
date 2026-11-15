@@ -113,6 +113,7 @@
   }
   const needText = (rc) => Object.entries(rc.need).map(([k, n]) => `${k === 'fish' ? '任何魚' : k === 'fruit' ? '水果' : I(k).zh}×${n}`).join('、');
   function cooking(spot) {
+    if (OC.Kitchen) { OC.Kitchen.open(spot); return; }   /* 16.5 */
     const c = me(); if (!c) return;
     sheet('做料理', (b, api) => {
       b.append(h('p.muted', null, '選一道食譜。材料在完成時才會用掉；失敗的話材料還在。'), h('div.list', null, ...RECIPES.map((rc) => {
@@ -126,7 +127,7 @@
   function cookGame(rc, spot) {
     const c = me(), P = A().player; if (!c || !P) return;
     OC.World.setAction(P, 'cook', { priority: 7 }); P.tBack = 1;
-    const g = panel(`料理：${I(rc.out).zh}`, '切菜：刀子經過記號時點一下');
+    const g = panel(`料理：${I(rc.out) ? I(rc.out).zh : rc.zh || '料理'}`, '切菜：刀子經過記號時點一下');
     let step = 'chop', score = [0, 0, 0], kx = 0, kd = 1, marks = [0.2, 0.5, 0.8], hits = 0, tries = 0, ang = null, stir = 0, stirT = 5, needle = 0, nd = 1;
     // personality & skill: cooks / foodies get a slower knife and a wider heat zone; lazy stirs for less time
     const cl = M().skillLv(c, 'cook'), steady = OC.Growth && OC.Growth.has(c, 'steady'), ks = 0.7 * (OC.Chars.has(c, 'foodie') ? 0.85 : 1) * (1 - Math.min(0.3, cl * 0.04)) * (steady ? 0.85 : 1), hz = 0.07 + (OC.Chars.has(c, 'diligent') ? 0.02 : 0) + cl * 0.005 + (steady ? 0.02 : 0); if (OC.Chars.has(c, 'lazy')) stirT = 4;
@@ -147,6 +148,7 @@
     function finish() {
       const sc = (score[0] + score[1] + score[2]) / 3, stars = sc >= 0.78 ? 3 : sc >= 0.45 ? 2 : sc >= 0.15 ? 1 : 0;
       close();
+      if (rc.onScore) { rc.onScore(sc); return; }   /* 16.5: the food system decides the dish, its quality and the transaction */
       if (!stars) { toast('燒焦了…材料都還在，再試一次吧', 'info'); M().feel(c, 'confused', 0.3, '料理失敗'); return; }
       const ing = ingredients(rc); if (!ing) { toast('材料不夠了', 'info'); return; }
       const n = stars === 3 ? 2 : 1;

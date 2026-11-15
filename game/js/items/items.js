@@ -221,7 +221,7 @@
     return Math.max(-2, Math.min(2, Math.round(v)));
   }
   /** → { lv, src: 'player'|'discovered'|'unknown', locked } */
-  function pref(c, id) { const p = prefs(c).food[id]; if (p) return { lv: p.lv, src: p.src, locked: !!p.locked }; return { lv: derived(c, id), src: 'unknown', locked: false }; }
+  function pref(c, id) { const p = prefs(c).food[id]; if (p) return { lv: p.lv, src: p.src, locked: !!p.locked }; return { lv: OC.Taste.derived(c, id), src: 'unknown', locked: false }; }
   /** player sets a level (and optionally locks it so tasting never overrides it) */
   function setPref(c, id, lv, locked) { const t = prefs(c); if (lv == null) delete t.food[id]; else t.food[id] = { lv: Math.max(-2, Math.min(2, lv)), src: 'player', locked: locked !== false }; }
   /** the OC tastes an item → reaction (first taste discovers the preference unless the player locked one) */
@@ -229,7 +229,7 @@
     const t = prefs(c), rec = t.tasted[id] || (t.tasted[id] = { n: 0, first: null, last: null });
     const first = !rec.n; rec.n++; rec.last = Date.now(); if (first) rec.first = Date.now();
     let p = t.food[id];
-    if (!p) { p = t.food[id] = { lv: derived(c, id), src: 'discovered', at: Date.now() }; }
+    if (!p) { p = t.food[id] = { lv: OC.Taste.derived(c, id), src: 'discovered', at: Date.now() }; }
     const lv = p.lv, cat = lv >= 2 ? 'fav' : lv === 1 ? 'like' : lv === 0 ? 'ok' : lv === -1 ? 'dislike' : 'hate';
     if (first) rec.reaction = cat;
     return { lv, cat, first, n: rec.n, discovered: first && p.src === 'discovered' };

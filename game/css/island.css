@@ -565,3 +565,20 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .pick-acts .btn { min-height: 48px; padding: 0 8px; font-size: var(--fs-s); }
 .pick-acts .btn.primary { grid-column: 1 / -1; }
 .pick-card { max-width: min(92vw, 360px); }
+
+/* ===================== 16.5 the kitchen ===================== */
+.k16-head { display: flex; align-items: center; gap: 8px; margin: 8px 2px; }
+.k16-methods { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; } .k16-methods::-webkit-scrollbar { display: none; } .k16-methods .chip-btn { flex: none; min-height: 48px; }
+.k16-needs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.k16-need { font-size: 11px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); }
+.k16-need.ok { background: var(--accent-soft); color: var(--ink); } .k16-need.no { color: var(--ink-3); }
+.k16-q { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-3); font-weight: 900; flex: none; }
+.k16-tray { display: flex; flex-wrap: wrap; gap: 6px; min-height: 52px; align-items: center; padding: 6px 8px; margin: 4px 0; border-radius: 16px; background: var(--surface-2); }
+.k16-tray .chip-btn { min-height: 48px; }
+.k16-say { font-weight: 700; margin: 6px 2px 10px; color: var(--ink); }
+.k16-ings { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; margin-top: 10px; }
+.k16-ing { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 64px; padding: 6px 4px; border: 0; border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--lip); font-size: 12px; transition: transform var(--t-press); }
+.k16-ing:active { transform: translateY(2px); } .k16-ing.on { background: var(--sun-soft); box-shadow: inset 0 0 0 2px var(--sun), 0 2px 0 var(--lip); } .k16-ing:disabled { opacity: .45; }
+.k16-fridge { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.k16-fi { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; background: var(--surface); box-shadow: 0 2px 0 var(--lip); font-size: 12px; text-align: center; }
+.k16-fi .btn { min-height: 48px; }

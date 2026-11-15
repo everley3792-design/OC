@@ -108,13 +108,14 @@
   // ======================= collection (unified) =======================
   const itemCats = [['fish', '魚類', (it) => it.kind === 'fish'], ['bug', '小生物', (it) => it.kind === 'bug'], ['sea', '海洋收藏', (it) => it.kind === 'sea'], ['plant', '植物與作物', (it, id) => ['crop', 'seed'].includes(it.kind) || ['berry', 'herb', 'acorn', 'mushroom', 'flower', 'sunflower', 'apple', 'orange', 'peach'].includes(id)],
     ['food', '料理與飲料', (it, id) => (it.kind === 'food' || it.kind === 'drink') && !['berry', 'mushroom', 'apple', 'orange', 'peach', 'cheese', 'honey'].includes(id)], ['home', '家具與紀念品', (it) => it.kind === 'furniture'], ['wear', '服飾', (it) => it.kind === 'clothing'], ['other', '禮物、玩具與材料', (it) => ['gift', 'toy', 'material'].includes(it.kind)]];
-  const ITEM_IDS = () => Object.keys(OC.Style.ITEMS).filter((id) => !I(id).custom);
+  const ITEM_IDS = () => Object.keys(OC.Style.ITEMS).filter((id) => !I(id).custom && !I(id).variant);   /* 16.5: ★ variants count as their dish */
   const actsSeen = () => { const s = new Set(); for (const c of OC.Chars.all()) for (const [a, r] of Object.entries(c.life.rec.act || {})) if (r.n) s.add(a); return s; };
   const evSeen = () => { const s = new Set(Object.keys(S().play.events || {})); for (const e of S().life.ev.log || []) if (e.why === 'done' || e.why === '背景完成') s.add(e.id); return s; };
   function collStats() {
     const ids = ITEM_IDS(), cats = itemCats.map(([k, zh, f]) => { const L = ids.filter((id) => f(I(id), id)); return { k, zh, total: L.length, found: L.filter((id) => S().seen[id]).length }; });
     const pl = OC.Places.list().filter((id) => OC.Places.open(id)); cats.push({ k: 'place', zh: '地點', total: pl.length, found: pl.filter((id) => S().places.visited[id]).length });
     const acts = Object.keys(OC.LifeData.ACTS); cats.push({ k: 'act', zh: '活動', total: acts.length, found: acts.filter((a) => actsSeen().has(a)).length });
+    if (OC.Food16) { const R = OC.Food16.RECIPES; cats.push({ k: 'recipe', zh: '食譜', total: R.length, found: R.filter((r) => OC.Food16.state(r.id) === 'made').length }); }
     const evs = OC.Events.defs().filter((e) => !e.custom); cats.push({ k: 'event', zh: '特殊事件', total: evs.length, found: evs.filter((e) => evSeen().has(e.id)).length });
     return { cats, total: cats.reduce((a, c) => a + c.total, 0), found: cats.reduce((a, c) => a + c.found, 0) };
   }
@@ -150,6 +151,9 @@
     if (cat === 'place') {
       return h('div.vstack', { style: { gap: '8px' } }, ...OC.Places.list().filter((id) => OC.Places.open(id)).filter((id) => !q || OC.Places.get(id).zh.includes(q)).map((id) => { const P0 = OC.Places.get(id), v = S().places.visited[id], pr = OC.Places.progress(id); const evs = (S().life.ev.log || []).filter((e) => e.why && /done|背景/.test(e.why)).length; void evs;
         return h('div.q-row' + (v ? '' : '.hidden'), null, h('div.place-thumb.s', { style: { '--c': v ? P0.col : 'var(--locked)' } }, icon(v ? P0.icon : 'lock', 's')), h('div.grow', null, h('b', null, v ? P0.zh : '？？？'), small(v ? `${OC.Places.TYPES[P0.type]}・第一次造訪 ${new Date(v).toLocaleDateString('zh-TW')}・探索 ${pr.found}/${pr.total}` : '還沒去過'), v && P0.finds && P0.finds.length ? h('div.chips', { style: { marginTop: '4px' } }, ...P0.finds.slice(0, 8).map((f) => (S().seen[f] ? img(f, 22) : h('span.tag', null, '？')))) : null)); }));
+    }
+    if (cat === 'recipe' && OC.Food16) {   /* 16.5: the recipe book — made / known / ？？？ */
+      const F = OC.Food16; return h('div.vstack', { style: { gap: '8px' } }, ...F.RECIPES.filter((r) => !q || (F.state(r.id) !== 'unknown' && r.zh.includes(q))).map((r) => { const st = F.state(r.id), bk = F.book()[r.id] || {}; const im = OC.Style.itemImg(r.id); im.style.width = im.style.height = '36px'; return h('div.q-row' + (st === 'unknown' ? '.hidden' : ''), { 'data-recipe': r.id }, st === 'unknown' ? h('span.k16-q', null, '？') : im, h('div.grow', null, h('b', null, st === 'unknown' ? '？？？' : r.zh + (bk.best ? ' ' + '★'.repeat(bk.best) : '')), h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, st === 'unknown' ? `${F.METHODS[r.method][0]}・自由料理時發現` : `${F.METHODS[r.method][0]}・${Object.entries(r.need).map(([k, n]) => (k.startsWith('cat:') ? '任何' + F.CAT_ZH[k.slice(4)] : (I(k) || { zh: k }).zh) + (n > 1 ? '×' + n : '')).join('、')}${st === 'made' ? `・做過 ${bk.made} 次` : ''}`)), h('span.tag', null, st === 'made' ? '做過' : st === 'known' ? '會做' : '未發現')); }));
     }
     if (cat === 'act') { const seen = actsSeen(); return h('div.grid.c3', null, ...Object.entries(OC.LifeData.ACTS).filter(([, a]) => !q || a.zh.includes(q)).map(([k, a]) => h('div.tile' + (seen.has(k) ? '' : '.locked'), null, h('div', { style: { fontSize: '24px' } }, seen.has(k) ? a.ic || '・' : '？'), h('span', null, seen.has(k) ? a.zh : '？？？')))); }
     const seen = evSeen();

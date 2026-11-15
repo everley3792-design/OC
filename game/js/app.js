@@ -543,7 +543,9 @@
   const INVITE_ACT = { bench: 'rest', bookshelf: 'read', towel: 'nap', ride: 'ride' };
   function describe(it) {
     const d = describe0(it), act = INVITE_ACT[it.type];
-    if (d && OC.Menu16) d.extra = (d.extra || []).concat(OC.Menu16.objectActs(it));   /* 16.4: what this thing offers, each one a request with this very object */
+    if (d && OC.Menu16) d.extra = (d.extra || []).concat(OC.Menu16.objectActs(it));
+    /* 16.5: order at the café counter and eat it there (pay → get → eat; no shop page in between) */
+    if (d && OC.Food16 && it.shop === 'cafe') for (const id of ['latte', 'cocoa', 'pancake', 'curry']) { const it2 = Sty.ITEMS[id], pr = OC.Shops.price('cafe', id); if (it2 && pr) d.extra.push({ label: `點${it2.zh}・${pr}幣`, run: () => { const r = OC.Food16.order(S().activeId, id); if (!r.ok) toast(r.why, 'info'); } }); }   /* 16.4: what this thing offers, each one a request with this very object */
     /* 16.4: inviting someone is one tap per person here (no sheet in between) */
     if (d && act && OC.Will) { const at = it.at ? { x: it.at.x, y: it.at.y } : { x: it.x, y: it.y }, me0 = OC.Chars.get(S().activeId);
       for (const c of presentHere().filter((x) => actorOf(x.id) && x.id !== S().activeId).slice(0, 3)) { const hh = OC.Will.hint(c, me0, OC.Will.jointKind(act)); d.extra.push({ label: `邀${OC.Chars.name(c)}一起${S().life.settings.willHint !== false ? ' ' + hh.face : ''}`, run: () => { const r = OC.Will.invite(S().activeId, c.id, act, at); if (!r.ok) toast(r.why, 'info'); else toast(`${OC.Chars.name(me0)}去邀請${OC.Chars.name(c)}`, 'users'); } }); } }
@@ -722,6 +724,7 @@
         { ic: 'move', label: '移動', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => startPlacement({ uid: it.uid }) },
         { ic: 'bag', label: '收回', off: (OC.Places.get(Wd.area.id) || {}).decor === false ? '這裡不能佈置' : null, run: () => { startPlacement({ uid: it.uid }); storeFurniture(); } },
         { ic: 'info', label: '資訊', run: () => OC.Pages.itemSheet ? OC.Pages.itemSheet(it.id) : toast(def.zh, 'info') },
+        it.id === 'table' && OC.Food16 ? { ic: 'apple', label: '端上桌', sub: () => { const dishes = Object.keys(S().inv).filter((x) => OC.Store.count(x) > 0 && Sty.ITEMS[x] && Sty.ITEMS[x].method16); const on = OC.Food16.mealsHere(); return { note: on.length ? `桌上：${on.map((m) => Sty.ITEMS[m.id].zh + '×' + m.n).join('、')}` : '餓了的人會來吃（不用再付）', items: dishes.map((x) => ({ ic: 'apple', label: `${Sty.ITEMS[x].zh}×${OC.Store.count(x)}`, run: () => { const r = OC.Food16.serve(x, Math.min(4, OC.Store.count(x)), { x: it.x, y: it.y }, S().activeId); toast(r.ok ? `端上桌：${Sty.ITEMS[x].zh}×${r.meal.n}` : r.why, r.ok ? 'apple' : 'info'); } })), empty: '背包裡沒有做好的料理' }; } } : null,   /* 16.5 */
         (() => { const acts = OC.Menu16 ? OC.Menu16.objectActs({ id: 'furn:' + it.uid, type: 'furn', x: it.x, y: it.y }) : []; return acts.length ? { ic: 'sparkle', label: '能做的事', sub: () => ({ items: acts.map((x) => ({ ic: (x.label.split(' ')[0] || '').length <= 2 ? x.label.split(' ')[0] : 'sparkle', label: x.label.replace(/^\S+\s/, ''), off: x.off, run: x.run })) }) } : null; })(),   /* 16.4: what this piece of furniture offers */
         (def.seats || 1) >= 2 && OC.Will && presentHere().some((c) => actorOf(c.id) && c.id !== S().activeId) ? { ic: 'users', label: '邀請', sub: () => { const act = (def.verbs || []).includes('play') ? 'play' : 'rest', me0 = OC.Chars.get(S().activeId), k = OC.Will.jointKind(act); return { note: '一起' + OC.LifeData.ACTS[act].zh, items: presentHere().filter((c) => actorOf(c.id) && c.id !== S().activeId).map((c) => ({ ic: 'person', label: OC.Chars.name(c), hint: S().life.settings.willHint !== false ? OC.Will.hint(c, me0, k).face : null, run: () => { const r = OC.Will.invite(S().activeId, c.id, act, { x: it.x, y: it.y }); toast(r.ok ? `${OC.Chars.name(me0)}去邀請${OC.Chars.name(c)}` : r.why, r.ok ? 'users' : 'info'); } })) }; } } : null,   /* 16.2 → 16.4: one tap per person, no sheet */
       ] });
@@ -1122,7 +1125,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

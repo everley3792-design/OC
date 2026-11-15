@@ -528,6 +528,76 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       check('25 去別的地方做的事也能排（「去別處」）：角色會自己走出去前往那裡', r.away.length > 0 && r.r1 === 'now' && r.leaving === r.pl, r);
       await page.waitForTimeout(4000); await calm16();
     }
+    /* ============================== 16.5 food and cooking ============================== */
+    const give = (items) => page.evaluate((items) => OC.Tx.run(OC.Tx.uid('test'), { get: { items } }, '測試補給'), items);
+    if (want(26)) {
+      const r = await page.evaluate(() => {
+        const F = OC.Food16, R = F.RECIPES, methods = new Set(R.map((x) => x.method)), I = OC.Style.ITEMS;
+        const bad = R.filter((x) => !I[x.id] || Object.keys(x.need).some((k) => !(k.startsWith('cat:') ? F.CAT_ZH[k.slice(4)] : I[k])));
+        const variants = F.DISHES.every((id) => I[id + '_q2'] && I[id + '_q3'] && I[id + '_q3'].variant === id);
+        const coll = Object.keys(I).filter((id) => I[id].variant).length;
+        return { n: R.length, methods: [...methods], bad: bad.map((x) => x.id), variants, coll, cats: Object.keys(F.CAT_ZH), shop: ['butter', 'tofu', 'noodle'].every((x) => OC.Shops.SHOPS.food.items.includes(x)) };
+      });
+      check('26a 80 個食譜、七種做法（煮 炒 烤 烘焙 蒸 拌 調飲）；每個材料都存在；食材分類；新食材在食品店買得到', r.n >= 80 && r.methods.length === 7 && !r.bad.length && r.cats.length >= 8 && r.shop, r);
+      check('26b 品質 ★1–★3：★★／★★★ 是各自的物品（背包仍是數量），圖鑑把它們算成同一道', r.variants && r.coll > 100, { variants: r.variants, coll: r.coll });
+    }
+    if (want(27)) {
+      await give({ rice: 3, egg: 3, carrot: 2, tomato: 2, potato: 2, onion: 1, flour: 2, sugar: 2 });
+      const r = await page.evaluate(() => {
+        const F = OC.Food16, c = OC.Chars.active(), n0 = { rice: OC.Store.count('rice'), egg: OC.Store.count('egg') };
+        const a = F.cook(c, { recipe: 'fried_rice', score: 0.9 });   /* rice egg cat:veg → ★3 */
+        const after = { rice: OC.Store.count('rice'), egg: OC.Store.count('egg'), dish: OC.Store.count('fried_rice_q3') };
+        const free1 = F.preview({ potato: 1, carrot: 1, onion: 1 }, 'boil'), free2 = F.preview({ tomato: 1, flour: 1 }, 'drink'), free3 = F.preview({ carrot: 1, tomato: 1 }, 'fry');
+        const b = F.cook(c, { recipe: free1.recipe.id, ingr: { potato: 1, carrot: 1, onion: 1 }, score: 0.5, free: true });
+        const burnt = F.cook(c, { recipe: 'scrambled', score: 0.05 });
+        return { a: { ok: a.ok, out: a.out, n: a.n, q: a.q }, n0, after, free1: free1.recipe && free1.recipe.id, free2: free2.out, free3: free3.recipe ? free3.recipe.id : free3.out, b: { ok: b.ok, discovered: b.discovered, state: F.state('potato_stew') }, burnt: { ok: burnt.ok, eggs: OC.Store.count('egg') }, ledger: OC.Store.s.ledger ? OC.Store.s.ledger.slice(0, 3).map((x) => x.reason || x.why) : [] };
+      });
+      check('27a 照食譜做：用掉材料（交易紀錄），做出 ★★★ 的料理（完美時多一份）', r.a.ok && r.a.q === 3 && r.a.out === 'fried_rice_q3' && r.after.dish === r.a.n && r.after.rice === r.n0.rice - 1 && r.after.egg === r.n0.egg - 1, r);
+      check('27b 自由料理：材料＋做法對上沒做過的食譜＝發現它；對不上＝家常料理或奇妙的料理；燒焦不扣材料', r.free1 === 'potato_stew' && r.b.ok && r.b.discovered && r.b.state === 'made' && r.free2 === 'weird_dish' && /^(stir_veg|home_fry)$/.test(r.free3) && !r.burnt.ok && r.burnt.eggs === r.after.egg - 0, r);
+    }
+    if (want(28)) {
+      const r = await page.evaluate(async () => {
+        const F = OC.Food16, all = OC.Chars.all(), c = all[0];
+        /* warm food on a cold day */
+        OC.Store.s.settings.season = 'winter'; const bf = F.buff(c, 'veg_soup'); OC.Store.s.settings.season = null;
+        /* species tendency: a rabbit is less keen on fish dishes than a cat (gentle, never over the player's own setting) */
+        const t = { ...c.profile }; c.profile.species = 'cat'; const cat = F.speciesBias(c, 'grill_fish'); c.profile.species = 'rabbit'; const rab = F.speciesBias(c, 'grill_fish'); OC.Taste.setPref(c, 'grill_fish', 2, true); const locked = OC.Taste.pref(c, 'grill_fish').lv; OC.Taste.setPref(c, 'grill_fish', null); c.profile.species = t.species;
+        return { bf: bf && bf.why, cat, rab, locked };
+      });
+      check('28 吃的感覺：冷天吃熱的會暖起來；物種有一點點口味傾向（貓喜歡魚、兔子不太愛）；玩家自己設的喜好不會被改', /暖/.test(r.bf || '') && r.cat === 1 && r.rab === -1 && r.locked === 2, r);
+    }
+    if (want(29)) {
+      await calm16();
+      await give({ curry: 2 });
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), F = OC.Food16, all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'), [a, b] = all;
+        const s = F.serve('curry', 2, null, a.id); const onTable = F.mealsHere().map((m) => m.id + '×' + m.n), inv = OC.Store.count('curry');
+        b.needs.food = 30; const f0 = b.needs.food; const ate = F.eatServing(b, OC.World.area.id); const left = F.mealsHere().reduce((x, m) => x + m.n, 0);
+        const mem = b.life.mem.recent.slice(-2).map((m) => m.text);
+        /* leftovers go after a game day */
+        F.meals()[0].at -= 2000; F.spoil(); const after = F.mealsHere().length;
+        return { ok: s.ok, onTable, inv, ate, f: [f0, b.needs.food], left, mem, after };
+      });
+      check('29a 端上桌：付一次（背包少了），在這裡的人餓了來吃一份（不用再付），吃了記得是誰做的；剩菜放超過一天就收掉', r.ok && r.onTable[0] === 'curry×2' && r.inv === 0 && r.ate === 'curry' && r.f[1] > r.f[0] && r.left === 1 && r.mem.some((t) => t.includes('做的')) && r.after === 0, r);
+      await give({ rice: 2, potato: 2, carrot: 2 });
+      const ai = await page.evaluate(async () => { const F = OC.Food16, c = OC.Chars.all()[1]; const r = F.aiCook(c, OC.World.area.id); return { ok: !!r, out: r && r.out, table: F.mealsHere().map((m) => m.id), again: [F.aiCook(c), F.aiCook(c)].filter(Boolean).length }; });
+      check('29b 角色自己下廚：用廚房（背包）的食材做一道、端上桌給大家；一天最多兩次', ai.ok && ai.table.some((x) => x.startsWith(ai.out.split('_q')[0])) && ai.again <= 1, ai);
+    }
+    if (want(30)) {
+      await calm16();
+      const r = await page.evaluate(async () => {
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); OC.Tx.run(OC.Tx.uid('t'), { get: { coins: 500, items: { rice: 1, egg: 1, carrot: 1 } } }, '測試');
+        /* the kitchen sheet: recipe list with ✓/✗, free cooking preview, fridge view */
+        OC.Kitchen.open(null); await sleep(500); const sh = document.querySelector('.sheet.open, .sheet'); const rows = sh.querySelectorAll('[data-cook]').length;
+        const segs = [...sh.querySelectorAll('.seg button')]; segs.find((x) => x.textContent === '自由料理').click(); await sleep(300);
+        for (const id of ['rice', 'egg', 'carrot']) { const b = sh.querySelector(`[data-ing=${id}]`); b && b.click(); await sleep(120); }
+        const say = (sh.querySelector('.k16-say') || {}).textContent; [...sh.querySelectorAll('.seg button')].find((x) => x.textContent === '冰箱').click(); await sleep(300); const fridge = sh.querySelectorAll('.k16-fi').length;
+        OC.UI.stack.slice().forEach(() => OC.UI.back());
+        const c0 = OC.Store.s.coins; const o = OC.Food16.order(OC.Store.s.activeId, 'latte'); await sleep(200);
+        return { rows, say, fridge, order: o.ok, paid: c0 - OC.Store.s.coins };
+      });
+      check('30 廚房：食譜清單（有材料的可以直接做）、自由料理即時告訴你會做出什麼、冰箱就是背包裡的食物；咖啡館點餐＝付錢、拿到、當場吃', r.rows >= 1 && /炒飯|？？？/.test(r.say || '') && r.fridge >= 3 && r.order && r.paid > 0, r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);
