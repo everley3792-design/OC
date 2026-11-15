@@ -554,7 +554,7 @@
   function describe0(it) {
     const P = OC.Places, zh = (id) => (P && P.get(id) ? P.get(id).zh : id);
     switch (it.type) {
-      case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: '掉在地上', stk: 'bag', verb: '撿起來', run: () => direct(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
+      case 'drop': return { title: (Sty.ITEMS[it.drop.id] || {}).zh || '掉在地上的東西', sub: it.drop.g16 ? ((OC.Aware.ground().find((g) => g.uid === it.drop.g16) || {}).mode === 'toss' ? '被丟在地上的東西（愛整潔的角色會收拾）' : '放在地上（角色會依個性和需要拿去用）') : '掉在地上', stk: 'bag', verb: '撿起來', run: () => direct(it.drop.x, it.drop.y + 2, () => pickDrop(it.drop)) };
       case 'tree': { const left = treeReadyIn(it); return { title: it.label || '果樹', sub: left <= 0 ? '果實成熟了' : `還要約 ${Math.ceil(left)} 分鐘長出果實`, stk: 'apple', verb: '搖一搖', run: () => goThen(it.at.x, it.at.y, () => shakeTree(it)) }; }
       case 'bed': return { title: it.label || '花圃', sub: it.item ? `可以摘一束${(Sty.ITEMS[it.item] || {}).zh || '花'}` : '可以摘一朵花', stk: 'flower', verb: '摘花', run: () => direct(it.at.x, it.at.y, () => pickFlower(it)) };
       case 'bench': return { title: it.label || '長椅', sub: '坐下來休息', stk: 'sofa', verb: '坐下', run: () => goThen(it.at.x, it.at.y, () => sit(it.seat)) };
@@ -667,7 +667,7 @@
   }
   function pickDrop(d) {
     if (!Wd.drops.includes(d)) return;
-    const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`); offerUse(d.id);
+    const r = OC.Tx.run(d.key || OC.Tx.uid('drop'), { get: { items: { [d.id]: 1 } } }, '撿到'); Wd.removeDrop(d); if (!r.ok) return; if (d.g16 && OC.Aware) OC.Aware.picked(d.g16); floatAt(d.x, d.y, d.lvl, `+1 ${Sty.ITEMS[d.id].zh}`); offerUse(d.id);
     if (d.daily) { const w = S().world[d.daily]; w.taken.push(d.spot); St.touch(); St.stat('picked'); Gm.progress('pick', 1, { item: d.id }); if (Gm.has('curious') && Math.random() < 0.25 && OC.Tx.run((d.key || 'drop') + ':bonus', { get: { items: { [d.id]: 1 } } }, '好奇心多找到').ok) { toast('好奇心發作，多找到一個！', 'sparkle'); } }
     if (tray.classList.contains('open')) renderSlots();
   }
@@ -959,7 +959,7 @@
     stopObserve(); OC.Brain.detachAll();
     Wd.loadArea(def, { pos, furniture: OC.Places.room(id) });
     OC.Brain.rebuild();
-    makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeMates(); spawnDailies();
+    makePlayer(pos && Wd.walkable(pos.x, pos.y) ? pos : def.spawn); makeMates(); spawnDailies(); if (OC.Aware) OC.Aware.spawnGround();
     S().pos = { area: id, x: player.x, y: player.y };
     OC.WorldUI.arrived(id, o.from, o.sw); syncTreeFruit(); applyPerf(); Gm.checkAch();
     if (followNext) {   // 13.0: we came here because the character we follow led the way (or the OC we were watching left)
@@ -1032,7 +1032,7 @@
     if (player) {
       // footsteps → stats, auto-pick drops the player walks over
       if (player.dist > 10) { const n = Math.floor(player.dist / 10); player.dist -= n * 10; S().stats.steps += n; saveStepT += n; if (saveStepT > 50) { saveStepT = 0; St.mark(); Gm.checkAch(); } }
-      for (const d of Wd.drops.slice()) if (d.t > 0.7 && Math.hypot(d.x - player.x, d.y - player.y) < 9) pickDrop(d);
+      for (const d of Wd.drops.slice()) if (d.t > 0.7 && !d.g16 && Math.hypot(d.x - player.x, d.y - player.y) < 9) pickDrop(d);
       if (player.path || player.joy) S().pos = { area: Wd.area.id, x: player.x, y: player.y };
     }
     autoSaveT += dt; if (autoSaveT > 30) { autoSaveT = 0; saveMatePos(); if (St.dirty) St.persist(); }
@@ -1125,7 +1125,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
@@ -1214,6 +1214,6 @@
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 
-  OC.App = { describe, adaptStep, get adaptLevel() { return adaptLv; }, canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, direct, offerUse, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
+  OC.App = { describe, adaptStep, get adaptLevel() { return adaptLv; }, canLead: () => canLead(), rail, menuFor, screenOf, setCamMode, camSheet, timePanel, toggleStatus, get placing() { return !!placing; }, loadArea, goThen, direct, offerUse, floatText, syncPresence, presentHere, observe, stopObserve, actorOf, showDialogue, startCarry, dragMove, dragEnd, onScreen, tab, setTheme, applyPerf, perfOf, applyMotion, applyControl, live, exportPet, exportSave, travel, startPlacement, reactEat, testOnIsland, refreshActors, greetFrom, bubble, emote, get player() { return player; }, get mates() { return mates; }, get curTab() { return curTab; }, get dlgOpen() { return dlgOpen; }, setDecorate, me };
   boot().catch((e) => { console.error(e); if (window.__ocFail) window.__ocFail('遊戲啟動失敗', '啟動時發生錯誤。請試試「用省電模式重新開啟」。', (e && e.stack) || String(e)); });
 })();

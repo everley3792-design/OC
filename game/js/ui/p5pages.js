@@ -275,6 +275,11 @@
       if (k === 'wear') acts.push(h('button.btn.primary.block', { on: { click: () => { api.close(); use(id); } } }, icon('shirt', 's'), '穿上／脫下'));
       if (k === 'place') acts.push(h('button.btn.primary.block', { on: { click: () => { done(); A().startPlacement({ id }); } } }, icon('sofa', 's'), '拿出來佈置'));
       if (k === 'gift') acts.push(h('button.btn.block', { on: { click: () => { api.close(); use(id); } } }, icon('gift', 's'), '送給 OC'));
+      /* 16.7: leave it on the ground where you are (characters react to it by personality and needs) or throw it away */
+      if (OC.Aware && k !== 'place' && A().me && A().me()) {
+        const g = (mode) => { const r = OC.Aware.put(id, mode); if (!r.ok) { toast(r.why, 'info'); return; } done(); A().tab('island'); toast(mode === 'toss' ? `丟掉了${it.zh}` : `把${it.zh}放在地上了`, 'bag'); };
+        acts.push(h('div.hstack', { style: { gap: '8px' } }, h('button.btn.block', { 'data-g16': 'put', on: { click: () => g('put') } }, icon('hand', 's'), '放在地上'), h('button.btn.ghost.block', { 'data-g16': 'toss', on: { click: () => g('toss') } }, icon('trash', 's'), '丟掉')));
+      }
       if (it.grow) acts.push(h('div.lock-note', null, icon('info', 's'), '到晴日島的菜園（右下方）點一下就能種下。'));
       b.append(h('div.hstack', null, img(id, 72), h('div.grow', null, h('div.muted', null, `持有 ${St.count(id)} 個`), h('p', { style: { margin: '4px 0' } }, it.d || ''), ...facts(id).map(small))),
         h('div.vstack', { style: { marginTop: '12px', gap: '8px' } }, ...acts, h('button.btn.ghost.block', { on: { click: () => { const on = IT().toggleFav(id); toast(on ? '加入收藏' : '取消收藏', 'star'); done(); } } }, icon('star', 's'), fav ? '取消收藏' : '收藏（快捷背包優先顯示）')));

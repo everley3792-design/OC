@@ -36,6 +36,7 @@
 - **16.4（0.16.4-alpha）互動選單＋動作清單**：角色的環保留常用動作，分類在同一個選單裡展開項目面板（不再有第二個環或表單）、項目一按就做（「復原」提示、長按＝立刻做）；`OC.Queue` 依模擬市民重寫（`life/queue16.js`：帶目標／地點／對象、8 個、排序、立刻做、循環、進度、不想做會說原因＋強迫、跨地點、等對方有空）；物件會列出能做的事；長按地面「在這裡做」；11 個新活動（`life/acts16.js`）與梳毛／打氣／蓋被子。紀錄：`docs/v16.4-report.md`。
 - **16.5（0.16.5-alpha）飲食與烹飪**：`OC.Food16`（`items/food16.js`）：食材分類、10 種新食材、80 個食譜、7 種做法、品質 ★1–★3（`_q2`／`_q3` 是各自的物品）、自由料理與發現、食譜書、自動做、冷熱與物種口味、端上桌與剩菜、角色自己下廚（一天最多兩次）、咖啡館點餐；廚房介面 `OC.Kitchen`（`ui/cook16.js`：食譜／自由料理／冰箱）。**沒有新的廚房家具模型。** 紀錄：`docs/v16.5-report.md`。
 - **16.6（0.16.6-alpha）對話引擎**（原計畫 16.3）：`OC.Topic`（`life/topic16.js`＋資料 `topics16d.js`）：話題來自角色身邊的事（剛做的事、共同興趣、一起的回憶、天氣、季節、地點、吃過的東西、朋友＝八卦、60 個日常話題），每個角色對話題有立場（口味、特質、興趣、關係）；聊天是一串互相回應的行為（提起→附和／反對／追問／分享／玩笑／換話題…→結束）；記得對方的立場、聊得來／意見不合／八卦（信任才影響、玩家固定的不動）；你沒參與的對話只顯示關鍵字泡泡，可以「偷聽」、「最近的對話」；沒話題時來問你（選或打字，離線字典；經 `OC.Budget`）。台詞約 260 句（計畫目標 1500 句**沒有達到**）。紀錄：`docs/v16.6-report.md`。
+- **16.7（0.16.7-alpha）自主與世界**（原計畫 16.4）：`OC.Aware`（`life/aware16.js`＋台詞 `aware16d.js`）：感知與注意力（看到難過的、被丟出去的、睡覺的、吃東西的、地上的東西、下雨 → 焦點）、社交維繫（好久沒說話的朋友）、情境判斷（有人睡覺不吵、圖書館安靜、下雨不在室外、不對難過的人開玩笑）、重新規劃（位子被佔走會記住並說明）、地上的東西（`save.ground16`，放下／丟掉，角色依個性吃／玩／收拾／看看）、其他地點的設施容量（`FAC`）與遇到聊天；12 樣新道具（`items/props16.js`）。紀錄：`docs/v16.7-report.md`。
 - 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
@@ -44,6 +45,7 @@
 game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
   css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
   css/app.css         UI 元件
+  js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
@@ -111,7 +113,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.6-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.7-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -249,4 +251,5 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.3 事件腳本**（`OC.Script`，`life/script16.js`）：腳本是資料，**不得**加入能執行程式碼、給物品／星幣、改關係類型的指令；未成年不改親密；回憶 key 固定。由 `OC.Events.beginScript` 執行（一次一個、間隔、打擾預算、全部角色 hold、跳過時資料步驟照做），`Events.trigger`／`periodic` 在內建事件之後再試腳本。新指令要同時加 parser（`parseStep`）、執行（`step`）、驗證（`finishEvent`）、積木（`studio16.js` 的 `BLOCKS`／`toBlocks`／`toSrc`）與 `docs/oc-script.md`。
 - **16.4 選單**：角色的環由 `OC.Menu16.charRing(id)` 產生；有 `sub` 的項目在 `OC.Radial` 的面板裡展開（一層分類、一層項目，可有分頁），面板項目一律 `.radial-btn.ri`、`now: true` 才支援長按立刻做。**不要再加第二個環或表單**；只有刪除／清除類才確認。安排一律經 `OC.Menu16.request`（排進清單＋「復原」提示）。物件能做的事由可供性的 verbs 自動列出（`OC.Menu16.objectActs`），新設施只要在 `Brain.rebuild` 給 verbs。新活動放 `life/acts16.js`（`menuOnly` 的只有玩家安排才做；`night`／`day` 由 `Acts16.fits` 判斷）。HUD 清單的操作在原地展開，不跳視窗。
 - **16.6 話題對話**：聊天（`chat`／`share`）的內容由 `OC.Topic.script` 產生（`settings.topics === false` 時回到舊的兩句）；新話題種類在 `topic()`／`stance()`／`candidates()` 各加一筆，新的日常話題只加在 `topics16d.js` 的 `ABSTRACT`。台詞分類 `t16_<行為>`，條件 `tk`（話題種類）／`ts`（立場 pos／neu／neg）；含 `{topic}` 而沒寫 `tk` 的台詞自動只用在「東西」類話題，回憶、夢、人要有自己的台詞；v16 測試 31b 檢查每一種情況都有台詞。效果只在 `Topic.resolve`（經 `Mind.relPair`／`relChange`，八卦一天一次、要信任、不碰 `fixed`／`lockRel`），不給物品星幣、不送進度事件。關鍵字泡泡只在 `Topic.full(conv)` 為假時；問玩家一定經 `OC.Budget.can('ask')`、一天一次、`lively === 'legacy'` 時不問（舊測試 harness 設 `chatView = 'full'`）。
+- **16.7 自主與世界**（`OC.Aware`）：只在 `Brain.decide` 裡經 `Aware.shape` 調整候選分數（在 `Mind11`／`Arcs` 之後），手動操控與玩家安排的不動；失敗經 `Aware.failed`（`Brain.start` 位子被佔、`abort` 的路線問題），選擇後 `Aware.chosen` 寫出「改變計畫」。地上的東西只經 `Aware.put`／`take`（`OC.Tx` key `g16put:`／`g16take:`／`g16back:<uid>`），存 `save.ground16[地點]`，畫面是 `World.spawnDrop(…, { icon: true })`（`d.g16`），玩家走過去**不**自動撿。地上物品的活動（`ACTS.g16_*`，`aw16: true`）不出現在任何選單、AI 只經 `Aware.groundCands` 帶目標點（`pt.k = 'g16:<uid>'`），完成時 `Brain.finish` 呼叫 `Aware.onFinish`。其他地點的設施容量只寫在 `Aware.FAC`（`abstractStep` 經 `absFilter`／`absStart`）；遇到聊天 `Aware.talkAway` 只經 `Mind.relPair`，不給獎勵。台詞變數用 `{thing}`（`{item}` 是對話引擎內建的）。
 - **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。

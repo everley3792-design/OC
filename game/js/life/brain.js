@@ -235,6 +235,7 @@
       if (denied(act) || (OC.Growth && !OC.Growth.allowed(charOf(b), act))) continue;
       const A = D().ACTS[act];
       if (A.cmdOnly && b.queued !== act) continue;
+      if (A.aw16 && !(b.queued === act && b.queuedPt)) continue;   /* 16.7: things on the ground are offered by OC.Aware with their target (or asked for at that spot) */
       if (OC.Acts16 && NEW16[act] && b.queued !== act && !OC.Acts16.auto(act)) continue;   /* 16.4: hugging a tree, a photo … only when asked; stars only at night */
       if (OC.People && !OC.People.canDo(c, act)) continue;   /* 16.1: a baby does not cook, a toddler does not go fishing */   /* 15.2: e.g. a part-time shift happens only when the player asks for it */
       // the played OC only does things in place — unless it badly needs to eat / sleep / rest and you left it alone
@@ -247,7 +248,7 @@
         const pick = qs ? (free(qs, b.id) ? qs : qs.obj.slots.find((s2) => free(s2, b.id))) : null;   /* that seat, or the other seat of the same thing */
         if (pick) target = { slot: pick }; else if (qs) continue; else { const bs = bestSlot(c, b, A.verb); if (!bs) continue; target = { slot: bs.slot }; ts = bs.s; }
       }
-      else if (b.queued === act && b.queuedPt) target = { pt: { x: b.queuedPt.x, y: b.queuedPt.y } };   /* 16.4: do it at the spot you chose (under that tree, right here) */
+      else if (b.queued === act && b.queuedPt) target = { pt: { x: b.queuedPt.x, y: b.queuedPt.y, k: b.queuedPt.k } };   /* 16.4: do it at the spot you chose (under that tree, right here) */
       else if (!clearPoint(b.a.x, b.a.y, c.id, 10)) continue;
       out.push({ kind: 'act', act, target, s: sc.s + ts, why: sc.why.concat(ts ? [`地點${ts > 0 ? '+' : ''}${ts.toFixed(2)}`] : []) });
     }
@@ -277,8 +278,10 @@
     let list = candidates(b); if (b.queued) list = list.filter((x) => x.kind !== 'travel');   // a player request is done here, not by leaving
     if (OC.Mind11) list = OC.Mind11.shape(c, b, list);                                     // 11.0: plans · goals · knowledge
     if (OC.Arcs) list = OC.Arcs.shape(c, b, list);                                         // 12.0: a cold war keeps two OCs apart
+    if (OC.Aware) list = OC.Aware.shape(c, b, list);   /* 16.7: perception · upkeep · judgement · replanning · the ground */
     b.dbg.cands = list.slice(0, 8).map((x) => ({ id: x.kind === 'act' ? x.act : x.kind === 'travel' ? '→' + OC.Places.get(x.place).zh + ':' + x.act : x.social + '→' + OC.Chars.name(OC.Chars.get(x.other)), s: +x.s.toFixed(3), why: x.why.join('、') }));
     let ch = choose(c, list);
+    if (OC.Aware && ch) OC.Aware.chosen(c, b, ch);
     if (!ch || ch.s < -0.3) { b.thinkAt = nowR() + 2 + Math.random() * 2; b.dbg.reason = '沒有想做的事，發一下呆'; return; }
     b.byPlayer = !!(b.queued && ch.kind === 'act' && ch.act === b.queued); if (b.queued) { b.queued = null; b.queuedSlot = null; b.queuedPt = null; }
     b.dbg.reason = `${ch.kind === 'act' ? D().ACTS[ch.act].zh : ch.kind === 'travel' ? '去' + OC.Places.get(ch.place).zh + D().ACTS[ch.act].zh : D().SOCIAL[ch.social].zh}（${ch.why.slice(0, 3).join('、')}）`;
@@ -293,7 +296,7 @@
     const c = charOf(b), A = D().ACTS[act], a = b.a;
     b.act = act; b.t0 = null; b.slot = null; b.dest = null;
     b.until = null;
-    if (target && target.slot) { if (!reserve(target.slot, b.id)) { b.st = 'think'; b.thinkAt = nowR() + 0.5; return false; } b.slot = target.slot; b.dest = { x: target.slot.ax, y: target.slot.ay }; }
+    if (target && target.slot) { if (!reserve(target.slot, b.id)) { if (OC.Aware) OC.Aware.failed(b, act, `${target.slot.obj.zh || '位子'}被佔走了`, target.slot.k); b.st = 'think'; b.thinkAt = nowR() + 0.5; return false; } b.slot = target.slot; b.dest = { x: target.slot.ax, y: target.slot.ay }; }
     else if (target && target.pt) b.dest = { x: target.pt.x, y: target.pt.y, k: target.pt.k };
     if (b.dest && Math.hypot(a.x - b.dest.x, a.y - b.dest.y) > 4) {
       if (!Wd().walkTo(a, b.dest.x, b.dest.y, () => { if (b.st === 'go') arrive(b); })) { abort(b, '到不了'); return false; }
@@ -339,6 +342,7 @@
       if (first || gm > 60 || Sim().rnd() < 0.08) M().remember(c, { type: 'activity', imp: first ? 0.45 : 0.3, place: s ? s.obj.id : '', text: `${s ? '在' + s.obj.zh : ''}${A.zh}${first ? '（第一次）' : ''}`, data: { act, gm: Math.round(gm) }, key: first ? `first:${act}:${s.obj.id}` : undefined });
       M().wishEvent(c, { type: 'act', act });
       if (OC.Growth && gm > 0.5) OC.Growth.onFinish(c, act, b, gm);
+      if (OC.Aware) OC.Aware.onFinish(c, act, b, gm);
       if (s && s.obj.kind === 'plot' && act === 'tend' && OC.Places && OC.Places.water(s.obj.plot, c.id) === true) M().remember(c, { type: 'activity', imp: 0.35, place: 'place:isle', text: '幫菜園澆了水', key: 'water:' + s.obj.plot + ':' + Sim().day() });
       if (act === 'sleep') OC.Events && OC.Events.trigger('wake', { a: c.id });
     }
@@ -368,7 +372,7 @@
       }
     }
   }
-  function abort(b, why) { if (b.st === 'go' && b.a) b.a.path = null; dlog(b, '放棄：' + why); b.leaving = null; cleanup(b); b.act = null; b.st = 'think'; b.thinkAt = nowR() + 1.2; }
+  function abort(b, why) { if (b.st === 'go' && b.a) b.a.path = null; dlog(b, '放棄：' + why); if (OC.Aware && ['到不了', '路被擋住', '卡住了', '太遠了'].includes(why)) OC.Aware.failed(b, b.act, why === '太遠了' ? '太遠了' : '路走不過去', b.slot && b.slot.k); b.leaving = null; cleanup(b); b.act = null; b.st = 'think'; b.thinkAt = nowR() + 1.2; }
 
   // ---------------- player control / interruptions ----------------
   /** hold (suspend) an OC: reason = call | drag | editor | dialogue | event | player | pet … */
@@ -547,10 +551,12 @@
       if (placeOK() && !o.offline && settings().travel !== false && (!OC.People || OC.People.canTravel(c)) && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== 'home' && !here2.includes('sleep') && OC.Places.open('home')) list.push({ act: 'sleep', pl: 'home', s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
+      if (OC.Aware) list = OC.Aware.absFilter(c, loc, list, now);   /* 16.7: the café has six seats */
       const ch = choose(c, list); if (!ch) return;
       if (ch.pl !== loc) { const tm = OC.Places.travelMin(loc, ch.pl); c.life.trip = { from: loc, to: ch.pl, act: ch.act, eta: now + tm }; c.life.loc = ch.pl; }
       const t0 = ch.pl !== loc ? now + OC.Places.travelMin(loc, ch.pl) : now, P0 = placeOK() ? OC.Places.get(ch.pl) : null;
       c.life.cur = cur = { act: ch.act, t0, until: t0 + (ch.act === 'sleep' ? Math.max(60, (wakeAtGm(c, t0) - t0)) : durOf(c, ch.act)), place: 'place:' + ch.pl, placeZh: P0 ? P0.zh : '', slot: null, abstract: true };
+      if (OC.Aware) OC.Aware.absStart(c, cur);
       c.life.absLast = [ch.act].concat(fake.last).slice(0, 4);
       if (!o.offline) { c.life.log.unshift({ gm: now, text: ch.pl !== loc && P0 ? `前往${P0.zh}（${D().ACTS[ch.act].zh}）` : `${P0 ? '在' + P0.zh : ''}${D().ACTS[ch.act].zh}` }); if (c.life.log.length > 40) c.life.log.length = 40; }
     }

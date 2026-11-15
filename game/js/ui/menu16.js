@@ -28,7 +28,7 @@
     const c = Ch().get(id); if (!c) return [];
     const out = [];
     for (const [act, A0] of Object.entries(D().ACTS)) {
-      if (A0.cmdOnly && act !== 'work') continue; if (OC.Growth && !OC.Growth.allowed(c, act)) continue;
+      if ((A0.cmdOnly && act !== 'work') || A0.aw16) continue; if (OC.Growth && !OC.Growth.allowed(c, act)) continue;
       const here = slotHere(c, act), away = !here && OC.Acts16 ? OC.Acts16.placesFor(act).filter((p) => p !== (OC.World.area && OC.World.area.id)) : [];
       const young = OC.People && !OC.People.canDo(c, act) ? OC.People.whyNot(c, act) : null;
       if (tab === 'away') { if (here || !away.length) continue; const pl = away[0], P = OC.Places.get(pl); out.push({ id: act, ic: A0.ic, label: `${A0.zh}・${P.zh}`, off: young, now: true, run: (o) => request(id, { kind: 'act', act, place: pl }, o, `去${P.zh}${A0.zh}`) }); continue; }

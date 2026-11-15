@@ -684,6 +684,139 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       });
       check('34 沒話題時來問你：可以選話題或打字（離線字典認出「咖哩」），角色回應、記得你說過什麼；問的時候角色停下、關掉就放開；一天一次、可以在生活設定關掉', r.open && r.chips >= 2 && r.held && r.closed && r.released && /咖哩/.test(r.mem || '') && r.player === 1 && r.again === false && r.off === false, r);
     }
+    /* ================================================================ 16.7 自主與世界 */
+    const prep167 = () => page.evaluate(async () => {
+      if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.Store.s.settings.weather = 'clear'; OC.Store.s.life.settings.aware16 = true;
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      for (const c of all) { const bb = OC.Brain.get(c.id); if (!bb) continue; if (bb.conv) OC.Brain.Social.end(bb.conv, 't'); [...bb.holds].forEach((x) => OC.Brain.unhold(c.id, x)); if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); bb.queued = null; c.life.emo.list = []; c.life.emo.dom = 'neutral'; Object.assign(c.needs, { food: 80, sleep: 85, energy: 80, fun: 70, social: 60, comfort: 80, interest: 70, active: 70 }); c.life.aw16 = null; }
+      for (const g of (OC.Store.s.ground16 || {}).isle || []) OC.Aware.remove(g.uid, 'isle');
+      return all.map((c) => c.id);
+    });
+    if (want(35)) {
+      await calm16(); const ids = await prep167();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id);
+        OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0; if (!a.personality.traits.includes('caring')) a.personality.traits.push('caring');
+        const q = OC.World.nearestWalkable(ba.a.x + 30, ba.a.y, 40); bb.a.path = null; bb.a.x = q.x; bb.a.y = q.y;
+        Object.assign(OC.Mind.rel(a.id, b.id), { fam: 60, aff: 50, trust: 40 }); OC.Mind.feel(b, 'down', 0.9, '測試'); b.life.emo.dom = 'down'; OC.Aware.st(a).seen = {};
+        const f = OC.Aware.look(a, ba) || OC.Aware.st(a).focus; const list = OC.Aware.shape(a, ba, OC.Brain.candidates(ba));
+        const com = list.find((x) => x.kind === 'social' && x.other === b.id && x.social === 'comfort');
+        /* someone without the caring trait and far away notices it less */
+        const s1 = OC.Aware.salience(a, { kind: 'sad', who: b.id, d: 30 }); a.personality.traits = a.personality.traits.filter((t) => t !== 'caring'); a.personality.traits.push('aloof'); const s2 = OC.Aware.salience(a, { kind: 'sad', who: b.id, d: 180 }); a.personality.traits = a.personality.traits.filter((t) => t !== 'aloof');
+        b.life.emo.list = []; b.life.emo.dom = 'neutral'; OC.Brain.setControl(a.id, 'manual');
+        return { focus: f && f.kind, who: f && f.who === b.id, com: com && com.why.slice(0, 2), rank: com ? list.indexOf(com) : -1, s1, s2, log: OC.Brain.log.slice(0, 6).filter((l) => l.who === a.id).map((l) => l.text) };
+      }, ids);
+      check('35 感知與注意力：身邊有人心情不好 → 注意到（看過去、成為焦點），「安慰」的分數變高並寫出原因；個性關心別人的、近的更容易注意到', r.focus === 'sad' && r.who && r.com && r.com.some((w) => /注意到/.test(w)) && r.s1 > r.s2 && r.log.some((t) => /注意到/.test(t)), r);
+    }
+    if (want(36)) {
+      await calm16(); const ids = await prep167();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id); OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0;
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(OC.Mind.rel(x.id, y.id), { fam: 70, aff: 60, trust: 50, conflict: 0, type: 'friend' });
+        const now = OC.Sim.now(); (a.life.socialAt = a.life.socialAt || {})[b.id] = now - 3 * 1440;
+        const list = OC.Aware.shape(a, ba, OC.Brain.candidates(ba)); const hit = list.filter((x) => x.kind === 'social' && x.other === b.id && x.why.some((w) => /好久沒/.test(w)));
+        a.life.socialAt[b.id] = now - 5;   /* just talked → nothing */
+        const none = OC.Aware.shape(a, ba, OC.Brain.candidates(ba)).filter((x) => x.why.some((w) => /好久沒/.test(w))).length;
+        /* the friend is somewhere else → going there to see them */
+        a.life.socialAt[b.id] = now - 4 * 1440; const loc0 = b.life.loc, tr0 = OC.Store.s.life.settings.travel; OC.Store.s.life.settings.travel = true; b.life.loc = 'cafe'; const trip = OC.Aware.shape(a, ba, []).find((x) => x.kind === 'travel' && x.seek === b.id); b.life.loc = loc0; OC.Store.s.life.settings.travel = tr0;
+        a.life.socialAt[b.id] = now; OC.Brain.setControl(a.id, 'manual');
+        return { n: hit.length, why: hit[0] && hit[0].why[0], none, trip: trip && { place: trip.place, why: trip.why[0] } };
+      }, ids);
+      check('36 社交維繫：好朋友三天沒說話 → 和他有關的社交分數提高（「好久沒和…說話了」）；剛聊過就沒有；朋友在別的地方 → 想去那裡找他', r.n >= 1 && r.none === 0 && r.trip && r.trip.place === 'cafe' && /找/.test(r.trip.why), r);
+    }
+    if (want(37)) {
+      await calm16(); const ids = await prep167();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b, c2] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id); OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0;
+        const fake = () => [{ kind: 'act', act: 'dance', s: 1, why: [] }, { kind: 'act', act: 'observe', s: 1, why: [] }, { kind: 'act', act: 'read', s: 1, why: [] }, { kind: 'social', social: 'joke', other: c2.id, s: 1, why: [] }];
+        const q = OC.World.nearestWalkable(ba.a.x + 40, ba.a.y, 40); bb.a.path = null; bb.a.x = q.x; bb.a.y = q.y; bb.st = 'do'; bb.act = 'sleep';
+        const sl = OC.Aware.shape(a, ba, fake()); bb.st = 'think'; bb.act = null;
+        OC.Store.s.settings.weather = 'rain'; const rn = OC.Aware.shape(a, ba, fake()); OC.Store.s.settings.weather = 'clear';
+        OC.Mind.feel(c2, 'down', 0.9, '測試'); c2.life.emo.dom = 'down'; const sd = OC.Aware.shape(a, ba, fake()); c2.life.emo.list = []; c2.life.emo.dom = 'neutral';
+        const S = (l, k) => { const x = l.find((y) => (y.act || y.social) === k); return { s: +x.s.toFixed(2), why: x.why[0] || '' }; };
+        OC.Brain.setControl(a.id, 'manual');
+        return { sleepDance: S(sl, 'dance'), sleepRead: S(sl, 'read'), rainObs: S(rn, 'observe'), rainRead: S(rn, 'read'), sadJoke: S(sd, 'joke') };
+      }, ids);
+      check('37 情境判斷：旁邊有人在睡覺 → 不跳舞（看書不受影響）；下雨的室外 → 不看風景；對方心情不好 → 不開玩笑；都寫出原因', r.sleepDance.s < 0.5 && /睡覺/.test(r.sleepDance.why) && r.sleepRead.s === 1 && r.rainObs.s < 0.7 && /下雨/.test(r.rainObs.why) && r.rainRead.s === 1 && r.sadJoke.s < 0.5 && /心情不好/.test(r.sadJoke.why), r);
+    }
+    if (want(38)) {
+      await calm16(); const ids = await prep167();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id);
+        const bs = OC.Brain.bestSlot(a, ba, 'sit'); if (!bs) return { noslot: true };
+        const s = bs.slot; s.obj.slots.forEach((s2, i) => OC.Brain.reserve(s2, i ? 'x167_' + i : b.id));   /* the bench is taken */
+        const ok = OC.Brain.start(ba, 'rest', { slot: s }); const fl = OC.Aware.st(a).fail[0];
+        const list = OC.Aware.shape(a, ba, [{ kind: 'act', act: 'rest', target: { slot: s }, s: 1, why: [] }, { kind: 'act', act: 'read', s: 0.8, why: [] }]);
+        OC.Brain.setControl(a.id, 'semi'); ba.manualOverride = 0;
+        const list2 = OC.Aware.shape(a, ba, [{ kind: 'act', act: 'rest', target: { slot: s }, s: 1, why: [] }, { kind: 'act', act: 'read', s: 0.8, why: [] }]);
+        OC.Aware.chosen(a, ba, list2[0]); OC.Brain.release(b.id); s.obj.slots.forEach((s2, i) => i && OC.Brain.release('x167_' + i)); OC.Brain.setControl(a.id, 'manual');
+        return { ok, fl: fl && fl.why, top: list2[0].act, restS: +list2.find((x) => x.act === 'rest').s.toFixed(2), log: (a.life.log[0] || {}).text, manualUntouched: list.find((x) => x.act === 'rest').s === 1 };
+      }, ids);
+      check('38 重新規劃：想坐的長椅被佔走 → 記住原因；接下來避開它改做別的，日誌寫「改變計畫：本來想休息，但…被佔走了，改成…」（手動操控的角色不受影響）', r.ok === false && /被佔走/.test(r.fl || '') && r.top === 'read' && r.restS < 0 && /改變計畫/.test(r.log || '') && r.manualUntouched, r);
+    }
+    if (want(39)) {
+      await calm16(); const ids = await prep167();
+      await give({ curry: 1, ball: 2 });
+      const r = await page.evaluate(async (ids) => {
+        const free = (bx, c) => { if (bx.conv) OC.Brain.Social.end(bx.conv, 't'); if (bx.st === 'do') OC.Brain.finish(bx, 't'); else if (bx.st === 'go') OC.Brain.abort(bx, 't'); Object.assign(c.needs, { sleep: 90, energy: 85, social: 80, comfort: 85 }); };
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), Aw = OC.Aware, [a, b] = ids.map((id) => OC.Chars.get(id)), ba = OC.Brain.get(a.id), bb = OC.Brain.get(b.id), out = {};
+        const n0 = OC.Store.count('curry'); const p = Aw.put('curry', 'put'); out.put = p.ok; out.inv = [n0, OC.Store.count('curry')];
+        const d = OC.World.drops.find((x) => x.g16 === p.uid); out.sprite = !!(d && d.m.isSprite); out.saved = (OC.Store.s.ground16.isle || []).some((g) => g.uid === p.uid);
+        out.desc = OC.App.describe(d.it).sub;
+        /* a hungry character goes and eats it */
+        a.personality.traits = a.personality.traits.filter((t) => !['neatfreak', 'gourmet', 'lazy'].includes(t)); OC.Taste.setPref(a, 'curry', 1, true); a.needs.food = 25; const c1 = Aw.groundCands(a, ba).find((x) => x.act === 'g16_eat'); out.cand = c1 && c1.why[0]; if (!c1) return out;
+        b.personality.traits = b.personality.traits.filter((t) => !['neatfreak', 'gourmet'].includes(t)); 
+        free(ba, a); ba.queuedPt = c1.target.pt; OC.Brain.command(a.id, 'g16_eat'); const t0 = Date.now(); while ((OC.Store.s.ground16.isle || []).some((g) => g.uid === p.uid) && Date.now() - t0 < 90000) await sleep(300);
+        out.eaten = !(OC.Store.s.ground16.isle || []).some((g) => g.uid === p.uid); out.food = a.needs.food; out.mem = OC.Mind.memories(a, {}).map((m) => m.text).find((t) => /地上的/.test(t)); out.gone = !OC.World.drops.some((x) => x.g16 === p.uid);
+        /* litter: a tidy character puts it back in your bag */
+        const nb = OC.Store.count('ball'); const t = Aw.put('ball', 'toss'); out.toss = [nb, OC.Store.count('ball')];
+        b.personality.traits = b.personality.traits.filter((t) => t !== 'messy'); if (!b.personality.traits.includes('organized')) b.personality.traits.push('organized');
+        const c2 = Aw.groundCands(b, bb).find((x) => x.act === 'g16_tidy'); out.tidyCand = c2 && c2.why[0];
+        OC.Brain.setControl(b.id, 'semi'); free(bb, b); bb.queuedPt = c2.target.pt; OC.Brain.command(b.id, 'g16_tidy'); const t1 = Date.now(); while ((OC.Store.s.ground16.isle || []).some((g) => g.uid === t.uid) && Date.now() - t1 < 90000) await sleep(300);
+        OC.Brain.setControl(b.id, 'manual'); out.back = OC.Store.count('ball'); out.tidyDbg = { st: bb.st, act: bb.act, left: (OC.Store.s.ground16.isle || []).some((g) => g.uid === t.uid), log: OC.Brain.log.filter((l) => l.who === b.id).slice(0, 4).map((l) => l.text), holds: [...bb.holds] };
+        /* a toy: someone bored plays with it; you can pick it back up */
+        const u = Aw.put('ball', 'put'); a.needs.fun = 20; a.needs.energy = 80; const c3 = Aw.groundCands(a, ba).find((x) => x.act === 'g16_play'); out.play = c3 && c3.why[0];
+        free(ba, a); ba.queuedPt = c3.target.pt; OC.Brain.command(a.id, 'g16_play'); const t2 = Date.now(); while (!(Aw.st(a).toy || {})[u.uid] && Date.now() - t2 < 90000) await sleep(300);
+        out.played = !!(Aw.st(a).toy || {})[u.uid]; out.playDbg = { st: ba.st, act: ba.act, log: OC.Brain.log.filter((l) => l.who === a.id).slice(0, 5).map((l) => l.text), holds: [...ba.holds] }; out.stays = (OC.Store.s.ground16.isle || []).some((g) => g.uid === u.uid);
+        const nb2 = OC.Store.count('ball'); out.take = Aw.take(u.uid).ok; out.took = [nb2, OC.Store.count('ball')];
+        /* the same uid cannot be taken twice; a full spot says why */
+        out.twice = Aw.take(u.uid).ok;
+        return out;
+      }, ids);
+      check('39a 放在地上：背包少一個（經交易）、地上出現那個東西的圖示、存進存檔、點它會說明', r.put && r.inv[1] === r.inv[0] - 1 && r.sprite && r.saved && /放在地上/.test(r.desc), r);
+      check('39b 肚子餓的角色走過去吃掉：地上沒了、飽足增加、記得「吃了你放在地上的…」', r.cand && r.eaten && r.food > 25 && /你放在地上/.test(r.mem || '') && r.gone, r);
+      check('39c 丟掉的東西：愛整潔的角色會撿起來放回你的背包（經交易）', r.toss[1] === r.toss[0] - 1 && /丟在地上/.test(r.tidyCand || '') && r.back === r.toss[0], r);
+      check('39d 玩具：無聊的角色會去玩（玩完東西還在）；你可以撿回來，同一個不能撿兩次', r.play && r.played && r.stays && r.take && r.took[1] === r.took[0] + 1 && !r.twice, r);
+    }
+    if (want(40)) {
+      await calm16(); const ids = await prep167();
+      const r = await page.evaluate(async (ids) => {
+        const [a, b, c2, d2] = ids.map((id) => OC.Chars.get(id)), Aw = OC.Aware, now = OC.Sim.now();
+        const keep = [c2, d2].map((x) => [x.life.loc, x.life.cur]);
+        for (const x of [c2, d2]) { x.life.loc = 'library'; x.life.cur = { act: 'nap', fac: '懶骨頭', until: now + 100, t0: now, place: 'place:library' }; }
+        const left = Aw.absFilter(a, 'library', [{ act: 'rest', pl: 'library', s: 1 }, { act: 'study', pl: 'library', s: 1 }, { act: 'fish', pl: 'beach', s: 1 }], now).map((x) => x.act);
+        [c2, d2].forEach((x, i) => { x.life.loc = keep[i][0]; x.life.cur = keep[i][1]; });
+        const cur = { act: 'study', place: 'place:library', placeZh: '葉影圖書館' }; Aw.absStart(a, cur);
+        const f0 = OC.Mind.rel(a.id, b.id).fam; Aw.talkAway(a, b, 'cafe', now);
+        const mem = OC.Mind.memories(a, {}).map((m) => m.text).find((t) => /在雲朵咖啡館和/.test(t)), log = (OC.Store.s.life.convlog || [])[0];
+        return { left, fac: cur.fac, zh: cur.placeZh, fam: [f0, OC.Mind.relPeek(a.id, b.id).fam], mem, away: log && log.away, sa: a.life.socialAt[b.id] === now };
+      }, ids);
+      check('40 其他地點：設施有容量（懶骨頭兩個都有人在睡 → 不會選休息，讀書可以）；記下用的是哪個設施；不在身邊的兩個人在同一個地方會聊一個真的話題（關係、回憶、對話紀錄）', JSON.stringify(r.left) === JSON.stringify(['study', 'fish']) && r.fac === '閱讀書桌' && /閱讀書桌/.test(r.zh) && r.fam[1] > r.fam[0] && r.mem && r.away && r.sa, r);
+    }
+    if (want(41)) {
+      const r = await page.evaluate(() => {
+        const P = OC.Props16.NEW, ids = Object.keys(P), cv = document.createElement('canvas'), x = cv.getContext('2d');
+        const drawn = ids.filter((id) => { x.clearRect(0, 0, 24, 24); return OC.Items.drawArt(x, id) && x.getImageData(0, 0, 24, 24).data.some((v, i) => i % 4 === 3 && v > 0); });
+        const sold = ids.filter((id) => Object.keys(OC.Shops.SHOPS).some((s) => OC.Shops.stock(s).includes(id)));
+        const anims = new Set(OC.Chars.ACTIONS.map((a) => a[0]).concat(Object.keys((OC.Anim11 && OC.Anim11.LIB) || {})));
+        const badAnim = Object.entries(OC.Aware.ACTS).filter(([, A]) => !OC.Chars.ACTIONS.some((a) => a[0] === A.anim) && !(OC.Anim11 && OC.Anim11.has && OC.Anim11.has(A.anim))).map(([k]) => k);
+        const [a, b] = OC.Chars.all(); const cats = [...new Set(OC.LifeData.LINES.filter((l) => String(l.cat || '').startsWith('aw16_')).map((l) => l.cat))];
+        const missing = cats.filter((cat) => !OC.Talk.pick(cat, a, b, { vars: { thing: '彈彈球' } }));
+        const inMenu = OC.Menu16 && OC.Menu16.charRing ? JSON.stringify(OC.Menu16.charRing(a.id)).includes('g16_') : false;
+        return { n: ids.length, drawn: drawn.length, sold: sold.length, badAnim, cats: cats.length, missing, inMenu, lines: OC.Aware16Data.count };
+      });
+      check('41 新道具：12 樣都有原創圖示、都買得到；地上物品的動作都有動畫；每一種反應都找得到台詞；這些動作不會出現在安排選單', r.n === 12 && r.drawn === 12 && r.sold === 12 && !r.badAnim.length && r.cats >= 14 && !r.missing.length && !r.inMenu, r);
+    }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon/.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }
   const bad = H.results.filter((x) => !x.ok).length; console.log(`\n${H.results.length - bad}/${H.results.length} 通過`); process.exit(bad ? 1 : 0);

@@ -313,14 +313,21 @@
   }
 
   // ====================== drops (fruit, shells…) ======================
-  function spawnDrop(id, fromX, fromY, toX, toY, lvl, color) {
-    const m = OC.Models.mesh(OC.Models.sphere(3, 12, 10), OC.Models.mat(color || '#EE4B4B'), true, false);
+  const iconTex = {};
+  /** 16.7: a thing put on the ground shows its own item icon (a small sprite that always faces the camera) */
+  function iconSprite(id) {
+    let t = iconTex[id];
+    if (!t) { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d', { willReadFrequently: true }); x.scale(64 / 24, 64 / 24); if (!(OC.Items && OC.Items.drawArt(x, id))) return null; t = iconTex[id] = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); s.scale.set(13, 13, 1); s.center.set(0.5, 0.15); return s;
+  }
+  function spawnDrop(id, fromX, fromY, toX, toY, lvl, color, o) {
+    const m = (o && o.icon && iconSprite(id)) || OC.Models.mesh(OC.Models.sphere(3, 12, 10), OC.Models.mat(color || '#EE4B4B'), true, false);
     root.add(m);
     const d = { id, x: toX, y: toY, lvl, t: 0, m, fx: fromX, fy: fromY, it: null };
     d.it = { type: 'drop', id, x: toX, y: toY, lvl, hit: { w: 18, h: 16, d: 8 }, prio: 1, drop: d };
     drops.push(d); return d;
   }
-  function removeDrop(d) { root.remove(d.m); drops = drops.filter((x) => x !== d); }
+  function removeDrop(d) { root.remove(d.m); if (d.m.isSprite) d.m.material.dispose(); drops = drops.filter((x) => x !== d); }
 
   // ====================== 11.0 touch feedback in the world: shaking trees, falling leaves, dust ======================
   // Two pooled InstancedMeshes (2 draw calls, whatever happens): leaves (lit, per-instance colour) and round dust puffs that
