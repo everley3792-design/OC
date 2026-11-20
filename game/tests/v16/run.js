@@ -1365,7 +1365,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         for (let i = 0; i < 100 && !document.querySelector('.th16:not(.closing) .th16-say'); i++) await new Promise((res) => setTimeout(res, 50)); const el = document.querySelector('.th16:not(.closing)');
         out.shown = !!el && !!el.querySelector('.th16-bar.top') && /測試小劇場/.test(el.textContent); out.held = OC.Brain.get(a.id).holds.has('stage');
         const at = () => { const s = el.querySelector('.th16-say'); return s ? [+s.dataset.i, s.querySelector('p').textContent] : [-1, '']; };
-        out.line1 = at(); el.click(); await new Promise((res) => setTimeout(res, 150)); out.line2 = at();
+        out.line1 = at(); el.click(); out.line2 = at();   /* the tap is handled synchronously; a wait here can outlast a line under slow frames */
         el.querySelector('[data-th16=speed]').click(); out.speed = T.cur && T.cur.speed;
         el.querySelector('[data-th16=skip]').click(); await new Promise((res) => setTimeout(res, 500));
         out.closed = !document.querySelector('.th16:not(.closing)') && !T.cur; out.released = !OC.Brain.get(a.id).holds.has('stage'); out.coins = OC.Store.s.coins === coins;
