@@ -108,7 +108,7 @@
   // ---- overlay stack (sheets, dialogs, sub pages) — Back closes the top one ----
   const stack = [];
   let scrim = null;
-  function ensureScrim() { if (!scrim) { scrim = h('div'); scrim.id = 'scrim'; scrim.addEventListener('click', () => { const top = stack[stack.length - 1]; if (top && top.dismissible !== false) top.close(); }); document.getElementById('app').append(scrim); } return scrim; }
+  function ensureScrim() { if (!scrim) { scrim = h('div'); scrim.id = 'scrim'; scrim.addEventListener('click', () => { const i = stack.map((l) => !!l.scrim).lastIndexOf(true); if (i < 0) { const top = stack[stack.length - 1]; if (top && top.dismissible !== false) top.close(); syncScrim(); return; } const owner = stack[i]; if (owner.dismissible === false) return; for (const l of stack.slice(i + 1).reverse()) if (l.dismissible !== false) l.close(); owner.close(); syncScrim(); });   /* 17.0: the grey scrim belongs to the topmost sheet — an invisible layer above it (a card, a ring) used to take the tap, so the grey stayed */ document.getElementById('app').append(scrim); } return scrim; }
   function syncScrim() { ensureScrim().classList.toggle('on', stack.some((s) => s.scrim)); }
   function pushLayer(layer) { stack.push(layer); syncScrim(); }
   function popLayer(layer) { const i = stack.indexOf(layer); if (i >= 0) stack.splice(i, 1); syncScrim(); }
@@ -122,7 +122,7 @@
     const api = { el, body, scrim: true, dismissible: opt.dismissible, close() { api.closed = true; el.classList.remove('open'); popLayer(api); setTimeout(() => el.remove(), 400); opt.onClose && opt.onClose(); } };
     if (typeof content === 'function') content(body, api); else if (content) body.append(content);
     // swipe-down to close (on the grab area / header)
-    let y0 = null; el.addEventListener('pointerdown', (e) => { if (e.target.closest('.sheet-body')) return; y0 = e.clientY; el.style.transition = 'none'; });
+    let y0 = null; el.addEventListener('pointerdown', (e) => { if (e.target.closest('.sheet-body')) return; y0 = e.clientY; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch (err) { /* not capturable: pointercancel still resets */ } });   /* 17.0: without capture a finger lifted below the sheet left it pulled half off screen with the grey scrim on */
     el.addEventListener('pointermove', (e) => { if (y0 == null) return; const d = Math.max(0, e.clientY - y0); el.style.transform = `translateY(${d}px)`; });
     const end = (e) => { if (y0 == null) return; const d = e.clientY - y0; y0 = null; el.style.transition = ''; el.style.transform = ''; if (d > 90) api.close(); };
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);

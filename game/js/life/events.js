@@ -142,7 +142,8 @@
     if (c.prog) {
       if (c.fast && why !== 'left') { cur = c; c.pending = false; c.waitUntil = 0; for (let i = 0; i < 20 && OC.Script.step(c, Infinity) !== 'done'; i++) { c.pending = false; } cur = null; }   /* skipped: the data steps still happen */
       OC.Script.stop(c); for (const b of c.cast.all) B().unhold(b.id, 'event');
-      hooks.cam(null, false); logEv({ id: c.ev.id, zh: c.ev.zh }, c.A, c.Bc, why); St().emit('life:event', { id: c.ev.id, a: c.A.id, b: c.Bc && c.Bc.id, state: why, script: true }); return;
+      hooks.cam(null, false); if (OC.Stage) OC.Stage.controls(false);   /* 17.0: a cutscene script turned the bars on (script16 'bars' / cutscene mode) — they used to stay after it ended */
+      logEv({ id: c.ev.id, zh: c.ev.zh }, c.A, c.Bc, why); St().emit('life:event', { id: c.ev.id, a: c.A.id, b: c.Bc && c.Bc.id, state: why, script: true }); return;
     }
     B().unhold(c.A.id, 'event'); if (c.Bc) B().unhold(c.Bc.id, 'event');
     hooks.cam(null, false); if (c.watched && OC.Stage) OC.Stage.controls(false);

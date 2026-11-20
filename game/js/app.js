@@ -1011,6 +1011,7 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now; const loopT0 = performance.now();
     // render the world only while it is visible (a tab page covers it fully otherwise)
     const covered = curTab !== 'island' || OC.UI.stack.some((l) => l.close && Object.values(OC.Pages.pages).some((p) => p.layer === l));
+    if (document.documentElement.classList.contains('page-open') !== covered) document.documentElement.classList.toggle('page-open', covered);   /* 17.0: cards and toasts move out of the page's content (they covered buttons) */
     const ov = overlays(); if (ov && ov.style.visibility !== (covered ? 'hidden' : '')) ov.style.visibility = covered ? 'hidden' : '';   // world bubbles never show over pages
     if (!covered || !world_rendered_once) { OC.Ambient.update(dt); Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
     // life simulation: fixed steps fed with REAL elapsed time (independent of the fps cap)
@@ -1127,7 +1128,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }

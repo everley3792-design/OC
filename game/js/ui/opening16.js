@@ -85,7 +85,7 @@
       const st = { step: 0 }; OC.Opening.state = st;
       const el = h('div.onb.op16', { role: 'dialog', 'aria-label': '建立你的島民' }), head = h('div.op16-head'), body = h('div.op16-body'), foot = h('div.op16-foot');
       el.append(head, body, foot); document.getElementById('app').append(el);
-      const layer = { dismissible: false, close: () => {} }; OC.UI.pushLayer(layer);   /* the back key does nothing here (no loop, no confirm); the steps end it */
+      const layer = { dismissible: false, el, close: () => {} }; OC.UI.pushLayer(layer);   /* the back key does nothing here (no loop, no confirm); the steps end it */
       const steps = ['people', 'roster', 'rel', 'home'];
       const titles = { people: ['你的島民', '最多 6 位；一位也可以。'], roster: ['島民名冊', '年齡決定人生階段；物種會改變一些習性。'], rel: ['他們的關係', '點兩個人之間的線，決定他們怎麼認識。'], home: ['住在哪裡', '三棟房子，人數上限不同。'] };
       const draw = () => {

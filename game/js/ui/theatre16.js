@@ -124,7 +124,7 @@
         act.length ? h('div', null, ...act.map((k) => { const C = H.CONDS[k.id]; return h('div.h16-cond', { 'data-cond': k.id }, h('span', null, `${C.ic} ${C.zh}`), h('small.muted', null, `　${k.cause || ''}${k.chronic ? '・老毛病' : `・還要約 ${Math.max(1, Math.round((k.until - Sim().now()) / 60))} 小時`}`), h('div.muted', null, C.med.length ? '有幫助：' + C.med.map((m) => (OC.Style.ITEMS[m] || {}).zh).join('、') + '（晴日雜貨攤）・多休息' : '好好休息就會好')); })) : h('div.muted', null, '健康'),
         x.twilight ? h('div.h16-tw', null, `最近常常說累（第 ${Sim().day() - x.twilight.since + 1} 天，七天後道別）`) : null,
         x.grief ? h('div.muted', null, `還在想念${name((H.passed()[x.grief.who] || {}).char) || ''}`) : null,
-        h('div.chips', null, ...H.MODES.map(([k, zh]) => h('button.chip' + (H.modeOf(c) === k ? '.on' : ''), { 'data-mode': k, title: zh, on: { click: () => { H.setMode(c, k); re(p); } } }, zh.split('（')[0])))));
+        h('div.chips', null, ...H.MODES.map(([k, zh]) => h('button.chip' + (H.modeOf(c) === k ? '.on' : ''), { 'data-mode': k, title: zh, on: { click: () => { H.setMode(c, k); re(p); } } }, { nodeath: '一般', natural: '自然壽命', immortal: '不老不病' }[k]))), h('small.muted', null, H.MODES.find((m) => m[0] === H.modeOf(c))[1])));
     });
     return h('div.card.p16-card', { 'data-card': 'health' }, h('div.hstack', null, OC.UI.sticker('heart'), h('b.grow', null, '大家的身體')),
       st.health16 === false ? h('div.muted', null, '「生病與健康」在生活設定裡關閉了。') : null,

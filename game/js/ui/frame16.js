@@ -162,7 +162,7 @@
       const pv = h('canvas.fr-cut-cv'), info = h('small.faint');
       const el = h('div.sheet.fr-cut', { role: 'dialog', 'aria-label': o.title || '去除背景' });
       const close = (v) => { if (done) return; done = true; OC.UI.popLayer(layer); el.remove(); resolve(v); };
-      const layer = { scrim: true, close: () => close(null) };
+      const layer = { scrim: true, el, close: () => close(null) };
       const render = () => {
         const out = on ? OC.Cutout.remove(src, { tol, rgb: det.rgb, seeds: [] }) : OC.Cutout.clone(src);
         let k = out; for (const s of seeds) k = OC.Cutout.wand(k, s.x, s.y, tol);

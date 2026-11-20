@@ -256,6 +256,10 @@
     refresh(p, el) {
       const v = St.NATIVE ? St.NATIVE.appVersion() : 'Web 預覽';
       el.replaceChildren(h('div.center', { style: { margin: '20px 0' } }, h('div.logo', null, 'OC ', h('b', null, 'Shimeji')), h('div.muted', null, '原創角色生活模擬＋桌寵')), h('div.list', null, row('info', '版本', v + (S().settings.dev ? '・開發者模式' : ''), null, () => { p.taps = (p.taps || 0) + 1; if (p.taps >= 5) { p.taps = 0; S().settings.dev = !S().settings.dev; St.touch('settings'); toast(S().settings.dev ? '已開啟開發者診斷（設定 → 生活）' : '已關閉開發者模式', 'info'); p.refresh(p, el); } }), row('layers', '畫面', '3D 固定視角世界（three.js r158）＋ 2D 角色')), title('授權'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)', lineHeight: 1.7 } }, 'three.js — MIT License', h('br'), 'jf open 粉圓（Huninn）— SIL Open Font License 1.1', h('br'), 'Nunito — SIL Open Font License 1.1', h('br'), '所有角色、場景與介面美術皆為原創。')), title('隱私'), card(h('div.muted', { style: { fontSize: 'var(--fs-s)' } }, '遊戲完全離線運作，不連網、不蒐集任何資料；存檔只保存在這台裝置上。')));
+      /* 17.0: what the screen guard had to clear (a stuck grey layer, letterbox…) — shown so a report can say exactly what happened */
+      const gl = OC.Guard ? OC.Guard.log() : [];
+      el.append(h('h3.sec', null, '畫面安全網紀錄'), gl.length ? h('div.list', { 'data-guardlog': '' }, ...gl.slice(0, 12).map((x) => row('info', ({ 'scrim-without-sheet': '灰色遮罩沒有對應的視窗', 'scrim-orphan': '灰色遮罩沒有擁有者', 'layer-gone': '已消失的視窗還在堆疊裡', 'cinema-stuck': '上下黑邊沒有收起', 'stagebars-stuck': '演出的黑邊沒有收起', 'talking-stuck': '對話狀態沒有結束', 'theatre-stuck': '小劇場沒有關閉', 'webgl-lost': '3D 畫面中斷' })[x.what] || x.what, `${new Date(x.t).toLocaleString('zh-TW')}・${x.tab || ''}${x.detail ? '・' + x.detail : ''}`))) : h('p.muted', null, '沒有紀錄：畫面沒有卡住過。'),
+        gl.length ? h('button.btn.ghost.block', { on: { click: () => { OC.Guard.clear(); p.refresh(p, el); } } }, '清除紀錄') : null);
     },
   });
 

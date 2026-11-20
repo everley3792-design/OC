@@ -128,7 +128,7 @@ val dex by tasks.registering(Exec::class) {
 val packageRes by tasks.registering(Exec::class) {
     dependsOn(syncGame, checkToolchain, buildFwExtras)
     val out = apkDir.map { it.file("base.ap_") }
-    inputs.dir(resDir); inputs.file(manifest); inputs.file(fwExtras); inputs.dir(layout.buildDirectory.dir("assets")); outputs.file(out)
+    inputs.dir(resDir); inputs.file(manifest); inputs.file(fwExtras); inputs.dir(layout.buildDirectory.dir("assets")); inputs.property("versionCode", vCode); inputs.property("versionName", vName); outputs.file(out)   /* 17.0: without these a version bump alone kept the old base.ap_ (0.16.11 shipped as versionCode 38) */
     doFirst { apkDir.get().asFile.mkdirs() }
     commandLine("aapt", "package", "-f", "--no-crunch", "-M", manifest.path, "-S", resDir.path, "-A", layout.buildDirectory.dir("assets").get().asFile.path,
         "-I", resJar.path, "-I", fwExtras.get().asFile.path, "-F", out.get().asFile.path, "--version-code", vCode, "--version-name", vName, "-0", "glb", "-0", "woff", "-0", "woff2", "-0", "png", "-0", "jpg")

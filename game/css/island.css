@@ -674,3 +674,21 @@ body.photo #hud, body.photo .tabbar, body.photo #overlays, body.photo .fps, body
 .h16-feud { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px dashed var(--lip); }
 .h16-feud .chips { flex-wrap: wrap; }
 .h16-sick { margin-left: 4px; font-size: var(--fs-xs); }
+
+/* 17.0: the screen guard's card when the 3D view was lost and did not come back */
+.guard-card { position: absolute; left: calc(var(--sal) + 16px); right: calc(var(--sar) + 16px); top: 38%; z-index: 120; display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: var(--r-l); background: var(--balloon); color: var(--balloon-ink); box-shadow: 0 3px 0 var(--lip), var(--shadow-2); }
+.guard-card p { margin: 0; font-size: var(--fs-s); }
+/* 17.0: the top of a sheet is a real swipe zone — the grab bar was 5 px tall and the browser took the swipe for scrolling (pointercancel) */
+.sheet > .grab { height: 22px; margin: 0 auto 4px; width: 100%; background: none; display: grid; place-items: center; touch-action: none; }
+.sheet > .grab::before { content: ""; width: 44px; height: 5px; border-radius: 3px; background: var(--line-strong); }
+.sheet > .grab + .hstack { touch-action: none; }
+/* 17.0: on a page, feedback cards become a slim banner at the very top that taps pass through (they used to sit over the page's
+ * buttons and eat the tap), one at a time; toasts go to the bottom instead of over the page header */
+html.page-open .p6-cards { top: calc(var(--sat) + 64px); bottom: auto; }
+html.page-open .p6-cards .p6-card { pointer-events: none; padding: 7px 12px; gap: 10px; }
+html.page-open .p6-cards .p6-card:nth-last-child(n+2) { display: none; }
+html.page-open .p6-cards .card-ic, html.page-open .p6-cards img { width: 28px !important; height: 28px !important; }
+html.page-open .toast-wrap { top: auto; bottom: calc(var(--sab) + var(--tabbar-h) + 18px); }
+/* 17.0: the scrim is a plain translucent layer — the 2 px backdrop blur cost a full-screen pass every frame while a sheet was open
+ * (the world keeps rendering under it) and made the whole screen look squashed and grey */
+#scrim { -webkit-backdrop-filter: none; backdrop-filter: none; }
