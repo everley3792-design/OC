@@ -40,8 +40,9 @@
 - **16.8（0.16.8-alpha）住處與家庭**（依玩家定案藍圖 `docs/v16-blueprint.md`）：`OC.House16`（`life/home16.js`）：黃屋頂小屋（`yhouse`）、紫屋頂連棟屋（`phouse`）室內、回自己的家睡、四種新床（`models16.js`：雙人床／上下舖／兒童床／嬰兒床，同床看關係）、入住管理頁 `homes16`（原住戶反應＋強制入住的後果）、同居日常與摩擦（每週一封信）、照顧寶寶與五個成長紀念、孩子與領養（預設關閉、一定先問玩家）、家族樹。紀錄：`docs/v16.8-report.md`。
 - **16.9（0.16.9-alpha）職業與學業**：`OC.Career16`（`life/career16.js`）：17 條職業線（受僱 8、自由業 9，各 8 個職稱）、兔子洞上班上學（走到告示牌旁就看不到）、薪水／升遷、自由業案件（委託人、截止日、信譽、靈感、作品集、上架成工坊商品）、學校（幼兒園／小學／中學／成人進修、15 科、在學／休學／自學、作業、期末考、畢業、校慶）、打工轉 Lv.1「兼職」；頁面 `career16`。紀錄：`docs/v16.9-report.md`。
 - **16.10（0.16.10-alpha）遊樂設施與邀約**：`OC.Fair16`（`ui/fair16.js`）：遊樂園 7 個新攤位（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮；共 11 個設施），真實觸控小遊戲、選同伴一起玩（膽小的不坐可怕的）、票與一天一次的獎品；`OC.Outing16`（`life/outing16.js`）：邀約／約會／出遊（立刻回答、到時出發、結算、放鴿子）、角色自己約、手機「行程」App（`plan16`）。紀錄：`docs/v16.10-report.md`。
-- 16.11（0.16.11-alpha）生老病死與收官：`OC.Health16`／`OC.Feud16`（`life/health16.js`＋台詞 `health16d.js`）：有真實原因的疾病（淋雨、沒睡、過勞、地上放太久的食物、吃太多、被用力丟、傳染、長者老毛病）、生病時需求下降與 AI 想休息、朋友照顧、病假、藥（`items/meds16.js`，雜貨攤）；壽命與告別（`settings.death16` 預設關、每個角色 `h16.mode`，七天「常常說累」→ 告別小劇場、紀念相框、朋友難過；可撤銷）；冷戰的起因、背後說壞話、送禮緩和、玩家幫忙；`OC.Theatre`（`ui/theatre16.js`：重大時刻小劇場、錯過與「回放」）；「健康」App；桌寵 `status`（原生 `PetBrain.Status`）。紀錄：`docs/v16.11-report.md`。
-- 下一步見 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
+- **16.11（0.16.11-alpha）生老病死與收官**：`OC.Health16`／`OC.Feud16`（`life/health16.js`＋台詞 `health16d.js`）：有真實原因的疾病（淋雨、沒睡、過勞、地上放太久的食物、吃太多、被用力丟、傳染、長者老毛病）、生病時需求下降與 AI 想休息、朋友照顧、病假、藥（`items/meds16.js`，雜貨攤）；壽命與告別（`settings.death16` 預設關、每個角色 `h16.mode`，七天「常常說累」→ 告別小劇場、紀念相框、朋友難過；可撤銷）；冷戰的起因、背後說壞話、送禮緩和、玩家幫忙；`OC.Theatre`（`ui/theatre16.js`：重大時刻小劇場、錯過與「回放」）；「健康」App；桌寵 `status`（原生 `PetBrain.Status`）。紀錄：`docs/v16.11-report.md`。
+- **17.0（0.17.0-alpha）灰色畫面與全面檢查**：`OC.Guard`（`ui/guard17.js`）安全網＋紀錄；遮罩沒有模糊、點遮罩關掉它的視窗；視窗下滑可靠；腳本過場收起黑邊；3D 中斷的重新載入卡片；頁面開著時卡片／提示移開。**17.1–17.6 的計畫（含所有未完成項目）在 `docs/v17-plan.md`**。紀錄：`docs/v17.0-report.md`。
+- 下一步見 `docs/v17-plan.md`（17.x）與 `docs/roadmap.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
@@ -52,6 +53,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）  js/life/home16.js OC.House16（16.8）  js/world/models16.js（16.8 床）  js/life/career16.js OC.Career16（16.9）  js/ui/fair16.js OC.Fair16、js/life/outing16.js OC.Outing16（16.10）
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
+  js/ui/guard17.js    OC.Guard（17.0 畫面安全網）  js/ui/theatre16.js OC.Theatre  js/life/health16.js OC.Health16／OC.Feud16
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
   lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
@@ -117,7 +119,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.16.11-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -263,4 +265,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **16.11 壞關係**（`OC.Feud16`）：冷戰本身仍在 `OC.Arcs`（不要另寫第二套）；16.11 只加起因（`r.cause16`）、背後說壞話（`backbite`：一天最多一次、不碰 `fixed`／`lockRel`）、送禮（`will:done` 事件的 gift 類）與玩家幫忙（`askApology` 經 `OC.Queue`、`askMediator` 經 `Arcs.gather`）。
 - **16.11 小劇場**（`OC.Theatre.play({ kind, title, sub, ocs, lines, key })`）：先記在 `save.life.theatre16`（同 key 只一次），在島上看才播，否則寄「錯過了」並留在回放；**不改資料**；播放中 `hold('stage')` 並一定放開；結束的元素加 `.closing`。新的重大時刻用 Store 事件接到 `Theatre.wire()`。
 - **16.11 桌寵狀態**：`PetSync.config()` 的 `data[id].status`（`stage／sick／busy／age／rel`）；原生只在 `PetBrain.Status` 改步調與休息（`paceFactor`），不改資料；petsync 裡不要再用 `status` 這個函式名（已有匯出的 `status`，同名宣告會互相覆蓋）。
+- **17.0 畫面安全網**（`OC.Guard`）：會蓋住整個畫面的東西（遮罩、黑邊、對話、小劇場、全螢幕工具）一定要有擁有者；新的這類東西要在 `guard17.js` 寫出「什麼時候可以存在」。推進堆疊的層要帶 `el`（元素），否則安全網無法判斷它是否還在畫面上。`#scrim` 不得再加 `backdrop-filter`。點遮罩關的是「要遮罩的那一層」；`OC.UI.sheet` 的頂端是滑動區（`touch-action: none`＋pointer capture）。安全網只關掉遮蓋物，不改資料；測試可設 `window.__ocNoGuard`。
+- **17.0 頁面狀態**：`html.page-open`（主迴圈在變化時設定）＝有頁面蓋住世界；只在頁面上的外觀寫在 `island.css` 的 `html.page-open` 規則。成就／任務卡片在頁面上不得接收點擊。
+- **17.0 版本號**：離線建置的版本號來自 `android/gradle.properties` 的 `oc.versionCode`／`oc.versionName`（`build.gradle.kts`、`AndroidManifest.xml` 也要一起改），打包工作已把它們宣告為輸入；改版後確認 APK 內的 versionCode。
 - **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。

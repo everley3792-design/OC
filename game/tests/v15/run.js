@@ -33,9 +33,9 @@ const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, n + '.png') }
         const btn = await page.evaluate(() => { const b = document.querySelector('.pick-acts .btn'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height }; });
         out.btn = btn;
         /* tap outside: the card goes away and nothing happened */
-        await page.touchscreen.tap(30, 430); await wait(page, 500); out.dismissed = await state();
+        { const ox = bench.x < 196 ? 360 : 30, oy = bench.y < 426 ? 600 : 260; await page.touchscreen.tap(ox, oy); } await wait(page, 500); out.dismissed = await state();   /* 17.0: outside = the other side of the screen (it used to be right next to the bench on some days) */
         /* open again, and this time press the button → now it walks over and sits */
-        await page.touchscreen.tap(bench.x, bench.y); await page.waitForFunction(() => OC.Pick.open_, null, { timeout: 10000 }).catch(() => {});
+        { const b2p = await find('bench'); if (b2p) Object.assign(bench, b2p); } await page.touchscreen.tap(bench.x, bench.y); await page.waitForFunction(() => OC.Pick.open_, null, { timeout: 10000 }).catch(() => {});
         /* pressing at once (inside the 350 ms window) does nothing */
         const b2 = await page.evaluate(() => { const b = document.querySelector('.pick-acts .btn'); const r = b.getBoundingClientRect(); const armed = OC.Pick.armed(document.querySelector('.pick-card')); b.click(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, armedAtClick: armed, stillOpen: OC.Pick.open_ }; });
         out.early = b2;

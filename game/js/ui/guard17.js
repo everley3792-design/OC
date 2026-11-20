@@ -18,7 +18,7 @@
 (function () {
   'use strict';
   const GRACE = 2.5;   /* seconds a covering may exist without an owner (transitions take ~0.4 s) */
-  const since = {}, LOGK = 'oc.guardlog';
+  const since = {}, dead = new WeakMap(), LOGK = 'oc.guardlog';
   const vis = (el) => { if (!el || !el.isConnected) return false; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.05) return false; const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40 && r.top < innerHeight - 24 && r.bottom > 24; };
   const log = () => { try { return JSON.parse(localStorage.getItem(LOGK) || '[]'); } catch (e) { return []; } };
   function note(what, detail) {
@@ -33,11 +33,11 @@
     if (window.__ocNoGuard || document.hidden) return;
     const now = performance.now() / 1000, U = OC.UI, st = U.stack;
     /* layers whose element is gone can never be closed: drop them */
-    for (const l of st.slice()) if (l.el && !l.el.isConnected && held('dead:' + st.indexOf(l), true, now)) { U.popLayer(l); note('layer-gone', l.el.className); }
+    for (const l of st.slice()) if (l.el && !l.el.isConnected) { if (!dead.has(l)) dead.set(l, now); else if (now - dead.get(l) >= GRACE) { U.popLayer(l); note('layer-gone', l.el.className); } }
     /* the grey blurred scrim with nothing on it */
     const scrim = document.getElementById('scrim'), on = !!(scrim && scrim.classList.contains('on'));
     const moving = (el) => !!(el && el.getAnimations && el.getAnimations().some((x) => x.playState === 'running'));   /* still sliding in / out (slow phones): not stuck */
-    const owners = st.filter((l) => l.scrim), shown = owners.some((l) => vis(l.el) || (l.el == null) || moving(l.el));
+    const owners = st.filter((l) => l.scrim && !(l.el && !l.el.isConnected)), shown = owners.some((l) => vis(l.el) || (l.el == null) || moving(l.el));
     if (held('scrim', on && owners.length && !shown, now)) {
       for (const l of owners.slice().reverse()) if (!vis(l.el)) { try { l.close(); } catch (e) { /* closing failed: drop it */ } if (st.includes(l)) U.popLayer(l); if (l.el && l.el.isConnected && !vis(l.el)) l.el.remove(); }
       note('scrim-without-sheet', owners.map((l) => l.el && l.el.className).join(' | '));

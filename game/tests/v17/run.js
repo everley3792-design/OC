@@ -10,7 +10,7 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
     await H.boot(page, { chars: 2, hour: 11 });
     const wait = (fn, ms = 8000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true).catch(() => false);
     if (want(1)) {
-      await page.evaluate(() => { OC.Guard.clear(); const s = OC.UI.sheet('測試', (b) => b.append('x')); window.__s = s; });
+      await page.evaluate(() => { OC.Guard.clear(); if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.Store.s.life.settings.autonomy = 'paused'; const s = OC.UI.sheet('測試', (b) => b.append('x')); window.__s = s; });   /* no event may start and clear the letterbox itself */
       await wait(() => window.__s.el.classList.contains('open'));
       await page.evaluate(() => window.__s.el.remove());   /* someone removed the element without closing the layer */
       const a = await wait(() => !document.getElementById('scrim').classList.contains('on') && !OC.UI.stack.includes(window.__s));
@@ -47,6 +47,17 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
       await page.evaluate(() => OC.Pages.open('about')); await page.waitForTimeout(800);
       const about = await page.evaluate(() => !!document.querySelector('.page.open[data-page=about] [data-guardlog]') && /3D 畫面中斷/.test(document.querySelector('.page.open[data-page=about]').textContent));
       check('3 3D 畫面中斷又沒有恢復：出現「重新載入畫面」（先存檔）；「關於」列出安全網紀錄', a && log.includes('webgl-lost') && about, { a, log, about });
+    }
+    if (want(4)) {
+      /* the background-removal sheet (16.3) is a .sheet that never got .open: it sat below the screen with the grey scrim on */
+      await page.evaluate(() => { const cv = document.createElement('canvas'); cv.width = 100; cv.height = 140; const g = cv.getContext('2d'); g.fillStyle = '#0f0'; g.fillRect(0, 0, 100, 140); g.fillStyle = '#f80'; g.fillRect(30, 30, 40, 80);
+        window.__cut = 'pending'; OC.Frame16.cutSheet([cv]).then((v) => { window.__cut = v; }); });
+      const shown = await wait(() => { const el = document.querySelector('.fr-cut'); if (!el) return false; const r = el.getBoundingClientRect(); const ok = r.bottom <= innerHeight + 1 && r.top < innerHeight - 100 && Math.abs(r.top - (window.__cy || 0)) < 0.5; window.__cy = r.top; return ok; }, 10000);
+      await page.waitForTimeout(500);
+      const b = await page.evaluate(() => { const btn = [...document.querySelectorAll('.fr-cut button')].find((x) => /套用/.test(x.textContent)); const r = btn.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+      await page.touchscreen.tap(b[0], b[1]);
+      const applied = await wait(() => window.__cut && window.__cut !== 'pending' && !document.querySelector('.fr-cut') && !document.getElementById('scrim').classList.contains('on'));
+      check('4 去背視窗真的出現在畫面上（不是藏在下面只留灰色遮罩），用手指按「套用」會套用並關閉', shown && applied, { shown, applied, b });
     }
     check('沒有未預期的錯誤', errors.filter((e) => !/deprecated|readback|favicon|context lost|CONTEXT_LOST|WebGL/i.test(e)).length === 0, errors.slice(0, 4));
   } finally { await browser.close(); }

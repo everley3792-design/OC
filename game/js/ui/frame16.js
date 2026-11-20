@@ -179,6 +179,7 @@
         sl, h('div.faint', { style: { fontSize: 'var(--fs-xs)', margin: '4px 0 8px' } }, '圍起來的空隙（例如手臂和身體之間）沒有被去掉？直接點預覽裡的那一塊。'),
         h('div.hstack', { style: { gap: '8px' } }, h('button.btn.ghost', { on: { click: () => { seeds.pop(); render(); } } }, icon('undo', 's'), '復原一處'), h('div.grow'), h('button.btn.primary', { on: { click: () => close({ tol, seeds: seeds.slice(), rgb: det.rgb, on }) } }, '套用')));
       document.getElementById('app').append(el); OC.UI.pushLayer(layer); if (OC.Pick && OC.Pick.guard) OC.Pick.guard(el); render();
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (!done) el.classList.add('open'); }));   /* 17.0: it is a .sheet — without .open it stayed below the screen (translateY(105%)) with the grey scrim on: the screen went grey and nothing could be seen or pressed */
     });
   }
   /** apply the chosen removal to every frame of every action → new assets; the old frame ids stay on the doc */
