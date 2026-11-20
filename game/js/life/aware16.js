@@ -290,13 +290,13 @@
   /** abstractStep started `cur` at `loc`: which facility */
   function absStart(c, cur) { const loc = String(cur.place || '').replace('place:', ''); const f = facOf(loc, cur.act); if (f.zh) { cur.fac = f.zh; cur.placeZh = (cur.placeZh || '') + (cur.placeZh ? '的' : '') + f.zh; } }
   /** characters away from you, at the same place, awake: sometimes they meet and talk (a real topic, a real relationship change) */
-  function meetElsewhere() {
-    if (Sim().catching || !on()) return;
-    const now = Sim().now(), H = here(), by = {};
+  function meetElsewhere(o = {}) {
+    if ((Sim().catching && !o.away) || !on()) return;   /* 17.1: o.away — while the player is away everyone is "elsewhere" */
+    const now = Sim().now(), H = o.away ? null : here(), by = {};
     for (const c of Ch().all()) {
-      const b = B().get(c.id); if (b && b.a) continue; if (!c.status || !c.status.onIsland) continue;
+      const b = B().get(c.id); if (b && b.a && !o.away) continue; if (!c.status || !c.status.onIsland) continue;
       const loc = c.life.loc || 'isle'; if (loc === H || c.life.trip || (c.life.cur && c.life.cur.act === 'sleep')) continue;
-      if (B().manualMode && b && B().manualMode(b)) continue;
+      if (!o.away && B().manualMode && b && B().manualMode(b)) continue;
       (by[loc] = by[loc] || []).push(c);
     }
     for (const [loc, cs] of Object.entries(by)) {
@@ -343,5 +343,5 @@
     St().on && St().on('ground:put', () => { lookT = 2; });
   }
 
-  OC.Aware = { LOUD, OUTDOOR, FAC, ACTS, PLAY_AS, st, ground, put, take, picked, remove, spawnGround, spoil, groundCands, onFinish, percepts, salience, look, shape, upkeep, chosen, failed, absFilter, absStart, meetElsewhere, talkAway, step, init, facOf, cls };
+  OC.Aware = { meetAway: (now) => meetElsewhere({ away: true, now }), LOUD, OUTDOOR, FAC, ACTS, PLAY_AS, st, ground, put, take, picked, remove, spawnGround, spoil, groundCands, onFinish, percepts, salience, look, shape, upkeep, chosen, failed, absFilter, absStart, meetElsewhere, talkAway, step, init, facOf, cls };
 })();

@@ -464,6 +464,7 @@
         T('細節'), card(
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
+          h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '背景生活（你不在時大家照常過日子）'), toggle(st.away17 !== false, (v) => set('away17', v))), small('打開時，關掉 App 的這段時間（最多 30 天）大家會照常生活、見面、出遊，回來時看「你不在的時候」；不會給星幣或物品。關閉時只推算 8 小時的需求變化。'),   /* 17.1 */
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '操控中的角色也可以自己換地點'), toggle(st.lead !== false, (v) => set('lead', v))), small('半自動／全自動時，牠想去別的地方就會自己走出去，畫面跟著牠過去（你正在看選單、佈置或對話時不會）。手動模式永遠不會自己離開。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色會主動來找你'), toggle(st.visits !== false, (v) => set('visits', v))), small('同一個地點的角色偶爾會走過來：送東西、問問題、邀你玩、約時間。關掉後牠們不會主動打斷你。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會向你提出請求'), toggle(st.requests !== false, (v) => set('requests', v))),

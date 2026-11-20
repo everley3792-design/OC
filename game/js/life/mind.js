@@ -119,7 +119,7 @@
     const curS = cur ? score(cur) : 0, bestS = best ? score(best) : 0;
     let next = L_.dom;
     if (!best || bestS < 0.16) { if (!cur || curS < 0.12) next = 'neutral'; }
-    else if (best.id !== L_.dom && (bestS > curS + 0.12 || !cur || curS < 0.12) && (now - (L_.domAt || 0) > 2500 || best.id === 'surprised')) next = best.id;
+    else if (best.id !== L_.dom && (bestS > curS + 0.12 || !cur || curS < 0.12) && (Sim().catching || now - (L_.domAt || 0) > 2500 || best.id === 'surprised')) next = best.id;
     if (next !== L_.dom) { L_.dom = next; L_.domAt = now; St.emit('life:emotion', { id: c.id, emo: next }); }
   }
   function dominant(c) { return (c.life && c.life.emo.dom) || 'neutral'; }
@@ -141,6 +141,7 @@
     if (item.key && (M.recent.some((x) => x.key === item.key) || M.long.some((x) => x.key === item.key))) return null;   // no duplicates
     M.recent.unshift(item); if (M.recent.length > CAP_RECENT) consolidate(c, true);
     note(c, 'mem', item.text);
+    if (OC.Chronicle) OC.Chronicle.fromMemory(c, item);   /* 17.1: every memory is also a line in the island's timeline */
     St.touch('life', { id: c.id, mem: item.id }); return item;
   }
   /** move important recent memories into long-term; forget unimportant old ones; cap long-term */
@@ -168,6 +169,7 @@
   function record(c, act, gmDur, o = {}) {
     const R = c.life.rec, r = R.act[act] || (R.act[act] = { n: 0, gm: 0, last: 0, ctx: {}, place: {} });
     r.n++; r.gm += gmDur; r.last = Sim().now();
+    if (OC.Chronicle) OC.Chronicle.fromActivity(c, act, gmDur, o);   /* 17.1: finished activities go into the timeline */
     const ctx = [phase(), wx()]; for (const k of ctx) r.ctx[k] = (r.ctx[k] || 0) + 1;
     if (o.place) { r.place[o.place] = (r.place[o.place] || 0) + 1; R.place[o.place] = (R.place[o.place] || 0) + 1; R.placeZh[o.place] = o.placeZh || o.place; }
     if (R.lastAct) { const k = R.lastAct + '>' + act; R.seq[k] = (R.seq[k] || 0) + 1; }

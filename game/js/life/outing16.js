@@ -101,6 +101,20 @@
     if (came.length >= 2 && OC.Progress) OC.Progress.emit('outing', { oc: p.host, ocs: came, place: p.place, kind: p.kind });
     St().touch('life', { plans: true }); St().emit('outing:done', { id: p.id, came, noShow });
   }
+  /** 17.1: an outing whose time falls inside a simulated absence happens there: everyone who said yes (and does not flake) goes,
+   *  an hour later it is settled the normal way. Nobody is walked on screen — the absence has no screen. */
+  function awayStep(gm) {
+    for (const p of plans()) {
+      if (p.status !== 'planned' && p.status !== 'going') continue;
+      const start = p.day * 1440 + p.hour * 60;
+      if (p.status === 'planned' && gm >= start - 30) {
+        p.status = 'going'; p.away = true;
+        for (const id of going(p)) { const c = Ch().get(id); if (!c || (id !== p.host && p.rsvp[id] && p.rsvp[id].flake) || (c.life.loc || 'isle') === p.place) continue;
+          const tm = OC.Places.travelMin(c.life.loc || 'isle', p.place); c.life.trip = { from: c.life.loc || 'isle', to: p.place, act: OUT_ACT[p.place] || 'walk', eta: gm + tm }; c.life.loc = p.place; c.life.cur = null; }
+      }
+      if (p.status === 'going' && gm >= start + 60) settle(p);
+    }
+  }
   /** once a game day: friends sometimes plan an outing by themselves */
   function dayStep(day) {
     if (Sim().catching || S().life.settings.outing16 === false) return;
@@ -166,5 +180,5 @@
         x.status === 'planned' ? h('button.btn.s.ghost', { 'data-cancel': x.id, on: { click: () => { cancel(x.id); re(p); } } }, '取消') : null)) : [h('div.muted', null, '還沒有約定。')]));
   }
   function init() { Sim().onStep(step); Sim().onDay((d) => dayStep(d)); }
-  OC.Outing16 = { plans, answer, invite, cancel, step, settle, dayStep, init, HOURS };
+  OC.Outing16 = { plans, answer, invite, cancel, step, settle, dayStep, awayStep, init, HOURS };
 })();

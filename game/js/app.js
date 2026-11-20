@@ -257,6 +257,9 @@
         chips.replaceChildren(...TIME_PRESETS.map(([zh, v]) => h('button.chip-btn' + (Math.abs(hh - v) < 0.5 ? '.on' : ''), { on: { click: () => pick(v) } }, zh, h('small', null, ' ' + fmtH(v)))));
       }
       b.append(h('div.center', null, big, sub), h('div', { style: { marginTop: '10px' } }, modeSeg), chips, h('div.muted', { style: { marginTop: '10px', fontSize: 'var(--fs-s)' } }, '拖曳設定時刻（固定時刻模式）'), slider, cycleBox,
+        S().life.settings.away17 !== false ? h('div', { style: { marginTop: '12px' } },
+          OC.UI.row('book', '時間線', '今天和你不在時發生的事', null, () => { api.close(); OC.Pages.open('chron17'); }),
+          st.time === 'cycle' ? OC.UI.row('clock', '離開時暫停', '關閉時，遊戲循環在你離開時也照常前進（最多推算 30 天）', OC.UI.toggle(!!S().life.settings.awayPause, (v) => { S().life.settings.awayPause = v; St.touch('life', { k: 'awayPause' }); })) : null) : null,   /* 17.1 */
         h('div.section-title', null, '天氣'), wx, h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '8px' } }, '天空、光影、燈光、角色作息與事件都會跟著時間改變；遊戲循環快轉時，跳過的時間會照常模擬（像離開 App 一樣，不給獎勵）。'));
       draw(); const iv = setInterval(() => { if (!b.isConnected) { clearInterval(iv); return; } draw(document.activeElement === slider); }, 1000);
       St.emit('time:panel');
@@ -1097,7 +1100,7 @@
   // 13.0 "got it!": the first time an item is found, the character you play holds it up for a moment (only a pose: the item is already yours)
   St.on('inv', (e) => { if (!(e && e.first && e.n > 0 && OC.Style.ITEMS[e.id]) || !player || curTab !== 'island' || dlgOpen || (OC.Stage && OC.Stage.busy) || OC.Sim.catching) return; const a = player; if (a.act && a.act.priority > 4) return; a.overrides = Object.assign({}, a.overrides || {}, { held: e.id }); a.key = ''; if (Wd.setAction(a, 'cheer', { dur: 1.7, priority: 4 })) floatText(a, '✦', 'var(--sun)'); setTimeout(() => { if (a.overrides && a.overrides.held === e.id) { delete a.overrides.held; if (!Object.keys(a.overrides).length) a.overrides = null; a.key = ''; } }, 1800); });
   St.on('inv', (e) => { if (e && e.first && e.n > 0 && OC.Style.ITEMS[e.id]) { const it = OC.Style.ITEMS[e.id]; OC.Stage.card({ kind: 'discover', item: e.id, title: `圖鑑新增：${it.zh}`, sub: `${(OC.Items.KINDS[it.kind] || {}).zh || ''}・${OC.Items.RARITY[it.rarity || 1]}・+${OC.Shops.INCOME.find} 星幣` }); } });
-  St.on('play:skillUp', (e) => OC.Stage.perform('levelup', Object.assign({}, e)));
+  St.on('play:skillUp', (e) => { if (!OC.Sim.catching) OC.Stage.perform('levelup', Object.assign({}, e)); });   /* 17.1: levels gained while away are in 「你不在的時候」 */
   St.on('play:aspDone', (e) => OC.Stage.perform('aspDone', e));
   St.on('play:aspStep', (e) => OC.Stage.perform('aspStep', Object.assign({ zh: e.zh }, e)));
   St.on('play:aspNew', (e) => { const x = OC.PlayData.ASPIRATIONS[e.id]; if (e.by === 'auto' && x) OC.Stage.perform('aspNew', { oc: e.oc, zh: x.zh, vars: { asp: x.zh } }); });
@@ -1128,8 +1131,9 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Chronicle) OC.Chronicle.init(); if (OC.Away) OC.Away.init(); if (OC.AwayUI) OC.AwayUI.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
+    OC.Sim.lifeSeed();   /* 17.1: the seed of this island's absences lives in the save */
     OC.Sim.catchUp('boot');
     if (NATIVE) { try { const ins = NATIVE.insets(); if (ins) window.OCApp.setInsets(...ins.split(',').map(Number)); } catch (e) { /* */ } }
     if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
@@ -1213,7 +1217,7 @@
     sound: (id) => { OC.Mind.note(null, 'sound', `音效「${id}」（遊戲尚無音訊系統，只記錄）`); },
     busy: () => !!(dlgOpen || placing || testChar || carry || curTab !== 'island' || OC.UI.stack.length),
   };
-  St.on('life:offline', (o) => { if (o.simulated >= 30) setTimeout(() => toast(`離開了約 ${o.min >= 120 ? Math.round(o.min / 60) + ' 小時' : o.min + ' 分鐘'}，大家照自己的步調生活${o.capped ? '（最多計算 8 小時）' : ''}`, 'clock'), 1200); });
+  St.on('life:offline', (o) => { if (o.backward) { setTimeout(() => toast('手機的時間比上次早，這次不推算離開的時間', 'clock'), 1200); return; } if (o.away17 && o.simulated >= 60) return; if (o.simulated >= 30) setTimeout(() => toast(`離開了約 ${o.min >= 120 ? Math.round(o.min / 60) + ' 小時' : o.min + ' 分鐘'}，大家照自己的步調生活${o.capped ? (o.away17 ? '（最多推算 30 天）' : '（最多計算 8 小時）') : ''}`, 'clock'), 1200); });
   St.on('life:skillUp', (e) => { const c = OC.Chars.get(e.id); if (c) toast(`${OC.Chars.name(c)}的${OC.Mind.SKILLS[e.skill]}升到 Lv.${e.lv}`, 'star'); });
   St.on('life:relType', (e) => { const a = OC.Chars.get(e.a), b = OC.Chars.get(e.b); if (a && b && OC.Mind.RANK[e.to] >= 2 && OC.Mind.RANK[e.to] > (OC.Mind.RANK[e.from] || 0)) toast(`${OC.Chars.name(a)}把${OC.Chars.name(b)}當成${OC.Mind.TYPES[e.to]}了`, 'heart'); });
 

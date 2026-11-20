@@ -155,8 +155,8 @@
     if (Sim().catching) return; const cal = OC.Clock.cal ? OC.Clock.cal(day) : { weekday: day % 7, weekend: false, day: 1, season: 'spring' }, prev = day - 1, pcal = OC.Clock.cal ? OC.Clock.cal(prev) : cal;
     for (const c of Ch().all()) {
       const X = st(c), j = X.job, sc = schoolOf(c);
-      if (j && LINE[j.line].type === 'emp' && !pcal.weekend) { if ((X.paid || {})[prev]) j.att++; else if ((X.sick16 || {})[prev]) j.sick = (j.sick || 0) + 1; else if (j.since < prev) { j.miss++; j.perf = Math.max(0, j.perf - 5); } }
-      if (sc.status === 'enrolled' && !pcal.weekend && sc.level) { if ((X.att || {})[prev]) sc.att.days++; else if ((X.sick16 || {})[prev]) sc.att.sick = (sc.att.sick || 0) + 1; else sc.att.missed++; }
+      if (j && LINE[j.line].type === 'emp' && !pcal.weekend) { if ((X.paid || {})[prev]) j.att++; else if ((X.sick16 || {})[prev]) j.sick = (j.sick || 0) + 1; else if (OC.Away && OC.Away.wasAway(prev)) j.awayDays = (j.awayDays || 0) + 1; else if (j.since < prev) { j.miss++; j.perf = Math.max(0, j.perf - 5); } }
+      if (sc.status === 'enrolled' && !pcal.weekend && sc.level) { if ((X.att || {})[prev]) sc.att.days++; else if ((X.sick16 || {})[prev]) sc.att.sick = (sc.att.sick || 0) + 1; else if (OC.Away && OC.Away.wasAway(prev)) sc.att.away = (sc.att.away || 0) + 1; else sc.att.missed++; }   /* 17.1: a day you were away is not a missed day (no pay either) */
       X.insp = Math.min(100, X.insp + 12 + (any(c, ['daydreamer', 'creative']) ? 6 : 0));
       if (j && LINE[j.line].type === 'free') commissions(c, day, cal);
       if (cal.day === 27) exam(c, day, cal);

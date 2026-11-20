@@ -99,6 +99,7 @@
   // ---- toasts ----
   let toastWrap = null;
   function toast(msg, ic) {
+    if (OC.Sim && OC.Sim.catching) return null;   /* 17.1: nothing pops up for things that happened while you were away (「你不在的時候」 tells them) */
     if (!toastWrap) { toastWrap = h('div.toast-wrap'); toastWrap.setAttribute('aria-live', 'polite'); document.getElementById('app').append(toastWrap); }
     const t = h('div.toast', { role: 'status' }, ic ? (typeof ic === 'string' ? icon(ic, 's') : ic) : null, msg);
     toastWrap.append(t); while (toastWrap.children.length > 3) toastWrap.firstChild.remove();

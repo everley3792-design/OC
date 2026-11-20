@@ -428,9 +428,9 @@
 
   // ---------------- per step ----------------
   /** needs context for an OC (what it is doing right now) */
-  function ctxOf(c) {
+  function ctxOf(c) {   /* 17.1: during an absence everyone is told from the save (c.life.cur), not from the scene */
     const b = brains[c.id];
-    if (b && b.a) { const doing = b.st === 'do' && b.act ? D().ACTS[b.act] : null; return { act: doing ? b.act : null, fx: doing ? doing.fx : (b.a.mode === 'sit' ? D().ACTS.rest.fx : null), sed: doing ? !!doing.sed : (b.a.mode === 'sit'), inside: !!(b.slot && b.slot.inside && b.st === 'do'), repeat: doing && b.last[0] === b.act }; }
+    if (b && b.a && !Sim().virtual) { const doing = b.st === 'do' && b.act ? D().ACTS[b.act] : null; return { act: doing ? b.act : null, fx: doing ? doing.fx : (b.a.mode === 'sit' ? D().ACTS.rest.fx : null), sed: doing ? !!doing.sed : (b.a.mode === 'sit'), inside: !!(b.slot && b.slot.inside && b.st === 'do'), repeat: doing && b.last[0] === b.act }; }
     const cur = c.life.cur; const A = cur && D().ACTS[cur.act];
     return { act: A ? cur.act : null, fx: A ? A.fx : null, sed: A ? !!A.sed : true, inside: !!(cur && (cur.place === 'home' || (OC.House16 && OC.House16.isHome(cur.place)))) };
   }
@@ -555,11 +555,11 @@
     M().tick(c, g, ctx);
     let cur = c.life.cur;
     if (!cur || cur.until <= now) {
-      if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
+      if (cur && D().ACTS[cur.act]) { const dur = Math.max(0, Math.min(now, cur.until) - (cur.t0 || now)); M().record(c, cur.act, dur, { place: cur.place, placeZh: cur.placeZh, skill: D().ACTS[cur.act].sk, t0: cur.t0 }); (c.life.offAcc = c.life.offAcc || {})[cur.act] = (c.life.offAcc[cur.act] || 0) + dur; M().wishEvent(c, { type: 'act', act: cur.act }); }
       const fake = { a: { x: 0, y: 0 }, last: c.life.absLast || [], id: c.id };
       const here2 = placeOK() ? placeActs(loc).concat(['stretch', 'daydream']) : Object.keys(D().ACTS);
-      let list = here2.filter((x) => D().ACTS[x] && !(x === 'sleep' && OC.House16 && OC.House16.isHome(loc) && loc !== OC.House16.placeOf(c)) && !D().ACTS[x].cmdOnly && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x)) && (!OC.People || OC.People.canDo(c, x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));
-      if (placeOK() && !o.offline && settings().travel !== false && (!OC.People || OC.People.canTravel(c)) && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
+      let list = here2.filter((x) => D().ACTS[x] && !(x === 'sleep' && OC.House16 && OC.House16.isHome(loc) && loc !== OC.House16.placeOf(c)) && !D().ACTS[x].cmdOnly && !denied(x) && x !== 'explore' && (!OC.Growth || OC.Growth.allowed(c, x)) && (!OC.People || OC.People.canDo(c, x)) && (!OC.Acts16 || OC.Acts16.fits(x))).map((act) => ({ act, pl: loc, s: actScore(c, fake, act).s }));   /* 17.1: away for days, the hour matters (no stargazing at noon) */
+      if (placeOK() && (!o.offline || o.away) && settings().travel !== false && (!OC.People || OC.People.canTravel(c)) && !['paused', 'restricted'].includes(settings().autonomy)) for (const pl of OC.Places.list()) { if (pl === loc || !OC.Places.open(pl)) continue; const tm = OC.Places.travelMin(loc, pl), af = OC.Places.affinity(c, pl); for (const act of placeActs(pl)) { if (!D().ACTS[act] || denied(act) || D().ACTS[act].cmdOnly || (OC.Acts16 && !OC.Acts16.fits(act)) || here2.includes(act) && af < 0.3 || (act === 'sleep' && pl !== 'home')) continue; list.push({ act, pl, s: actScore(c, fake, act).s + af - 0.32 - tm / 140 }); } }
       const myHome = OC.House16 ? OC.House16.placeOf(c) : 'home';
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== myHome && OC.Places.open(myHome)) list.push({ act: 'sleep', pl: myHome, s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
@@ -819,7 +819,11 @@
     slowT += g; if (slowT >= 30) { slowT = 0; for (const c of OC.Chars.all()) { if (Sim().rnd() < 0.18) M().maybeWish(c); if (Sim().rnd() < 0.5) M().checkHabits(c); } }
     St().mark();
   }
-  function offlineStep(g, o) { for (const c of OC.Chars.all()) { const b = brains[c.id]; if (b && b.a && b.st === 'do') { M().tick(c, g, Object.assign(ctxOf(c), { offline: true })); if (b.until <= o.at + g) finish(b, '時間到'); continue; } if (c.status.onIsland) abstractStep(c, g, o); else M().tick(c, g, { fx: { comfort: 4, fun: 5, social: 3 }, sed: true, offline: true }); } }
+  const awayFresh = new Set();   /* 17.1: the ones in this scene when an absence starts */
+  function offlineStep(g, o) { for (const c of OC.Chars.all()) { const b = brains[c.id];
+    /* 17.1: a long absence is told from the save alone (the same absence → the same story): the ones in this scene put down what they were doing and live abstractly too */
+    if (o.away && b && b.a && awayFresh.has(c.id)) { awayFresh.delete(c.id); if (b.st === 'social') endConvOf(b, 'interrupted'); else if (b.st === 'do' || b.st === 'go') abort(b, '離開了一陣子'); c.life.cur = null; c.life.trip = null; }
+    if (!o.away && b && b.a && b.st === 'do') { M().tick(c, g, Object.assign(ctxOf(c), { offline: true })); if (b.until <= o.at + g) finish(b, '時間到'); continue; } if (c.status.onIsland) abstractStep(c, g, o); else M().tick(c, g, { fx: { comfort: 4, fun: 5, social: 3 }, sed: true, offline: true }); } }
   /** after an absence: summarise, then let visible OCs re-decide where they are */
   function afterOffline(info) {
     if (!info || info.simulated < 30) return;
@@ -832,7 +836,7 @@
   }
 
   OC.Brain = {
-    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); },
+    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); OC.Store.on('away:begin', () => { awayFresh.clear(); for (const b of Object.values(brains)) if (b.a) awayFresh.add(b.id); }); },
     goPlace, entryPoint, arrived, noticeNew, ctlOf, manualMode, setControl, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,

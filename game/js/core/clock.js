@@ -17,12 +17,13 @@
   function hour() {
     const s = OC.Store.s.settings;
     if (s.time === 'cycle' && OC.Sim) return OC.Sim.hourOf();          // Phase 4 auto day cycle (game clock)
+    if (OC.Sim && OC.Sim.virtual) return OC.Sim.hourOf();   /* 17.1: while an absence is simulated the hour is the simulated one */
     if (s.time === 'fixed') return s.fixedHour == null ? 12 : s.fixedHour;   // 8.0: any hour the player picked
     if (s.time !== 'real' && PRESET_HOUR[s.time] != null) return PRESET_HOUR[s.time];
     const d = new Date(); return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   }
   function phase(h = hour()) { return h >= 5 && h < 10 ? 'morning' : h >= 10 && h < 16 ? 'noon' : h >= 16 && h < 19.5 ? 'dusk' : 'night'; }
-  function autoWeather(d = new Date()) {
+  function autoWeather(d = OC.Sim && OC.Sim.virtual ? new Date(OC.Sim.msOf(OC.Sim.now())) : new Date()) {   /* 17.1: while an absence is simulated, the weather of that hour */
     const block = Math.floor(d.getHours() / 6);
     const r = OC.hash((d.getFullYear() % 100) * 500 + (d.getMonth() + 1) * 40 + d.getDate() + block * 0.173);
     // fog only makes sense in the early blocks
@@ -57,7 +58,7 @@
   const monthSeason = (m) => (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter');
   const YEAR = 112, SEASON_DAYS = 28;
   function cal(day) {
-    if (calMode() === 'real' || !OC.Sim) { const d = new Date(), w = d.getDay(); return { mode: 'real', year: d.getFullYear(), season: monthSeason(d.getMonth() + 1), month: d.getMonth() + 1, day: d.getDate(), weekday: (w + 6) % 7, weekend: w === 0 || w === 6, text: `${d.getMonth() + 1}/${d.getDate()}`, key: dayKey(d) }; }
+    if (calMode() === 'real' || !OC.Sim) { const d = OC.Sim && OC.Sim.virtual ? new Date(OC.Sim.msOf(day != null ? day * 1440 + 720 : OC.Sim.now())) : (day != null && OC.Sim ? new Date(OC.Sim.msOf(day * 1440 + 720)) : new Date()), w = d.getDay(); return { mode: 'real', year: d.getFullYear(), season: monthSeason(d.getMonth() + 1), month: d.getMonth() + 1, day: d.getDate(), weekday: (w + 6) % 7, weekend: w === 0 || w === 6, text: `${d.getMonth() + 1}/${d.getDate()}`, key: dayKey(d) }; }
     const c = OC.Store.s.life.clock, today = OC.Sim.day(); if (c.cal0 == null) { c.cal0 = today - (c.cal0pending || 0); delete c.cal0pending; }
     const gd = Math.max(0, (day == null ? today : day) - c.cal0), yd = gd % YEAR, si = Math.floor(yd / SEASON_DAYS), dd = yd % SEASON_DAYS + 1, wd = gd % 7, yr = 1 + Math.floor(gd / YEAR);
     return { mode: 'game', year: yr, season: SEASONS[si], day: dd, yd, gd, weekday: wd, weekend: wd >= 5, text: `${SEASON_ZH[SEASONS[si]]} ${dd} 日`, key: `Y${yr}-${SEASONS[si]}-${dd}` };

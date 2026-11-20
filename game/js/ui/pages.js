@@ -57,7 +57,7 @@
     sub: true,
     refresh(p, el) {
       const c = OC.Chars.active();
-      el.replaceChildren(h('p.muted', null, `${OC.Chars.name(c)}現在：${OC.Mind.label(c)}。需求依照遊戲時間變化；OC 會自己去滿足它們，你也可以幫忙。`), ...Gm.NEEDS.map((n) => card(h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('b', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '恢復：', n.how), n.decay ? h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '2px' } }, `基本每遊戲小時下降約 ${n.decay}（會依個性、天氣與正在做的事改變）；離開遊戲時最多模擬 8 小時，且不會低於 15。`) : null)));
+      el.replaceChildren(h('p.muted', null, `${OC.Chars.name(c)}現在：${OC.Mind.label(c)}。需求依照遊戲時間變化；OC 會自己去滿足它們，你也可以幫忙。`), ...Gm.NEEDS.map((n) => card(h('div.need', null, h('div.dot', { style: { '--c': n.c } }, icon(n.ic, 's')), h('b', null, n.zh), bar(c.needs[n.id], n.c), h('span.val.num', null, Math.round(c.needs[n.id]))), h('div.muted', { style: { fontSize: 'var(--fs-s)', marginTop: '8px' } }, '恢復：', n.how), n.decay ? h('div.faint', { style: { fontSize: 'var(--fs-xs)', marginTop: '2px' } }, `基本每遊戲小時下降約 ${n.decay}（會依個性、天氣與正在做的事改變）；${S().life.settings.away17 !== false ? '離開遊戲時大家照常生活（背景生活，最多推算 30 天）' : '離開遊戲時最多模擬 8 小時'}，且不會低於 15。`) : null)));
     },
   });
 

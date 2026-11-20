@@ -7,14 +7,21 @@
  *   presets      → the sky stays at the chosen time; life still advances at real rate
  * Offline / background: real & preset modes catch up abstractly (capped, no events, no rewards);
  * the cycle clock simply pauses while the app is closed.
+ * 17.0 → 17.1 background life (life.settings.away17 !== false): an absence is simulated on a VIRTUAL clock — every chunk moves
+ * the game clock, so hour / weekday / day-change logic sees the time it would have been; up to 30 days (10-minute chunks for the
+ * first 72 hours, then hourly); the game-calendar cycle advances 1:1 with real time while away; the RNG is seeded from the save
+ * and the start of the absence, so the same absence always gives the same story; a clock that went backwards is not simulated.
+ * Day hooks for an absence are separate (onAwayDay): only systems that are safe without a player opt in. Still no rewards:
+ * OC.Progress does not emit while catching.
  */
 (function () {
   'use strict';
   const S = () => OC.Store.s;
   const STEP = 0.2;                     // real seconds per simulation step
-  const OFFLINE_CAP = 8 * 60;           // game minutes simulated at most for one absence
+  const OFFLINE_CAP = 8 * 60;           // game minutes simulated at most for one absence (legacy, away17 off)
+  const AWAY_CAP = 30 * 1440, AWAY_FINE = 72 * 60;   /* 17.1: thirty days at most; ten-minute steps for the first three days, hourly after */
   const SPEEDS = [1, 2, 5, 10];
-  let catching = false, acc = 0, steps = [], days = [], abstracts = [], lastDay = null, stepN = 0;
+  let catching = false, acc = 0, steps = [], days = [], abstracts = [], awayDays = [], lastDay = null, stepN = 0, virtual = false;
 
   // ---------------- deterministic RNG (seedable for tests) ----------------
   let seed = (Date.now() ^ 0x5bd1e995) >>> 0;
@@ -29,7 +36,11 @@
   function speed() { const v = S().settings.timeSpeed; return SPEEDS.includes(v) ? v : 1; }
   /** game minutes per real second */
   function rate() { return mode() === 'cycle' ? speed() : 1 / 60; }
-  function now() { const c = L().clock; if (mode() !== 'cycle') c.gm = Math.max(c.gm || 0, realGm()); return c.gm; }
+  function now() { const c = L().clock; if (mode() !== 'cycle' && !virtual) c.gm = Math.max(c.gm || 0, realGm()); return c.gm; }   /* 17.1: during an absence the clock is the simulated one */
+  /** the device time (ms) that a game minute corresponds to (real calendar) */
+  const msOf = (gm) => { const g = gm * 60000; return g + new Date(g).getTimezoneOffset() * 60000; };
+  const away17 = () => L().settings.away17 !== false;
+  function lifeSeed() { const l = L(); if (!l.seed17) l.seed17 = ((Date.now() ^ 0x9e3779b9) >>> 0) || 1; return l.seed17; }
   const day = (gm = now()) => Math.floor(gm / 1440);
   /** hour of the simulated day (sky follows OC.Clock.hour, which reads this in cycle mode) */
   function hourOf(gm = now()) { return ((gm % 1440) + 1440) % 1440 / 60; }
@@ -44,6 +55,8 @@
   function onStep(fn) { steps.push(fn); }
   function onDay(fn) { days.push(fn); }
   function onAbstract(fn) { abstracts.push(fn); }
+  /** 17.1: called for every day boundary crossed while away (only systems that are safe without a player register) */
+  function onAwayDay(fn) { awayDays.push(fn); }
   function step(g) {
     const c = L().clock; stepN++;
     if (mode() === 'cycle') c.gm += g; else c.gm = Math.max(c.gm + g, realGm());
@@ -79,6 +92,7 @@
 
   /** abstract simulation of an absence: capped, chunked, no events, no rewards (idempotent: based on lastReal) */
   function catchUp(reason = 'resume') {
+    if (away17()) return awayRun(reason);
     const l = L(), t = Date.now(), last = l.lastReal || t; l.lastReal = t;
     const elapsedMin = Math.max(0, (t - last) / 60000);
     if (mode() === 'cycle' || elapsedMin < 1) { now(); return 0; }
@@ -92,9 +106,41 @@
     return gm;
   }
 
+  /** 17.1: the background-life version of catchUp (see the header) */
+  function awayRun(reason, tNow) {
+    const l = L(), t = tNow || Date.now(), last = l.lastReal || t;
+    if (t < last - 120000) {   /* the device clock went backwards: no simulation, no rewind */
+      l.lastReal = t; l.offline = { at: t, min: 0, simulated: 0, backward: Math.round((last - t) / 60000), reason }; OC.Store.emit('life:offline', l.offline); return 0;
+    }
+    l.lastReal = t;
+    const elapsedMin = Math.max(0, (t - last) / 60000);
+    if (elapsedMin < 1) { now(); return 0; }
+    const cycle = mode() === 'cycle';
+    if (cycle && l.settings.awayPause) { now(); return 0; }
+    const c = l.clock, start = cycle ? c.gm : Math.max(c.gm || 0, realGm(last)), total = Math.min(AWAY_CAP, elapsedMin);
+    const target = cycle ? c.gm + elapsedMin : Math.max(c.gm, realGm(t));
+    const keep = seed; seed = (Math.imul(lifeSeed(), 2654435761) ^ Math.floor(start)) >>> 0;   /* the same absence → the same story */
+    const deep = total >= 10;   /* a few minutes (a stall, a quick switch to another app): the ones on screen carry on with what they were doing */
+    catching = true; virtual = true; let done = 0, d0 = day(start);
+    if (deep) OC.Store.emit('away:begin', { from: start, min: total, reason });
+    try {
+      while (done < total - 1e-6) {
+        const g = Math.min(done < AWAY_FINE ? 10 : 60, total - done), at = start + done;
+        c.gm = at;
+        for (const f of abstracts) { try { f(g, { offline: true, away: deep, reason, at }); } catch (e) { console.error('[sim away]', e); } }
+        done += g; c.gm = start + done;
+        const d = day(c.gm); while (d0 < d) { d0++; for (const f of awayDays) { try { f(d0, d0 - 1); } catch (e) { console.error('[sim away day]', e); } } }
+      }
+    } finally { catching = false; virtual = false; seed = keep; }
+    c.gm = Math.max(c.gm, target); lastDay = day(c.gm);
+    l.offline = { at: t, min: Math.round(elapsedMin), simulated: Math.round(total), from: start, to: c.gm, capped: elapsedMin > AWAY_CAP, reason, away17: true };
+    OC.Store.emit('life:offline', l.offline);
+    return total;
+  }
+
   OC.Sim = {
-    STEP, OFFLINE_CAP, SPEEDS, update, advance, catchUp, step, onStep, onDay, onAbstract, skipTo,
+    STEP, OFFLINE_CAP, AWAY_CAP, SPEEDS, update, advance, catchUp, awayRun, step, onStep, onDay, onAbstract, onAwayDay, skipTo, msOf, lifeSeed,
     now, day, hourOf, rate, mode, speed, setMode, setSpeed, realGm,
-    get catching() { return catching; }, rnd, pick, wpick, seed(v) { seed = v >>> 0; }, get steps() { return stepN; },
+    get catching() { return catching; }, get virtual() { return virtual; }, rnd, pick, wpick, seed(v) { seed = v >>> 0; }, get steps() { return stepN; },
   };
 })();

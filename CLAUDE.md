@@ -42,8 +42,9 @@
 - **16.10（0.16.10-alpha）遊樂設施與邀約**：`OC.Fair16`（`ui/fair16.js`）：遊樂園 7 個新攤位（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮；共 11 個設施），真實觸控小遊戲、選同伴一起玩（膽小的不坐可怕的）、票與一天一次的獎品；`OC.Outing16`（`life/outing16.js`）：邀約／約會／出遊（立刻回答、到時出發、結算、放鴿子）、角色自己約、手機「行程」App（`plan16`）。紀錄：`docs/v16.10-report.md`。
 - **16.11（0.16.11-alpha）生老病死與收官**：`OC.Health16`／`OC.Feud16`（`life/health16.js`＋台詞 `health16d.js`）：有真實原因的疾病（淋雨、沒睡、過勞、地上放太久的食物、吃太多、被用力丟、傳染、長者老毛病）、生病時需求下降與 AI 想休息、朋友照顧、病假、藥（`items/meds16.js`，雜貨攤）；壽命與告別（`settings.death16` 預設關、每個角色 `h16.mode`，七天「常常說累」→ 告別小劇場、紀念相框、朋友難過；可撤銷）；冷戰的起因、背後說壞話、送禮緩和、玩家幫忙；`OC.Theatre`（`ui/theatre16.js`：重大時刻小劇場、錯過與「回放」）；「健康」App；桌寵 `status`（原生 `PetBrain.Status`）。紀錄：`docs/v16.11-report.md`。
 - **17.0（0.17.0-alpha）灰色畫面與全面檢查**：`OC.Guard`（`ui/guard17.js`）安全網＋紀錄；遮罩沒有模糊、點遮罩關掉它的視窗；視窗下滑可靠；腳本過場收起黑邊；3D 中斷的重新載入卡片；頁面開著時卡片／提示移開。**17.1–17.6 的計畫（含所有未完成項目）在 `docs/v17-plan.md`**。紀錄：`docs/v17.0-report.md`。
+- **17.1（0.17.1-alpha）背景生活**：離開時大家照常生活（`OC.Sim.awayRun`：虛擬時鐘、最多 30 天、固定的亂數、遊戲循環照現實時間前進＋「離開時暫停」、時間往回調不推算）；時間線 `OC.Chronicle`（回憶／活動／關係變化各寫一條、收藏、篩選、「正在發生」）；「你不在的時候」`OC.Away`＋`OC.AwayUI`（頁面 `chron17`）；一天結束的卡片。離開時不給星幣物品、不算缺勤、不跳通知。**離開時不會生病、冷戰、事件、來訪；回放與 Android 背景通知未做。** 驗收：`node game/tests/v17/run.js`。紀錄：`docs/v17.1-report.md`。
 - **路線圖**：MVP 17.1–17.4（`docs/v17-roadmap.md`，玩家已同意全部建議：觀察與操控並存、離開不給星幣物品、不做雲端、城市只決定時區與日出日落、最多推算 30 天）→ 階段二 18.x、階段三 19.x（`docs/v18-rebuild-plan.md`：桌寵分層狀態機與桌面物件、新設計語言逐頁替換「島日和」——仍然只有一種風格、美術方向不變）。
-- 下一步見 **`docs/v17-roadmap.md`**（17.1 背景生活 → 17.2 觀察模式 → 17.3 每日結算的關係 → …；參考《角色觀察屋》只取玩法原則，不用它的文字、介面圖形、戶型或素材），17.0 的檢查與未完成清單在 `docs/v17-plan.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
+- 下一步見 **`docs/v17-roadmap.md`**（17.1 背景生活〔已做，見上〕 → 17.2 觀察模式 → 17.3 每日結算的關係 → …；參考《角色觀察屋》只取玩法原則，不用它的文字、介面圖形、戶型或素材），17.0 的檢查與未完成清單在 `docs/v17-plan.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
@@ -54,6 +55,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）  js/life/home16.js OC.House16（16.8）  js/world/models16.js（16.8 床）  js/life/career16.js OC.Career16（16.9）  js/ui/fair16.js OC.Fair16、js/life/outing16.js OC.Outing16（16.10）
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
+  js/life/chronicle17.js OC.Chronicle（17.1 時間線）  js/life/away17.js OC.Away（17.1 背景生活）  js/ui/away17ui.js OC.AwayUI（「你不在的時候」、頁面 chron17、一天結束的卡片）
   js/ui/guard17.js    OC.Guard（17.0 畫面安全網）  js/ui/theatre16.js OC.Theatre  js/life/health16.js OC.Health16／OC.Feud16
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
@@ -110,6 +112,7 @@ node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約
 node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
 node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
 node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
+node game/tests/v17/run.js [1 2 …]            # 17.x 驗收：安全網、背景生活、時間線、「你不在的時候」（約 3 分鐘）
 node game/tests/v15/run.js [1 2 …]            # 15.0 驗收（約 4 分鐘）
 node game/tests/v14/run.js [1 2 …]            # 14.0 驗收（約 3 分鐘）
 node game/tests/v14/shots.js <輸出目錄> both   # 逐頁截圖（淺色＋深色；用眼睛檢查用）
@@ -120,7 +123,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.0-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -160,7 +163,7 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - 特殊演出走 `OC.Stage.perform()`；**演出不改資料**（先用 Tx 等完成資料，再演），跳過／中斷不會遺失或重複獎勵。演出期間角色 `hold('stage')`。新動作同時加 `rigState` 分段姿勢與 `OC.Chars.ACTIONS` 備用鏈。
 - 音效只用 `OC.Sound`（即時合成、原創）；不要加入其他遊戲的音效或音樂。
 - **生活模擬只有一個時鐘**：所有需求、活動長度、冷卻用 `OC.Sim` 的遊戲分鐘（固定步長，app 迴圈餵現實秒數）；走路效果依距離。不要用 `setInterval`/幀數驅動生活邏輯，否則速度、fps、背景會改變結果。
-- 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、最多 8 小時、不觸發事件、不給獎勵、摘要回憶有 key）。
+- 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、不給獎勵、摘要回憶有 key）。17.1 起預設是 `awayRun`（最多 30 天，見下方 17.1 規則）；`life.settings.away17 === false` 時回到舊的 8 小時（舊測試 harness 這樣設）。
 - 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。
 - 事件每次播放都複製自己的步驟（`cur.steps`），選項只能改這份複本，不可改 `ev.steps`。
 - 暫停 OC 用 `Brain.hold(id, reason)` / `unhold`，不要直接改 `brain.st`。每個 hold 都要有保證會執行的 unhold（關閉回呼、計時器）；app 的 `holdWatchdog` 會放開沒有擁有者的 drag/dialogue/menu，並限制 call/pet/play/feed 的最長時間——新的互動保留要加進去。事件只能經 `OC.Events`（一次一個、間隔、冷卻、once 鍵）；重大關係變化只能產生通知、玩家同意才套用。
@@ -270,3 +273,12 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **17.0 頁面狀態**：`html.page-open`（主迴圈在變化時設定）＝有頁面蓋住世界；只在頁面上的外觀寫在 `island.css` 的 `html.page-open` 規則。成就／任務卡片在頁面上不得接收點擊。
 - **17.0 版本號**：離線建置的版本號來自 `android/gradle.properties` 的 `oc.versionCode`／`oc.versionName`（`build.gradle.kts`、`AndroidManifest.xml` 也要一起改），打包工作已把它們宣告為輸入；改版後確認 APK 內的 versionCode。
 - **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。
+- **17.1 背景生活**（`OC.Sim.awayRun`）：
+  - 離開時只跑抽象生活（`onAbstract`，參數 `{ offline, away, at }`）＋跨日掛鉤 `Sim.onAwayDay`；
+  - 推算中 `Sim.catching` 與 `Sim.virtual` 為真，`Clock.hour()`／`cal()`／實時天氣讀虛擬時間；
+  - **結果必須只由存檔決定**：推算路徑上不可用 `Math.random`、`Date.now()`、畫面上的狀態（用 `Sim.rnd()`、`Sim.now()`、`c.life.cur`），測試 v17 5 會用同一個存檔跑兩次比對；
+  - 會「轉向玩家」的東西（提示、卡片、演出）在 `catching` 時不出現；
+  - 新系統要在離開時也發生：寫 `onAbstract`（檢查 `o.away`）或 `onAwayDay` 的抽象版，不給星幣物品；
+  - 少於 10 分鐘的空檔 `o.away` 為假（畫面上的角色照舊）。
+- **17.1 時間線**（`OC.Chronicle`）：只記錄、不改資料；回憶、活動、關係變化已自動寫入，不要在各系統另外記；去重要存在存檔裡（不要用模組變數），否則同一段離開兩次結果不同。
+- **17.1 「你不在的時候」**：不需要回答，不經打擾預算；層要帶 `el` 並用 `popLayer(層本身)` 關；它開著時 `Stage.card` 會等。
