@@ -377,7 +377,7 @@
       g.history.length ? h('div', null, T('成長紀錄'), h('div.list', null, ...g.history.slice(0, 8).map((x) => row(null, `${x.value}`, `${{ accept: '接受', reject: '拒絕', lock: '鎖定不再提出', mute: '關閉同類建議' }[x.decision] || x.decision}・${new Date(x.at).toLocaleDateString('zh-TW')}${x.reason ? '・' + x.reason : ''}`)))) : null,
       T('最近的生活'), card(...(B().get(c.id) && B().get(c.id).a ? [] : c.life.log.slice(0, 5).map((l) => h('div.emo-cause', null, h('span.grow', null, l.text), h('span.faint', null, ago(l.gm))))).concat(M().memories(c, { type: 'activity' }).slice(0, 5).map((m) => h('div.emo-cause', null, h('span.grow', null, m.text), h('span.faint', null, ago(m.gm))))), small('記錄來自 OC 真實做過的事。')));
   }
-  const REL_SET = [['auto', '自動（依相處決定）'], ['family', '家人'], ['friend', '朋友'], ['bestfriend', '摯友'], ['rival', '對手'], ['partner', '伴侶'], ['lover', '戀人'], ['custom', '自訂…']];
+  const REL_SET = [['auto', '自動（依相處決定）'], ['family', '家人'], ['friend', '朋友'], ['bestfriend', '好友'], ['confidant', '知己'], ['rival', '對手'], ['partner', '伴侶'], ['lover', '戀人'], ['custom', '自訂…']];
   function relSection(c, refresh) {
     const others = Ch().all().filter((o) => o.id !== c.id), P = c.life.player;
     const metric = (k, zh, v, col) => h('div.need', null, h('span', { style: { width: '40px' } }, zh), bar(v, col), h('span.val.num', null, Math.round(v)));
@@ -387,12 +387,14 @@
       others.length ? h('div.vstack', null, ...others.map((o) => {
         const r = M().rel(c.id, o.id), back = M().relPeek(o.id, c.id), days = r.since != null ? Sim().day() - r.since : null;
         return card(h('div.hstack', null, h('b.grow', null, name(o)), h('span.tag.' + (r.fixed ? 'accent' : 'teal'), null, M().relLabel(r) + (r.fixed ? '・你設定的' : '')), h('button.btn.ghost.s', { on: { click: () => setRel(c, o, refresh) } }, '設定')),
-          metric('fam', '熟悉', r.fam, 'var(--teal)'), metric('aff', '好感', r.aff, 'var(--need-mood)'), metric('trust', '信任', r.trust, 'var(--need-social)'), metric('intim', '親密', r.intim, 'var(--need-fun)'), r.conflict > 1 ? metric('conflict', '衝突', r.conflict, 'var(--danger)') : null,
+          metric('fam', '熟悉', r.fam, 'var(--teal)'), metric('aff', '好感', r.aff, 'var(--need-mood)'), metric('trust', '信任', r.trust, 'var(--need-social)'), metric('intim', '心動', r.intim, 'var(--need-fun)'), r.conflict > 1 ? metric('conflict', '衝突', r.conflict, 'var(--danger)') : null,
           small([days != null && days >= 0 ? `認識 ${days} 天` : '還沒說過話', r.shared.length ? `共同興趣：${r.shared.join('、')}` : null, `共同回憶 ${r.mems} 個`, back ? `${name(o)}覺得牠是「${M().relLabel(back)}」` : null].filter(Boolean).join('・')),
           M().romanceOK(c.id, o.id) ? small('（雙方都已允許戀愛相關事件）') : null,
+          OC.Bond17 ? (() => { const L = OC.Bond17.layerOf(c.id, o.id), lv = OC.Bond17.loveState(c.id, o.id), bits = [L.id && OC.Bond17.IDS[L.id], ...L.tags.map((k) => OC.Bond17.TAGS[k].zh), lv && OC.Bond17.LOVE_ZH[lv]].filter(Boolean); return bits.length ? small(bits.join('・')) : null; })() : null,   /* 17.3: identity, tags, 單戀／曖昧 */
           riftRow(c, o, refresh));
       })) : h('div.empty', null, '島上只有牠一個 OC；建立更多角色，牠們就會互相認識。'),
-      small('關係是有方向的：牠怎麼看對方，不一定等於對方怎麼看牠。你設定的關係不會被自動改變。'));
+      small(`關係是有方向的：牠怎麼看對方，不一定等於對方怎麼看牠。你設定的關係不會被自動改變。${OC.Bond17 && OC.Bond17.on() ? '關係的名稱每天結算一次（數字連續兩天都這樣說才會變）。' : ''}`),
+      OC.Bond17 ? h('button.btn.s', { style: { marginTop: '10px' }, on: { click: () => OC.Pages.open('bond17', { id: c.id }) } }, '好感度與最近的變化') : null);
   }
   /** 12.0: a cold war between two OCs, with the one thing the player can do about it (let them talk it out; never forced, never certain) */
   function riftRow(c, o, refresh) {
@@ -415,7 +417,8 @@
             if ((k === 'lover' || k === 'partner') && !(await confirm('重大的關係變化', `要讓${name(c)}和${name(o)}成為${M().TYPES[k]}嗎？`, '確定'))) return;
             M().setRelType(c.id, o.id, k, custom); api.close(); toast('已設定關係', 'heart'); refresh();
           });
-        })));
+        })),
+        OC.Bond17UI ? h('div', { style: { marginTop: '14px' } }, h('b', null, '相處設定'), OC.Bond17UI.layerBox(c, o, refresh)) : null);   /* 17.3: identity, tags, 合拍度, 可以發展戀情, 固定 */
     });
   }
   const MEM_TYPES = [['', '全部'], ['milestone', '里程碑'], ['social', '社交'], ['event', '事件'], ['activity', '活動'], ['player', '和你'], ['growth', '成長'], ['wish', '願望'], ['conflict', '衝突'], ['discover', '發現']];

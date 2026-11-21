@@ -56,7 +56,7 @@
     if (!L.settings.lockRel) for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
       const a = all[i], b = all[j], k = key(a.id, b.id); if (S_.rifts[k] && ['cold', 'thaw'].includes(S_.rifts[k].stage)) continue;
       const ra = M().relPeek(a.id, b.id), rb = M().relPeek(b.id, a.id); if (!ra || !rb || ra.fixed || rb.fixed) continue;
-      if (['rival', 'lover', 'partner', 'custom'].includes(ra.type) || ['rival', 'lover', 'partner', 'custom'].includes(rb.type)) continue;
+      if (['rival', 'lover', 'engaged', 'partner', 'custom'].includes(ra.type) || ['rival', 'lover', 'engaged', 'partner', 'custom'].includes(rb.type)) continue;
       if (S_.rifts[k] && gm - (S_.rifts[k].endedAt || 0) < 4320) continue;   // not again right after making up
       const conflict = Math.max(ra.conflict, rb.conflict), fam = Math.min(ra.fam, rb.fam);
       if (conflict >= 38 && fam >= 18) startRift(a, b, conflict);

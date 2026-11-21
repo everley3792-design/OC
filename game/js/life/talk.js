@@ -60,6 +60,7 @@
         case 'rel': if (!any(v).includes(X.r ? X.r.type : 'stranger')) return fail(k); break;
         case 'aff': case 'fam': case 'trust': case 'intim': case 'conflict': if (!cmp(X.r ? X.r[k] : 0, v)) return fail(k); break;
         case 'days': { const d = X.r && X.r.since != null ? Sim().day() - X.r.since : -1; if (!cmp(d, v)) return fail(k); break; }
+        case 'stageDays': { const r = X.r, d = r && r.st17 && r.st17.type === r.type ? Sim().day() - r.st17.day : r && r.since != null ? Sim().day() - r.since : -1; if (!cmp(d, v)) return fail(k); break; }   /* 17.3: days since the relationship became what it is */
         case 'aff_player': if (!cmp(sp.life.player.aff || 0, v)) return fail(k); break;
         case 'hasMem': if (!!X.mem !== !!v) return fail(k); break;
         case 'hasWish': if (!!X.wish !== !!v) return fail(k); break;
@@ -85,7 +86,7 @@
     }
     return true;
   }
-  const KNOWN = ['voice', 'trait', 'notrait', 'otrait', 'style', 'quirk', 'emo', 'otherEmo', 'phase', 'wx', 'hour', 'need', 'oneed', 'rel', 'aff', 'fam', 'trust', 'intim', 'conflict', 'days', 'aff_player', 'hasMem', 'hasWish', 'hasShared', 'hasRecent', 'hasRecentWith', 'hasHabit', 'busy', 'app', 'item', 'place', 'act', 'char', 'other', 'flag', 'noflag', 'romance', 'tk', 'ts', 'chance'];
+  const KNOWN = ['voice', 'trait', 'notrait', 'otrait', 'style', 'quirk', 'emo', 'otherEmo', 'phase', 'wx', 'hour', 'need', 'oneed', 'rel', 'aff', 'fam', 'trust', 'intim', 'conflict', 'days', 'stageDays', 'aff_player', 'hasMem', 'hasWish', 'hasShared', 'hasRecent', 'hasRecentWith', 'hasHabit', 'busy', 'app', 'item', 'place', 'act', 'char', 'other', 'flag', 'noflag', 'romance', 'tk', 'ts', 'chance'];
 
   /** variables → text; returns null when a variable has no value (that line is skipped) */
   function fill(text, X) {

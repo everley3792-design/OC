@@ -185,7 +185,7 @@
   const skillLv = (c, id) => Math.min(10, Math.floor(Math.sqrt((c.life.skills[id] || 0) / 15)));
 
   // ======================= relationships (directed) =======================
-  const TYPES = { stranger: '陌生', acquaintance: '認識', friend: '朋友', bestfriend: '摯友', family: '家人', rival: '對手', lover: '戀人', partner: '伴侶', custom: '自訂' };
+  const TYPES = { stranger: '陌生', acquaintance: '認識', friend: '朋友', bestfriend: '好友', confidant: '知己', family: '家人', rival: '對手', lover: '戀人', engaged: '未婚伴侶', partner: '伴侶', ex: '前任', custom: '自訂' };   /* 17.3: 好友 (was 摯友), 知己, 未婚伴侶, 前任 */
   function rel(a, b) {
     const R = S().life.rel, key = a + '>' + b;
     if (R[key]) return R[key];
@@ -204,23 +204,25 @@
   const standIn = new Map();
   function relPeek(a, b) { return S().life.rel[a + '>' + b] || null; }
   function autoType(r) {
-    if (r.fixed || ['lover', 'partner', 'family', 'custom'].includes(r.type)) return r.type;
+    if (r.fixed || ['lover', 'engaged', 'partner', 'ex', 'family', 'custom'].includes(r.type)) return r.type;
+    if (r.aff >= 85 && r.trust >= 75 && r.fam >= 75) return 'confidant';
     if (r.conflict >= 45 && r.aff < 25) return 'rival';
     if (r.aff >= 70 && r.trust >= 55 && r.fam >= 50) return 'bestfriend';
     if (r.aff >= 35 && r.fam >= 25) return 'friend';
     if (r.fam >= 6) return 'acquaintance';
     return 'stranger';
   }
-  const RANK = { stranger: 0, rival: 0, acquaintance: 1, friend: 2, bestfriend: 3 };
+  const RANK = { stranger: 0, rival: 0, acquaintance: 1, friend: 2, bestfriend: 3, confidant: 4 };
   /** change a→b metrics (personality multipliers on the receiver side), update the type, emit milestones */
   function relChange(a, b, d, why) {
     if (!a || !b || a === b) return null;
     const r = rel(a, b), A = OC.Chars.get(a), before = r.type;
     if (r.since == null && (d.fam || 0) > 0) r.since = Sim().day();
     const mult = (k) => (k === 'fam' && A && has(A, 'shy') ? 0.8 : 1) * (k === 'aff' && A && has(A, 'gentle') ? 1.1 : 1) * (k === 'conflict' && A && has(A, 'stubborn') ? 1.2 : 1) * (k === 'conflict' && A && has(A, 'gentle') ? 0.7 : 1);
-    for (const k of ['fam', 'aff', 'trust', 'intim', 'conflict']) if (d[k]) r[k] = clamp(r[k] + d[k] * (d[k] > 0 ? mult(k) : 1));
+    const bm = (k) => (OC.Bond17 && d[k] > 0 ? OC.Bond17.mult(a, b, k, d[k]) : 1);   /* 17.3: 合拍度 and getting-along tags */
+    for (const k of ['fam', 'aff', 'trust', 'intim', 'conflict']) if (d[k]) r[k] = clamp(r[k] + d[k] * (d[k] > 0 ? mult(k) * bm(k) : 1));
     r.last = Sim().now();
-    if (!S().life.settings.lockRel) { const t = autoType(r); if (t !== r.type) { r.type = t; St.emit('life:relType', { a, b, from: before, to: t }); if ((RANK[t] || 0) > (RANK[before] || 0)) St.emit('life:relUp', { a, b, from: before, to: t }); note(A, 'rel', `對${name(OC.Chars.get(b))}：${TYPES[before]} → ${TYPES[t]}`); } }
+    if (!S().life.settings.lockRel && !(OC.Bond17 && OC.Bond17.on())) { const t = autoType(r);   /* 17.3: with the daily settlement on, the name changes once a day (OC.Bond17.settle), not here */ if (t !== r.type) { r.type = t; St.emit('life:relType', { a, b, from: before, to: t }); if ((RANK[t] || 0) > (RANK[before] || 0)) St.emit('life:relUp', { a, b, from: before, to: t }); note(A, 'rel', `對${name(OC.Chars.get(b))}：${TYPES[before]} → ${TYPES[t]}`); } }
     if (why) note(A, 'rel', `${why}：${Object.entries(d).map(([k, v]) => `${k}${v > 0 ? '+' : ''}${v}`).join(' ')}`);
     St.touch('life', { rel: a + '>' + b });
     return r;
@@ -228,7 +230,7 @@
   function relPair(a, b, d, why) { relChange(a, b, d, why); relChange(b, a, d, why); }
   /** the player sets a type (never changed automatically afterwards) */
   function setRelType(a, b, type, custom, both = true) {
-    for (const [x, y] of both ? [[a, b], [b, a]] : [[a, b]]) { const r = rel(x, y); r.type = type; r.fixed = type !== 'auto'; r.custom = custom || ''; if (type === 'auto') { r.fixed = false; r.type = autoType(Object.assign({}, r, { type: 'stranger' })); } }
+    for (const [x, y] of both ? [[a, b], [b, a]] : [[a, b]]) { const r = rel(x, y), was = r.type; r.type = type; r.fixed = type !== 'auto'; r.custom = custom || ''; if (type === 'auto') { r.fixed = false; r.type = autoType(Object.assign({}, r, { type: 'stranger' })); } if (r.type !== was || !r.st17) r.st17 = { type: r.type, day: Sim().day() }; r.b17 = null; }   /* 17.3: since when (anniversaries, stageDays) */
     St.touch('life', { relSet: a + '>' + b });
   }
   function relLabel(r) { return r ? (r.label16 && r.fixed ? r.label16 : r.type === 'custom' && r.custom ? r.custom : r.label16 && !['friend', 'bestfriend', 'lover', 'partner'].includes(r.type) ? r.label16 : TYPES[r.type]) : TYPES.stranger; }   /* 16.1: 爸媽、同學、前任… from the opening */

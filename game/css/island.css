@@ -798,3 +798,23 @@ html.page-open .obs17, html.rp17-island .obs17 { visibility: hidden; }
 .plan17-note { margin-top: 10px; font-size: var(--fs-s); }
 .plan17-out { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .plan17-out b { width: 100%; font-size: var(--fs-s); color: var(--ink-2); }
+
+/* ---------- 17.3 affection page and relationship layers (OC.Bond17UI) ---------- */
+.b17-who { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; }
+.b17-who .chip-btn { flex: 0 0 auto; }
+.b17-list { gap: 10px; }
+.b17-card { display: flex; flex-direction: column; gap: 6px; }
+.b17-m { display: grid; grid-template-columns: 3em 1fr 2.4em auto; align-items: center; gap: 8px; font-size: var(--fs-s); }
+.b17-bar { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent) var(--v), var(--surface-3) var(--v)); }
+.b17-bar.love { background: linear-gradient(90deg, var(--alert) var(--v), var(--surface-3) var(--v)); }
+.b17-love { background: var(--alert); color: var(--on-alert); }
+.b17-h { margin: 18px 0 8px; font-size: var(--fs-m); color: var(--ink); }
+.b17-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.b17-log { display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px; }
+.b17-li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: var(--r-m); background: var(--surface); box-shadow: 0 2px 0 var(--lip); font-size: var(--fs-s); }
+.b17-lay { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+.b17-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.b17-chips .chip-btn[disabled] { opacity: .45; }
+.b17-note { font-size: var(--fs-xs); margin-top: 4px; }
+.b17-row { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.b17-row > .grow { flex: 1; }

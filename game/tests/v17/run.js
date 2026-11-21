@@ -8,6 +8,8 @@
  *   a day away is not a missed work day · 9 「你不在的時候」 and the timeline by real touch (open, long press = 收藏, filters, 繼續觀察)
  *   · 10 the end of a day you watched: a card and the day closed in the timeline · 11 background life off = the old eight hours
  *   · 12 the timeline: 「正在發生」 on top of today, a filter by place
+ * 17.3 relationships: 20 settled once a day (two days, fixed untouched) · 21 drifting apart, letting go · 22 crush / mutual (adults,
+ *   romance on), commitments only by events with a yes · 23 anniversaries · 24 the affection page and the three layers (real touch)
  * 17.2 observation mode: 16 the switch by real touch (controls hidden, modes made 全自動 and put back, faces, the person card, a tap in the
  *   world follows) · 17 speeds 1×–60× only while watching · 18 the camera goes to what happens; your own pick is kept · 19 the floor plan */
 const H = require('../life/harness.js'); const { check } = H;
@@ -66,7 +68,7 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
     await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'full'; });   /* test 1 paused it */
     if (want(5)) {
       const r = await page.evaluate(() => {
-        const S0 = OC.Store.s; S0.life.settings.away17 = true; S0.life.settings.travel = true; S0.life.settings.health16 = true; OC.Sim.lifeSeed();
+        const S0 = OC.Store.s; S0.life.settings.away17 = true; S0.life.settings.travel = true; S0.life.settings.health16 = true; S0.life.settings.daily17 = true; /* 17.3: the daily settlement must tell the same story too */ OC.Sim.lifeSeed();
         const snap = JSON.stringify(S0), T = Date.now(), coins = S0.coins, inv = JSON.stringify(S0.inv);
         const run = () => { OC.Store.s.life.lastReal = T - 30 * 864e5; const t0 = performance.now(); OC.Sim.awayRun('test', T); const ms = performance.now() - t0; const o = OC.Store.s.life.offline;
           return { ms, ch: OC.Chronicle.range(o.from, o.to).map((x) => x.gm + ' ' + x.text), rel: JSON.stringify(OC.Store.s.life.rel), needs: JSON.stringify(OC.Chars.all().map((c) => [c.life.loc, c.needs, c.life.skills])), coins: OC.Store.s.coins, inv: JSON.stringify(OC.Store.s.inv), sim: o.simulated, days: Object.keys(OC.Store.s.life.away17.days).length }; };
@@ -275,14 +277,14 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
       const started = await page.evaluate(async (ids) => { const [ba, bb] = ids.map((id) => OC.Brain.get(id)); for (const b of [ba, bb]) { [...b.holds].forEach((x) => OC.Brain.unhold(b.id, x)); if (b.st === 'do') OC.Brain.finish(b, 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); b.st = 'think'; b.thinkAt = 1e9; }
         const ok = OC.Brain.Social.start(bb, ba, 'chat'); return ok; }, ids);
       const talking = await wait(() => OC.Brain.convs.some((c) => c.st === 'talk'), 20000);
-      const directed = await wait(() => { const h = OC.Observe.hot(); return h.length && /在/.test(h[0].why) && /在/.test(document.querySelector('.obs17-cap').textContent) && OC.Observe.state.follow === h[0].id; }, 15000);
+      const directed = await wait(() => { const h = OC.Observe.hot(); return h.length && /在/.test(h[0].why) && /在/.test(document.querySelector('.obs17-cap').textContent) && h.some((x) => x.id === OC.Observe.state.follow && /在/.test(x.why)); }, 15000);
       const cap = await page.evaluate(() => document.querySelector('.obs17-cap').textContent);
       /* picking someone yourself: the director leaves them alone */
       await tapSel(`.obs17-p[data-oc="${ids[0]}"]`); const picked = await page.evaluate(() => OC.Observe.state.follow);
       await page.waitForTimeout(7000); const kept = await page.evaluate(() => OC.Observe.state.follow);
       await page.evaluate(() => OC.Observe.leave());
-      check('18 自動鏡頭：島上有事（兩個人聊起來）鏡頭自己過去、上方寫「誰和誰在聊天」；自己點了某個人之後，自動鏡頭不會馬上把鏡頭搶走',
-        started && talking && directed && /在/.test(cap) && picked === ids[0] && kept === ids[0], { started, talking, directed, cap, picked, kept });
+      check('18 自動鏡頭：島上有事（兩個人聊起來；已經在說話也算）鏡頭自己過去、上方寫「誰和誰在聊天」；自己點了某個人之後，自動鏡頭不會馬上把鏡頭搶走',
+        (started || talking) && talking && directed && /在/.test(cap) && picked === ids[0] && kept === ids[0], { started, talking, directed, cap, picked, kept });
     }
     if (want(19)) {
       await calmObs();
@@ -300,6 +302,103 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
       check('19 戶型總覽：住處的 2D 俯瞰圖（每間一個分頁），圓點標出在家的人（沒在畫面上的是空心＝大概位置），不在家的列在下面；點圓點＝關掉頁面、鏡頭去那個人那裡（別的地點就過去）；結束觀察回到原本操控的角色',
         r.homes.includes('home') && r.dots.some((d) => d[0] === r.b && d[1] === false) && page1.tabs.length === r.homes.length && page1.out.includes(r.a) && page1.drawn > 1000 && !!dot && went && back,
         { r, page1, dot: !!dot, went, mid, back });
+    }
+    /* 17.3 relationships settled once a day */
+    const prep173 = () => page.evaluate(() => { if (OC.Observe && OC.Observe.on) OC.Observe.leave(); for (const l of OC.UI.stack.slice()) l.close(); if (OC.Events.current) OC.Events.end('t'); const S = OC.Store.s; S.life.ev.lastAny = Date.now() + 3.6e6; S.life.settings.daily17 = true; S.life.settings.lockRel = false;
+      const [a, b] = OC.Chars.all(); for (const c of [a, b]) c.profile.age = '25'; for (const [x, y] of [[a, b], [b, a]]) { const r = OC.Mind.rel(x.id, y.id); Object.assign(r, { type: 'acquaintance', fixed: false, fam: 10, aff: 10, trust: 20, intim: 0, conflict: 0, b17: null, lv17: null, lay17: null, st17: null, since: OC.Sim.day() - 3, last: OC.Sim.now() }); }
+      S.life.settings.romance = Object.assign(S.life.settings.romance, { enabled: false, adult: {}, forbid: [], fixed: {} }); OC.Bond17.st().log = []; OC.Bond17.st().anniv = {}; OC.Bond17.st().last = OC.Sim.day(); return [a.id, b.id]; });
+    if (want(20)) {
+      await prep173();
+      const r = await page.evaluate(() => {
+        const [a, b] = OC.Chars.all(), M = OC.Mind, Bd = OC.Bond17, d0 = OC.Sim.day(), T = (x, y) => M.rel(x.id, y.id).type;
+        M.relPair(a.id, b.id, { fam: 40, aff: 40 }, 't'); const instant = T(a, b);   /* the numbers say 朋友 now — the name waits for the settlement */
+        Bd.settle(d0 + 1); const day1 = T(a, b), soon = M.rel(a.id, b.id).b17.n;
+        Bd.settle(d0 + 2); const day2 = T(a, b), log = Bd.changesOf(a.id).map((x) => [x.from, x.to, x.kind]);
+        /* one bad day in between does not flip it back and forth */
+        M.relPair(a.id, b.id, { aff: -12 }, 't'); Bd.settle(d0 + 3); M.relPair(a.id, b.id, { aff: 12 }, 't'); Bd.settle(d0 + 4); const steady = T(a, b);
+        /* a fixed relationship never changes by itself */
+        for (const x of [M.rel(a.id, b.id), M.rel(b.id, a.id)]) x.fixed = true; M.relPair(a.id, b.id, { aff: 60, trust: 60, fam: 60 }, 't'); Bd.settle(d0 + 5); Bd.settle(d0 + 6); const fixed = T(a, b);
+        for (const x of [M.rel(a.id, b.id), M.rel(b.id, a.id)]) x.fixed = false; Bd.settle(d0 + 7); Bd.settle(d0 + 8); const unfixed = T(a, b);
+        const twice = Bd.settle(d0 + 8);   /* the same day twice = nothing */
+        return { instant, day1, soon, day2, log, steady, fixed, unfixed, twice };
+      });
+      check('20 關係每天結算：數字一變名稱不會馬上變；連續兩天都這樣說才變（陌生→認識→朋友→好友→知己）並記下來；中間一天變差不會來回跳；玩家固定的不變；同一天不會結算兩次',
+        r.instant === 'acquaintance' && r.day1 === 'acquaintance' && r.soon === 1 && r.day2 === 'friend' && r.log.some((x) => x[0] === '認識' && x[1] === '朋友' && x[2] === 'up') && r.steady === 'friend' && r.fixed === 'friend' && ['bestfriend', 'confidant'].includes(r.unfixed) && r.twice === 0, r);
+    }
+    if (want(21)) {
+      await prep173();
+      const r = await page.evaluate(() => {
+        const [a, b] = OC.Chars.all(), M = OC.Mind, Bd = OC.Bond17, d0 = OC.Sim.day(), now = OC.Sim.now();
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(M.rel(x.id, y.id), { type: 'friend', fam: 26, aff: 36, trust: 30, last: now - 10 * 1440 });
+        let d = d0, drift = null; for (let i = 1; i <= 16 && !drift; i++) { d = d0 + i; Bd.settle(d); if (M.rel(a.id, b.id).type !== 'friend') drift = [i, M.rel(a.id, b.id).type]; }
+        /* quiet tag: never drifts */
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(M.rel(x.id, y.id), { type: 'friend', fam: 26, aff: 36, last: now - 10 * 1440, b17: null }); Bd.setLayer(a.id, b.id, { tags: ['quiet'] });
+        const f0 = M.rel(a.id, b.id).fam; for (let i = 1; i <= 5; i++) Bd.settle(d + i); const quietFam = [f0, M.rel(a.id, b.id).fam, M.rel(a.id, b.id).type]; d += 5; Bd.setLayer(a.id, b.id, { tags: [] });
+        /* a rivalry that cools: 釋懷 */
+        for (const [x, y] of [[a, b], [b, a]]) Object.assign(M.rel(x.id, y.id), { type: 'rival', conflict: 20, aff: 20, fam: 30, last: now, b17: null });
+        Bd.settle(d + 1); Bd.settle(d + 2); const letgo = M.rel(a.id, b.id).type, last = Bd.changesOf(a.id)[0];
+        return { drift, quietFam, letgo, last: last && [last.from, last.to, last.kind] };
+      });
+      check('21 往回走：很久沒見面會慢慢淡掉（朋友 → 認識）；「不說話也自在」不會淡；對手的衝突消了會釋懷（對手 → 認識），都寫進紀錄',
+        r.drift && r.drift[1] === 'acquaintance' && r.quietFam[0] === r.quietFam[1] && r.quietFam[2] === 'friend' && r.letgo === 'acquaintance' && r.last && r.last[0] === '對手' && r.last[1] === '認識' && r.last[2] === 'letgo', r);
+    }
+    if (want(22)) {
+      await prep173();
+      const r = await page.evaluate(() => {
+        const [a, b] = OC.Chars.all(), M = OC.Mind, Bd = OC.Bond17, d0 = OC.Sim.day(), R = OC.Store.s.life.settings.romance, ev = (id) => OC.LifeData.EVENTS.find((e) => e.id === id);
+        R.enabled = true; R.adult[a.id] = R.adult[b.id] = true;
+        Object.assign(M.rel(a.id, b.id), { aff: 60, intim: 50, fam: 40 }); Object.assign(M.rel(b.id, a.id), { aff: 40, intim: 10, fam: 40 });
+        Bd.settle(d0 + 1); Bd.settle(d0 + 2); const crush = [Bd.loveState(a.id, b.id), Bd.loveState(b.id, a.id)];
+        Object.assign(M.rel(b.id, a.id), { aff: 60, intim: 50 }); Bd.settle(d0 + 3); Bd.settle(d0 + 4); const mutual = [Bd.loveState(a.id, b.id), Bd.loveState(b.id, a.id)];
+        /* under 18: never, whatever the numbers and settings say */
+        b.profile.age = '15'; for (const x of [M.rel(a.id, b.id), M.rel(b.id, a.id)]) x.lv17 = null; Bd.settle(d0 + 5); Bd.settle(d0 + 6); const minor = Bd.loveState(a.id, b.id); b.profile.age = '25';
+        /* 「可以發展戀情」 off: the same */
+        Bd.setLayer(a.id, b.id, { romance: false }); const off = M.romanceOK(a.id, b.id); Bd.setLayer(a.id, b.id, { romance: true });
+        /* the commitments are events the player must say yes to */
+        M.setRelType(a.id, b.id, 'lover'); const chk = (id) => { const why = []; const ok = OC.Events.check(ev(id), a, b, {}, why); return [ok, why.join()]; };
+        const early = chk('propose17'); for (const x of [M.rel(a.id, b.id), M.rel(b.id, a.id)]) { x.st17.day -= 20; Object.assign(x, { aff: 90, intim: 85 }); } const ready = chk('propose17');
+        const conf = ['propose17', 'wedding17', 'breakup17', 'reunite17'].map((id) => ev(id) && ev(id).confirm && ev(id).confirm.ok.relType);
+        const auto = (() => { Bd.settle(d0 + 30); Bd.settle(d0 + 31); return M.rel(a.id, b.id).type; })();   /* the daily settlement never makes or breaks a couple */
+        M.setRelType(a.id, b.id, 'auto'); R.enabled = false;
+        return { crush, mutual, minor, off, early, ready, conf, auto, types: [M.TYPES.engaged, M.TYPES.ex, M.TYPES.confidant, M.TYPES.bestfriend] };
+      });
+      check('22 心動：兩個成年人、打開戀愛時才有；單方面＝單戀，雙方＝曖昧（也要連續兩天）；未滿 18 歲、或「可以發展戀情」關掉就沒有；訂婚、結婚、分手、復合都是要玩家同意的事件（在一起 14 天以上才會求婚）；每日結算不會自己讓兩人在一起或分開',
+        r.crush[0] === 'crush' && !r.crush[1] && r.mutual[0] === 'mutual' && r.mutual[1] === 'mutual' && !r.minor && r.off === false && !r.early[0] && /stageDays/.test(r.early[1]) && r.ready[0] && JSON.stringify(r.conf) === JSON.stringify(['engaged', 'partner', 'ex', 'lover']) && r.auto === 'lover' && r.types.join() === '未婚伴侶,前任,知己,好友', r);
+    }
+    if (want(23)) {
+      await prep173();
+      const r = await page.evaluate(() => {
+        const [a, b] = OC.Chars.all(), M = OC.Mind, Bd = OC.Bond17, d0 = OC.Sim.day(), R = OC.Store.s.life.settings.romance;
+        R.enabled = true; R.adult[a.id] = R.adult[b.id] = true; M.setRelType(a.id, b.id, 'lover');
+        for (const x of [M.rel(a.id, b.id), M.rel(b.id, a.id)]) x.st17.day = d0 - 6;
+        Bd.settle(d0 + 1); const mem = M.memories(a, {}).filter((m) => /在一起第 7 天/.test(m.text)).length + M.memories(b, {}).filter((m) => /在一起第 7 天/.test(m.text)).length;
+        const logged = Bd.changesOf(a.id).filter((x) => x.kind === 'anniv').map((x) => x.to);
+        Bd.st().last = d0; Bd.settle(d0 + 1); const again = M.memories(a, {}).filter((m) => /在一起第 7 天/.test(m.text)).length;
+        const scene = (OC.Store.s.life.theatre16 || []).some((x) => /在一起第 7 天/.test(x.title));
+        Bd.settle(d0 + 2); const day8 = Bd.changesOf(a.id).filter((x) => x.kind === 'anniv').length;
+        M.setRelType(a.id, b.id, 'auto'); R.enabled = false;
+        return { mem, logged, again, scene, day8 };
+      });
+      check('23 紀念日：在一起第 7 天兩個人都記得、紀錄裡有、有一段小劇場；同一個紀念日不會重複；第 8 天沒有',
+        r.mem === 2 && r.logged.includes('在一起第 7 天') && r.again === 1 && r.scene && r.day8 === 1, r);
+    }
+    if (want(24)) {
+      const ids = await prep173();
+      await page.evaluate((ids) => { OC.Mind.relPair(ids[0], ids[1], { fam: 50, aff: 50 }, 't'); const d = OC.Sim.day(); OC.Bond17.st().last = d; OC.Bond17.settle(d + 1); OC.Bond17.settle(d + 2); OC.App.tab('island'); OC.Pages.open('bond17', { id: ids[0] }); }, ids);
+      await page.waitForTimeout(900);
+      const page1 = await page.evaluate(() => ({ who: document.querySelectorAll('[data-b17who]').length, cards: document.querySelectorAll('.b17-card').length, bars: document.querySelectorAll('.b17-card .b17-bar').length, log: [...document.querySelectorAll('.b17-li')].map((x) => x.textContent) }));
+      await tapSel(`[data-b17set="${ids[1]}"]`); await wait(() => !!document.querySelector('.sheet.open .b17-lay'), 4000); await page.waitForTimeout(600);
+      await tapSel('.sheet.open [data-b17id="roommate"]'); await page.waitForTimeout(300);
+      await tapSel('.sheet.open [data-b17tag="care"]'); await page.waitForTimeout(300);
+      await tapSel('.sheet.open .seg [data-v="2"]'); await page.waitForTimeout(300);
+      const r = await page.evaluate((ids) => {
+        const L = OC.Bond17.layerOf(ids[0], ids[1]), back = OC.Bond17.layerOf(ids[1], ids[0]), M = OC.Mind;
+        const a0 = M.rel(ids[0], ids[1]).aff; M.relChange(ids[0], ids[1], { aff: 10 }, 't'); const gain = M.rel(ids[0], ids[1]).aff - a0;
+        for (const l of OC.UI.stack.slice()) l.close();
+        return { L, back, gain: Math.round(gain * 10) / 10 };
+      }, ids);
+      check('24 好感度頁（真實觸控）：選人、每個人的好感（雙向）與名稱、最近的變化；「設定」裡的身分、相處標籤、合拍度兩個方向都套用；非常合拍時好感漲得比較快（＋10 → ＋14）',
+        page1.who === 2 && page1.cards === 1 && page1.bars >= 1 && page1.log.some((x) => /朋友/.test(x)) && r.L.id === 'roommate' && r.L.tags.includes('care') && r.L.fit === 2 && r.back.id === 'roommate' && r.back.fit === 2 && r.gain === 14, { page1, r });
     }
     /* last: it takes the 3D view down for good */
     if (want(3)) {

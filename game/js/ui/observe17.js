@@ -128,7 +128,7 @@
     const out = [], add = (id, sc, w) => { if (id && actorOf(id)) out.push({ id, sc, why: w }); };
     const ev = OC.Events && OC.Events.current; if (ev && ev.cast && ev.cast.a && ev.cast.a.id) add(ev.cast.a.id, 100, (ev.ev && ev.ev.zh) || '有事情發生了');
     const ar = OC.Arcs && OC.Arcs.running; if (ar && ar.ids && ar.ids.length) add(ar.ids[0], 80, `${ar.ids.length} 個人聚在一起`);
-    for (const cv of (B().convs || [])) if (cv.st === 'talk' && cv.a && cv.b) { const a = Ch().get(cv.a.id), b = Ch().get(cv.b.id); if (a && b) add(a.id, 50 + (OC.Arcs && OC.Arcs.cold(a.id, b.id) ? 20 : 0), `${name(a)}和${name(b)}在${((OC.LifeData.SOCIAL || {})[cv.kind] || {}).zh || '說話'}`); }
+    for (const cv of (B().convs || [])) if (cv.st === 'talk' && cv.a && cv.b) { const a = Ch().get(cv.a.id), b = Ch().get(cv.b.id); if (a && b) { const sc = 50 + (OC.Arcs && OC.Arcs.cold(a.id, b.id) ? 20 : 0), w = `${name(a)}和${name(b)}在${((OC.LifeData.SOCIAL || {})[cv.kind] || {}).zh || '說話'}`; add(a.id, sc, w); add(b.id, sc - 1, w); } }   /* both of them (the one already in view keeps the camera) */
     for (const c of Ch().all()) { const e = M().dominant(c); if (['lonely', 'down', 'annoyed', 'jealous', 'nervous'].includes(e)) add(c.id, 30, `${name(c)}${M().label(c)}`); }
     return out.sort((a, b) => b.sc - a.sc);
   }
@@ -137,6 +137,7 @@
     if (document.documentElement.classList.contains('cinema')) return;   /* a cut-scene owns the camera */
     lastDirect = now; const best = hot()[0], cur = s.follow && hot().find((x) => x.id === s.follow);
     if (best && (!cur || best.sc > cur.sc + 15) && best.id !== s.follow) { follow(best.id, best.why); if (cardId) { cardId = best.id; cardKey = ''; } }
+    else if (cur && why !== cur.why) why = cur.why;   /* the camera is already on it: say why it is worth watching */
     else if (!best && !actorOf(s.follow)) { follow(S().activeId, null); }
   }
 

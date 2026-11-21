@@ -11,7 +11,7 @@
   const app = () => OC.App;
 
   // 10.0: every page head carries a sticker (what this place is), on a white toy pad
-  const PAGE_STK = { char: 'person', profile: 'person', charedit: 'person', workshop: 'brush', studio: 'sparkle', library: 'sparkle', explore: 'compass', more: 'flag', quests: 'flag', goals: 'star',
+  const PAGE_STK = { plan17: 'sofa', bond17: 'heart', char: 'person', profile: 'person', charedit: 'person', workshop: 'brush', studio: 'sparkle', library: 'sparkle', explore: 'compass', more: 'flag', quests: 'flag', goals: 'star',
     bag: 'bag', shop: 'shop', products: 'shop', ledger: 'coin', settings: 'gear', about: 'star', collection: 'book', ach: 'trophy', needs: 'heart', npc: 'users', lifeset: 'heart', dialogue: 'chat', lifedev: 'gear',
     petcenter: 'phone', petone: 'phone', petapps: 'phone', pettools: 'clock', petdiag: 'gear' };
   function head(title, sub, right, stk) {

@@ -247,7 +247,7 @@
     const now = Sim().now(), sa = c.life.socialAt || {};
     for (const oc of Ch().all()) {
       if (oc.id === c.id) continue; const r = M().relPeek ? M().relPeek(c.id, oc.id) : null; if (!r || r.aff < 25) continue;
-      const close = ['friend', 'bestfriend', 'partner', 'family', 'parent', 'child', 'sibling', 'lover', 'spouse'].includes(r.type) || r.aff >= 45;
+      const close = ['friend', 'bestfriend', 'confidant', 'partner', 'engaged', 'family', 'parent', 'child', 'sibling', 'lover', 'spouse'].includes(r.type) || r.aff >= 45;
       if (!close) continue;
       const last = sa[oc.id]; if (last == null) continue;   /* only real conversations count (the relationship's own clock is not in game minutes) */
       const days = (now - last) / 1440; if (days < 1) continue;

@@ -82,7 +82,7 @@
     if (!o) return true; const r = M().relPeek ? M().relPeek(c.id, o.id) : null; if (!r) return false;
     const fam = r.type === 'family' || r.kind16 === 'parent' || r.kind16 === 'sibling';
     if (OC.People && (OC.People.minor(c) !== OC.People.minor(o)) && !fam) return false;
-    if (['partner', 'lover'].includes(r.type)) return true;
+    if (['partner', 'engaged', 'lover'].includes(r.type)) return true;
     if (fam) return r.conflict < 40;
     return r.aff >= 70 && r.trust >= 50 && r.conflict < 20 && !any(c, ['aloof', 'independent', 'slowwarm']);
   }
@@ -110,7 +110,7 @@
   function reaction(R, mover, hid, after) {
     const r = M().relPeek ? M().relPeek(R.id, mover.id) : null, why = [];
     let s = r ? (r.aff - r.conflict) / 50 + r.fam / 200 : -0.1;
-    if (r && (r.type === 'family' || r.type === 'partner' || r.type === 'lover')) { s += 1; why.push(r.type === 'family' ? '是家人' : '是另一半'); }
+    if (r && (r.type === 'family' || r.type === 'partner' || r.type === 'engaged' || r.type === 'lover')) { s += 1; why.push(r.type === 'family' ? '是家人' : '是另一半'); }
     else if (r && r.aff >= 45) why.push('感情不錯');
     else if (!r || r.type === 'stranger') why.push('還不熟');
     if (r && r.conflict >= 30) why.push('之前有過摩擦');
@@ -228,7 +228,7 @@
 
   // ================================================================ family: children and adoption (off by default; always with your consent)
   const famOn = () => !!S().life.settings.family16;
-  const isCouple = (a, b) => { const r = M().relPeek(a.id, b.id); return r && ['partner', 'lover'].includes(r.type); };
+  const isCouple = (a, b) => { const r = M().relPeek(a.id, b.id); return r && ['partner', 'engaged', 'lover'].includes(r.type); };
   const adult = (c) => !(OC.People && OC.People.minor(c)) && !young(c) && stageOf(c) !== 'teen';
   function couples() {
     const out = [];
@@ -312,7 +312,7 @@
     for (const a of all) for (const b of all) {
       if (a === b) continue; const r = M().relPeek(a.id, b.id); if (!r) continue;
       if (r.kind16 === 'parent' && r.label16 === '孩子') (parentsOf[b.id] = parentsOf[b.id] || new Set()).add(a.id);
-      if (['partner', 'lover'].includes(r.type)) (partners[a.id] = partners[a.id] || new Set()).add(b.id);
+      if (['partner', 'engaged', 'lover'].includes(r.type)) (partners[a.id] = partners[a.id] || new Set()).add(b.id);
     }
     const depth = {}; const dOf = (id, seen = new Set()) => { if (depth[id] != null) return depth[id]; if (seen.has(id)) return 0; seen.add(id); const ps = [...(parentsOf[id] || [])]; return (depth[id] = ps.length ? 1 + Math.max(...ps.map((p) => dOf(p, seen))) : 0); };
     for (const c of all) dOf(c.id);
