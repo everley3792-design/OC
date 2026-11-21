@@ -149,7 +149,7 @@ class Journal(private val sim: LifeSim) {
             val lines = life.log.filter { it.who == p.id && it.minute >= from && it.minute < from + 1440 }.sortedByDescending { it.weight }.take(4).map { it.text.substringAfter("：") }
             if (lines.isEmpty()) continue
             val r = Rng.of(life.seed, "diary:${p.id}:$day")
-            val txt = lines.mapIndexed { i, l -> Speech.say(p.spec, (if (i == 0) "今天，我" else r.pick(listOf("還有，我", "後來我", "對了，我"))) + l.removePrefix(p.name) + "。", r, p.affinity) } +
+            val txt = lines.mapIndexed { i, l -> Speech.say(p.spec, (if (i == 0) "今天，我" else r.pick(listOf("還有，我", "後來我", "對了，我"))) + l.removePrefix(p.name).trimEnd('。', '！', '～'), r, p.affinity).let { s -> if (s.last() in "。！？～") s else "$s。" } } +
                 Speech.say(p.spec, r.pick(listOf("明天也要加油。", "今天是不錯的一天。", "好睏，晚安。", "希望明天也一樣開心。")), r, p.affinity)
             pr.diary += DiaryEntry(day - 1, p.id, txt)
         }

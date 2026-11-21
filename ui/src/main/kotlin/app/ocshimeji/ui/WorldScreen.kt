@@ -15,6 +15,8 @@ import app.ocshimeji.sim.life.AwaySummary
 import app.ocshimeji.sim.life.LifeSim
 import app.ocshimeji.sim.life.Person
 import app.ocshimeji.sim.life.Pose
+import app.ocshimeji.sim.chars.Speech as SpeechSay
+import app.ocshimeji.sim.Rng as RestRng
 import app.ocshimeji.sim.town.Town as TownData
 import kotlin.math.hypot
 import kotlin.math.max
@@ -64,6 +66,7 @@ class WorldScreen(val slotId: String) : Screen() {
     fun decor() {
         fun img(p: String) = if (p.isBlank()) null else app.assets.decode("lib:$p@256", 256) { app.saves.readFile(p) }
         view.itemImg = { path -> img(path.removePrefix("lib:")) }
+        view.plantStage = { x, y -> sim.journal.plantStage(x, y) }
         view.walls = sim.life.decor.mapNotNull { (r, d) -> img(d.wall)?.let { r to it } }.toMap(); view.floors = sim.life.decor.mapNotNull { (r, d) -> img(d.floor)?.let { r to it } }.toMap()
     }
     override fun leave() { app.platform.stopMusic(); val o = open ?: return; o.listeners -= listener; o.screenActive = false; app.host.release(slotId); open = null }
@@ -111,7 +114,8 @@ class WorldScreen(val slotId: String) : Screen() {
     fun music() {
         if (sim.life.music.isNotBlank()) return
         val h = sim.hour; val k = when { h >= 5 && h < 10 -> "morning"; h >= 10 && h < 17 -> if (sim.weather() == "rain") "rain" else "day"; h >= 17 && h < 20 -> "evening"; else -> "night" }
-        if (k != bgmKind) { bgmKind = k; app.platform.bgm(k) }
+        val ks = k + ":" + sim.season()   /* the season's sounds join in (plan N-03 / J-03) */
+        if (ks != bgmKind) { bgmKind = ks; app.platform.bgm(ks) }
     }
     /** decorating (plan G-01): on = tap furniture to pick it, tap the floor to put it there */
     var placing = false; private set
@@ -119,8 +123,10 @@ class WorldScreen(val slotId: String) : Screen() {
     var placeBag: String? = null; private set
     fun setPlacing(on: Boolean, bag: String? = null) { placing = on; placeSel = -1; placeBag = bag; if (on && observing) setObserving(false); if (!on) flush() }
     /** a tap on tile (x, y) while decorating */
+    /** the room last touched while decorating (its scores are shown) */
+    var placeRoom: String = ""; private set
     fun placeAt(tx: Int, ty: Int) {
-        val d = sim.decorate; val pcs = d.pieces()
+        val d = sim.decorate; val pcs = d.pieces(); sim.house.roomAt(tx, ty)?.let { placeRoom = it.id }
         placeBag?.let { k -> val r = d.place(k, tx, ty); if (r != null) app.toast(r) else { app.platform.sound("pop"); if (sim.economy.count(k) <= 0) placeBag = null }; return }
         val hit = pcs.indexOfLast { pc -> val k = Furniture.kind(pc.kind); tx >= pc.x && tx < pc.x + k.w && ty >= pc.y && ty < pc.y + k.h }
         if (placeSel >= 0 && hit != placeSel) { val r = d.move(placeSel, tx, ty); if (r != null) app.toast(r) else { app.platform.sound("pop"); placeSel = -1 }; return }
@@ -196,12 +202,19 @@ class WorldScreen(val slotId: String) : Screen() {
         hits.sortBy { h -> life.people.firstOrNull { it.id == h.first }?.let { if (sim.body(it.id).held) 99f else it.y } ?: 0f }
         // ---- night: the whole scene a little blue
         if (lt < 1f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF1E2550.toInt(), (1 - lt) * 0.22f))
+        Wx.calm = app.saves.flag("a11y:calm")
         if (!placing) Wx.draw(g, W, H, wx, app.time)
         // ---- over the scene: mood skies, hearts, speech
         for ((id, r) in hits) {
             val p = sim.person(id) ?: continue; val cx = r[0] + r[2] / 2; val hy = r[1]
             Widgets.sky(g, t, sim.moodSky(p), cx + r[2] * 0.42f, hy + 4, 9f * min(1.3f, zoom))
+            /* asleep: a dream made of today (plan A-06) — little pictures that change slowly */
+            if (sim.asleep(p)) sim.journal.dreamOf(p.id)?.let { d -> val bx = cx + r[2] * 0.2f; val byy = hy - 26
+                g.fillCircle(bx - 18, byy + 22, 3f, t.surface); g.fillCircle(bx - 12, byy + 14, 5f, t.surface); g.fillRound(bx - 6, byy - 18, 52f, 30f, 15f, t.surface)
+                val ic = d.icons[((app.time / 1.6f).toInt()) % d.icons.size]
+                if (ic in setOf("rain", "moon")) Widgets.sky(g, t, ic, bx + 20, byy - 3, 10f) else Widgets.icon(g, ic, bx + 20, byy - 3, 14f, t.ink2) }
         }
+        restReminder(g, t, dt)
         // ---- worry bubbles (tap = what is wrong), requests, exaggerated effects
         for ((id, r) in hits) {
             val p = sim.person(id) ?: continue; val cx = r[0] + r[2] / 2; val hy = r[1]
@@ -481,6 +494,7 @@ class WorldScreen(val slotId: String) : Screen() {
             id.startsWith("pl:") -> when (val k = id.removePrefix("pl:")) {
                 "done" -> setPlacing(false)
                 "undo" -> sim.decorate.undo()?.let { app.toast(it) }
+                "flip" -> if (placeSel < 0) app.toast("先點一件家具") else sim.decorate.flip(placeSel)?.let { app.toast(it) }
                 "remove" -> if (placeSel < 0) app.toast("先點一件家具") else { val r = sim.decorate.remove(placeSel); if (r != null) app.toast(r) else { app.toast("收進背包了"); placeSel = -1 } }
                 else -> { placeBag = if (placeBag == k) null else k; placeSel = -1 }
             }
@@ -527,6 +541,13 @@ class WorldScreen(val slotId: String) : Screen() {
         })
     }
     override fun back(): Boolean { if (placing) { setPlacing(false); return true }; if (observing) { setObserving(false); return true }; return false }
+    /** a break after an hour (plan O-05): someone at home says so (screen-side words; the life is not touched) */
+    private var played = 0f
+    private fun restReminder(g: Gfx, t: Theme, dt: Float) {
+        played += dt; if (played < 3600f) return; played = 0f
+        val p = sim.life.people.firstOrNull { it.out == null && !it.desk && !sim.asleep(it) } ?: return
+        bubbles[p.id] = Bubble(SpeechSay.say(p.spec, "已經陪我一個小時了，起來動一動、喝杯水吧。", RestRng(7L), p.affinity, true), app.time); app.toast("已經玩了一個小時，休息一下吧")
+    }
     /** decorating: the floor grid, the picked piece, what is fixed */
     private fun placingMarks(g: Gfx, t: Theme) {
         val h = sim.house; val T = view.T; val K = view.K

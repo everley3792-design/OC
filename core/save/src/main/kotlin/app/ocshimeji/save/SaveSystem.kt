@@ -48,6 +48,7 @@ class SaveSystem(private val store: Storage, internal val now: () -> Long = { Sy
     }
     // ---------------- small app-wide flags (a tip card already seen…) ----------------
     fun flag(key: String): Boolean = flags().contains(key)
+    fun clearFlag(key: String) { val f = flags(); if (key !in f) return; store.write(FLAGS, json.encodeToString(f - key).encodeToByteArray()); flagCache = f - key }
     fun setFlag(key: String) { val f = flags(); if (key in f) return; store.write(FLAGS, json.encodeToString(f + key).encodeToByteArray()); flagCache = f + key }
     private var flagCache: Set<String>? = null
     /** small app-wide settings (desktop reminder interval…) */

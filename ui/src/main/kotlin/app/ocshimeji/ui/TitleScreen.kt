@@ -32,6 +32,7 @@ class TitleScreen : Screen() {
         // ---- header
         g.text("觀察日誌", W / 2, top + 46, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER)
         g.text("OC Shimeji", W / 2, top + 88, 36f, t.ink, FontKind.NUM, Align.CENTER)
+        Widgets.round(g, app, "a11y", W - Dim.GUTTER - 24, top + 40, 20f, "eye")
         // ---- hero: the preset character on a little hill (just decoration here; choosing it is in 開始新的觀察)
         val hy = top + 232f
         g.save(); g.translate(W / 2, hy + 8); g.scale(1f, 0.26f); g.fillCircle(0f, 6f, W * 0.62f, t.grassLip); g.fillCircle(0f, 0f, W * 0.62f, t.grass); g.restore()
@@ -86,6 +87,7 @@ class TitleScreen : Screen() {
     override fun tap(id: String) {
         when {
             id == "new" -> app.push(OpeningScreen())
+            id == "a11y" -> app.show(A11ySheet())
             id == "library" -> app.push(LibraryScreen())
             id == "importSave" -> app.platform.openFile("application/octet-stream") { bytes -> if (bytes != null) {
                 try { val m = app.saves.importSave(bytes); reload(); app.toast("匯入了「${m.name}」") } catch (e: IllegalArgumentException) { app.toast(e.message ?: "匯入失敗") } } }

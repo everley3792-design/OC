@@ -8,6 +8,7 @@ import app.ocshimeji.sim.house.Furniture
 import app.ocshimeji.sim.house.HouseType
 import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.sim.life.Economy
+import app.ocshimeji.sim.life.Pose
 import app.ocshimeji.sim.life.SimEvent
 import app.ocshimeji.sim.town.Goods
 import app.ocshimeji.sim.town.Town
@@ -31,12 +32,14 @@ object Wx {
         return when (w) { "rain" -> Colors.mix(base, 0xFF8A94A6.toInt(), 0.45f); "cloudy", "fog" -> Colors.mix(base, 0xFFC4CAD4.toInt(), 0.35f); "snow" -> Colors.mix(base, 0xFFE4E8F0.toInt(), 0.35f); else -> base }
     }
     /** falling rain / snow and drifting fog over the whole screen (screen-side decoration, never touches the life) */
+    /** 減少動態 (plan O-04): no falling particles */
+    var calm = false
     fun draw(g: Gfx, W: Float, H: Float, w: String, time: Float) {
         when (w) {
-            "rain" -> { val c = Colors.withAlpha(0xFFB8D4EE.toInt(), 0.55f)
+            "rain" -> { if (calm) return; val c = Colors.withAlpha(0xFFB8D4EE.toInt(), 0.55f)
                 for (i in 0 until 70) { val x0 = ((i * 137) % 997) / 997f * (W + 60) - 30; val sp = 520f + (i % 7) * 40; val y = ((i * 263) % 1009) / 1009f * (H + 40) + time * sp
                     val yy = (y % (H + 40)) - 20; val xx = x0 - (yy * 0.18f); g.line(xx, yy, xx - 4f, yy + 16f, 1.6f, c) } }
-            "snow" -> { val c = Colors.withAlpha(0xFFFFFFFF.toInt(), 0.9f)
+            "snow" -> { if (calm) return; val c = Colors.withAlpha(0xFFFFFFFF.toInt(), 0.9f)
                 for (i in 0 until 60) { val x0 = ((i * 151) % 991) / 991f * W; val sp = 30f + (i % 5) * 12; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * sp) % (H + 20) - 10
                     g.fillCircle(x0 + sin(time * 1.3f + i) * 8, y, 1.8f + (i % 3) * 0.8f, c) } }
             "fog" -> for (i in 0 until 5) { val y = H * (0.2f + i * 0.16f); val dx = sin(time * 0.15f + i) * 40
@@ -89,13 +92,17 @@ class TownScreen(val ws: WorldScreen) : Screen() {
             val (fx, fy) = when (o.stage) {
                 "go" -> lerp(pl.x, pl.y, home.first, home.second, k)
                 "back" -> lerp(home.first, home.second, pl.x, pl.y, k)
-                else -> (pl.x + ((i % 3) - 1) * 0.07f) to (pl.y + 0.09f)
+                else -> (pl.x + ((i % 3) - 1) * 0.1f) to pl.y
             }
-            val cx = px(fx); val cy = py(fy) + sin(app.time * 3 + i) * 1.5f
-            g.fillCircle(cx, cy + 20, 14f, Colors.withAlpha(t.shadow, 0.5f))
-            Widgets.face(g, t, app.charImg(ws.libOf(p), 256), cx, cy, 17f)
-            g.text(Widgets.fit(g, p.name, 11f, 70f), cx, cy + 32, 11f, t.ink, FontKind.UI, Align.CENTER)
-            if (w == "rain") { g.fillRound(cx - 20, cy - 34, 40f, 12f, 6f, 0xFF7AAAD6.toInt()); g.line(cx, cy - 24, cx, cy - 12, 2f, t.ink2) }
+            /* the whole person, walking on the road or doing their thing at the place (feet at cy + 18) */
+            val cx = px(fx); val feet = py(fy) + (if (o.stage == "at") 96f else 18f); val CH = 52f; val look = ws.lookOf(p)
+            val pose = if (o.stage == "at") Town.act(o.act)?.pose ?: Pose.STAND else Pose.WALK
+            val face = if (o.stage == "back") (if (home.first < pl.x) -1 else 1) else if (o.stage == "go") (if (pl.x < home.first) -1 else 1) else 1
+            Widgets.footShadow(g, t, cx, feet, CH * 0.5f)
+            if (look != null) Actors.draw(g, look, cx, feet, CH, pose, app.time, i * 1.37f, face, 0f, null, false, sim.moodSky(p)) else Widgets.face(g, t, app.charImg(ws.libOf(p), 256), cx, feet - 20, 17f)
+            val cy = feet - CH * 0.55f
+            g.text(Widgets.fit(g, p.name, 11f, 70f), cx, feet + 14, 11f, t.ink, FontKind.UI, Align.CENTER)
+            if (w == "rain") { g.fillRound(cx - 22, feet - CH - 16, 44f, 12f, 6f, 0xFF7AAAD6.toInt()); g.line(cx, feet - CH - 6, cx, feet - CH + 10, 2f, t.ink2) }
             said[p.id]?.let { s -> if (app.time - s.born < 3f) { val tw = min(g.measure(s.text, Dim.FS_S) + 20, W - 40); val bx = (cx - tw / 2).coerceIn(8f, W - tw - 8)
                 g.fillRound(bx, cy - 66, tw, 28f, 14f, t.surface); g.text(Widgets.fit(g, s.text, Dim.FS_S, tw - 16), bx + tw / 2, cy - 47, Dim.FS_S, t.ink, FontKind.UI, Align.CENTER) } }
         }
@@ -150,7 +157,9 @@ class TownScreen(val ws: WorldScreen) : Screen() {
             id == "place:plaza" -> app.show(ListSheet("廣場", listOf("board" to "看布告欄", "plaza1" to cornerLabel("plaza1"), "plaza2" to cornerLabel("plaza2")), subtitle = "公共角落：放一件家具或作品，住民經過會注意到") { pick -> if (pick == "board") app.show(BoardSheet(ws, true)) else corner(pick) })
             id == "place:park" -> app.show(ListSheet("公園", listOf("park1" to cornerLabel("park1"), "park2" to cornerLabel("park2")), subtitle = "晴天野餐、雨天踩水坑、冬天堆雪人：住民自己會來") { corner(it) })
             id == "place:cafe" -> { val here = tl.inTown().filter { it.second.place == "cafe" && it.second.stage == "at" }.map { it.first.name }
-                app.toast(if (here.isEmpty()) "咖啡館：住民會自己來喝一杯（一杯 8 星幣，從家裡的錢包付）" else "${here.joinToString("、")}正在咖啡館") }
+                app.show(ListSheet("咖啡館", if (here.isEmpty()) listOf("none" to "現在沒有人（住民會自己來，一杯 8 星幣）") else listOf("treat" to "請在場的人喝一杯（${8 * here.size} 星幣）"),
+                    subtitle = if (here.isEmpty()) "今天的特調：${listOf("蜂蜜拿鐵", "焦糖奶茶", "柚子氣泡水", "抹茶歐蕾", "熱可可", "黑糖牛奶", "檸檬紅茶")[(Weather.dayOf(sim.life.minute) % 7).toInt()]}" else "在這裡：${here.joinToString("、")}") { pick ->
+                    if (pick == "treat") { tl.treat()?.let { app.toast(it) } ?: run { app.platform.sound("chime"); app.toast("大家都很開心"); ws.flush() } } }) }
             id == "stall" -> stall()
             id == "work" -> workshop()
             id == "move" -> moveHouse()
@@ -173,7 +182,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
     }
     private fun stall() {
         val tl = sim.townLife; val life = sim.life
-        val rows = life.town.stall.map { (item, price) -> "un:$item" to "收回 ${Economy.nameOf(life, item)}（標價 $price）" } + bagRows { it.startsWith("item:") || it.startsWith("f:") }.map { (k, v) -> "sell:$k" to "擺上 $v" }
+        val rows = life.town.stall.map { (item, price) -> "un:$item" to "收回 ${Economy.nameOf(life, item)}（標價 $price）" } + bagRows { it.startsWith("item:") || it.startsWith("f:") || it.startsWith("w:") }.map { (k, v) -> "sell:$k" to "擺上 $v" }
         if (rows.isEmpty()) { app.toast("背包裡沒有可以賣的：先在工坊委託做一件作品"); return }
         app.show(ListSheet("市集攤位", rows, subtitle = "每天早上結算：標價越接近建議價越容易賣出") { pick ->
             if (pick.startsWith("un:")) { tl.unlist(pick.removePrefix("un:")); ws.flush(); return@ListSheet }
@@ -184,9 +193,10 @@ class TownScreen(val ws: WorldScreen) : Screen() {
     }
     private fun workshop() {
         val life = sim.life; val tl = sim.townLife
-        if (life.items.isEmpty()) { app.toast("先在「創作 → 自訂物品」做一個物品，才能委託住民做出來"); return }
-        app.show(ListSheet("工坊：要做什麼？", life.items.map { it.id to "${it.name}（材料 ${tl.commissionCost(it.id)} 星幣）" + (life.town.works[it.id]?.let { w -> "・做過 ${w.made}" } ?: "") },
+        if (life.items.isEmpty() && life.town.works.isEmpty()) { app.toast("先在「創作 → 自訂物品」做一個物品，才能委託住民做出來"); return }
+        app.show(ListSheet("工坊：要做什麼？", listOf("__works" to "看作品集（做過、賣出、評語）") + life.items.map { it.id to "${it.name}（材料 ${tl.commissionCost(it.id)} 星幣）" + (life.town.works[it.id]?.let { w -> "・做過 ${w.made}" } ?: "") },
             subtitle = "住民會在家裡做幾個小時，做好放進背包") { item ->
+            if (item == "__works") { app.push(PortfolioPage(ws)); return@ListSheet }
             val who = life.people.filter { !it.desk }
             app.show(ListSheet("請誰做？", who.map { p -> p.id to p.name + (p.spec.skills.maxByOrNull { it.value }?.let { "（${it.key} ${it.value}）" } ?: "") + if (life.town.jobs.any { it.maker == p.id }) "・忙著" else "" }) { m ->
                 tl.commission(item, m)?.let { app.toast(it) } ?: run { app.toast("委託好了"); ws.flush() } })
@@ -257,9 +267,10 @@ class BoardSheet(val ws: WorldScreen, val news: Boolean) : Overlay() {
         for (gl in life.goals) { g.fillRound(G, yy, W - G * 2, 44f, 14f, if (gl.done) Colors.mix(t.select, t.surface, 0.5f) else t.surface2)
             if (gl.done) Widgets.icon(g, "check", G + 22, yy + 22, 14f, t.ink) else g.strokeRound(G + 14, yy + 14, 16f, 16f, 5f, 2f, t.ink3)
             g.text(gl.text, G + 40, yy + 28, Dim.FS_S + 1, if (gl.done) t.ink2 else t.ink); g.text("+${gl.reward}", W - G - 14, yy + 28, Dim.FS_S + 1, t.ink2, FontKind.NUM, Align.RIGHT); yy += 52 }
-        Widgets.button(g, app, "bd:ledger", G, y + hh - app.insetBottom - 70, W - G * 2, 52f, "背包與帳本")
+        val bw = (W - G * 2 - 10) / 2
+        Widgets.button(g, app, "bd:ledger", G, y + hh - app.insetBottom - 70, bw, 52f, "背包與帳本"); Widgets.button(g, app, "bd:journal", G + bw + 10, y + hh - app.insetBottom - 70, bw, 52f, "生活紀錄")
     }
-    override fun tap(id: String) { if (id == "bd:ledger") { app.closeOverlay(); app.push(LedgerPage(ws)) } }
+    override fun tap(id: String) { if (id == "bd:ledger") { app.closeOverlay(); app.push(LedgerPage(ws)) }; if (id == "bd:journal") { app.closeOverlay(); app.push(JournalHub(ws)) } }
 }
 
 /** the bag and every line of the ledger (plan I-01): the wallet always equals the sum of what is written here */
@@ -298,9 +309,16 @@ object Placing {
         if (items.isEmpty()) g.text("背包裡沒有家具：小鎮的家具店每週換貨", G + 14, by + 64, Dim.FS_S, t.ink3)
         for ((k, _) in items) { val label = "${Economy.nameOf(ws.sim.life, k)}×${ws.sim.economy.count(k)}"; if (x + g.measure(label, Dim.FS_S + 1) + 28 > W - G - 8) break
             x += Widgets.chip(g, app, "pl:$k", x, by + 44, label, bagSel == k, 38f) + 6 }
-        val bw = (W - G * 2 - 24 - 16) / 3
+        val bw = (W - G * 2 - 24 - 24) / 4
         Widgets.button(g, app, "pl:undo", G + 12, by + 98, bw, 52f, "復原", size = Dim.FS_S + 1)
-        Widgets.button(g, app, "pl:remove", G + 20 + bw, by + 98, bw, 52f, "收起", size = Dim.FS_S + 1)
-        Widgets.button(g, app, "pl:done", G + 28 + bw * 2, by + 98, bw, 52f, "完成", Kind.PRIMARY, Dim.FS_S + 1)
+        Widgets.button(g, app, "pl:flip", G + 20 + bw, by + 98, bw, 52f, "翻面", size = Dim.FS_S + 1)
+        Widgets.button(g, app, "pl:remove", G + 28 + bw * 2, by + 98, bw, 52f, "收起", size = Dim.FS_S + 1)
+        Widgets.button(g, app, "pl:done", G + 36 + bw * 3, by + 98, bw, 52f, "完成", Kind.PRIMARY, Dim.FS_S + 1)
+        /* the room you are working on: its line and its three scores (plan G-03, P-10) */
+        val room = pcs.getOrNull(sel)?.room ?: ws.placeRoom
+        ws.sim.house.rooms.firstOrNull { it.id == room }?.let { r -> val (a, b, c) = ws.sim.townLife.roomScore(r.id)
+            val s1 = "${r.zh}：${ws.sim.journal.roomLine(r.id)}"; val s2 = "整潔 $a・好看 $b・舒服 $c"; val tw = minOf(maxOf(g.measure(s1, Dim.FS_S), g.measure(s2, Dim.FS_S)) + 32, W - G * 2)
+            g.fillRound((W - tw) / 2, by - 58, tw, 50f, 18f, Colors.withAlpha(t.surface, 0.95f))
+            g.text(Widgets.fit(g, s1, Dim.FS_S, tw - 20), W / 2, by - 38, Dim.FS_S, t.ink, FontKind.UI, Align.CENTER); g.text(s2, W / 2, by - 17, Dim.FS_S - 1, t.ink2, FontKind.UI, Align.CENTER) }
     }
 }

@@ -333,6 +333,32 @@ class UiTest {
         assertTrue(a.tapZone("pl:undo")); assertEquals(1, sim.economy.count(f.id)); assertTrue(a.tapZone("pl:done")); assertTrue(!ws.placing)
         assertTrue(sim.economy.consistent())
     }
+    /** M7: the journal pages, achievements, the book, the town as a scene, the café, decorating with scores, accessibility */
+    @Test fun theJournalTheTownSceneAndSettings() {
+        val a = app(); frames(a, 3); assertTrue(a.tapZone("a11y")); frames(a, 15); assertTrue(a.overlay is A11ySheet); shot("a11y", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("ax:calm")); assertTrue(a.saves.flag("a11y:calm")); assertTrue(a.tapZone("ax:calm")); assertTrue(!a.saves.flag("a11y:calm")); a.back(); frames(a, 2)
+        val m = a.saves.createWorld("庭院", "楓糖鎮", "庭院平房", app.ocshimeji.sim.house.Houses.BUNGALOW, listOf(Presets.CINNAMON.id), mapOf(Presets.CINNAMON.id to "bed1"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen; val sim = ws.sim; val p = sim.life.people[0]
+        frames(a, 200)
+        // a day passes: diary, counts
+        sim.catchUp(sim.life.minute + 1440.0); frames(a, 5); while (a.overlay != null) { a.back(); frames(a, 1) }
+        repeat(8) { sim.journal.did(p.id, "town") }
+        a.push(JournalHub(ws)); frames(a, 10); shot("journal", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("diary")); frames(a, 10); assertTrue(a.screen is DiaryPage); shot("diary", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        assertTrue(a.tapZone("ach")); frames(a, 10); val w0 = sim.economy.wallet; assertTrue(a.tapZone("a:town1")); assertTrue(sim.economy.wallet > w0); shot("achievements", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        assertTrue(a.tapZone("book")); frames(a, 10); shot("book", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        assertTrue(a.tapZone("titles")); frames(a, 10); a.back(); frames(a, 2); assertTrue(a.tapZone("stats")); frames(a, 10); a.back(); frames(a, 2); a.back(); frames(a, 2)
+        // the town as a scene: the resident in full at the café, treat them
+        sim.townLife.leave(p); p.out!!.act = "coffee"; p.out!!.place = "cafe"; p.out!!.stage = "at"; p.out!!.until = sim.life.minute + 30
+        assertTrue(a.tapZone("town")); frames(a, 20); shot("town-scene", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("place:cafe")); frames(a, 15); assertTrue(a.tapZone("row:treat")); frames(a, 2); assertTrue(p.moods.any { it.id == "treated" })
+        a.back(); frames(a, 2); p.out = null
+        // decorating shows the room's line and scores; flip a piece
+        assertTrue(a.tapZone("place")); frames(a, 3); val i = sim.decorate.pieces().indexOfFirst { it.kind == "sofa" }; val pc = sim.decorate.pieces()[i]
+        ws.placeAt(pc.x, pc.y); assertEquals(i, ws.placeSel); assertTrue(a.tapZone("pl:flip")); assertTrue(sim.house.pieces[i].flip)
+        frames(a, 5); shot("world-placing-m7", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("pl:done"))
+        assertTrue(sim.economy.consistent())
+    }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {
         val a = app(); a.push(LibraryScreen()); frames(a, 5)

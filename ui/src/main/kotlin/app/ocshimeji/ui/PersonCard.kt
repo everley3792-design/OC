@@ -45,7 +45,8 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         // ---- what it looks like (plan 13.3 敘事描寫), today's status, wish, worry / request
         so.narrate(id)?.let { n -> Widgets.wrap(g, n, Dim.FS_S, W - G * 2 - 8, 2).forEachIndexed { i, l -> g.text(l, G + 4, yy + 16 + i * 20f, Dim.FS_S, t.ink2) }; yy += 46 }
         val st = so.statusOf(p); val wish = p.wish?.takeIf { !it.done }
-        val info = listOfNotNull(st?.let { "今天：${it.zh}" }, wish?.let { "心願：${it.text}" }, p.worry?.let { "煩惱：${Worries.ALL[it.kind]?.zh}" }, p.ask?.let { "請求：${it.text}" },
+        val titles = sim.journal.titlesOf(id); val star = sim.journal.starNow()?.takeIf { it.who == id }
+        val info = listOfNotNull(star?.let { "本週之星" }, titles.lastOrNull()?.let { "稱號：${it.zh}" }, st?.let { "今天：${it.zh}" }, wish?.let { "心願：${it.text}" }, p.worry?.let { "煩惱：${Worries.ALL[it.kind]?.zh}" }, p.ask?.let { "請求：${it.text}" },
             p.plan.firstOrNull()?.let { "計畫：" + p.plan.joinToString("→") { a -> Acts[a]?.zh ?: a } })
         var ix = G
         for (s0 in info.take(4)) { val w0 = g.measure(s0, Dim.FS_S - 1) + 20; if (ix + w0 > W - G) break; g.fillRound(ix, yy, w0, 26f, 13f, if (s0.startsWith("煩惱")) Colors.mix(t.alert, t.surface, 0.6f) else t.surface2)
