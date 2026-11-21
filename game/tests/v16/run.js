@@ -448,7 +448,8 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet button')].find((x) => x.textContent.includes('取消建立')); if (b) b.click(); });
     }
     /* ============================== 16.4 menus and the action list ============================== */
-    const calm16 = () => page.evaluate(async () => { OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back()); if (OC.Radial.open_) OC.Radial.close(true); if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); } const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'); OC.Chars.setActive(all[0].id); await new Promise((r) => setTimeout(r, 800)); for (const c of all) { OC.Brain.setControl(c.id, 'manual'); OC.Queue.clear(c.id); OC.Queue.cancel(c.id, -1); c.life.q16 = []; const bb = OC.Brain.get(c.id); if (bb) { bb.queued = null; bb.queuedSlot = null; bb.queuedPt = null; } if (bb) { [...bb.holds].forEach((x) => OC.Brain.unhold(c.id, x)); if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); } Object.assign(c.needs, { food: 60, sleep: 70, energy: 70, fun: 50, social: 50, comfort: 60, interest: 50, active: 50 }); } return all.map((c) => c.id); });
+    const calm16 = () => page.evaluate(async () => { OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back()); if (OC.Radial.open_) OC.Radial.close(true); if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); } for (const c of OC.Chars.all()) { const b0 = OC.Brain.get(c.id); if (b0 && b0.st === 'go') OC.Brain.abort(b0, 't'); if (b0) b0.leaving = null; c.life.loc = 'isle'; c.life.trip = null; c.status.onIsland = true; } OC.App.syncPresence(); await new Promise((r) => setTimeout(r, 600));   /* 17.1.1: an earlier step may have sent someone to another place — later steps expect everyone here */
+      const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite'); OC.Chars.setActive(all[0].id); await new Promise((r) => setTimeout(r, 800)); for (const c of all) { OC.Brain.setControl(c.id, 'manual'); OC.Queue.clear(c.id); OC.Queue.cancel(c.id, -1); c.life.q16 = []; const bb = OC.Brain.get(c.id); if (bb) { bb.queued = null; bb.queuedSlot = null; bb.queuedPt = null; } if (bb) { [...bb.holds].forEach((x) => OC.Brain.unhold(c.id, x)); if (bb.st === 'do') OC.Brain.finish(bb, 't'); else if (bb.st === 'go') OC.Brain.abort(bb, 't'); } Object.assign(c.needs, { food: 60, sleep: 70, energy: 70, fun: 50, social: 50, comfort: 60, interest: 50, active: 50 }); } return all.map((c) => c.id); });
     if (want(22)) {
       const ids = await calm16();
       const r = await page.evaluate(async (id) => {
@@ -641,7 +642,8 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
       const ids = await calm16();
       const r = await page.evaluate(async (ids) => {
         const sleep = (ms) => new Promise((res) => setTimeout(res, ms)); const me = OC.Store.s.activeId;
-        const [A, B] = ids.filter((id) => id !== me).map((id) => OC.Chars.get(id)); for (const c of [A, B]) OC.Brain.setControl(c.id, 'semi'); const ba = OC.Brain.get(A.id), bb = OC.Brain.get(B.id);
+        const here = (id) => { const x = OC.Brain.get(id); return x && x.a; };   /* earlier tests may have sent someone to another place */
+        const [A, B] = ids.filter((id) => id !== me).sort((x, y) => !!here(y) - !!here(x)).map((id) => OC.Chars.get(id)); for (const c of [A, B]) OC.Brain.setControl(c.id, 'semi'); const ba = OC.Brain.get(A.id), bb = OC.Brain.get(B.id);
         OC.Store.s.life.settings.chatView = 'kw';
         OC.Mind.relPair(A.id, B.id, { fam: 40, aff: 50, trust: 40 }, 't'); B.personality.social = 90; A.needs.social = 20; B.needs.social = 20;
         for (const b of [ba, bb]) { if (b.st === 'do') OC.Brain.finish(b, 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); if (b.st === 'social') OC.Brain.Social.end(OC.Brain.convs.find((x) => x.a === b || x.b === b), 't'); b.st = 'think'; b.thinkAt = 1e9; }
@@ -1083,6 +1085,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
     const prep1610 = () => page.evaluate(async () => {
       if (OC.Events.current) OC.Events.end('t'); OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.UI.stack.slice().forEach(() => OC.UI.back && OC.UI.back());
       const all = OC.Chars.all().filter((c) => c.appearance.mode !== 'sprite');
+      OC.Store.s.life.settings.romance.enabled = false;   /* 17.1.1: test 44 makes two of them spouses (romance on) — 58/59 expect the default (off) */
       for (const c of all) { c.profile.age = '25'; c.life.c16 = null; Object.assign(c.needs, { sleep: 90, energy: 90, food: 90, fun: 50 }); c.personality.traits = c.personality.traits.filter((t) => !['timid', 'shy', 'nervous', 'brave', 'adventurous', 'homebody', 'lazy', 'moody', 'restless'].includes(t)); const b = OC.Brain.get(c.id); if (b) [...b.holds].forEach((x) => OC.Brain.unhold(c.id, x)); }
       OC.Store.s.settings.calendar = 'game'; OC.Store.s.life.clock.cal0 = OC.Sim.day();
       OC.Tx.run(OC.Tx.uid('t'), { get: { coins: 500 } }, 't');
@@ -1230,7 +1233,7 @@ const BIG = `(async () => { const cv = document.createElement('canvas'); cv.widt
         out.spoiled = hit && hit.cause; G[loc] = G[loc].filter((x) => !String(x.uid).startsWith('tsp'));
         /* rain: an hour and a half outside → one roll (the exposure is counted and reset) */
         OC.Store.s.settings.weather = 'rain'; const d = OC.Chars.all().find((x) => !ids.slice(0, 3).includes(x.id)) || a; H.H(d).exp.rain = 0; d.life.loc = 'isle';
-        let peak = 0; for (let i = 0; i < 9; i++) { H.step(10); peak = Math.max(peak, H.H(d).exp.rain); } out.rain = [peak, H.H(d).exp.rain]; OC.Store.s.settings.weather = 'clear';
+        let peak = 0; for (let i = 0; i < 9; i++) { for (const x of OC.Chars.all()) if (x !== d) H.H(x).exp.rain = 0; /* 17.1.1: only d stands in the rain (a cold rolled for b hid its tummy ache) */ H.step(10); peak = Math.max(peak, H.H(d).exp.rain); } out.rain = [peak, H.H(d).exp.rain]; OC.Store.s.settings.weather = 'clear';
         /* effects: needs drain; the AI prefers rest and skips running about */
         const e0 = b.needs.comfort; H.step(30); out.drain = e0 - b.needs.comfort;
         const list = [{ kind: 'act', act: 'rest', s: 1, why: [] }, { kind: 'act', act: 'explore', s: 1, why: [] }];

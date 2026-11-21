@@ -583,6 +583,7 @@
     /** a would like to do `kind` with b */
     start(ba, bb, kind) {
       if (!bb || !available(bb) || !available(ba) && ba.st !== 'think') return false;
+      if (!ba.a || !bb.a) return false;   /* someone is not on this screen (away, in another place): nothing to walk to */
       const conv = { id: 'v' + Date.now().toString(36), kind, a: ba, b: bb, st: 'approach', lines: [], i: 0, nextAt: 0, t0: nowR() };
       ba.st = 'social'; ba.conv = conv; convs.push(conv);
       // b pauses where it is (it may still be doing something; it decides when invited)
@@ -595,6 +596,7 @@
       return true;
     },
     besideSpot(ba, bb) {
+      if (!ba.a || !bb.a) return null;
       const o = bb.a, side = ba.a.x < o.x ? -1 : 1, cands = [[side * 26, 2], [-side * 26, 2], [0, 20], [side * 20, -14]];
       for (const [dx, dy] of cands) { const p = Wd().nearestWalkable(o.x + dx, o.y + dy, 8); if (p && clearPoint(p.x, p.y, ba.id, 12) && Math.hypot(p.x - o.x, p.y - o.y) > 14) return p; }
       return null;
