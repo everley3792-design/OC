@@ -5,6 +5,11 @@ import app.ocshimeji.sim.chars.Rel
 import app.ocshimeji.sim.chars.CustomTag
 import app.ocshimeji.sim.script.ScriptDef
 import app.ocshimeji.sim.social.Ask
+import app.ocshimeji.sim.town.Goal
+import app.ocshimeji.sim.town.Outing
+import app.ocshimeji.sim.town.PieceRec
+import app.ocshimeji.sim.town.TownState
+import app.ocshimeji.sim.town.Tx
 import app.ocshimeji.sim.social.SocState
 import app.ocshimeji.sim.social.Wish
 import app.ocshimeji.sim.social.Worry
@@ -47,6 +52,17 @@ class Life(
     val scripts: MutableList<ScriptDef> = mutableListOf(),
     /** imported music for this home (library-relative path) */
     var music: String = "",
+    // ---- M6: the town, money, things, furniture
+    /** star coins (plan I-01): only ever changed through the ledger */
+    var wallet: Int = 0,
+    val ledger: MutableList<Tx> = mutableListOf(),
+    /** the bag / storage: good or item id → how many (only ever changed through the ledger) */
+    val bag: MutableMap<String, Int> = mutableMapOf(),
+    /** the furniture as you arranged it (empty = the house as built) */
+    val layout: MutableList<PieceRec> = mutableListOf(),
+    val town: TownState = TownState(),
+    /** today's three small goals (plan I-09) */
+    val goals: MutableList<Goal> = mutableListOf(), var goalsDay: Long = -1,
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -99,6 +115,8 @@ class Person(
     var lastWorry: Double = -1e9, var lastAsk: Double = -1e9, var lastYouChat: Double = -1e9,
     /** your suggestion or command waiting to be done: "act:<id>" or "soc:<act>:<person>" */
     var order: String? = null,
+    /** out in town (plan B-12) */
+    var out: Outing? = null,
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult
@@ -124,5 +142,7 @@ object Axis { const val OUTGOING = 0; const val ACTIVE = 1; const val DILIGENT =
 data class SimEvent(val kind: String, val who: String, val text: String = "")
 
 /** a custom item as one world knows it: food / drink (taste, how filling) and gifts (the words people like) */
-@Serializable class WorldItem(val id: String, val name: String, val kind: String, val taste: String = "", val full: Float = 0f, val words: List<String> = emptyList(), val image: String = "")
+@Serializable class WorldItem(val id: String, val name: String, val kind: String, val taste: String = "", val full: Float = 0f, val words: List<String> = emptyList(), val image: String = "",
+    /** furniture: footprint, spots (dx, dy, pose 0 sit / 1 lie / 2 stand), what it offers, its base price */
+    val w: Int = 1, val h: Int = 1, val spots: List<List<Float>> = emptyList(), val offers: List<String> = emptyList(), val price: Int = 0)
 @Serializable class Decor(val wall: String = "", val floor: String = "")

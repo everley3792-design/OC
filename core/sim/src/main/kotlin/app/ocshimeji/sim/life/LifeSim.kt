@@ -30,8 +30,26 @@ import kotlin.math.roundToInt
  * the same save and the same absence always tell the same story. Time is game minutes; walking is in real seconds.
  */
 class LifeSim(val life: Life) {
-    val house: HouseType = Houses.get(life.houseId)
-    val grid = Grid(house)
+    /** the house as built, with the furniture as you arranged it (plan G-01); changes through `relayout` only */
+    var house: HouseType = build(); private set
+    var grid = Grid(house); private set
+    private fun build(): HouseType {
+        for (it0 in life.items) if (it0.kind in FURNITURE_KINDS) Furniture.register(furnitureOf(it0))
+        val base = Houses.get(life.houseId)
+        return if (life.layout.isEmpty()) base else base.copy(pieces = life.layout.map { app.ocshimeji.sim.house.Piece(it.kind, it.x, it.y, it.room) })
+    }
+    /** a new arrangement: nobody keeps using furniture that moved; everyone stands on the floor */
+    internal fun relayout() {
+        house = build(); grid = Grid(house); reserved.clear()
+        for (p in life.people) { val b = body(p.id); if (p.actPiece >= 0 || b.path != null) { if (p.with == null) { p.act = null; b.arrivedAct = false }; b.path = null; p.actPiece = -1 }; unstick(p) }
+    }
+    /** the ledger (money and things), trips to town, the daily goals, the workshop (M6) */
+    val economy = Economy(life)
+    val townLife = TownLife(this)
+    val decorate = Decorate(this)
+    /** today's weather and the season (plan J-02) */
+    fun weather(): String = app.ocshimeji.sim.town.Weather.of(life.seed, life.minute)
+    fun season(): String = app.ocshimeji.sim.town.Weather.season(life.minute)
     internal val rng = Rng(life.rngState)
     val events = ArrayList<SimEvent>()
 
@@ -107,6 +125,7 @@ class LifeSim(val life: Life) {
         life.minute += dm
         for (p in life.people) tick(p, dm, dt)
         society.step(true, dt)
+        townLife.step(true)
         if (life.arriving && arrived.size >= life.people.size && life.people.all { body(it.id).path == null }) life.arriving = false
     }
 
@@ -115,6 +134,7 @@ class LifeSim(val life: Life) {
         needs(p, dm)
         moods(p, live = true)
         if (p.desk) { b.micro = null; b.path = null; return }   /* on the desktop: the desk pet moves them */
+        if (p.out != null) { b.micro = null; b.path = null; return }   /* in town: the town moves them */
         if (b.held) { b.pose = Pose.HELD; return }
         if (b.flying) { fly(p, b, dt); return }
         b.micro?.let { _ -> b.microT -= dt; if (b.microT <= 0f) { b.micro = null; b.pose = restPose(p) } else return }
@@ -169,6 +189,10 @@ class LifeSim(val life: Life) {
             cond("noisy", "crowd" in m.flags && life.people.count { roomOf(it) == room } >= 3)
             cond("lonely", "alone" in m.flags && p.need(Need.SOCIAL) < 50 && life.people.none { it !== p && !asleep(it) })
             cond("feud", society.inFeud(p.id))
+            val wx = weather(); val wzh = app.ocshimeji.sim.town.Weather.ZH[wx] ?: ""
+            cond("goodweather", p.spec.weather.isNotBlank() && wzh.contains(p.spec.weather.take(1)))
+            cond("rainy", wx == "rain" && p.spec.weather.isNotBlank() && !p.spec.weather.contains("雨") && p.spec.axis(Axis.ACTIVE) > 0.2f)
+            if (p.out == null && !p.desk) townLife.roomMood(p)?.let { cond(it, true) }
             val day = floor(life.minute / 1440).toLong()
             if (p.spec.birthday.isNotBlank() && p.birthdayDay != day && p.spec.birthday == today()) {
                 p.birthdayDay = day; addMood(p, "birthday"); log(p, "今天是${p.spec.pronoun}的生日"); if (live) say(p, rng.pick(Lines.M["birthday"]!!), toPlayer = true)
@@ -241,6 +265,9 @@ class LifeSim(val life: Life) {
             if (a.id == "tidy" && p.need(Need.ROOM) > 70) continue
             if (a.id == "dishes" && life.soc.dishes <= 0) continue
             if (a.id == "queue") { if (!abstract && dist != null && !isNight) society.queueCand(p, dist, out); continue }
+            if (a.weather.isNotEmpty() && weather() !in a.weather) continue
+            if (a.id == "craft" && life.town.jobs.none { it.maker == p.id }) continue
+            if (a.id == "outing") { townLife.outingCand(p, a, dist, r, abstract, isNight, out); continue }
             if (!allowed(p, a)) continue
             if (a.id == "chat") { if (!abstract && dist != null) society.socialCands(p, a, dist, r, isNight, out); continue }
             var (g, why) = gain(p, a)
@@ -275,7 +302,7 @@ class LifeSim(val life: Life) {
         return out
     }
     internal fun free(q: Person): Boolean {
-        val b = body(q.id); if (q.desk || b.held || b.flying || b.petting || q.with != null || life.arriving || society.hiding(q.id) != null) return false
+        val b = body(q.id); if (q.desk || q.out != null || b.held || b.flying || b.petting || q.with != null || life.arriving || society.hiding(q.id) != null) return false
         val a = q.act ?: return true
         return b.arrivedAct && a in INTERRUPTIBLE
     }
@@ -392,6 +419,7 @@ class LifeSim(val life: Life) {
         if (a.pose == Pose.LIE || a.pose == Pose.SIT) Furniture.kind(house.pieces.getOrNull(p.actPiece)?.kind ?: "rug").let { if (it.id == "sofa" || it.id == "table") p.facing = 1 }
         if (a.id in mods(p).hate) { addMood(p, "hate"); say(p, "……雖然不想，還是${a.zh}吧。") }
         if (a.id == "queue") { addMood(p, "waiting"); say(p, rng.pick(listOf("還沒好嗎？", "我也要用浴室……", "（敲敲門）"))) }
+        if (a.id == "outing") { townLife.leave(p); return }
         if (a.id == "chat") startChat(p, b)
     }
     private fun minutesUntil(h: Double): Double { val now = hour; var d = (h - now) * 60; if (d <= 0) d += 1440; return d }
@@ -415,7 +443,7 @@ class LifeSim(val life: Life) {
         if (a.id == "sleep") society.woke(p)
         society.actDone(p, a.id)
     }
-    private fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
+    internal fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
     /** the timeline (plan K-03); favourites are never dropped */
     internal fun log(p: Person, text: String, away: Boolean = false, kind: String = "life", weight: Int = 1, cause: Int = -1, with: String = "") {
         life.log += LogLine(life.minute, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with)
@@ -482,6 +510,7 @@ class LifeSim(val life: Life) {
         p.lastPet = life.minute
         if (!cool) p.affinity = (p.affinity + if (spot) 3 else 2).coerceIn(0, 100)
         society.petted(p, part)
+        townLife.goal("pet", p.id)
         when {
             spot -> { addMood(p, "spot"); say(p, rng.pick(Lines.M["spot"]!!), toPlayer = true)
                 if (part !in p.found) { p.found += part; log(p, "發現了：${p.name}最喜歡被摸${part}") } }
@@ -572,14 +601,18 @@ class LifeSim(val life: Life) {
     fun foodOf(food: String): Food? {
         if (food.startsWith("item:")) { val it0 = life.items.firstOrNull { "item:" + it.id == food && (it.kind == "food" || it.kind == "drink") } ?: return null
             return Food(if (it0.kind == "drink") "飲料" else "料理", it0.full.coerceIn(5f, 60f), it0.name, it0.taste) }
+        app.ocshimeji.sim.town.Goods.ALL[food]?.takeIf { it.kind == "food" }?.let { g -> return Food(if (g.taste == "苦" || g.id == "juice") "飲料" else "料理", g.full, g.zh, g.taste) }
         val (cat, full) = FOODS[food] ?: return null; return Food(cat, full, FOOD_ZH[food] ?: food, FOOD_TASTE[food] ?: "")
     }
     /** every snack you can give in this world */
-    val snacks: List<Pair<String, String>> get() = FOOD_ZH.entries.map { it.key to it.value } + life.items.filter { it.kind == "food" || it.kind == "drink" }.map { "item:${it.id}" to it.name }
-    /** player's snacks (M1: free; the shop and inventory arrive in M5/M6) */
+    val snacks: List<Pair<String, String>> get() = FOOD_ZH.entries.map { it.key to it.value } + life.items.filter { it.kind == "food" || it.kind == "drink" }.map { "item:${it.id}" to it.name } +
+        life.bag.entries.filter { app.ocshimeji.sim.town.Goods.ALL[it.key]?.kind == "food" }.map { it.key to "${app.ocshimeji.sim.town.Goods.ALL[it.key]!!.zh} ×${it.value}" }
+    /** player's snacks: the three everyday ones and your own recipes are always there; what you bought in town comes out of the bag */
     fun feed(id: String, food: String): String {
         val p = person(id) ?: return ""; val f = foodOf(food) ?: return ""; val b = body(id)
         if (b.held || b.flying) return ""
+        val bought = app.ocshimeji.sim.town.Goods.ALL.containsKey(food)
+        if (bought && economy.count(food) <= 0) return "背包裡沒有${f.zh}了"
         if (asleep(p)) return "${p.name}睡著了"
         if (p.need(Need.FOOD) > 92) { say(p, rng.pick(Lines.M["full"]!!), toPlayer = true); return "${p.name}吃不下了" }
         breakChat(p)
@@ -587,6 +620,8 @@ class LifeSim(val life: Life) {
         p.setNeed(Need.FOOD, p.need(Need.FOOD) + f.full * (if (t < 0) 0.5f else 1f)); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 10f)
         addMood(p, when (t) { 1 -> "tasty"; -1 -> "yuck"; else -> "snack" })
         society.fed(p, food, t)
+        if (bought) economy.move(food, -1, "${p.name}吃了${f.zh}", p.id)
+        townLife.goal("feed", p.id)
         p.affinity = (p.affinity + when (t) { 1 -> 5; -1 -> -2; else -> 3 }).coerceIn(0, 100)
         if (p.act != null && !b.arrivedAct) { release(p); p.act = null; b.path = null }
         b.micro = Micro("eat", if (t < 0) Pose.SAD else Pose.EAT, 3f); b.microT = 3f; b.pose = b.micro!!.pose
@@ -611,17 +646,19 @@ class LifeSim(val life: Life) {
                 val r = Rng.of(life.seed, "away:${(life.minute / CHUNK).toLong()}:${p.id}")
                 val a = p.act?.let { Acts[it] }
                 if (a != null && body(p.id).arrivedAct && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }
-                if (p.act == null && !p.desk) {
+                if (p.act == null && !p.desk && p.out == null) {
                     val c = candidates(p, null, r, true); val best = pick(c, r)
                     if (best != null && best.score >= 1.2f) {
                         if (best.piece >= 0) reserved["${best.piece}:${best.slot}"] = p.id
                         p.act = best.act.id; p.actPiece = best.piece; p.actSlot = best.slot; p.x = best.tx; p.y = best.ty
                         body(p.id).arrivedAct = true; body(p.id).pose = best.act.pose
+                        if (best.act.id == "outing") { townLife.leave(p); continue }
                         p.actStart = life.minute; p.actEnd = if (best.act.id == "sleep") life.minute + minutesUntil(wakeOf(p).toDouble()) + p.spec.oversleep * 90 + r.nextInt(20) else life.minute + durationOf(p, best.act) * (0.85 + 0.3 * r.nextDouble())
                     }
                 }
             }
             society.awayChunk((life.minute / CHUNK).toLong())
+            townLife.step(false)
             life.minute += dm
             for (p in life.people) { needs(p, dm); moods(p, live = false) }
             society.step(false, 0f)
@@ -654,10 +691,17 @@ class LifeSim(val life: Life) {
         const val CHUNK = 10.0            /* game minutes per catch-up step */
         const val MAX_AWAY_MIN = 30.0 * 1440
         val SLEEPY = setOf("sleep", "nap", "sofanap")
+        val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy")
+        /** the player's furniture as a furniture kind: its spots, and which built-in kinds' activities it offers */
+        fun furnitureOf(i: WorldItem): app.ocshimeji.sim.house.FurnitureKind {
+            val acts = i.offers.mapNotNull { when (it) { "sit" -> "sofa"; "sleep" -> "bed"; "read" -> "shelf"; "eat" -> "table"; "play" -> "rug"; "watch" -> "sofa"; "work" -> "stove"; else -> null } }.toSet()
+            val slots = i.spots.map { app.ocshimeji.sim.house.Slot(it[0], it[1], when (it.getOrElse(2) { 0f }.toInt()) { 1 -> app.ocshimeji.sim.house.Spot.LIE; 2 -> app.ocshimeji.sim.house.Spot.STAND; else -> app.ocshimeji.sim.house.Spot.SIT }) }
+            return app.ocshimeji.sim.house.FurnitureKind("item:" + i.id, i.name, i.w.coerceIn(1, 4), i.h.coerceIn(1, 4), i.kind != "rug", slots, actsAs = acts, image = i.image)
+        }
         val NOTABLE = setOf("sleep", "meal", "cook", "bathe", "read", "water", "tidy", "nap")
         /** what can be dropped for a chat */
         /** a double bed is a bed */
-        fun fits(want: String?, kind: String) = want == kind || (want == "bed" && kind == "bed2")
+        fun fits(want: String?, kind: String) = want == kind || (want == "bed" && kind == "bed2") || (want != null && want in Furniture.kind(kind).actsAs)
         val INTERRUPTIBLE = setOf("relax", "tv", "tvrug", "sitrug", "daydream", "window", "read", "water", "primp")
         val FOODS = mapOf("cookie" to ("甜點" to 25f), "apple" to ("水果" to 30f), "milk" to ("牛奶" to 18f))
         val FOOD_ZH = mapOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶")
@@ -689,6 +733,7 @@ class LifeSim(val life: Life) {
             val specOf = life.people.associate { it.id to it.spec }
             for (x in rels) { val a = specOf[x.from] ?: continue; val b = specOf[x.to] ?: continue; if (Relations.problem(x, a, b, romance) == null) life.rels += x }
             for (room in h.rooms) life.mess[room.id] = 5f
+            Economy(life).earn(Economy.START, "開始的星幣")
             return life
         }
     }

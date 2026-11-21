@@ -20,12 +20,14 @@ data class Activity(
     val only: Set<String> = emptySet(),
     /** a little thing in their hands (drawn by the screen: sword, laptop, cup…) */
     val prop: String? = null,
+    /** only in this weather (plan B-10) */
+    val weather: Set<String> = emptySet(),
 )
 
 object Acts {
     private fun a(id: String, zh: String, kind: String?, pose: Pose, min: Int, vararg per: Pair<Need, Float>, tags: Set<String> = emptySet(), night: Boolean = false, day: Boolean = false, finish: String? = null, sameRoomAs: String? = null,
-                  only: Set<String> = emptySet(), prop: String? = null) =
-        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs, only, prop)
+                  only: Set<String> = emptySet(), prop: String? = null, weather: Set<String> = emptySet()) =
+        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs, only, prop, weather)
     val ALL: Map<String, Activity> = listOf(
         a("sleep", "睡覺", "bed", Pose.LIE, 420, Need.ENERGY to 14f, Need.COMFORT to 4f, tags = setOf("rest"), night = true, finish = "slept"),
         a("nap", "午睡", "bed", Pose.LIE, 45, Need.ENERGY to 16f, Need.COMFORT to 6f, tags = setOf("rest", "lazy"), day = true),
@@ -48,6 +50,14 @@ object Acts {
         a("dishes", "洗碗", "stove", Pose.TIDY, 10, Need.ROOM to 30f, Need.FUN to -3f, tags = setOf("tidy")),
         /* the bathroom is taken: wait outside (plan 12.11 共用設施排隊); offered only then (Society.queueCand) */
         a("queue", "在浴室外排隊", null, Pose.STAND, 5, Need.COMFORT to -2f),
+        // ---- M6: town, yard, workshop, weather
+        /* go to town (plan B-12): the door is the destination, the town takes it from there */
+        a("outing", "出門去小鎮", null, Pose.WALK, 120, Need.FUN to 60f, Need.SOCIAL to 40f, tags = setOf("active"), day = true),
+        a("garden", "照顧菜園", "garden", Pose.WATER, 20, Need.FUN to 18f, Need.ROOM to 20f, tags = setOf("tidy", "calm"), day = true),
+        a("laundry", "曬衣服", "line", Pose.TIDY, 15, Need.HYGIENE to 30f, Need.FUN to 4f, tags = setOf("tidy"), day = true, weather = setOf("sunny", "cloudy")),
+        a("craft", "做手工", null, Pose.TIDY, 60, Need.FUN to 40f, tags = setOf("calm"), prop = "brush"),
+        a("rainwatch", "看窗外的雨", "window", Pose.LOOK, 15, Need.COMFORT to 14f, Need.FUN to 8f, tags = setOf("dreamy"), weather = setOf("rain")),
+        a("snowwatch", "看窗外的雪", "window", Pose.LOOK, 15, Need.FUN to 20f, tags = setOf("dreamy"), weather = setOf("snow")),
         // ---- only for some (tags, traits, quirks): plan 13.2 專屬活動 — the closest system pose plus a prop
         a("sword", "練劍", null, Pose.SWING, 20, Need.FUN to 18f, tags = setOf("active"), only = setOf("劍修", "騎士", "傭兵", "武俠"), prop = "sword"),
         a("meditate", "打坐", null, Pose.MEDITATE, 30, Need.COMFORT to 20f, Need.FUN to 8f, tags = setOf("calm"), only = setOf("宗門長老", "東方玄幻", "神明", "劍修", "武俠")),
@@ -93,6 +103,9 @@ object Moods {
         MoodDef("played", "玩得很開心", 2, 3f), MoodDef("dayup", "今天狀態不錯", 1, 16f), MoodDef("daydown", "今天有點沒精神", -1, 16f), MoodDef("idea", "照你的主意，很順利", 1, 4f),
         MoodDef("ideabad", "照你的主意，不太順利", -1, 3f), MoodDef("praised", "煮的飯被稱讚", 2, 6f), MoodDef("lostlast", "最後一塊被吃掉了", -1, 2f), MoodDef("ignoredask", "請求沒人理", -1, 2f),
         MoodDef("waiting", "排隊等浴室", -1, 0.25f),
+        MoodDef("goodweather", "喜歡今天的天氣", 1, 0.25f), MoodDef("rainy", "雨天悶悶的", -1, 0.25f), MoodDef("cosy", "房間很舒服", 1, 0.25f), MoodDef("bare", "房間空蕩蕩的", -1, 0.25f),
+        MoodDef("town", "去小鎮玩了一趟", 2, 4f), MoodDef("rainbow", "看到彩虹", 3, 6f), MoodDef("firstsnow", "初雪", 2, 12f), MoodDef("crafted", "做好了作品", 2, 8f),
+        MoodDef("newthing", "房間多了喜歡的東西", 2, 12f),
     ).associateBy { it.id }
 }
 

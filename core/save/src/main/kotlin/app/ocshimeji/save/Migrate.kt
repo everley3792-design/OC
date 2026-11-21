@@ -57,6 +57,15 @@ object Migrate {
             if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply {
                 put("items", JsonArray(emptyList())); put("decor", JsonObject(emptyMap())); put("tags", JsonArray(emptyList())); put("scripts", JsonArray(emptyList())); put("music", JsonPrimitive("")) })) })
         },
+        /* 5 → 6 (M6): star coins and a bag, the town, your own arrangement of the house; an old world starts with the first 300 coins (one ledger line) */
+        5 to { w ->
+            val life = w["life"] as? JsonObject
+            if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply {
+                val minute = life["minute"] ?: JsonPrimitive(0.0)
+                put("wallet", JsonPrimitive(300)); put("ledger", JsonArray(listOf(buildJsonObject { put("minute", minute); put("amount", JsonPrimitive(300)); put("reason", JsonPrimitive("開始的星幣")) })))
+                put("bag", JsonObject(emptyMap())); put("layout", JsonArray(emptyList())); put("goals", JsonArray(emptyList())); put("goalsDay", JsonPrimitive(-1))
+                })) })
+        },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

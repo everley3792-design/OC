@@ -7,7 +7,11 @@ package app.ocshimeji.sim.house
  */
 enum class Spot { STAND, SIT, LIE }
 data class Slot(val dx: Float, val dy: Float, val pose: Spot)
-data class FurnitureKind(val id: String, val zh: String, val w: Int, val h: Int, val blocks: Boolean, val slots: List<Slot>, val againstWall: Boolean = false)
+data class FurnitureKind(val id: String, val zh: String, val w: Int, val h: Int, val blocks: Boolean, val slots: List<Slot>, val againstWall: Boolean = false,
+    /** the built-in kinds whose activities it offers (a player's sofa sits like a sofa) */
+    val actsAs: Set<String> = emptySet(),
+    /** the player's own furniture: its picture (library path) */
+    val image: String = "")
 
 object Furniture {
     val KINDS: Map<String, FurnitureKind> = listOf(
@@ -25,6 +29,13 @@ object Furniture {
         FurnitureKind("window", "窗戶", 2, 1, false, listOf(Slot(1f, 1.3f, Spot.STAND)), againstWall = true),
         FurnitureKind("rug", "地毯", 2, 2, false, listOf(Slot(1f, 1f, Spot.SIT))),
         FurnitureKind("lamp", "落地燈", 1, 1, true, listOf()),
+        FurnitureKind("garden", "菜園", 2, 1, true, listOf(Slot(1f, 1.45f, Spot.STAND))),
+        FurnitureKind("line", "曬衣架", 2, 1, true, listOf(Slot(1f, 1.45f, Spot.STAND))),
+        FurnitureKind("bench", "長椅", 2, 1, true, listOf(Slot(0.5f, 0.9f, Spot.SIT), Slot(1.5f, 0.9f, Spot.SIT)), actsAs = setOf("sofa")),
     ).associateBy { it.id }
-    fun kind(id: String) = KINDS[id] ?: error("unknown furniture $id")
+    /** the player's furniture of the open world ("item:<id>"), registered when the world opens (content data, like the built-in table) */
+    private val custom = HashMap<String, FurnitureKind>()
+    fun register(k: FurnitureKind) { custom[k.id] = k }
+    fun kind(id: String) = KINDS[id] ?: custom[id] ?: FurnitureKind(id, "家具", 1, 1, true, emptyList())   /* an item that is gone: a plain box, never a crash */
+    fun known(id: String) = KINDS.containsKey(id) || custom.containsKey(id)
 }

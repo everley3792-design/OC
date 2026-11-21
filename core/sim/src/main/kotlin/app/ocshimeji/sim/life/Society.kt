@@ -641,7 +641,7 @@ class Society(private val sim: LifeSim) {
         val o = sim.person(w.about)
         val idea = remember(p, "player", Memory.IDEA, "你的主意：" + (worryChoices(id).firstOrNull { it.key == key }?.zh ?: key), 1)
         fun done(text: String, good: Boolean? = null): String {
-            p.worry = null; sim.log(p, "你幫忙處理了煩惱「${Worries.ALL[w.kind]!!.zh}」", kind = "you", weight = 2, cause = idea.id)
+            p.worry = null; sim.townLife.goal("worry"); sim.log(p, "你幫忙處理了煩惱「${Worries.ALL[w.kind]!!.zh}」", kind = "you", weight = 2, cause = idea.id)
             if (good == true) { sim.addMood(p, "idea"); p.affinity = (p.affinity + 3).coerceIn(0, 100) } else if (good == false) sim.addMood(p, "ideabad")
             if (good != null) idea.weight = if (good) 2 else -1
             return Speech.say(p.spec, text, sim.rng, p.affinity, toPlayer = true)
@@ -755,6 +755,10 @@ class Society(private val sim: LifeSim) {
         if (p.need(Need.ATTENTION) < 30) return Ask("pet", text = "可以摸摸我嗎？", since = life.minute)
         if (p.need(Need.FOOD) < 40) { val food = LifeSim.FOODS.keys.firstOrNull { sim.taste(p, it) > 0 } ?: "cookie"; return Ask("snack", food, "可以給我${LifeSim.FOOD_ZH[food]}嗎？", life.minute) }
         if (p.need(Need.FUN) < 45) return if (r.chance(0.6)) Ask("rps", text = "陪我猜拳好不好？", since = life.minute) else Ask("hide", text = "陪我玩躲貓貓！", since = life.minute)
+        /* a piece of furniture for their own room (plan G-06): what fits who they are, and only what the room does not have */
+        if (r.chance(0.35)) { val s = p.spec; val have = sim.house.pieces.filter { it.room == p.room }.flatMap { listOf(it.kind) + app.ocshimeji.sim.house.Furniture.kind(it.kind).actsAs }.toSet()
+            val wants = buildList { if (s.roomPref == "要有植物" || s.likes.any { it.contains("植物") || it.contains("花") }) add("plant"); if (s.skill("閱讀") >= 2) add("shelf"); if (s.axis(Axis.GENTLE) > 0.2f) add("rug"); add("lamp"); if (s.axis(Axis.ACTIVE) < 0f) add("sofa") }
+            wants.firstOrNull { it !in have }?.let { k -> return Ask("furniture", k, "我的房間……可以放一個${app.ocshimeji.sim.house.Furniture.kind(k).zh}嗎？", life.minute) } }
         return null
     }
     private fun askDone(p: Person, kind: String, thing: String = "") {
@@ -777,7 +781,7 @@ class Society(private val sim: LifeSim) {
         sim.log(p, "許了一個心願：${p.wish!!.text}", kind = "life", weight = 1)
     }
     private fun wishDone(p: Person, w: Wish) {
-        w.done = true; sim.addMood(p, "wishdone"); p.affinity = (p.affinity + 3).coerceIn(0, 100)
+        sim.townLife.goal("wish"); w.done = true; sim.addMood(p, "wishdone"); p.affinity = (p.affinity + 3).coerceIn(0, 100)
         sim.log(p, "心願實現了：${w.text}", kind = "life", weight = 3)
     }
     private fun checkWishes() {
@@ -804,6 +808,7 @@ class Society(private val sim: LifeSim) {
             makePlan(p, r)
             if (p.wish == null || p.wish!!.done || life.day - p.wish!!.day > 3) { if (r.chance(0.5)) newWish(p, r) else if (p.wish?.done == true) p.wish = null }
         }
+        sim.townLife.newDay()
     }
     /** the daily settlement (plan C-04): steps need two days in a row, unused friendships fade, flavour tags, quarrels cool off */
     internal fun settle() {
@@ -887,6 +892,7 @@ class Society(private val sim: LifeSim) {
         if (p.plan.firstOrNull() == a.id) { k *= 2.2f; why = "照計畫：" + p.plan.take(2).joinToString("，再") { "先" + (Acts[it]?.zh ?: it) }.replaceFirst("，再先", "，再") }
         if (a.id in NOISY && life.people.any { it !== p && sim.asleep(it) && sim.roomOf(it) == room }) k *= 0.15f
         if (a.id == "cook" && mealTime() && st.pot == null && life.people.count { !it.desk } >= 2) { k *= 1.5f + 0.2f * p.spec.skill("料理") + 0.4f * (sim.mods(p).act("s:照顧") - 1f).coerceAtLeast(0f); why = "到了飯點，想煮給大家吃" }
+        if (a.id == "craft" && life.town.jobs.any { it.maker == p.id }) { k *= 4f; why = "手上有你委託的作品" }
         if (a.id == "meal" && canEat(p)) { k *= 2f; why = "${sim.person(st.pot!!.cook)?.name ?: "有人"}煮了飯" }
         if (a.id == "dishes" && st.dishes >= 3) { k *= 1f + 0.5f * p.spec.axis(Axis.DILIGENT); why = "水槽裡堆了 ${st.dishes} 個碗" }
         st.feuds.forEach { f -> val other = if (f.a == p.id) f.b else if (f.b == p.id) f.a else null; if (other != null && sim.person(other)?.let { sim.roomOf(it) } == room) k *= 0.5f }
@@ -965,6 +971,7 @@ class Society(private val sim: LifeSim) {
             else -> listOf(if (s.story.isNotBlank()) s.story.take(40) else "我的事？沒什麼特別的啦。", s.memories.firstOrNull()?.let { "我還記得$it。" } ?: "你要多來陪我喔。")
         }
         if (first) { p.affinity = (p.affinity + 1).coerceIn(0, 100); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 12f); p.lastYouChat = life.minute }
+        sim.townLife.goal("talk", p.id)
         p.knows.entries.firstOrNull()?.let { (k, v) -> if (r.chance(0.3)) return lines.map { Speech.say(s, it, r, p.affinity, true) } + Speech.say(s, "你說過你${QUESTION_ZH[k] ?: ""}$v，我記得喔。", r, p.affinity, true) }
         return lines.map { Speech.say(s, it, r, p.affinity, true) }
     }
@@ -997,7 +1004,7 @@ class Society(private val sim: LifeSim) {
         val line = when { over && g.you >= 2 -> "輸了……再來一次啦！"; over -> "我贏了！嘿嘿。"; j > 0 -> "嗚，被你猜中了。"; j < 0 -> "這局我贏！"; else -> "平手！" }
         var tell: String? = null
         if (over) {
-            rpsGames.remove(id); p.setNeed(Need.FUN, p.need(Need.FUN) + 25f); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 15f); sim.addMood(p, "played"); p.affinity = (p.affinity + 2).coerceIn(0, 100)
+            rpsGames.remove(id); sim.townLife.goal("rps", p.id); p.setNeed(Need.FUN, p.need(Need.FUN) + 25f); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 15f); sim.addMood(p, "played"); p.affinity = (p.affinity + 2).coerceIn(0, 100)
             askDone(p, "rps"); p.wish?.let { w -> if (!w.done && w.kind == "rps") wishDone(p, w) }; p.worry?.let { if (it.kind == "bored") p.worry = null }
             sim.log(p, "和你猜拳，${if (g.you >= 2) "你贏了" else "${p.name}贏了"}（${g.you}：${g.them}）", kind = "you", weight = 2)
         } else { g.hand = Rps.pick(p.spec, g.last, sim.rng); tell = Rps.tell(g.hand, sim.rng) }

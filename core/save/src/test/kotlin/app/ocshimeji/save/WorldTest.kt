@@ -68,6 +68,11 @@ class WorldTest {
         val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v4.json")!!.readBytes()); val life = w.life!!
         assertEquals(WORLD_VERSION, w.v); assertTrue(life.items.isEmpty() && life.decor.isEmpty() && life.tags.isEmpty() && life.scripts.isEmpty()); assertEquals("", life.music); assertEquals(3L, life.soc.settledDay)
     }
+    @Test fun anM5WorldFileIsUpgraded() {   /* format 5 → 6: 300 starting coins as one ledger line, an empty bag, the house as built */
+        val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v5.json")!!.readBytes()); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals(300, life.wallet); assertEquals(1, life.ledger.size); assertTrue(life.bag.isEmpty() && life.layout.isEmpty() && life.goals.isEmpty())
+        assertTrue(app.ocshimeji.sim.life.Economy(life).consistent()); assertTrue(life.people.all { it.out == null })
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))

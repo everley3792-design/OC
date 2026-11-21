@@ -57,6 +57,7 @@ class ScriptTest {
         val s = world(listOf(CharSpec(name = "阿光", age = 25), CharSpec(name = "小雨", age = 24, tags = listOf("社畜"))))
         s.life.scripts += Scripts.parse(TEXT, "rain")
         s.life.soc.lively = 2
+        for (p in s.life.people) p.recent["outing"] = s.life.minute + 12 * 60.0   /* M6: nobody goes to town during this test */
         run(s, 12 * 60.0)
         assertTrue(s.life.log.any { it.text.contains("雨天的傘") }, "the script played"); assertTrue("umbrella" in s.life.soc.flags)
         assertTrue((s.rel("p2", "p1")?.like ?: 0) >= 35); assertTrue(s.society.memoriesOf("p2").any { it.what == "一起撐傘" })

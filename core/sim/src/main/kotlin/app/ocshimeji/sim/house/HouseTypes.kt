@@ -5,7 +5,7 @@ package app.ocshimeji.sim.house
  * A house is a tile grid of rooms; the top row of every room is its back wall (not walkable). Doors are tiles on shared edges
  * that make the two rooms' floors connected; `entrance` is where people arrive.
  */
-enum class RoomKind(val zh: String) { LIVING("客廳"), KITCHEN("廚房"), BEDROOM("臥室"), BATH("浴室"), STUDIO("起居空間"), BALCONY("陽台") }
+enum class RoomKind(val zh: String) { LIVING("客廳"), KITCHEN("廚房"), BEDROOM("臥室"), BATH("浴室"), STUDIO("起居空間"), BALCONY("陽台"), YARD("庭院"), STUDY("書房"), DINING("餐廳") }
 data class Room(val id: String, val zh: String, val kind: RoomKind, val x: Int, val y: Int, val w: Int, val h: Int, val sleeps: Int = 0) {
     fun inside(tx: Int, ty: Int) = tx >= x && tx < x + w && ty >= y + 1 && ty < y + h   /* floor = without the back-wall row */
 }
@@ -15,6 +15,8 @@ data class HouseType(
     val id: String, val zh: String, val blurb: String,
     val w: Int, val h: Int, val rooms: List<Room>, val pieces: List<Piece>, val doors: List<Door>, val entrance: Door,
     val capacity: Int, val rules: List<String>,
+    /** shown locked until the condition (plan 12.3: the family mansion opens when a home gets lively) */
+    val locked: String = "",
 ) {
     val bedrooms get() = rooms.filter { it.sleeps > 0 }
     fun room(id: String) = rooms.first { it.id == id }
@@ -49,7 +51,39 @@ object Houses {
             Piece("fridge", 7, 5, "kitchen"), Piece("stove", 8, 5, "kitchen"), Piece("table", 7, 7, "kitchen"), Piece("tub", 10, 5, "bath"), Piece("mirror", 11, 7, "bath")),
         doors = listOf(Door(2, 4), Door(5, 4), Door(9, 4), Door(7, 6), Door(10, 7)), entrance = Door(3, 8), capacity = 4,
         rules = listOf("最多 4 位住民", "一間臥室最多兩人", "浴室只有一間：早上要排隊", "未成年的住民要有成年住民同住"))
-    val ALL = listOf(STUDIO, COTTAGE, APARTMENT)
+    val BUNGALOW = HouseType("bungalow", "庭院平房", "三間臥室、大客廳，還有種菜曬衣的庭院。", 14, 11,
+        rooms = listOf(Room("bed1", "臥室 1", RoomKind.BEDROOM, 0, 0, 4, 4, sleeps = 2), Room("bed2", "臥室 2", RoomKind.BEDROOM, 4, 0, 4, 4, sleeps = 2), Room("bed3", "臥室 3", RoomKind.BEDROOM, 8, 0, 3, 4, sleeps = 1),
+            Room("bath", "浴室", RoomKind.BATH, 11, 0, 3, 4), Room("living", "客廳", RoomKind.LIVING, 0, 4, 9, 4), Room("kitchen", "廚房", RoomKind.KITCHEN, 9, 4, 5, 4), Room("yard", "庭院", RoomKind.YARD, 0, 8, 14, 3)),
+        pieces = listOf(Piece("bed", 0, 1, "bed1"), Piece("bed", 2, 1, "bed1"), Piece("bed2", 4, 1, "bed2"), Piece("lamp", 7, 1, "bed2"), Piece("bed", 8, 1, "bed3"), Piece("shelf", 10, 1, "bed3"),
+            Piece("tub", 11, 1, "bath"), Piece("mirror", 13, 1, "bath"),
+            Piece("tv", 1, 5, "living"), Piece("sofa", 1, 6, "living"), Piece("window", 4, 4, "living"), Piece("rug", 4, 6, "living"), Piece("shelf", 7, 5, "living"),
+            Piece("fridge", 11, 5, "kitchen"), Piece("stove", 12, 5, "kitchen"), Piece("table", 11, 6, "kitchen"),
+            Piece("garden", 1, 9, "yard"), Piece("line", 11, 9, "yard"), Piece("plant", 8, 9, "yard")),
+        doors = listOf(Door(2, 4), Door(6, 4), Door(9, 4), Door(13, 4), Door(9, 6), Door(4, 8)), entrance = Door(6, 10), capacity = 5,
+        rules = listOf("最多 5 位住民", "有庭院：種菜、曬衣服", "未成年的住民要有成年住民同住"))
+    val DORM = HouseType("dorm", "共居宿舍", "四間臥室、大餐廳，兩間浴室要排隊。", 16, 10,
+        rooms = listOf(Room("b1", "臥室 1", RoomKind.BEDROOM, 0, 0, 4, 4, sleeps = 2), Room("b2", "臥室 2", RoomKind.BEDROOM, 4, 0, 4, 4, sleeps = 2), Room("b3", "臥室 3", RoomKind.BEDROOM, 8, 0, 4, 4, sleeps = 2),
+            Room("b4", "臥室 4", RoomKind.BEDROOM, 12, 0, 4, 4, sleeps = 2), Room("dining", "餐廳", RoomKind.DINING, 0, 4, 10, 6), Room("kitchen", "廚房", RoomKind.KITCHEN, 10, 4, 6, 3),
+            Room("bathA", "浴室 A", RoomKind.BATH, 10, 7, 3, 3), Room("bathB", "浴室 B", RoomKind.BATH, 13, 7, 3, 3)),
+        pieces = listOf(Piece("bed", 0, 1, "b1"), Piece("bed", 2, 1, "b1"), Piece("bed", 4, 1, "b2"), Piece("bed", 6, 1, "b2"), Piece("bed2", 8, 1, "b3"), Piece("bed", 12, 1, "b4"), Piece("bed", 14, 1, "b4"),
+            Piece("tv", 1, 5, "dining"), Piece("sofa", 1, 6, "dining"), Piece("window", 3, 4, "dining"), Piece("table", 5, 6, "dining"), Piece("table", 5, 8, "dining"), Piece("shelf", 8, 5, "dining"), Piece("rug", 1, 8, "dining"),
+            Piece("fridge", 12, 5, "kitchen"), Piece("stove", 13, 5, "kitchen"), Piece("tub", 10, 9, "bathA"), Piece("tub", 13, 9, "bathB")),
+        doors = listOf(Door(2, 4), Door(6, 4), Door(9, 4), Door(14, 4), Door(10, 5), Door(11, 7), Door(14, 7)), entrance = Door(4, 9), capacity = 8,
+        rules = listOf("最多 8 位住民", "兩間共用浴室，早上要排隊", "家務容易起摩擦", "未成年的住民要有成年住民同住"))
+    val MANSION = HouseType("mansion", "家族大宅", "五間臥室、書房、大客廳和庭院。", 18, 12,
+        rooms = listOf(Room("b1", "臥室 1", RoomKind.BEDROOM, 0, 0, 4, 4, sleeps = 2), Room("b2", "臥室 2", RoomKind.BEDROOM, 4, 0, 4, 4, sleeps = 2), Room("b3", "臥室 3", RoomKind.BEDROOM, 8, 0, 4, 4, sleeps = 2),
+            Room("b4", "臥室 4", RoomKind.BEDROOM, 12, 0, 3, 4, sleeps = 2), Room("b5", "臥室 5", RoomKind.BEDROOM, 15, 0, 3, 4, sleeps = 2),
+            Room("living", "大客廳", RoomKind.LIVING, 0, 4, 10, 4), Room("study", "書房", RoomKind.STUDY, 10, 4, 4, 4), Room("kitchen", "廚房", RoomKind.KITCHEN, 14, 4, 4, 4),
+            Room("bath", "浴室 A", RoomKind.BATH, 0, 8, 4, 4), Room("yard", "庭院", RoomKind.YARD, 4, 8, 10, 4), Room("bath2", "浴室 B", RoomKind.BATH, 14, 8, 4, 4)),
+        pieces = listOf(Piece("bed2", 0, 1, "b1"), Piece("lamp", 3, 1, "b1"), Piece("bed", 4, 1, "b2"), Piece("bed", 6, 1, "b2"), Piece("bed2", 8, 1, "b3"), Piece("bed", 12, 1, "b4"), Piece("bed", 14, 1, "b4"), Piece("bed2", 15, 1, "b5"),
+            Piece("tv", 1, 5, "living"), Piece("sofa", 1, 6, "living"), Piece("window", 3, 4, "living"), Piece("rug", 4, 6, "living"), Piece("shelf", 8, 5, "living"),
+            Piece("shelf", 10, 5, "study"), Piece("shelf", 11, 5, "study"), Piece("table", 11, 7, "study"),
+            Piece("fridge", 14, 5, "kitchen"), Piece("stove", 17, 5, "kitchen"), Piece("table", 14, 7, "kitchen"),
+            Piece("tub", 0, 9, "bath"), Piece("mirror", 3, 9, "bath"), Piece("garden", 4, 10, "yard"), Piece("line", 11, 9, "yard"), Piece("tub", 14, 9, "bath2"), Piece("mirror", 17, 9, "bath2")),
+        doors = listOf(Door(2, 4), Door(6, 4), Door(9, 4), Door(13, 4), Door(16, 4), Door(10, 6), Door(14, 6), Door(2, 8), Door(6, 8), Door(16, 8)), entrance = Door(9, 11), capacity = 10,
+        rules = listOf("最多 10 位住民", "有書房與庭院", "未成年的住民要有成年住民同住"),
+        locked = "要有一個住了 5 位以上住民的家，才會開放")
+    val ALL = listOf(STUDIO, COTTAGE, APARTMENT, BUNGALOW, DORM, MANSION)
     fun get(id: String) = ALL.firstOrNull { it.id == id } ?: STUDIO
 
     /** can these people live here? null = yes, otherwise the reason (shown as it is) */
