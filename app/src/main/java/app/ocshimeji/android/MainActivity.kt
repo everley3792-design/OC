@@ -48,7 +48,10 @@ class MainActivity : Activity() {
         val assets = OcRuntime.assets
         val platform = object : Platform {
             override fun now() = System.currentTimeMillis()
-            override fun haptic(kind: String) { runCatching { view.performHapticFeedback(when (kind) { "soft" -> HapticFeedbackConstants.CONTEXT_CLICK; "heavy" -> HapticFeedbackConstants.LONG_PRESS; else -> HapticFeedbackConstants.KEYBOARD_TAP }) } }
+            override fun haptic(kind: String) { runCatching {
+                val s = OcRuntime.saves; if (s.flag("a11y:vib0")) return@runCatching   /* plan O-04: vibration off / weak / normal */
+                val weak = s.flag("a11y:vib1")
+                view.performHapticFeedback(when { weak -> HapticFeedbackConstants.KEYBOARD_TAP; kind == "soft" -> HapticFeedbackConstants.CONTEXT_CLICK; kind == "heavy" -> HapticFeedbackConstants.LONG_PRESS; else -> HapticFeedbackConstants.KEYBOARD_TAP }) } }
             override fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) = askText(title, initial, maxLength, done)
             override fun exit() { finish() }
             override fun pickImage(done: (PickedImage?, String?) -> Unit) = pick(done)
@@ -190,7 +193,8 @@ class MainActivity : Activity() {
 /** draws the UI; full frame rate only while something moves, otherwise a few frames a second (battery) */
 class GameView(ctx: Context, private val ui: UiApp, private val gfx: AndroidGfx) : View(ctx) {
     private var last = 0L
-    private val density = resources.displayMetrics.density
+    /* plan O-04 大字: everything drawn 15% larger (fewer dp on the screen) */
+    private val density = resources.displayMetrics.density * (if (runCatching { OcRuntime.saves.flag("a11y:big") }.getOrDefault(false)) 1.15f else 1f)
     init {
         isFocusable = true
         setOnApplyWindowInsetsListener { _, insets ->

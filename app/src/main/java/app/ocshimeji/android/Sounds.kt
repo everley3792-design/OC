@@ -119,8 +119,24 @@ class Sounds {
             }
         }.apply { isDaemon = true }.start()
     }
+    /** the season's sounds under the tune (plan J-03): birds in spring mornings, cicadas on summer days, crickets on autumn evenings, wind in winter — all synthesized */
+    private fun ambience(out: FloatArray, kind: String, season: String, rnd: java.util.Random) {
+        val n = out.size
+        when {
+            season == "spring" && (kind == "morning" || kind == "day") -> repeat(10) { val s0 = rnd.nextInt(maxOf(1, n - rate)); val f0 = 2600.0 + rnd.nextInt(900); var ph = 0.0
+                for (c in 0 until 3) { val st = s0 + c * (rate * 0.11).toInt(); val len = (rate * 0.07).toInt()
+                    for (k in 0 until len) { if (st + k >= n) break; val t = k.toDouble() / len; ph += 2 * PI * (f0 + 900 * t) / rate; out[st + k] += (sin(ph) * sin(t * PI) * 0.035).toFloat() } } }
+            season == "summer" && (kind == "day" || kind == "morning") -> { var ph = 0.0; for (i in 0 until n) { ph += 2 * PI * 4200 / rate; val am = 0.5 + 0.5 * sin(2 * PI * 38.0 * i / rate); val sw = 0.5 + 0.5 * sin(2 * PI * 0.25 * i / rate)
+                out[i] += (sin(ph) * am * sw * 0.012).toFloat() } }
+            season == "autumn" && (kind == "evening" || kind == "night") -> repeat(40) { val s0 = rnd.nextInt(maxOf(1, n - rate)); var ph = 0.0; val len = (rate * 0.18).toInt()
+                for (k in 0 until len) { if (s0 + k >= n) break; val t = k.toDouble() / len; ph += 2 * PI * 3600 / rate; val pulse = if (((k * 30) / len) % 2 == 0) 1.0 else 0.0; out[s0 + k] += (sin(ph) * pulse * sin(t * PI) * 0.02).toFloat() } }
+            season == "winter" -> { var lp = 0f; var lp2 = 0f; for (i in 0 until n) { lp += (noise.nextFloat() * 2 - 1 - lp) * 0.02f; lp2 += (lp - lp2) * 0.05f
+                val swell = 0.5 + 0.5 * sin(2 * PI * 0.08 * i / rate + 1); out[i] += (lp2 * swell * 0.25).toFloat() } }
+        }
+    }
     /** a gentle loop: a pad of two chords and a pentatonic tune; tempo and register by the time of day */
-    private fun compose(kind: String): ShortArray {
+    private fun compose(full: String): ShortArray {
+        val kind = full.substringBefore(":"); val season = full.substringAfter(":", "")
         val bpm = when (kind) { "morning" -> 96; "day" -> 104; "rain" -> 72; "evening" -> 84; else -> 64 }
         val root = when (kind) { "morning" -> 261.63; "day" -> 293.66; "rain" -> 220.0; "evening" -> 246.94; else -> 196.0 }
         val beat = 60.0 / bpm; val beats = 32; val n = (rate * beat * beats).toInt(); val out = FloatArray(n)
@@ -141,6 +157,7 @@ class Sounds {
                     val env = minOf(1.0, t * 40) * exp(-3.0 * t); out[s0 + k] += ((sin(ph) + 0.25 * sin(ph * 2) + 0.1 * sin(ph * 3)) * 0.11 * env).toFloat() } }
             b += dur }
         if (kind == "rain") { var lp = 0f; for (i in 0 until n) { lp += (noise.nextFloat() * 2 - 1 - lp) * 0.08f; out[i] += lp * 0.05f } }
+        ambience(out, kind, season, rnd)
         return ShortArray(n) { i -> (out[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort() }
     }
 }

@@ -4,24 +4,18 @@
 
 > 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-## 目前版本 1.0.0-beta（M6：小鎮、佈置、工坊＝MVP 測試版）
+## 目前版本 1.0.0-beta.2（M7 第一批：補完 M6＋1.0 的第一批）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.0.0-beta-debug.apk`](deliverables/apk/oc-shimeji-1.0.0-beta-debug.apk)
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.0.0-beta.2-debug.apk`](deliverables/apk/oc-shimeji-1.0.0-beta.2-debug.apk)
 - 這一版新增：
-  - **小鎮**：廣場、雜貨店、家具店、咖啡館、公園；住民自己出門、自己回家，在小鎮遇到時會發生 25 種事件；
-  - **星幣、背包、帳本**：每一筆都記下來；每日 3 個小目標；
-  - **商店**：雜貨店每天換貨，家具店每週換貨；
-  - **布告欄**：新聞和小目標；
-  - **佈置**：擺放、移動、收起、復原，放不下會說原因；自己畫的家具也能擺；
-  - **房間請求**、環境分數；
-  - **工坊**：委託住民做你設計的物品；**市集攤位**、**公共角落**；
-  - **新房型**：庭院平房、共居宿舍、家族大宅（要先有 5 位住民的家）；**搬家**前大家會說想法；
-  - **天氣與季節**：晴、陰、雨、霧、雪；彩虹、初雪；
-  - **依時段的音樂**（App 自己合成，原創）；
-  - M0–M5 的全部功能：存檔與家、角色創建與匯入、關係、觸碰、桌寵、自主生活與社交、創作套件。
-- **還沒有**（M7 → 1.0）：系列加成、貼紙、可以走進去的小鎮場景、更多內容與打磨。
-- **全部都還沒在實機驗證**：請照 [`docs/reboot/m6-report.md`](docs/reboot/m6-report.md) 最後的「實機測試清單」試。
-- 紀錄：[M6](docs/reboot/m6-report.md)（之前：[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
+  - **補完 M6**：小鎮的住民是全身的；咖啡館可以請客；佈置時看得到房間的分數和一句個性；同系列加成；牆上貼紙；家具翻面；作品集與評語；季節的聲音（鳥、蟬、蟲、風）；
+  - **生活紀錄**：角色日記、夢、稱號、成就（自己領）、圖鑑、這週的統計、本週之星；
+  - **會長大的盆栽**、**菜園收成**、**公園撿東西**；
+  - **市集日**（每 7 天）、**四季原創節日**（花瓣夜、螢火蟲祭、落葉祭、星燈節）；
+  - **無障礙**：大字、減少動態、震動強度；玩一小時有**休息提醒**。
+- **還沒有**（1.0 的另外 55 項）：見 [`docs/reboot/m7-1-report.md`](docs/reboot/m7-1-report.md) 第七節。
+- **全部都還沒在實機驗證**：請照 [M6 報告](docs/reboot/m6-report.md) 的實機測試清單，加上 [M7 第一批報告](docs/reboot/m7-1-report.md) 第六節試。
+- 紀錄：[M7 第一批](docs/reboot/m7-1-report.md)（之前：[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
 
 ## 計畫
 完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)
