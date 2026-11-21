@@ -807,6 +807,7 @@ class Society(private val sim: LifeSim) {
     }
     private fun newDay() {
         for (p in life.people) {
+            p.today.clear()
             val r = Rng.of(life.seed, "day:${life.day}:${p.id}")
             if (r.chance(0.85)) { val s = r.pick(DayStatuses.ALL.values.toList()); p.status = s.id; p.statusDay = life.day; if (s.mood > 0) sim.addMood(p, "dayup") else if (s.mood < 0) sim.addMood(p, "daydown") }
             makePlan(p, r)
@@ -888,7 +889,7 @@ class Society(private val sim: LifeSim) {
     fun mail(who: String, kind: String, title: String, text: String) { st.mail += Mail(st.nextId++, life.minute, who, kind, title, text); while (st.mail.size > 100) st.mail.removeAt(0) }
 
     // ================= cooking for everyone (B-06), tasting (A-10), chores (B-05) =================
-    fun mealTime() = sim.hour in 10.5..13.5 || sim.hour in 17.0..20.0
+    fun mealTime() = sim.hour in 7.0..9.5 || sim.hour in 11.0..13.5 || sim.hour in 17.5..20.0
     fun canEat(p: Person) = st.pot?.let { it.servings > 0 && p.id !in it.eaters && life.minute - it.minute < 300 } == true
     /** extra weight for an activity from today's status, the plan, the shared pot and the house (sleepers, quarrels) */
     internal fun extra(p: Person, a: Activity, room: String): Pair<Float, String?> {

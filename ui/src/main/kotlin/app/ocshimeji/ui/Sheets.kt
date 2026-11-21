@@ -8,34 +8,37 @@ import app.ocshimeji.render.Gfx
 /** a bottom sheet: title, rows (each one tap), slides up with a spring; outside / back closes it */
 open class ListSheet(val title: String, val rows: List<Pair<String, String>>, val subtitle: String? = null, val danger: Set<String> = emptySet(), val onPick: (String) -> Unit) : Overlay() {
     private val slide = Spring(0f, 1f)
-    /** long lists come in pages (an overlay does not scroll): the last row turns the page */
-    private var page = 0
-    private fun shown(per: Int): List<Pair<String, String>> {
-        if (rows.size <= per) return rows
-        val n = per - 1; val pages = (rows.size + n - 1) / n; val p = page % pages
-        return rows.drop(p * n).take(n) + ("__next" to "下一頁（${p + 1}／$pages）")
-    }
+    /** R1 (U7): a long list scrolls inside the sheet (it used to turn pages) */
+    private val scroll = Scroller()
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt)
         g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, s.coerceIn(0f, 1f)))
         val rowH = 56f; val head = if (subtitle != null) 84f else 64f
-        val per = ((app.h - app.insetTop - 40 - head - 16 - app.insetBottom) / rowH).toInt().coerceAtLeast(3)
-        val rows = shown(per)
-        val h = head + rows.size * rowH + 16 + app.insetBottom
+        val maxList = app.h - app.insetTop - 40 - head - 16 - app.insetBottom
+        val listH = minOf(rows.size * rowH, maxList)
+        val h = head + listH + 16 + app.insetBottom
         val y = app.h - h * s
         g.fillRound(0f, y, app.w, h + 40, Dim.RADIUS_L, t.surface)
         g.fillRound(app.w / 2 - 20, y + 10, 40f, 5f, 3f, t.line)
         g.text(title, Dim.GUTTER + 4, y + 44, Dim.FS_L, t.ink)
         subtitle?.let { g.text(Widgets.fit(g, it, Dim.FS_S, app.w - 40), Dim.GUTTER + 4, y + 68, Dim.FS_S, t.ink2) }
         app.zone("sheet:body", 0f, y, app.w, h)
+        scroll.max = maxOf(0f, rows.size * rowH - listH); val sc = scroll.step(dt)
+        val top = y + head
+        g.save(); g.clip(0f, top, app.w, listH); app.zoneDy = -sc
         rows.forEachIndexed { i, (id, label) ->
-            val ry = y + head + i * rowH; val down = app.pressed == "row:$id"
+            val ry = top + i * rowH - sc; if (ry + rowH < top || ry > top + listH) return@forEachIndexed
+            val down = app.pressed == "row:$id"
             if (down) g.fillRound(8f, ry, app.w - 16, rowH - 4, 16f, t.surface2)
-            g.text(label, Dim.GUTTER + 8, ry + rowH / 2 + 4, Dim.FS_M + 1, if (id in danger) t.alert else t.ink)
-            app.zone("row:$id", 8f, ry, app.w - 16, rowH - 4)
+            g.text(Widgets.fit(g, label, Dim.FS_M + 1, app.w - Dim.GUTTER * 2 - 16), Dim.GUTTER + 8, ry + rowH / 2 + 4, Dim.FS_M + 1, if (id in danger) t.alert else t.ink)
+            app.zone("row:$id", 8f, ry + sc, app.w - 16, rowH - 4)
         }
+        app.zoneDy = 0f; g.restore()
+        if (scroll.max > 0) { val k = listH / (rows.size * rowH); val bh = listH * k; g.fillRound(app.w - 6, top + (listH - bh) * (sc / scroll.max).coerceIn(0f, 1f), 3f, bh, 1.5f, t.line) }   /* a thin scroll hint */
     }
-    override fun tap(id: String) { if (id == "row:__next") { page++; return }; if (id.startsWith("row:")) { app.closeOverlay(); onPick(id.removePrefix("row:")) } }
+    override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) = scroll.drag(dy, y, start)
+    override fun release() = scroll.release()
+    override fun tap(id: String) { if (id.startsWith("row:")) { app.closeOverlay(); onPick(id.removePrefix("row:")) } }
 }
 
 /** asks before something that cannot be undone (deleting) — the only kind of question the UI asks (plan 6.2) */

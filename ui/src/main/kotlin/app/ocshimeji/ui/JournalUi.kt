@@ -11,6 +11,7 @@ class JournalHub(val ws: WorldScreen) : Page("生活紀錄") {
     override fun rows(): List<Row> {
         val life = ws.sim.life; val ready = j.ACHIEVEMENTS.count { j.claimable(it) }
         return listOf(
+            Row("memory", "回憶", "回放一天的小事、收藏名場面・${life.log.count { it.fav }} 個名場面", icon = "clock", tint = 0xFFFFE9A8.toInt()),
             Row("diary", "日記", "每個人每天睡前寫的・${life.prog.diary.size} 篇", icon = "edit", tint = 0xFFF6D0B8.toInt()),
             Row("titles", "稱號", "做久了就會得到・${life.prog.titles.values.sumOf { it.size }} 個", icon = "star", tint = 0xFFF8E0A8.toInt()),
             Row("ach", "成就", if (ready > 0) "有 $ready 個可以領取" else "${life.prog.claimed.size}／${j.ACHIEVEMENTS.size} 已領取", icon = "check", tint = 0xFFCDE6D6.toInt()),
@@ -21,7 +22,7 @@ class JournalHub(val ws: WorldScreen) : Page("生活紀錄") {
     }
     override fun tap(id: String) {
         when (id) {
-            "back" -> app.pop(); "diary" -> app.push(DiaryPage(ws)); "titles" -> app.push(TitlesPage(ws)); "ach" -> app.push(AchievementsPage(ws))
+            "back" -> app.pop(); "memory" -> app.push(MemoryScreen(ws)); "diary" -> app.push(DiaryPage(ws)); "titles" -> app.push(TitlesPage(ws)); "ach" -> app.push(AchievementsPage(ws))
             "book" -> app.push(BookPage(ws)); "stats" -> app.push(StatsPage(ws)); "works" -> app.push(PortfolioPage(ws))
         }
     }

@@ -38,12 +38,13 @@ class TownLife(private val sim: LifeSim) {
         val h = sim.hour
         val fest = Town.festival(Weather.dayOf(life.minute)) != null
         if ((isNight && !fest) || h < 8 || h > (if (fest) 20.0 else 18.5) || life.arriving) return
-        if (life.minute - (p.recent["outing"] ?: -1e9) < 8 * 60) return
+        val festEve = fest && h >= 15.5
+        if (life.minute - (p.recent["outing"] ?: -1e9) < (if (festEve) 90.0 else 8 * 60.0)) return   /* a festival evening: out again, even after a morning trip */
         var (g, why) = sim.gain(p, a); val (k, pw) = sim.appeal(p, a)
         if (fest && h >= 15.5) { g *= 3f; why = listOf("今天是${Town.festival(Weather.dayOf(life.minute))!!.zh}") + why }
         g *= k * 0.8f * (1f + 0.3f * p.spec.axis(Axis.OUTGOING))
         if (sim.house.id == "studio") g *= 1.5f                      /* plan 12.3: studio residents go out more */
-        if (sim.weather() == "rain" && !p.spec.weather.contains("雨")) g *= 0.35f
+        if (sim.weather() == "rain" && !p.spec.weather.contains("雨")) g *= if (festEve) 0.8f else 0.35f
         if (p.wish?.let { !it.done && it.kind == "eat" } == true) g *= 1.2f
         val e = sim.house.entrance; val d = if (dist != null) dist[e.y * sim.grid.w + e.x] else 0
         if (d < 0) return
@@ -83,7 +84,16 @@ class TownLife(private val sim: LifeSim) {
         for (p in life.people) { val o = p.out ?: continue; outing(p, o, live) }
         crafting(dm)
         weatherEvents(live)
+        if (live) festivalCall()
         if (live) checkAsks()
+    }
+    /** a festival evening (plan H-04): most people at home decide to go — once each, decided by the day (R1: it used to depend on luck) */
+    private fun festivalCall() {
+        val day = Weather.dayOf(life.minute); Town.festival(day) ?: return
+        if (sim.hour !in 16.5..19.0) return
+        for (p in life.people) { if (p.out != null || p.desk || sim.asleep(p) || p.order != null) continue
+            val key = "fest:$day:${p.id}"; if (life.soc.seen.containsKey(key)) continue; life.soc.seen[key] = life.minute
+            if (Rng.of(life.seed, key).chance(0.85)) { p.recent.remove("outing"); p.order = "act:outing" } }
     }
     private fun outing(p: Person, o: Outing, live: Boolean) {
         val r = rngFor(live, p); val now = life.minute

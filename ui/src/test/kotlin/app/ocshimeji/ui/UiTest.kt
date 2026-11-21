@@ -359,6 +359,25 @@ class UiTest {
         frames(a, 5); shot("world-placing-m7", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("pl:done"))
         assertTrue(sim.economy.consistent())
     }
+    /** R1: memories with sounds and lines, replaying a day, starring a moment; long sheets scroll; the clock's notes */
+    @Test fun memoriesReplayAndTheClock() {
+        val a = app(); val ws = world(a); val sim = ws.sim
+        sim.life.clockMode = "GAME"; sim.life.speed = 60.0; sim.catchUp(sim.life.minute + 10 * 60.0); frames(a, 5); while (a.overlay != null) { a.back(); frames(a, 1) }
+        assertTrue(sim.life.log.any { it.sound.isNotBlank() && it.aside.isNotBlank() && it.dur >= 1 }, "memories have sounds, lines and lengths")
+        a.push(MemoryScreen(ws)); frames(a, 10); val ms = a.screen as MemoryScreen
+        shot("memories", frames(a, 1, scale = 2f))
+        ms.playFor(1024); frames(a, 30); assertTrue(ms.shownCount in 1 until sim.life.log.size + 1, "replay shows what already happened"); shot("memories-replay", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("play")); val first = a.zoneIds.first { it.startsWith("l:") }; assertTrue(a.tapZone(first)); assertTrue(sim.life.log[first.removePrefix("l:").toInt()].fav)
+        assertTrue(a.tapZone("tab:fav")); frames(a, 5); assertTrue(a.zoneIds.count { it.startsWith("l:") } == 1); a.back(); frames(a, 2)
+        // a long sheet scrolls instead of turning pages
+        a.show(ListSheet("很多", (1..30).map { "r$it" to "第 $it 行" }) {}); frames(a, 15); assertTrue(!a.hasZone("row:r30"))
+        a.down(180f, 700f); for (i in 1..12) { a.move(180f, 700f - i * 60f); frames(a, 1) }; a.up(180f, 700f - 720f); frames(a, 30)
+        assertTrue(a.hasZone("row:r30"), "scrolled to the end"); shot("sheet-scroll", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        // the game date differs from the phone's: the clock says so
+        sim.life.minute += 3 * 1440.0; frames(a, 3); shot("world-game-date", frames(a, 1, scale = 2f))
+        // back to real time while ahead of the phone: time waits
+        sim.life.clockMode = "REAL"; val m = sim.life.minute; frames(a, 30); assertTrue(sim.hold); assertEquals(m, sim.life.minute, 1e-6)
+    }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {
         val a = app(); a.push(LibraryScreen()); frames(a, 5)

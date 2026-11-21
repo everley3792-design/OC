@@ -106,11 +106,15 @@ class LifeSim(val life: Life) {
 
     // ---------------- time ----------------
     val hour: Double get() = ((life.minute % 1440) + 1440) % 1440 / 60.0
-    fun wakeOf(p: Person) = Math.floorMod(p.spec.wake + mods(p).wake, 24)
-    fun sleepOf(p: Person) = Math.floorMod(p.spec.sleep + mods(p).sleep + (p.spec.nightOwl * 2).roundToInt(), 24)
+    fun wakeOf(p: Person) = Math.floorMod(p.spec.wake + mods(p).wake + rhythm(p), 24)
+    fun sleepOf(p: Person) = Math.floorMod(p.spec.sleep + mods(p).sleep + (p.spec.nightOwl * 2).roundToInt() + rhythm(p), 24)
+    /** a resident whose hours were left at the default (7 / 23) still has their own rhythm: −1, 0 or +1 hour, fixed per person and world (R1 L4) */
+    private fun rhythm(p: Person): Int = if (p.spec.wake == 7 && p.spec.sleep == 23) Math.floorMod(Rng.hash("rhythm:${life.seed}:${p.id}"), 3L).toInt() - 1 else 0
     internal fun isNight(p: Person) = night(p)
     private fun night(p: Person, h: Double = hour): Boolean { val w = wakeOf(p); val s = sleepOf(p); return if (s > w) (h >= s || h < w) else (h >= s && h < w) }
-    fun rate(): Double = if (life.clockMode == "GAME") life.speed else 1.0
+    fun rate(): Double = if (hold) 0.0 else if (life.clockMode == "GAME") life.speed else 1.0
+    /** the clock waits (R1 T1): in real-time mode the world got ahead of the phone (after fast game time); everyone keeps moving, time does not */
+    var hold = false
     /** today as MM-DD (game minutes are local minutes since 1970) */
     fun today(): String { val d = java.time.LocalDate.ofEpochDay(floor(life.minute / 1440).toLong()); return "%02d-%02d".format(d.monthValue, d.dayOfMonth) }
 
@@ -259,8 +263,12 @@ class LifeSim(val life: Life) {
     }
     private fun candidates(p: Person, dist: IntArray?, r: Rng, abstract: Boolean): List<Cand> {
         val h = hour; val isNight = night(p, h); val out = ArrayList<Cand>()
+        val tired = p.need(Need.ENERGY) < 28 && Math.floorMod((sleepOf(p) - h.toInt()), 24) <= 3   /* very tired: bed a little early instead of a late nap (R1 L2) */
+        val potFresh = life.soc.pot?.let { life.minute - it.minute < 240 } == true || life.people.any { it !== p && it.act == "cook" }
         for (a in Acts.ALL.values) {
-            if (a.night && !isNight) continue
+            if (a.night && !isNight && !(a.id == "sleep" && tired)) continue
+            if (!a.inHours(h)) continue
+            if (a.id == "cook" && (potFresh || (p.need(Need.FOOD) > 45 && !society.mealTime()))) continue   /* one pot at a time, and only when it is time to eat (R1 L1) */
             if (a.day && isNight) continue
             if (a.id == "meal" && p.next != "meal" && !society.canEat(p)) continue
             if (a.id == "tidy" && p.need(Need.ROOM) > 70) continue
@@ -276,6 +284,7 @@ class LifeSim(val life: Life) {
             if (isNight && a.id != "sleep" && a.id != "snack") g *= 0.25f
             val (k, pw) = appeal(p, a); g *= k; if (pw != null) why = why + pw
             if (life.minute - (p.recent[a.id] ?: -1e9) < 120) g *= 0.4f
+            if (a.id !in ROUTINE) { val n = p.today[a.id] ?: 0; g *= if (n == 0) 1.25f else 1f / (1f + 0.6f * n) }   /* the same thing over and over gets boring; something new today is nice (R1 L3) */
             if (g <= 0.05f) continue
             val exHere = society.extra(p, a, roomOf(p))
             if (a.kind == null) {
@@ -427,10 +436,10 @@ class LifeSim(val life: Life) {
     private fun minutesUntil(h: Double): Double { val now = hour; var d = (h - now) * 60; if (d <= 0) d += 1440; return d }
     private fun finish(p: Person, a: Activity) {
         if (a.id == "chat") { endChat(p, true); return }
-        release(p); p.recent[a.id] = life.minute
+        release(p); p.recent[a.id] = life.minute; p.today[a.id] = (p.today[a.id] ?: 0) + 1
         a.finish?.let { addMood(p, it) }
         if (a.id == "sleep") { if (p.need(Need.ENERGY) < 60) { p.moods.removeAll { it.id == "slept" }; addMood(p, "badsleep") }; say(p, rng.pick(Lines.M["wake"]!!)) }
-        if (a.id in NOTABLE || a.only.isNotEmpty()) log(p, a.zh)
+        memory(p, a, rng)
         hooks(p, a, rng)
         p.act = null; p.why = emptyList()
         if (a.id == "cook") p.next = "meal" else if (a.id == "meal") p.next = null
@@ -448,9 +457,9 @@ class LifeSim(val life: Life) {
     }
     internal fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
     /** the timeline (plan K-03); favourites are never dropped */
-    internal fun log(p: Person, text: String, away: Boolean = false, kind: String = "life", weight: Int = 1, cause: Int = -1, with: String = "") {
-        life.log += LogLine(life.minute, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with)
-        while (life.log.size > 600) { val i = life.log.indexOfFirst { !it.fav && it.weight <= 1 && it.kind == "life" }.let { if (it >= 0) it else life.log.indexOfFirst { l -> !l.fav } }; if (i < 0) break; life.log.removeAt(i) }
+    internal fun log(p: Person, text: String, away: Boolean = false, kind: String = "life", weight: Int = 1, cause: Int = -1, with: String = "", sound: String = "", aside: String = "", dur: Double = 0.0, at: Double = life.minute) {
+        life.log += LogLine(at, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with, sound = sound, aside = aside, dur = dur)
+        trimLog()
     }
     private var catching = false
     /** a line in this character's own way of talking; quietly when someone sleeps in the same room (plan B-08) */
@@ -671,17 +680,32 @@ class LifeSim(val life: Life) {
         for (p in life.people) { val a = p.act?.let { Acts[it] }; if (a != null && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }
             if (!grid.walkable(p.x.toInt(), p.y.toInt()) && p.act == null) { val (x, y) = grid.nearestWalkable(p.x, p.y); p.x = x + 0.5f; p.y = y + 0.5f } }
         life.arriving = false
-        val lines = life.people.map { p ->
+        /* more than 30 days away (R1 T4): the rest is skipped — the clock jumps to now and the summary says so */
+        val skipped = toMinute - to
+        if (skipped >= 1) { life.minute = toMinute; for (p in life.people) { p.act = null; p.actPiece = -1; p.out = null; body(p.id).arrivedAct = false } }
+        val lines = (if (skipped >= 1) listOf("離開太久了：超過 30 天的 ${fmtSpan(skipped)} 大家都在睡大覺，直接跳過") else emptyList()) + life.people.map { p ->
             val c = counts[p.id].orEmpty().entries.sortedByDescending { it.value }.take(3)
             if (c.isEmpty()) "${p.name}：一直在${p.act?.let { Acts[it]?.zh } ?: "休息"}" else "${p.name}：" + c.joinToString("、") { "${it.key}${if (it.value > 1) " ${it.value} 次" else ""}" }
         }
-        val s = AwaySummary(from, to, lines); if (!summarize) return s
+        val s = AwaySummary(from, life.minute, lines); if (!summarize) return s
         life.away = s
-        life.log += LogLine(to, "", "你不在的 ${fmtSpan(to - from)} 裡：" + lines.joinToString("；"), away = true); while (life.log.size > 300) life.log.removeAt(0)
+        life.log += LogLine(to, "", "你不在的 ${fmtSpan(to - from)} 裡：" + lines.joinToString("；"), away = true); trimLog()
         return s
     }
+    /** the timeline keeps the last LOG_MAX lines; favourites and big moments are kept longest (R1: the away summary used to cut it to 300, favourites included) */
+    private fun trimLog() {
+        while (life.log.size > LOG_MAX) { val i = life.log.indexOfFirst { !it.fav && it.weight <= 1 && it.kind == "life" }.let { if (it >= 0) it else life.log.indexOfFirst { l -> !l.fav } }; if (i < 0) break; life.log.removeAt(i) }
+    }
+    /** every finished small thing is a memory: when it started, what, a sound, a line, how long (R1) */
+    private fun memory(p: Person, a: Activity, r: Rng) {
+        if (a.id == "chat" || a.id == "queue" || a.id == "outing") return
+        if (!(a.id in NOTABLE || a.only.isNotEmpty() || Flavor.has(a.id))) return
+        val (snd, aside) = Flavor.pick(a.id, r); val dur = max(1.0, life.minute - p.actStart)
+        log(p, a.zh, sound = snd, aside = aside, dur = dur, at = p.actStart.takeIf { it > 0 && it <= life.minute } ?: life.minute)
+    }
     private fun finishQuiet(p: Person, a: Activity) {
-        release(p); p.recent[a.id] = life.minute; a.finish?.let { addMood(p, it) }
+        memory(p, a, Rng.of(life.seed, "mem:${p.id}:${life.minute.toLong()}"))
+        release(p); p.recent[a.id] = life.minute; p.today[a.id] = (p.today[a.id] ?: 0) + 1; a.finish?.let { addMood(p, it) }
         hooks(p, a, Rng.of(life.seed, "quiet:${p.id}:${life.minute.toLong()}"))
         if (a.id == "cook") p.next = "meal" else if (a.id == "meal") p.next = null
         p.act = null; p.with = null; p.why = emptyList(); body(p.id).arrivedAct = false; body(p.id).pose = Pose.STAND
@@ -695,6 +719,8 @@ class LifeSim(val life: Life) {
         const val CHUNK = 10.0            /* game minutes per catch-up step */
         const val MAX_AWAY_MIN = 30.0 * 1440
         val SLEEPY = setOf("sleep", "nap", "sofanap")
+        /** what people do every day anyway (no boredom from doing them again) */
+        val ROUTINE = setOf("sleep", "meal", "snack", "bathe", "chat", "queue", "outing", "dishes")
         val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy", "sticker")
         /** the player's furniture as a furniture kind: its spots, and which built-in kinds' activities it offers */
         fun furnitureOf(i: WorldItem): app.ocshimeji.sim.house.FurnitureKind {
@@ -703,6 +729,7 @@ class LifeSim(val life: Life) {
             if (i.kind == "sticker") return app.ocshimeji.sim.house.FurnitureKind("item:" + i.id, i.name, i.w.coerceIn(1, 3), 1, false, emptyList(), image = i.image, wall = true)
             return app.ocshimeji.sim.house.FurnitureKind("item:" + i.id, i.name, i.w.coerceIn(1, 4), i.h.coerceIn(1, 4), i.kind != "rug", slots, actsAs = acts, image = i.image)
         }
+        const val LOG_MAX = 1500
         val NOTABLE = setOf("sleep", "meal", "cook", "bathe", "read", "water", "tidy", "nap")
         /** what can be dropped for a chat */
         /** a double bed is a bed */
@@ -714,6 +741,9 @@ class LifeSim(val life: Life) {
         val SKILL_OF = mapOf("cook" to "料理", "meal" to "料理", "bake" to "料理", "water" to "園藝", "read" to "閱讀", "tidy" to "打掃", "chat" to "聊天")
         /** words in likes / hobbies / dislikes that point at an activity */
         val ACT_WORDS = mapOf(
+            "tea" to listOf("茶", "喝茶"), "diary" to listOf("日記", "寫字"), "music" to listOf("音樂", "聽歌", "唱歌"), "stretch" to listOf("運動", "瑜伽", "伸展"),
+            "phone" to listOf("手機", "網路"), "puzzle" to listOf("拼圖", "樂高", "益智"), "album" to listOf("照片", "拍照", "回憶"), "letter" to listOf("寫信", "朋友"),
+            "plantchat" to listOf("植物", "花", "養花"), "hum" to listOf("唱歌", "音樂"), "fold" to listOf("家務", "洗衣"), "makebed" to listOf("整理", "家務"),
             "read" to listOf("看書", "書", "閱讀"), "tv" to listOf("電視", "電影", "節目"), "tvrug" to listOf("電視"), "cook" to listOf("煮飯", "料理", "下廚"),
             "water" to listOf("植物", "花", "園藝"), "bathe" to listOf("洗澡", "泡澡"), "window" to listOf("窗", "曬太陽", "天空", "雲"), "primp" to listOf("打扮", "鏡子", "化妝"),
             "tidy" to listOf("整理", "打掃"), "snack" to listOf("點心", "甜點", "零食", "布丁", "蛋糕"), "nap" to listOf("午睡", "睡午覺"), "relax" to listOf("沙發", "毛毯", "放鬆"),

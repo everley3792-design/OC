@@ -109,8 +109,9 @@ class LifeTest {
         assertNotNull(sa); assertEquals(3, sa.lines.size); assertTrue(sa.lines.all { it.contains("：") })
         assertTrue(a.life.people.all { p -> Need.values().all { p.need(it) in 0f..100f } })
         assertTrue(a.life.people.all { it.recent.containsKey("sleep") }, "everyone slept during three days")
-        val c = LifeSim(json.decodeFromString<Life>(snap)); val start = c.life.minute; c.catchUp(start + 90 * 1440.0)
-        assertEquals(start + 30 * 1440.0, c.life.minute, 1e-6)
+        val c = LifeSim(json.decodeFromString<Life>(snap)); val start = c.life.minute; val s90 = c.catchUp(start + 90 * 1440.0)!!
+        assertEquals(start + 90 * 1440.0, c.life.minute, 1e-6)   /* R1 T4: 30 days are lived, the rest is skipped and said */
+        assertTrue(s90.lines.first().contains("跳過"))
     }
     @Test fun liveStepsAreDeterministicToo() {
         val a = world(); val b = world(); run(a, 60f); run(b, 60f)

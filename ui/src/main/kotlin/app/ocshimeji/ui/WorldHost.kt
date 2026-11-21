@@ -49,6 +49,7 @@ class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -
     fun drive(o: Open, dt: Float, who: String) {
         if (who == "desk" && o.screenActive) return
         o.playT += dt; o.saveT += dt
+        o.sim.hold = o.sim.life.clockMode == "REAL" && o.sim.life.minute > realMinute() + 1   /* R1 T1: ahead of the phone → wait for it */
         o.sim.update(dt); o.sim.life.lastRealMs = now()
         if (o.sim.events.isNotEmpty()) { val ev = ArrayList(o.sim.events); o.sim.events.clear(); for (e in ev) for (l in o.listeners.toList()) l(e) }
         if (o.saveT > 30f) save(o)

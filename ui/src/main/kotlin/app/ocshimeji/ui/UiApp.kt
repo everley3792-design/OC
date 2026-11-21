@@ -110,12 +110,12 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
         downX = x; downY = y; moved = false
         val z = hit(x, y); pressed = z?.id; raw = false
         if (overlay == null && z == null && screen.pointer(0, x, y)) { raw = true; return }
-        if (overlay == null) screen.drag(0f, 0f, x, y, start = true)
+        if (overlay == null) screen.drag(0f, 0f, x, y, start = true) else overlay!!.drag(0f, 0f, x, y, start = true)
     }
     fun move(x: Float, y: Float) {
         if (raw) { screen.pointer(1, x, y); return }
         if (!moved && Math.hypot((x - downX).toDouble(), (y - downY).toDouble()) > 10) { moved = true; pressed = null }
-        if (moved && overlay == null) screen.drag(x - downX, y - downY, x, y, start = false)
+        if (moved) { if (overlay == null) screen.drag(x - downX, y - downY, x, y, start = false) else overlay!!.drag(x - downX, y - downY, x, y, start = false) }
     }
     /** a second finger (pinch): kind 0 down, 1 move, 2 up — only screens that want it */
     fun second(kind: Int, x: Float, y: Float) { if (overlay == null) screen.pointer(10 + kind, x, y) }
@@ -125,7 +125,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
         tapX = x; tapY = y
         if (raw) { raw = false; screen.pointer(2, x, y); return }
         val id = pressed; pressed = null
-        if (moved) { if (overlay == null) screen.release(); return }
+        if (moved) { if (overlay == null) screen.release() else overlay!!.release(); return }
         val z = hit(x, y)
         if (overlay != null) {
             val o = overlay!!
@@ -187,4 +187,7 @@ abstract class Overlay {
     abstract fun frame(g: Gfx, dt: Float)
     abstract fun tap(id: String)
     open fun dismissed() {}
+    /** a finger dragging inside the overlay (R1: sheets scroll) */
+    open fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) {}
+    open fun release() {}
 }

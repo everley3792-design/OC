@@ -119,6 +119,8 @@ class Person(
     var order: String? = null,
     /** out in town (plan B-12) */
     var out: Outing? = null,
+    /** what they did today, how many times (boredom and novelty; cleared each morning) */
+    val today: MutableMap<String, Int> = mutableMapOf(),
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult
@@ -132,7 +134,9 @@ class Person(
  * and fast-forward pick the big ones); `fav` = kept by the player (never dropped); `cause` = the memory it grew out of.
  */
 @Serializable class LogLine(val minute: Double, val who: String, val text: String, val away: Boolean = false,
-                            val kind: String = "life", val weight: Int = 1, var fav: Boolean = false, val cause: Int = -1, val with: String = "")
+                            val kind: String = "life", val weight: Int = 1, var fav: Boolean = false, val cause: Int = -1, val with: String = "",
+                            /** R1 memories: a sound word, one line of narration, and how long it took (game minutes) */
+                            val sound: String = "", val aside: String = "", val dur: Double = 0.0)
 @Serializable class AwaySummary(val fromMinute: Double, val toMinute: Double, val lines: List<String>)
 
 /** personality axes by index */

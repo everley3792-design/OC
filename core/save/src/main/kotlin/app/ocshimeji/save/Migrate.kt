@@ -73,6 +73,8 @@ object Migrate {
                 val bag = (life["bag"] as? JsonObject)?.keys.orEmpty()
                 put("prog", buildJsonObject { put("book", JsonObject(bag.associateWith { JsonPrimitive(3) })) }) })) })
         },
+        /* 7 → 8 (R1): memories gain a sound, a line and a length; residents count what they did today — old lines and people just start without them */
+        7 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

@@ -22,16 +22,31 @@ data class Activity(
     val prop: String? = null,
     /** only in this weather (plan B-10) */
     val weather: Set<String> = emptySet(),
-)
+    /** only between these hours of the day (naps in the afternoon, journals in the evening); from > to wraps past midnight */
+    val from: Double = 0.0, val to: Double = 24.0,
+) { fun inHours(h: Double) = if (from <= to) h >= from && h < to else h >= from || h < to }
 
 object Acts {
     private fun a(id: String, zh: String, kind: String?, pose: Pose, min: Int, vararg per: Pair<Need, Float>, tags: Set<String> = emptySet(), night: Boolean = false, day: Boolean = false, finish: String? = null, sameRoomAs: String? = null,
-                  only: Set<String> = emptySet(), prop: String? = null, weather: Set<String> = emptySet()) =
-        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs, only, prop, weather)
+                  only: Set<String> = emptySet(), prop: String? = null, weather: Set<String> = emptySet(), from: Double = 0.0, to: Double = 24.0) =
+        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs, only, prop, weather, from, to)
     val ALL: Map<String, Activity> = listOf(
         a("sleep", "睡覺", "bed", Pose.LIE, 420, Need.ENERGY to 14f, Need.COMFORT to 4f, tags = setOf("rest"), night = true, finish = "slept"),
-        a("nap", "午睡", "bed", Pose.LIE, 45, Need.ENERGY to 16f, Need.COMFORT to 6f, tags = setOf("rest", "lazy"), day = true),
-        a("sofanap", "在沙發上打盹", "sofa", Pose.LIE, 30, Need.ENERGY to 12f, Need.COMFORT to 8f, tags = setOf("rest", "lazy"), day = true),
+        a("nap", "午睡", "bed", Pose.LIE, 45, Need.ENERGY to 16f, Need.COMFORT to 6f, tags = setOf("rest", "lazy"), day = true, from = 12.0, to = 17.5),
+        a("sofanap", "在沙發上打盹", "sofa", Pose.LIE, 30, Need.ENERGY to 12f, Need.COMFORT to 8f, tags = setOf("rest", "lazy"), day = true, from = 12.0, to = 19.0),
+        /* R1: small everyday things anyone does (the little moments the day is made of) */
+        a("tea", "泡一杯茶", "stove", Pose.TIDY, 10, Need.COMFORT to 30f, Need.FUN to 20f, tags = setOf("calm"), prop = "cup"),
+        a("diary", "寫日記", "table", Pose.READ, 20, Need.FUN to 25f, Need.COMFORT to 10f, tags = setOf("calm", "smart", "dreamy"), from = 19.0, to = 24.0),
+        a("music", "戴著耳機聽音樂", null, Pose.DAYDREAM, 25, Need.FUN to 35f, Need.COMFORT to 10f, tags = setOf("calm")),
+        a("stretch", "做伸展操", "rug", Pose.HAPPY, 15, Need.COMFORT to 25f, Need.ENERGY to 10f, Need.FUN to 10f, tags = setOf("active"), from = 6.0, to = 22.0),
+        a("phone", "滑手機", "sofa", Pose.SIT, 20, Need.FUN to 35f, tags = setOf("lazy"), prop = "phone"),
+        a("makebed", "整理床鋪", "bed", Pose.TIDY, 6, Need.ROOM to 60f, tags = setOf("tidy"), from = 6.0, to = 11.0),
+        a("puzzle", "拼拼圖", "table", Pose.READ, 35, Need.FUN to 30f, tags = setOf("smart", "calm")),
+        a("fold", "摺衣服", "bed", Pose.TIDY, 12, Need.ROOM to 40f, Need.FUN to 5f, tags = setOf("tidy")),
+        a("album", "翻相簿", "shelf", Pose.READ, 20, Need.FUN to 25f, Need.SOCIAL to 10f, tags = setOf("dreamy", "calm")),
+        a("letter", "寫信給朋友", "table", Pose.READ, 20, Need.SOCIAL to 30f, Need.FUN to 10f, tags = setOf("dreamy")),
+        a("plantchat", "跟植物說話", "plant", Pose.LOOK, 8, Need.FUN to 30f, Need.SOCIAL to 10f, tags = setOf("dreamy")),
+        a("hum", "一邊哼歌一邊晃", null, Pose.SING, 10, Need.FUN to 30f, tags = setOf("active")),
         a("snack", "從冰箱拿點心吃", "fridge", Pose.EAT, 10, Need.FOOD to 120f, Need.FUN to 6f, tags = setOf("food"), finish = "snack"),
         a("cook", "煮飯", "stove", Pose.TIDY, 25, Need.FOOD to 0f, Need.FUN to 8f, tags = setOf("food", "active"), finish = "cooked"),
         a("meal", "吃飯", "table", Pose.EAT, 20, Need.FOOD to 210f, Need.COMFORT to 6f, tags = setOf("food"), finish = "meal"),

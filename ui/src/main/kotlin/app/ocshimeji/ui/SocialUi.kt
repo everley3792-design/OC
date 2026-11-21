@@ -239,7 +239,8 @@ class TimelineScreen(val ws: WorldScreen) : Screen() {
         g.fillRect(0f, 0f, W, H, t.bg)
         Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back")
         g.text(if (tab == "mail") "信箱" else "時間線", G + 60, top + 42, Dim.FS_L, t.ink)
-        var x = W - G - 180f
+        var x = W - G - 236f
+        x += Widgets.chip(g, app, "replay", x, top + 14, "回放", false) + 8
         x += Widgets.chip(g, app, "tab:mail", x, top + 14, "信箱" + so.unreadMail().let { if (it > 0) "（$it）" else "" }, tab == "mail") + 8
         Widgets.chip(g, app, "tab:log", x, top + 14, "時間線", tab == "log")
         var listTop = top + 72
@@ -273,6 +274,7 @@ class TimelineScreen(val ws: WorldScreen) : Screen() {
         val life = ws.sim.life
         when {
             id == "back" -> app.pop()
+            id == "replay" -> app.push(MemoryScreen(ws))
             id.startsWith("tab:") -> { tab = id.removePrefix("tab:"); scroll.reset() }
             id.startsWith("lively:") -> { life.soc.lively = id.removePrefix("lively:").toInt(); app.toast(listOf("安靜：每 10 分鐘最多 1 件事找你", "普通：每 10 分鐘最多 2 件事找你", "熱鬧：每 10 分鐘最多 4 件事找你")[life.soc.lively]); ws.flush() }
             id.startsWith("f:") -> { filter = id.removePrefix("f:"); scroll.reset() }

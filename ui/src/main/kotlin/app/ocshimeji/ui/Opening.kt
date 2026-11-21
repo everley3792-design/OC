@@ -29,6 +29,8 @@ class Scroller {
     }
     fun release() { dragging = false; s.target = s.value }
     fun reset() { s.snap(0f); vel = 0f }
+    /** follow the end of a growing list (replay) */
+    fun toEnd() { if (!dragging) { s.target = max; vel = 0f } }
 }
 
 /** draw a house type into a box (centred), with optional faces standing in rooms and room names */

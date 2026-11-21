@@ -246,7 +246,11 @@ class WorldScreen(val slotId: String) : Screen() {
             Widgets.round(g, app, "town", W - Dim.GUTTER - 24, top + 140, 22f, "town")
             Widgets.round(g, app, "place", W - Dim.GUTTER - 24, top + 192, 22f, if (placing) "close" else "move") }
         if (closeup == null && sim.society.unreadMail() > 0) { g.fillCircle(Dim.GUTTER + 40, top + 128, 8f, t.alert); g.text("${min(99, sim.society.unreadMail())}", Dim.GUTTER + 40, top + 132, 10f, t.onAlert, FontKind.NUM, Align.CENTER) }
-        val clock = timeText(); val dayS = "第 ${life.day} 天" + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
+        val clock = timeText()
+        /* R1 T3: the world's date differs from the phone's → say whose date it is; T1: waiting for the phone to catch up */
+        val gameDay = kotlin.math.floor(life.minute / 1440).toLong(); val phoneDay = kotlin.math.floor(app.platform.realMinute() / 1440).toLong()
+        val dateNote = if (gameDay != phoneDay) java.time.LocalDate.ofEpochDay(gameDay).let { "・遊戲 ${it.monthValue}/${it.dayOfMonth}" } else ""
+        val dayS = if (sim.hold) "等手機時間追上" else "第 ${life.day} 天" + dateNote + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
         val cw = maxOf(g.measure(clock, Dim.FS_M, FontKind.NUM), g.measure(dayS, 11f)) + 50
         val cdown = app.pressed == "clock"; val csink = if (cdown) Dim.LIP - 1 else 0f
         Widgets.card(g, t, W - Dim.GUTTER - cw, top + 12, cw, 44f, 22f, t.surface, t.lip, csink)
@@ -534,7 +538,8 @@ class WorldScreen(val slotId: String) : Screen() {
             subtitle = "30×、60× 和快轉在觀察模式裡；離開時照常 1× 經過") { pick ->
             when (pick) {
                 "real" -> { life.clockMode = "REAL"; life.speed = 1.0; val behind = app.platform.realMinute() - life.minute
-                    if (behind >= 1) { sim.catchUp(app.platform.realMinute(), summarize = false); app.toast("時鐘追上了現在") } else app.toast("回到現實時間") }
+                    if (behind >= 1) { sim.catchUp(app.platform.realMinute(), summarize = false); app.toast("時鐘追上了現在") }
+                    else if (behind < -1) app.toast("世界比手機快了 ${LifeSim.fmtSpan(-behind)}：時間先停著，等手機追上") else app.toast("回到現實時間") }
                 else -> { life.clockMode = "GAME"; life.speed = pick.removePrefix("g").toDouble(); app.toast("遊戲時間 ${life.speed.toInt()}×") }
             }
             flush()
