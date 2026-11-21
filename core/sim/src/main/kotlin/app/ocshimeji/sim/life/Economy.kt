@@ -14,6 +14,7 @@ class Economy(val life: Life) {
         life.ledger += Tx(life.minute, amount, reason, who, item, qty)
         life.wallet += amount
         if (item.isNotEmpty() && qty != 0) { val n = count(item) + qty; if (n == 0) life.bag.remove(item) else life.bag[item] = n }
+        if (item.isNotEmpty() && qty > 0 && (life.prog.book[item] ?: 0) < 3) life.prog.book[item] = 3   /* the collection book: owned */
     }
     /** money in (goals, sales, the first coins) */
     fun earn(amount: Int, reason: String, who: String = "") { require(amount > 0); line(amount, reason, who, "", 0) }

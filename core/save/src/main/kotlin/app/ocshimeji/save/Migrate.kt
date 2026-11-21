@@ -66,6 +66,13 @@ object Migrate {
                 put("bag", JsonObject(emptyMap())); put("layout", JsonArray(emptyList())); put("goals", JsonArray(emptyList())); put("goalsDay", JsonPrimitive(-1))
                 })) })
         },
+        /* 6 → 7 (M7): counts, titles, diary, dreams, achievements, the collection book, plants; an old world starts with none (what it owns goes in the book) */
+        6 to { w ->
+            val life = w["life"] as? JsonObject
+            if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply {
+                val bag = (life["bag"] as? JsonObject)?.keys.orEmpty()
+                put("prog", buildJsonObject { put("book", JsonObject(bag.associateWith { JsonPrimitive(3) })) }) })) })
+        },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

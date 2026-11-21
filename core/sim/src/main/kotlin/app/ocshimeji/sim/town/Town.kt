@@ -46,9 +46,22 @@ object Goods {
         Good("f:plant", "盆栽", "furniture", 30, furniture = "plant"), Good("f:lamp", "落地燈", "furniture", 45, furniture = "lamp"), Good("f:rug", "地毯", "furniture", 60, furniture = "rug"),
         Good("f:tv", "電視", "furniture", 180, furniture = "tv"), Good("f:mirror", "鏡子", "furniture", 50, furniture = "mirror"), Good("f:bench", "長椅", "furniture", 70, furniture = "bench"),
         Good("f:garden", "小菜園", "furniture", 90, furniture = "garden"), Good("f:line", "曬衣架", "furniture", 40, furniture = "line"))
-    val ALL = (FOOD + FURNITURE).associateBy { it.id }
+    /** what the garden gives (plan G-10): not sold in shops, only grown */
+    val FARM = listOf(Good("v:tomato", "小番茄", "food", 6, "酸", 12f), Good("v:carrot", "紅蘿蔔", "food", 5, "甜", 14f), Good("v:pea", "豌豆", "food", 5, "鹹", 12f), Good("v:pumpkin", "南瓜", "food", 9, "甜", 30f))
+    /** what the park gives (plan I-04): found, never bought */
+    val WILD = listOf(Good("w:flower", "野花", "wild", 4), Good("w:stone", "漂亮的石頭", "wild", 3), Good("w:acorn", "橡實", "wild", 2), Good("w:berry", "野莓", "food", 3, "酸", 8f),
+        Good("w:leaf", "紅葉", "wild", 2), Good("w:shell", "雪地裡的松果", "wild", 3))
+    /** market day only (plan H-03): two of these join the grocery shelf */
+    val MARKET = listOf(Good("m:jam", "手工果醬", "food", 22, "甜", 20f), Good("m:bread", "現烤麵包", "food", 18, "鹹", 35f), Good("m:honey", "蜂蜜蛋糕", "food", 26, "甜", 30f), Good("m:pickle", "醃黃瓜", "food", 12, "酸", 10f))
+    /** festival goods (plan H-04): sold on that day only */
+    val FESTIVAL = listOf(Good("e:petal", "花瓣糖", "food", 15, "甜", 10f), Good("e:ice", "刨冰", "food", 14, "甜", 12f), Good("e:yam", "烤地瓜", "food", 16, "甜", 30f), Good("e:cocoa", "熱可可", "food", 14, "甜", 12f),
+        Good("f:lantern", "紙燈籠", "furniture", 40, furniture = "lantern"))
+    val ALL = (FOOD + FURNITURE + FARM + WILD + MARKET + FESTIVAL).associateBy { it.id }
+    /** where a wild find comes from, by season */
+    fun wildFor(season: String): List<Good> = WILD.filter { when (it.id) { "w:leaf" -> season == "autumn"; "w:shell" -> season == "winter"; "w:berry" -> season == "summer"; "w:flower" -> season == "spring" || season == "summer"; else -> true } }
     /** today's grocery shelf (6 of the foods, every day) and this week's furniture (6 kinds, every 7 days) */
-    fun grocery(seed: Long, day: Long): List<Good> = Rng.of(seed, "grocery:$day").let { r -> FOOD.sortedBy { r.nextDouble() }.take(6) }
+    fun grocery(seed: Long, day: Long): List<Good> = Rng.of(seed, "grocery:$day").let { r -> FOOD.sortedBy { r.nextDouble() }.take(6) +
+        (if (Town.marketDay(day)) MARKET.sortedBy { r.nextDouble() }.take(2) else emptyList()) + (Town.festival(day)?.let { f -> FESTIVAL.filter { it.id == f.good || it.id == "f:lantern" } } ?: emptyList()) }
     fun furniture(seed: Long, day: Long): List<Good> = Rng.of(seed, "furniture:${Math.floorDiv(day, 7L)}").let { r -> FURNITURE.sortedBy { r.nextDouble() }.take(7) }
 }
 
@@ -74,9 +87,20 @@ object Town {
         TownAct("leaves", "撿落葉", "park", 20, mapOf(Need.FUN to 16f), outdoor = true, pose = Pose.TIDY, season = setOf("autumn"), tags = setOf("dreamy")),
         TownAct("blossom", "看花", "park", 25, mapOf(Need.FUN to 18f, Need.COMFORT to 8f), outdoor = true, pose = Pose.LOOK, season = setOf("spring"), tags = setOf("dreamy")),
     ).associateBy { it.id }
+    /** a gathering walk in the park (plan I-04) and the festival at the plaza (plan H-04) */
+    val GATHER = TownAct("gather", "在公園撿東西", "park", 25, mapOf(Need.FUN to 16f), outdoor = true, pose = Pose.TIDY, tags = setOf("active"), line = "這裡好像有什麼……")
+    val FEST = TownAct("festival", "逛祭典", "plaza", 60, mapOf(Need.FUN to 35f, Need.SOCIAL to 25f), pose = Pose.HAPPY, tags = setOf("chat"), line = "好熱鬧！")
+    /** the market (plan H-03): every 7th day */
+    fun marketDay(day: Long) = Math.floorMod(day, 7L) == 5L
+    /** one original festival per season (plan H-04): a fixed day each year */
+    data class Festival(val id: String, val zh: String, val month: Int, val dom: Int, val good: String, val desc: String)
+    val FESTIVALS = listOf(Festival("petal", "花瓣夜", 4, 15, "e:petal", "廣場掛滿花瓣燈，大家吃花瓣糖"), Festival("firefly", "螢火蟲祭", 7, 20, "e:ice", "傍晚看螢火蟲、吃刨冰"),
+        Festival("leaves", "落葉祭", 10, 25, "e:yam", "把落葉掃成一大堆，烤地瓜"), Festival("starlamp", "星燈節", 12, 20, "e:cocoa", "點起星星燈，喝熱可可"))
+    fun festival(day: Long): Festival? { val d = java.time.LocalDate.ofEpochDay(day); return FESTIVALS.firstOrNull { it.month == d.monthValue && it.dom == d.dayOfMonth } }
     const val TRAVEL = 15.0          /* game minutes from the door to town */
     fun place(id: String) = PLACES.first { it.id == id }
-    fun acts(weather: String, season: String) = ACTS.values.filter { (it.weather.isEmpty() || weather in it.weather) && (it.season.isEmpty() || season in it.season) && !(it.outdoor && weather == "rain" && it.id != "puddle") }
+    fun act(id: String): TownAct? = ACTS[id] ?: when (id) { "gather" -> GATHER; "festival" -> FEST; else -> null }
+    fun acts(weather: String, season: String, day: Long = -1) = (ACTS.values + (if (weather != "rain") listOf(GATHER) else emptyList()) + (if (day >= 0 && festival(day) != null) listOf(FEST) else emptyList())).filter { (it.weather.isEmpty() || weather in it.weather) && (it.season.isEmpty() || season in it.season) && !(it.outdoor && weather == "rain" && it.id != "puddle") }
 
     /** town events (plan 13.9, first 25): two residents at the same place */
     data class TownEvent(val id: String, val zh: String, val place: String, val script: String, val like: Int = 2, val weather: Set<String> = emptySet(), val season: Set<String> = emptySet())
@@ -133,4 +157,4 @@ class TownState(
 /** one daily goal (plan I-09) */
 @Serializable class Goal(val kind: String, val target: String, val text: String, val reward: Int, var done: Boolean = false)
 /** a piece of furniture as placed in this home (plan G-01); `owned` = bought or made (it goes to storage when removed or moving) */
-@Serializable class PieceRec(val kind: String, val x: Int, val y: Int, val room: String, val owned: Boolean = false)
+@Serializable class PieceRec(val kind: String, val x: Int, val y: Int, val room: String, val owned: Boolean = false, val flip: Boolean = false)

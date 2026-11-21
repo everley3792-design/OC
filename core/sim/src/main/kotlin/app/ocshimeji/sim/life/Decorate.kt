@@ -19,7 +19,7 @@ class Decorate(private val sim: LifeSim) {
     private class Step(val before: List<PieceRec>, val item: String, val qty: Int, val what: String)
     private val history = ArrayList<Step>()
     val canUndo get() = history.isNotEmpty()
-    fun pieces(): List<PieceRec> = if (life.layout.isNotEmpty()) life.layout.toList() else Houses.get(life.houseId).pieces.map { PieceRec(it.kind, it.x, it.y, it.room) }
+    fun pieces(): List<PieceRec> = if (life.layout.isNotEmpty()) life.layout.toList() else Houses.get(life.houseId).pieces.map { PieceRec(it.kind, it.x, it.y, it.room, flip = it.flip) }
     private fun bagIdOf(kind: String) = if (kind.startsWith("item:")) kind else "f:$kind"
     /** what in the bag can be placed: (bag id, furniture kind) */
     fun placeable(): List<Pair<String, String>> = life.bag.keys.mapNotNull { k -> when {
@@ -33,7 +33,8 @@ class Decorate(private val sim: LifeSim) {
         val occ = HashMap<Long, Int>()
         list.forEachIndexed { i, pc ->
             val k = Furniture.kind(pc.kind); val room = base.rooms.firstOrNull { it.id == pc.room } ?: return "${k.zh}不在任何房間裡"
-            val wallKind = pc.kind == "window" || pc.kind == "mirror"
+            val wallKind = pc.kind == "window" || pc.kind == "mirror" || k.wall
+            if (k.wall && pc.y != room.y) return "${k.zh}要貼在${room.zh}的牆上（最上面那一排）"
             for (y in pc.y until pc.y + k.h) for (x in pc.x until pc.x + k.w) {
                 if (base.roomAt(x, y) != room) return "${k.zh}要整個放在${room.zh}裡"
                 if (!wallKind && !room.inside(x, y)) return "${k.zh}不能放在牆上"
@@ -61,14 +62,22 @@ class Decorate(private val sim: LifeSim) {
         val kind = placeable().firstOrNull { it.first == bagId }?.second ?: return "這個不能擺在家裡"
         val room = Houses.get(life.houseId).roomAt(x, y) ?: return "要放在房間裡"
         val r = commit(pieces() + PieceRec(kind, x, y, room.id, owned = true), bagId, -1, "擺上${Furniture.kind(kind).zh}", "擺在家裡：${Economy.nameOf(life, bagId)}")
-        if (r == null) { sim.townLife.goal("place"); sim.log(life.people.firstOrNull() ?: return null, "你在${room.zh}擺了${Furniture.kind(kind).zh}", kind = "you", weight = 1) }
+        if (r == null) { sim.townLife.goal("place"); sim.journal.reactTo(kind, room.id); sim.journal.checkSets(); sim.log(life.people.firstOrNull() ?: return null, "你在${room.zh}擺了${Furniture.kind(kind).zh}", kind = "you", weight = 1) }
         return r
     }
     fun move(i: Int, x: Int, y: Int): String? {
         val list = pieces().toMutableList(); val pc = list.getOrNull(i) ?: return "沒有這件家具"
         if (pc.kind in FIXED) return "${Furniture.kind(pc.kind).zh}是固定的"
         val room = Houses.get(life.houseId).roomAt(x, y) ?: return "要放在房間裡"
-        list[i] = PieceRec(pc.kind, x, y, room.id, pc.owned); return commit(list, "", 0, "移動${Furniture.kind(pc.kind).zh}", "")
+        list[i] = PieceRec(pc.kind, x, y, room.id, pc.owned, pc.flip); val r = commit(list, "", 0, "移動${Furniture.kind(pc.kind).zh}", "")
+        if (r == null) { sim.journal.moved(pc.x, pc.y, x, y); sim.journal.checkSets() }
+        return r
+    }
+    /** turn it to face the other way (a mirror image: how it looks and which side people sit on stay the same piece) */
+    fun flip(i: Int): String? {
+        val list = pieces().toMutableList(); val pc = list.getOrNull(i) ?: return "沒有這件家具"
+        if (pc.kind in FIXED) return "${Furniture.kind(pc.kind).zh}是固定的"
+        list[i] = PieceRec(pc.kind, pc.x, pc.y, pc.room, pc.owned, !pc.flip); return commit(list, "", 0, "翻面${Furniture.kind(pc.kind).zh}", "")
     }
     /** into the bag (furniture the house came with becomes yours to place elsewhere) */
     fun remove(i: Int): String? {
@@ -107,7 +116,7 @@ class Decorate(private val sim: LifeSim) {
         Houses.checkRooms(h, ts, rm) { a, b -> app.ocshimeji.sim.chars.Relations.family(life.rels, a, b) }?.let { return it }
         for (pc in pieces()) if (pc.owned) sim.economy.move(bagIdOf(pc.kind), 1, "搬家帶走：${Furniture.kind(pc.kind).zh}")
         val from = Houses.get(life.houseId).zh
-        life.layout.clear(); life.decor.clear(); history.clear(); life.houseId = h.id
+        life.layout.clear(); life.decor.clear(); history.clear(); life.houseId = h.id; life.prog.plants.clear(); life.prog.sets.clear(); sim.journal.did("", "move")
         life.mess.clear(); for (r in h.rooms) life.mess[r.id] = 5f
         for (p in life.people) { p.room = rm[p.id] ?: p.room; p.act = null; p.with = null; p.actPiece = -1
             if (p.out == null && !p.desk) { p.x = h.entrance.x + 0.5f; p.y = h.entrance.y + 0.5f } }

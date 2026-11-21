@@ -63,6 +63,8 @@ class Life(
     val town: TownState = TownState(),
     /** today's three small goals (plan I-09) */
     val goals: MutableList<Goal> = mutableListOf(), var goalsDay: Long = -1,
+    // ---- M7: counts, titles, diary, dreams, achievements, the book, plants, stars
+    val prog: Progress = Progress(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -144,5 +146,5 @@ data class SimEvent(val kind: String, val who: String, val text: String = "")
 /** a custom item as one world knows it: food / drink (taste, how filling) and gifts (the words people like) */
 @Serializable class WorldItem(val id: String, val name: String, val kind: String, val taste: String = "", val full: Float = 0f, val words: List<String> = emptyList(), val image: String = "",
     /** furniture: footprint, spots (dx, dy, pose 0 sit / 1 lie / 2 stand), what it offers, its base price */
-    val w: Int = 1, val h: Int = 1, val spots: List<List<Float>> = emptyList(), val offers: List<String> = emptyList(), val price: Int = 0)
+    val w: Int = 1, val h: Int = 1, val spots: List<List<Float>> = emptyList(), val offers: List<String> = emptyList(), val price: Int = 0, val series: String = "")
 @Serializable class Decor(val wall: String = "", val floor: String = "")

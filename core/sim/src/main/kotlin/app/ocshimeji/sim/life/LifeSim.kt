@@ -36,7 +36,7 @@ class LifeSim(val life: Life) {
     private fun build(): HouseType {
         for (it0 in life.items) if (it0.kind in FURNITURE_KINDS) Furniture.register(furnitureOf(it0))
         val base = Houses.get(life.houseId)
-        return if (life.layout.isEmpty()) base else base.copy(pieces = life.layout.map { app.ocshimeji.sim.house.Piece(it.kind, it.x, it.y, it.room) })
+        return if (life.layout.isEmpty()) base else base.copy(pieces = life.layout.map { app.ocshimeji.sim.house.Piece(it.kind, it.x, it.y, it.room, it.flip) })
     }
     /** a new arrangement: nobody keeps using furniture that moved; everyone stands on the floor */
     internal fun relayout() {
@@ -46,6 +46,7 @@ class LifeSim(val life: Life) {
     /** the ledger (money and things), trips to town, the daily goals, the workshop (M6) */
     val economy = Economy(life)
     val townLife = TownLife(this)
+    val journal = Journal(this)
     val decorate = Decorate(this)
     /** today's weather and the season (plan J-02) */
     fun weather(): String = app.ocshimeji.sim.town.Weather.of(life.seed, life.minute)
@@ -420,6 +421,7 @@ class LifeSim(val life: Life) {
         if (a.id in mods(p).hate) { addMood(p, "hate"); say(p, "……雖然不想，還是${a.zh}吧。") }
         if (a.id == "queue") { addMood(p, "waiting"); say(p, rng.pick(listOf("還沒好嗎？", "我也要用浴室……", "（敲敲門）"))) }
         if (a.id == "outing") { townLife.leave(p); return }
+        if (a.id == "sleep") journal.dream(p)
         if (a.id == "chat") startChat(p, b)
     }
     private fun minutesUntil(h: Double): Double { val now = hour; var d = (h - now) * 60; if (d <= 0) d += 1440; return d }
@@ -440,8 +442,9 @@ class LifeSim(val life: Life) {
         if (a.id == "cook" || a.id == "bake") society.cooked(p, a, r)
         if (a.id == "meal") society.ate(p)
         if (a.id == "dishes" || a.id == "tidy") society.chore(p, a.id)
-        if (a.id == "sleep") society.woke(p)
+        if (a.id == "sleep") { society.woke(p); if (!catching) journal.woke(p) }
         society.actDone(p, a.id)
+        journal.actDone(p, a)
     }
     internal fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
     /** the timeline (plan K-03); favourites are never dropped */
@@ -692,11 +695,12 @@ class LifeSim(val life: Life) {
         const val CHUNK = 10.0            /* game minutes per catch-up step */
         const val MAX_AWAY_MIN = 30.0 * 1440
         val SLEEPY = setOf("sleep", "nap", "sofanap")
-        val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy")
+        val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy", "sticker")
         /** the player's furniture as a furniture kind: its spots, and which built-in kinds' activities it offers */
         fun furnitureOf(i: WorldItem): app.ocshimeji.sim.house.FurnitureKind {
             val acts = i.offers.mapNotNull { when (it) { "sit" -> "sofa"; "sleep" -> "bed"; "read" -> "shelf"; "eat" -> "table"; "play" -> "rug"; "watch" -> "sofa"; "work" -> "stove"; else -> null } }.toSet()
             val slots = i.spots.map { app.ocshimeji.sim.house.Slot(it[0], it[1], when (it.getOrElse(2) { 0f }.toInt()) { 1 -> app.ocshimeji.sim.house.Spot.LIE; 2 -> app.ocshimeji.sim.house.Spot.STAND; else -> app.ocshimeji.sim.house.Spot.SIT }) }
+            if (i.kind == "sticker") return app.ocshimeji.sim.house.FurnitureKind("item:" + i.id, i.name, i.w.coerceIn(1, 3), 1, false, emptyList(), image = i.image, wall = true)
             return app.ocshimeji.sim.house.FurnitureKind("item:" + i.id, i.name, i.w.coerceIn(1, 4), i.h.coerceIn(1, 4), i.kind != "rug", slots, actsAs = acts, image = i.image)
         }
         val NOTABLE = setOf("sleep", "meal", "cook", "bathe", "read", "water", "tidy", "nap")

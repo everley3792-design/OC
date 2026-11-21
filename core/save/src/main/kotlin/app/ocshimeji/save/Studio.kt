@@ -212,7 +212,7 @@ class Studio(val saves: SaveSystem) {
     fun syncWorld(life: Life) {
         val l = lib()
         life.items.clear(); life.items += l.items.filter { it.kind in setOf("food", "drink", "gift") + app.ocshimeji.sim.life.LifeSim.FURNITURE_KINDS }.map { WorldItem(it.id, it.name, it.kind, it.taste, it.full, it.likedBy, it.image,
-            it.w, it.h, it.slots.map { s -> listOf(s.dx, s.dy, when (s.pose) { "lie" -> 1f; "stand" -> 2f; else -> 0f }) }, it.offers, it.price) }
+            it.w, it.h, it.slots.map { s -> listOf(s.dx, s.dy, when (s.pose) { "lie" -> 1f; "stand" -> 2f; else -> 0f }) }, it.offers, it.price, it.series) }
         life.tags.clear(); life.tags += l.tags
         life.scripts.clear(); life.scripts += l.scripts.filter { it.enabled }
     }

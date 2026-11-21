@@ -66,8 +66,12 @@ class Society(private val sim: LifeSim) {
     fun memoriesOf(id: String): List<Memory> = st.memories.filter { it.who == id }.sortedByDescending { it.minute }
 
     // ================= pairs, quarrels =================
+    /** the two who spent the most time together this week (by this week's chats) */
+    fun topPair(): Triple<Person, Person, Int>? { val wk = sim.life.prog.week; var best: Triple<Person, Person, Int>? = null
+        for (a in life.people) for (b in life.people) { if (a.id >= b.id) continue; val n = (wk["${a.id}:with:${b.id}"] ?: 0) + (wk["${b.id}:with:${a.id}"] ?: 0); if (n > 0 && (best == null || n > best.third)) best = Triple(a, b, n) }
+        return best }
     fun pair(a: String, b: String): PairStat { val (x, y) = if (a < b) a to b else b to a; return st.pairs.firstOrNull { it.a == x && it.b == y } ?: PairStat(x, y).also { st.pairs += it } }
-    private fun count(a: String, b: String, key: String, n: Int = 1) { val ps = pair(a, b); ps.n[key] = (ps.n[key] ?: 0) + n; ps.lastDay = life.day }
+    private fun count(a: String, b: String, key: String, n: Int = 1) { val ps = pair(a, b); ps.n[key] = (ps.n[key] ?: 0) + n; ps.lastDay = life.day; if (key == "all") sim.journal.did(a, "with:$b", n) }
     fun feud(a: String, b: String): Feud? = st.feuds.firstOrNull { (it.a == a && it.b == b) || (it.a == b && it.b == a) }
     fun inFeud(id: String) = st.feuds.any { it.a == id || it.b == id }
 
@@ -809,6 +813,7 @@ class Society(private val sim: LifeSim) {
             if (p.wish == null || p.wish!!.done || life.day - p.wish!!.day > 3) { if (r.chance(0.5)) newWish(p, r) else if (p.wish?.done == true) p.wish = null }
         }
         sim.townLife.newDay()
+        sim.journal.newDay()
     }
     /** the daily settlement (plan C-04): steps need two days in a row, unused friendships fade, flavour tags, quarrels cool off */
     internal fun settle() {
@@ -892,6 +897,7 @@ class Society(private val sim: LifeSim) {
         if (p.plan.firstOrNull() == a.id) { k *= 2.2f; why = "照計畫：" + p.plan.take(2).joinToString("，再") { "先" + (Acts[it]?.zh ?: it) }.replaceFirst("，再先", "，再") }
         if (a.id in NOISY && life.people.any { it !== p && sim.asleep(it) && sim.roomOf(it) == room }) k *= 0.15f
         if (a.id == "cook" && mealTime() && st.pot == null && life.people.count { !it.desk } >= 2) { k *= 1.5f + 0.2f * p.spec.skill("料理") + 0.4f * (sim.mods(p).act("s:照顧") - 1f).coerceAtLeast(0f); why = "到了飯點，想煮給大家吃" }
+        sim.townLife.roomScore(room).let { (x, y, z) -> if ((x + y + z) / 3 >= 70 && a.kind == null) k *= 1.15f }   /* a nice room draws people (plan P-10) */
         if (a.id == "craft" && life.town.jobs.any { it.maker == p.id }) { k *= 4f; why = "手上有你委託的作品" }
         if (a.id == "meal" && canEat(p)) { k *= 2f; why = "${sim.person(st.pot!!.cook)?.name ?: "有人"}煮了飯" }
         if (a.id == "dishes" && st.dishes >= 3) { k *= 1f + 0.5f * p.spec.axis(Axis.DILIGENT); why = "水槽裡堆了 ${st.dishes} 個碗" }

@@ -368,7 +368,7 @@ class WorldScreen(val slotId: String) : Screen() {
     /** 「在做什麼」 in a few words */
     fun doing(p: Person, b: LifeSim.Body = sim.body(p.id)): String = when {
         p.desk -> "在手機桌面上"
-        p.out != null -> p.out!!.let { o -> when (o.stage) { "go" -> "在去${TownData.place(o.place).zh}的路上"; "back" -> "在回家的路上"; else -> "在小鎮" + (TownData.ACTS[o.act]?.zh ?: "") } }
+        p.out != null -> p.out!!.let { o -> when (o.stage) { "go" -> "在去${TownData.place(o.place).zh}的路上"; "back" -> "在回家的路上"; else -> "在小鎮" + (TownData.act(o.act)?.zh ?: "") } }
         b.held -> "被你抱著"; b.flying -> "在空中！"; b.petting -> "被摸摸中"
         p.act != null && b.arrivedAct -> Acts[p.act!!]?.zh ?: "休息"
         p.act != null -> "要去" + (Acts[p.act!!]?.zh ?: "")

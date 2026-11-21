@@ -11,7 +11,9 @@ data class FurnitureKind(val id: String, val zh: String, val w: Int, val h: Int,
     /** the built-in kinds whose activities it offers (a player's sofa sits like a sofa) */
     val actsAs: Set<String> = emptySet(),
     /** the player's own furniture: its picture (library path) */
-    val image: String = "")
+    val image: String = "",
+    /** hangs on the back wall (stickers): placed on a room's wall row, nobody walks into it */
+    val wall: Boolean = false)
 
 object Furniture {
     val KINDS: Map<String, FurnitureKind> = listOf(

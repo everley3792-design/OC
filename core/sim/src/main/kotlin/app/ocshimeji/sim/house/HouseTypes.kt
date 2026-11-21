@@ -9,7 +9,7 @@ enum class RoomKind(val zh: String) { LIVING("客廳"), KITCHEN("廚房"), BEDRO
 data class Room(val id: String, val zh: String, val kind: RoomKind, val x: Int, val y: Int, val w: Int, val h: Int, val sleeps: Int = 0) {
     fun inside(tx: Int, ty: Int) = tx >= x && tx < x + w && ty >= y + 1 && ty < y + h   /* floor = without the back-wall row */
 }
-data class Piece(val kind: String, val x: Int, val y: Int, val room: String)
+data class Piece(val kind: String, val x: Int, val y: Int, val room: String, val flip: Boolean = false)
 data class Door(val x: Int, val y: Int)
 data class HouseType(
     val id: String, val zh: String, val blurb: String,

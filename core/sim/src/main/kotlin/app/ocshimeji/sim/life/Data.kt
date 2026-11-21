@@ -105,7 +105,7 @@ object Moods {
         MoodDef("waiting", "排隊等浴室", -1, 0.25f),
         MoodDef("goodweather", "喜歡今天的天氣", 1, 0.25f), MoodDef("rainy", "雨天悶悶的", -1, 0.25f), MoodDef("cosy", "房間很舒服", 1, 0.25f), MoodDef("bare", "房間空蕩蕩的", -1, 0.25f),
         MoodDef("town", "去小鎮玩了一趟", 2, 4f), MoodDef("rainbow", "看到彩虹", 3, 6f), MoodDef("firstsnow", "初雪", 2, 12f), MoodDef("crafted", "做好了作品", 2, 8f),
-        MoodDef("newthing", "房間多了喜歡的東西", 2, 12f),
+        MoodDef("newthing", "房間多了喜歡的東西", 2, 12f), MoodDef("festival", "逛了祭典", 3, 8f), MoodDef("treated", "你請喝咖啡", 2, 4f),
     ).associateBy { it.id }
 }
 

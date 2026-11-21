@@ -111,7 +111,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         // ---- bottom: who is out, the four town things
         val by = H - app.insetBottom - 150
         Widgets.card(g, t, G, by, W - G * 2, 138f, Dim.RADIUS_L)
-        val names = out.map { (p, o) -> p.name + "（" + when (o.stage) { "go" -> "路上"; "back" -> "回家路上"; else -> Town.ACTS[o.act]?.zh ?: "" } + "）" }
+        val names = out.map { (p, o) -> p.name + "（" + when (o.stage) { "go" -> "路上"; "back" -> "回家路上"; else -> Town.act(o.act)?.zh ?: "" } + "）" }
         g.text(Widgets.fit(g, if (names.isEmpty()) "現在大家都在家裡" else "在小鎮：" + names.joinToString("、"), Dim.FS_S + 1, W - G * 2 - 32), G + 16, by + 30, Dim.FS_S + 1, t.ink)
         val jobs = sim.life.town.jobs; g.text(Widgets.fit(g, if (jobs.isEmpty()) "點地點：買東西、看布告欄、擺東西" else "工坊：" + jobs.joinToString("、") { j -> "${sim.person(j.maker)?.name ?: ""}在做${sim.life.items.firstOrNull { it.id == j.item }?.name ?: "作品"} ${(j.worked * 100 / j.need).toInt().coerceAtMost(99)}%" }, Dim.FS_S, W - G * 2 - 32), G + 16, by + 52, Dim.FS_S, t.ink2)
         val bw = (W - G * 2 - 24 - 24) / 4

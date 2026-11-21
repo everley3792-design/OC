@@ -73,6 +73,11 @@ class WorldTest {
         assertEquals(WORLD_VERSION, w.v); assertEquals(300, life.wallet); assertEquals(1, life.ledger.size); assertTrue(life.bag.isEmpty() && life.layout.isEmpty() && life.goals.isEmpty())
         assertTrue(app.ocshimeji.sim.life.Economy(life).consistent()); assertTrue(life.people.all { it.out == null })
     }
+    @Test fun anM6WorldFileIsUpgraded() {   /* format 6 → 7: an empty journal; what is in the bag is already "owned" in the book */
+        val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v6.json")!!.readBytes()); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals(288, life.wallet); assertEquals(3, life.prog.book["pudding"]); assertTrue(life.prog.diary.isEmpty() && life.prog.counts.isEmpty())
+        assertTrue(app.ocshimeji.sim.life.Economy(life).consistent())
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))
