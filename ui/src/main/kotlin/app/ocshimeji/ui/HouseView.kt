@@ -27,6 +27,8 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     class D(val key: Float, val draw: () -> Unit)
     /** the player's wallpaper / floor per room (plan 12.6): pictures tiled seamlessly; null = the house's own */
     var walls: Map<String, Img> = emptyMap(); var floors: Map<String, Img> = emptyMap()
+    /** pictures of the player's own furniture (`FurnitureKind.image`); null = drawn as a plain box */
+    var itemImg: (String) -> Img? = { null }
     private fun tile(g: Gfx, img: Img, x: Float, y: Float, w: Float, h: Float, tw: Float, th: Float) {
         g.save(); g.clip(x, y, w, h); var yy = y; while (yy < y + h) { var xx = x; while (xx < x + w) { g.image(img, xx, yy, tw, th); xx += tw }; yy += th }; g.restore()
     }
@@ -88,10 +90,12 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         val ink = t.ink; val ink2 = t.ink2
     }
     private fun floorColor(p: Pal, r: Room) = when (r.kind) {
-        RoomKind.BATH -> p.s("#DCEFF1"); RoomKind.KITCHEN -> p.s("#F3E3C3"); RoomKind.BALCONY -> p.s("#CDAA84"); RoomKind.BEDROOM -> p.s("#EBCFA8"); else -> p.s("#E9C9A0")
+        RoomKind.BATH -> p.s("#DCEFF1"); RoomKind.KITCHEN -> p.s("#F3E3C3"); RoomKind.BALCONY -> p.s("#CDAA84"); RoomKind.BEDROOM -> p.s("#EBCFA8")
+        RoomKind.YARD -> p.s("#A9D68E"); RoomKind.STUDY -> p.s("#D9B48C"); RoomKind.DINING -> p.s("#EFD2A6"); else -> p.s("#E9C9A0")
     }
     private fun wallColor(p: Pal, r: Room) = when (r.kind) {
-        RoomKind.BATH -> p.s("#CBE6EC"); RoomKind.KITCHEN -> p.s("#F7E7BC"); RoomKind.BEDROOM -> p.s("#F3D6D6"); RoomKind.BALCONY -> p.s("#BFE3F2"); else -> p.s("#F6E0C2")
+        RoomKind.BATH -> p.s("#CBE6EC"); RoomKind.KITCHEN -> p.s("#F7E7BC"); RoomKind.BEDROOM -> p.s("#F3D6D6"); RoomKind.BALCONY, RoomKind.YARD -> p.s("#BFE3F2")
+        RoomKind.STUDY -> p.s("#DCE6D2"); RoomKind.DINING -> p.s("#F8DFC8"); else -> p.s("#F6E0C2")
     }
 
     // ---------------- rooms ----------------
@@ -106,6 +110,10 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
                 for (j in 1 until r.h - 1) g.fillRect(x, y + j * T * K - 0.5f, w, 1f, line)
                 if (r.kind == RoomKind.KITCHEN) for (j in 0 until r.h - 1) for (i in 0 until r.w) if ((i + j) % 2 == 0) g.fillRect(x + i * T, y + j * T * K, T, T * K, Colors.withAlpha(line, 0.35f))
             }
+            RoomKind.YARD -> {   /* grass with a few tufts */
+                for (j in 0 until r.h - 1) for (i in 0 until r.w) if ((i * 7 + j * 3) % 5 == 0) { val gx = x + i * T + T * 0.3f; val gy = y + j * T * K + T * K * 0.6f
+                    g.line(gx, gy, gx - 2, gy - 5, 1.5f, line); g.line(gx + 3, gy, gx + 3, gy - 6, 1.5f, line); g.line(gx + 6, gy, gx + 8, gy - 5, 1.5f, line) }
+            }
             else -> {   /* planks */
                 val ph = T * K / 2; var j = 0; var yy = y
                 while (yy < y + h - 0.5f) { g.fillRect(x, yy + ph - 0.5f, w, 1f, line); val off = if (j % 2 == 0) 0f else T * 0.9f
@@ -116,6 +124,10 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     }
     private fun wall(g: Gfx, p: Pal, r: Room, light: Float) {
         val x = bx(r.x.toFloat()); val y = by(r.y.toFloat()); val w = r.w * T; val h = T * K; val c = wallColor(p, r)
+        if (r.kind == RoomKind.YARD) {   /* open air: sky and a picket fence */
+            g.fillRect(x, y, w, h, Colors.mix(p.night, p.water, light))
+            var xx = x + 3; while (xx < x + w) { g.fillRound(xx, y + h * 0.3f, 6f, h * 0.7f, 3f, p.white); xx += 10 }; g.fillRect(x, y + h * 0.5f, w, 3f, p.whiteLip); return
+        }
         if (r.kind == RoomKind.BALCONY) {   /* open air: sky and a railing */
             g.fillRect(x, y, w, h, Colors.mix(p.night, p.water, light))
             g.fillRect(x, y + h - 5, w, 5f, p.white); var xx = x + 4; while (xx < x + w) { g.fillRect(xx, y + h * 0.35f, 2.5f, h * 0.65f, p.white); xx += 7 }
@@ -177,7 +189,23 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
                 g.fillCircle(cx - 6 + sway, yb - 22, 8f, p.leafLip); g.fillCircle(cx + 6 + sway, yb - 24, 8f, p.leafLip); g.fillCircle(cx + sway, yb - 30, 9f, p.leaf); g.fillCircle(cx - 4 + sway, yb - 22, 6f, p.leaf) }
             "lamp" -> { val cx = bx(fx + 0.5f); val yb = by(fy + 1) - 4; if (light < 0.6f) g.fillCircle(cx, yb - 40, 26f, Colors.withAlpha(p.shade, (0.6f - light) * 0.6f))
                 g.fillRound(cx - 6, yb - 3, 12f, 4f, 2f, p.ink2); g.fillRect(cx - 1, yb - 38, 2f, 36f, p.ink2); g.fillRound(cx - 9, yb - 48, 18f, 13f, 4f, if (light < 0.6f) p.sun else p.shade) }
-            else -> box(g, fx, fy, Furniture.kind(kind).w.toFloat(), Furniture.kind(kind).h.toFloat(), 14f, p.woodTop, p.wood)
+            "garden" -> { val X = bx(fx) + 3; val W = 2 * T - 6; val yb = by(fy + 1)
+                g.fillRound(X, by(fy) - 6, W, yb - by(fy) + 4, 5f, p.woodLip); g.fillRound(X + 3, by(fy) - 3, W - 6, yb - by(fy) - 4, 4f, p.s("#8A5A3A"))
+                for (k in 0 until 4) { val cx = X + 8 + k * (W - 16) / 3; val sway = kotlin.math.sin(time * 1.5f + k) * 1.2f
+                    g.line(cx, yb - 8, cx + sway, yb - 18, 2f, p.leafLip); g.fillCircle(cx - 3 + sway, yb - 18, 3.5f, p.leaf); g.fillCircle(cx + 3 + sway, yb - 20, 3.5f, p.leaf)
+                    if (k % 2 == 0) g.fillCircle(cx + sway, yb - 14, 2.5f, p.coral) } }
+            "line" -> { val X = bx(fx) + 4; val W = 2 * T - 8; val yb = by(fy + 1) - 2
+                g.fillRect(X, yb - 34, 3f, 34f, p.woodLip); g.fillRect(X + W - 3, yb - 34, 3f, 34f, p.woodLip); g.line(X + 2, yb - 32, X + W - 2, yb - 32, 1.5f, p.ink2)
+                val cs = listOf(p.sky, p.coral, p.sun); for (k in 0 until 3) { val cx = X + 10 + k * (W - 20) / 2; val sw = kotlin.math.sin(time * 2f + k) * 1.5f
+                    g.fillRound(cx - 7 + sw, yb - 32, 14f, 15f, 3f, cs[k]) } }
+            "bench" -> { val X = bx(fx) + 3; val W = 2 * T - 6; val yb = by(fy + 1)
+                g.fillRect(X + 4, yb - 12, 3f, 12f, p.woodLip); g.fillRect(X + W - 7, yb - 12, 3f, 12f, p.woodLip)
+                g.fillRound(X, by(fy) - 20, W, 6f, 2f, p.wood); g.fillRound(X, yb - 16, W, 7f, 2f, p.woodTop) }
+            else -> { val k = Furniture.kind(kind); val img = k.image.takeIf { it.isNotBlank() }?.let { itemImg(it) }
+                if (img != null) { val W = k.w * T - 4; val H = k.h * T * K + T * 0.8f; val sc = minOf(W / img.w, H / img.h); val iw = img.w * sc; val ih = img.h * sc
+                    g.fillRound(bx(fx) + 4, by(fy + k.h) - 6, k.w * T - 8, 6f, 3f, Colors.withAlpha(0xFF000000.toInt(), 0.12f))
+                    g.image(img, bx(fx + k.w / 2f) - iw / 2, by(fy + k.h) - ih - 2, iw, ih) }
+                else box(g, fx, fy, k.w.toFloat(), k.h.toFloat(), 14f, p.woodTop, p.wood) }
         }
     }
     private fun blanketColor(p: Pal, i: Int) = if (i % 2 == 0) p.coral to p.coralLip else p.sky to p.skyLip

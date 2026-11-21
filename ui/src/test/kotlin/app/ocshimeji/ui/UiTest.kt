@@ -117,7 +117,8 @@ class UiTest {
     private fun world(a: UiApp, libIds: List<String> = listOf(Presets.CINNAMON.id)): WorldScreen {
         val house = app.ocshimeji.sim.house.Houses.STUDIO
         val m = a.saves.createWorld("小窩", "楓糖鎮", "小窩", house, libIds, libIds.associateWith { "main" }, platform.realMinute())
-        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); return a.screen as WorldScreen
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3)
+        return (a.screen as WorldScreen).also { w -> w.sim.life.people.forEach { it.recent["outing"] = w.sim.life.minute + 24 * 60.0 } }   /* these tests watch them at home */
     }
     @Test fun touchingACharacterTapRubLiftThrow() {
         val a = app(); val ws = world(a); val p = ws.sim.life.people[0]
@@ -295,6 +296,42 @@ class UiTest {
         assertTrue(a.tapZone("tab:log")); frames(a, 10); shot("timeline", frames(a, 1, scale = 2f))
         val first = a.zoneIds.first { it.startsWith("l:") }; assertTrue(a.tapZone(first)); assertTrue(sim.life.log[first.removePrefix("l:").toInt()].fav)
         assertTrue(a.tapZone("f:fav")); frames(a, 5); assertTrue(a.zoneIds.count { it.startsWith("l:") } == 1)
+    }
+    /** M6: the town (places, shops, board, ledger), moving house, decorating, the wallet */
+    @Test fun theTownMovingAndDecorating() {
+        val a = app()
+        fun png(c: java.awt.Color) = java.io.ByteArrayOutputStream().also { val b = java.awt.image.BufferedImage(120, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val g = b.createGraphics(); g.color = c; g.fillOval(20, 20, 80, 130); g.color = java.awt.Color.WHITE; g.fillOval(42, 50, 12, 12); g.fillOval(66, 50, 12, 12); g.dispose(); ImageIO.write(b, "png", it) }.toByteArray()
+        fun char(name: String, c: java.awt.Color) = a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", png(c))), platform.codec)), app.ocshimeji.sim.chars.CharSpec(name = name), 1, true, emptyMap(), emptyList())
+        val ids = listOf(Presets.CINNAMON.id, char("小雨", java.awt.Color(0x7A, 0xAA, 0xD6)).id, char("團子", java.awt.Color(0xE0, 0x8A, 0x9A)).id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2", ids[2] to "bed3"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen; val sim = ws.sim
+        frames(a, 300); assertEquals(300, sim.economy.wallet)
+        shot("world-m6", frames(a, 1, scale = 2f))
+        // the wallet: goals and the ledger
+        assertTrue(a.tapZone("wallet")); frames(a, 15); assertTrue(a.overlay is BoardSheet); shot("wallet-goals", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("bd:ledger")); frames(a, 10); assertTrue(a.screen is LedgerPage); a.back(); frames(a, 2)
+        // the town: someone goes out, the grocery, the board
+        sim.townLife.leave(sim.life.people[1]); assertTrue(a.tapZone("town")); frames(a, 30); assertTrue(a.screen is TownScreen)
+        shot("town", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("place:grocery")); frames(a, 15); shot("town-shop", frames(a, 1, scale = 2f))
+        val food = sim.townLife.stock("grocery").first(); assertTrue(a.tapZone("row:${food.id}")); frames(a, 2); assertEquals(1, sim.economy.count(food.id)); assertEquals(300 - food.price, sim.economy.wallet)
+        assertTrue(a.tapZone("place:furniture")); frames(a, 15); val f = sim.townLife.stock("furniture").first { it.furniture in setOf("plant", "lamp", "rug", "bench", "shelf") || true }
+        assertTrue(a.tapZone("row:${f.id}")); frames(a, 2); assertEquals(1, sim.economy.count(f.id))
+        assertTrue(a.tapZone("board")); frames(a, 15); assertTrue(a.overlay is BoardSheet); shot("town-board", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("bd:ledger")); frames(a, 10); shot("ledger", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        assertTrue(sim.economy.consistent())
+        // moving: everyone says what they think
+        assertTrue(a.tapZone("move")); frames(a, 15); assertTrue(a.tapZone("row:bungalow")); frames(a, 15); assertTrue(a.overlay is MoveSheet); shot("move-sheet", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("mv:yes")); frames(a, 30); assertTrue(a.screen is WorldScreen); assertEquals("bungalow", sim.life.houseId)
+        frames(a, 200); shot("world-bungalow", frames(a, 1, scale = 2f))
+        // decorating: pick what you bought, tap the floor
+        assertTrue(a.tapZone("place")); frames(a, 5); assertTrue(ws.placing); assertTrue(a.tapZone("pl:${f.id}"))
+        val living = sim.house.rooms.first { it.kind == app.ocshimeji.sim.house.RoomKind.LIVING }
+        loop@ for (y in living.y + 1 until living.y + living.h) for (x in living.x until living.x + living.w) { ws.placeAt(x, y); if (sim.economy.count(f.id) == 0) break@loop }
+        assertEquals(0, sim.economy.count(f.id), "placed"); frames(a, 5); shot("world-placing", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("pl:undo")); assertEquals(1, sim.economy.count(f.id)); assertTrue(a.tapZone("pl:done")); assertTrue(!ws.placing)
+        assertTrue(sim.economy.consistent())
     }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {

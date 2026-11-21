@@ -69,6 +69,14 @@ object Widgets {
             "drop" -> { g.fillCircle(cx, cy + 1.4f * u, 2.8f * u, color); g.save(); g.translate(cx, cy - 0.6f * u); g.rotate((Math.PI / 4).toFloat()); g.fillRect(-2f * u, -2f * u, 2.8f * u, 2.8f * u, color); g.restore() }
             "gift" -> { g.fillRect(cx - 4f * u, cy - 1f * u, 8f * u, 5f * u, color); g.fillRect(cx - 4.6f * u, cy - 3f * u, 9.2f * u, 2f * u, color); g.fillRect(cx - 0.6f * u, cy - 3f * u, 1.2f * u, 7f * u, 0xFFFFFDF7.toInt()); g.fillCircle(cx - 1.6f * u, cy - 4f * u, 1.2f * u, color); g.fillCircle(cx + 1.6f * u, cy - 4f * u, 1.2f * u, color) }
             "dots" -> for (i in -1..1) g.fillCircle(cx + i * 3f * u, cy + 1f * u, 1.1f * u, color)
+            "town" -> { for ((ox, hh) in listOf(-2.4f to 3.6f, 2.4f to 5f)) { val l = cx + ox * u - 2.2f * u; g.fillRect(l, cy + 4.4f * u - hh * u, 4.4f * u, hh * u, color)
+                    g.line(l - 0.4f * u, cy + 4.6f * u - hh * u, cx + ox * u, cy + 2f * u - hh * u, 1.3f * u, color); g.line(cx + ox * u, cy + 2f * u - hh * u, l + 4.8f * u, cy + 4.6f * u - hh * u, 1.3f * u, color) } }
+            "bag" -> { g.fillRound(cx - 4.2f * u, cy - 1.8f * u, 8.4f * u, 6.4f * u, 1.8f * u, color); g.strokeRound(cx - 2.2f * u, cy - 4.6f * u, 4.4f * u, 4.6f * u, 2f * u, 1.3f * u, color) }
+            "move" -> { g.line(cx - 4.2f * u, cy, cx + 4.2f * u, cy, 1.4f * u, color); g.line(cx, cy - 4.2f * u, cx, cy + 4.2f * u, 1.4f * u, color)
+                for ((dx, dy) in listOf(1f to 0f, -1f to 0f, 0f to 1f, 0f to -1f)) { val tx = cx + dx * 4.4f * u; val ty = cy + dy * 4.4f * u
+                    g.line(tx, ty, tx - dx * 1.8f * u - dy * 1.6f * u, ty - dy * 1.8f * u - dx * 1.6f * u, 1.3f * u, color); g.line(tx, ty, tx - dx * 1.8f * u + dy * 1.6f * u, ty - dy * 1.8f * u + dx * 1.6f * u, 1.3f * u, color) } }
+            "home" -> { g.fillRect(cx - 3.4f * u, cy - 0.6f * u, 6.8f * u, 5f * u, color); g.line(cx - 5f * u, cy + 0.4f * u, cx, cy - 4.4f * u, 1.6f * u, color); g.line(cx, cy - 4.4f * u, cx + 5f * u, cy + 0.4f * u, 1.6f * u, color) }
+            "coin" -> { g.fillCircle(cx, cy, 4.6f * u, color); g.fillCircle(cx, cy, 3.4f * u, 0xFFFFE29A.toInt()); icon(g, "star", cx, cy, size * 0.55f, color) }
             "pinky" -> { g.line(cx - 3.6f * u, cy + 2f * u, cx - 0.6f * u, cy - 1f * u, 1.6f * u, color); g.line(cx + 3.6f * u, cy + 2f * u, cx + 0.6f * u, cy - 1f * u, 1.6f * u, color); g.strokeRound(cx - 1.6f * u, cy - 3f * u, 3.2f * u, 3.2f * u, 1.6f * u, 1.2f * u, color) }
             "import" -> { g.line(cx, cy - 4f * u, cx, cy + 1.6f * u, 1.5f * u, color); g.line(cx - 2.6f * u, cy - 1f * u, cx, cy + 1.8f * u, 1.5f * u, color); g.line(cx + 2.6f * u, cy - 1f * u, cx, cy + 1.8f * u, 1.5f * u, color); g.line(cx - 4f * u, cy + 4f * u, cx + 4f * u, cy + 4f * u, 1.5f * u, color) }
             "note2" -> { g.fillCircle(cx - 1.6f * u, cy + 2.6f * u, 2.2f * u, color); g.fillRect(cx + 0.2f * u, cy - 4.4f * u, 1.3f * u, 7f * u, color); g.fillRect(cx + 0.2f * u, cy - 4.4f * u, 3.6f * u, 1.6f * u, color) }
@@ -121,6 +129,8 @@ object Widgets {
             "drizzle" -> { cl(cx, cy - s * 0.12f, 0.95f, cloudLip); cl(cx, cy - s * 0.17f, 0.95f); g.line(cx, cy + s * 0.38f, cx - s * 0.06f, cy + s * 0.62f, s * 0.12f, drop) }
             "rain" -> { cl(cx, cy - s * 0.15f, 0.95f, 0xFF9AA6B8.toInt()); cl(cx, cy - s * 0.2f, 0.95f, 0xFFC9D1DD.toInt()); for (i in -1..1) g.line(cx + i * s * 0.32f, cy + s * 0.32f, cx + i * s * 0.32f - s * 0.07f, cy + s * 0.6f, s * 0.12f, drop) }
             "moon" -> { g.fillCircle(cx, cy, s * 0.5f, 0xFFFFE29A.toInt()); g.fillCircle(cx + s * 0.24f, cy - s * 0.16f, s * 0.42f, t.surface) }
+            "snow" -> { cl(cx, cy - s * 0.15f, 0.95f, cloudLip); cl(cx, cy - s * 0.2f, 0.95f); for (i in -1..1) g.fillCircle(cx + i * s * 0.32f, cy + s * 0.48f + (if (i == 0) s * 0.1f else 0f), s * 0.09f, drop) }
+            "fog" -> { for (i in 0..2) g.fillRound(cx - s * 0.7f + i * s * 0.12f, cy - s * 0.35f + i * s * 0.3f, s * 1.3f, s * 0.16f, s * 0.08f, cloudLip) }
         }
     }
     /** break text into lines that fit a width (Chinese breaks anywhere; a word with spaces stays whole when it can) */

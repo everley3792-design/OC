@@ -1,7 +1,7 @@
 package app.ocshimeji.sim.house
 
 /**
- * House types (plan 12.3). M1 has three; the rest (庭院平房, 共居宿舍, 家族大宅) arrive in M6 — they are data, nothing else changes.
+ * House types (plan 12.3): six — 單人套房, 雙人小屋, 三房公寓 (M1) and 庭院平房, 共居宿舍, 家族大宅 (M6). They are data, nothing else changes.
  * A house is a tile grid of rooms; the top row of every room is its back wall (not walkable). Doors are tiles on shared edges
  * that make the two rooms' floors connected; `entrance` is where people arrive.
  */
@@ -33,7 +33,7 @@ object Houses {
             Piece("table", 3, 3, "main"), Piece("rug", 1, 4, "main"), Piece("tv", 3, 1, "main"),
             Piece("tub", 6, 1, "bath"), Piece("mirror", 8, 1, "bath"), Piece("plant", 8, 4, "balcony"), Piece("window", 6, 3, "balcony")),
         doors = listOf(Door(6, 2), Door(6, 4)), entrance = Door(2, 5), capacity = 1,
-        rules = listOf("最多 1 位住民", "佈置成本低，住民比較常出門（M5 後）"))
+        rules = listOf("最多 1 位住民", "佈置成本低，住民比較常出門"))
     val COTTAGE = HouseType("cottage", "雙人小屋", "兩間臥室、一個客廳，剛剛好的兩個人。", 10, 8,
         rooms = listOf(Room("bedA", "臥室 A", RoomKind.BEDROOM, 0, 0, 4, 4, sleeps = 2), Room("bedB", "臥室 B", RoomKind.BEDROOM, 4, 0, 3, 4, sleeps = 1), Room("bath", "浴室", RoomKind.BATH, 7, 0, 3, 4),
             Room("living", "客廳", RoomKind.LIVING, 0, 4, 6, 4), Room("kitchen", "廚房", RoomKind.KITCHEN, 6, 4, 4, 4)),

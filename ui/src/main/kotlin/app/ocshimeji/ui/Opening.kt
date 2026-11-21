@@ -108,14 +108,19 @@ class OpeningScreen : Screen() {
         app.zone(id, G, y, w, 76f)
     }
 
+    /** the mansion opens once one of your homes has 5 or more residents (plan 12.3) */
+    private fun locked(h: HouseType) = h.locked.isNotEmpty() && app.saves.slots().none { it.residents.size >= 5 }
     // ---- 1: house type
     private fun houses(g: Gfx, y0: Float, btnY: Float) {
         val t = app.theme; val G = Dim.GUTTER; val W = app.w
-        var x = G; for (h in Houses.ALL) x += Widgets.chip(g, app, "house:${h.id}", x, y0, h.zh, h == house, 40f) + 8
-        val ph = minOf(230f, btnY - y0 - 250)
-        g.fillRound(G, y0 + 56, W - G * 2, ph, Dim.RADIUS_L, t.surface2)
-        drawHousePreview(g, app, house, G, y0 + 56, W - G * 2, ph)
-        var y = y0 + 56 + ph + 30
+        var x = G; var cy = y0
+        for (h in Houses.ALL) { val label = h.zh + if (locked(h)) "（未開放）" else ""; if (x + g.measure(label, Dim.FS_S + 1) + 28 > W - G) { x = G; cy += 48 }
+            x += Widgets.chip(g, app, "house:${h.id}", x, cy, label, h == house, 40f) + 8 }
+        val top = cy + 56
+        val ph = minOf(230f, btnY - top - 194)
+        g.fillRound(G, top, W - G * 2, ph, Dim.RADIUS_L, t.surface2)
+        drawHousePreview(g, app, house, G, top, W - G * 2, ph)
+        var y = top + ph + 30
         g.text(house.zh, G + 4, y, Dim.FS_L, t.ink); g.text("最多 ${house.capacity} 位", W - G - 4, y, Dim.FS_M, t.accentLip, FontKind.UI, Align.RIGHT)
         y += 24; g.text(house.blurb, G + 4, y, Dim.FS_S + 1, t.ink2); y += 12
         for (r in house.rules) { y += 24; g.fillCircle(G + 9, y - 5, 3f, t.accent); g.text(Widgets.fit(g, r, Dim.FS_S, W - G * 2 - 24), G + 20, y, Dim.FS_S, t.ink2) }
@@ -177,7 +182,7 @@ class OpeningScreen : Screen() {
             id == "next" && problem() == null -> next()
             id == "name:town" -> app.platform.prompt("小鎮的名字", town, 12) { n -> if (!n.isNullOrBlank()) town = n.trim() }
             id == "name:home" -> app.platform.prompt("家的名字", home, 12) { n -> if (!n.isNullOrBlank()) home = n.trim() }
-            id.startsWith("house:") -> { house = Houses.get(id.removePrefix("house:")); rooms.clear() }
+            id.startsWith("house:") -> { val h = Houses.get(id.removePrefix("house:")); if (locked(h)) app.toast(h.locked) else { house = h; rooms.clear() } }
             id.startsWith("pick:") -> { val c = id.removePrefix("pick:")
                 if (!chosen.remove(c)) { if (chosen.size >= house.capacity) app.toast("${house.zh}最多住 ${house.capacity} 位") else chosen += c } }
             id == "import" -> pickImage()

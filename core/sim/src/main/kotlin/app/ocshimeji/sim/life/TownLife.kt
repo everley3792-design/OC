@@ -62,7 +62,7 @@ class TownLife(private val sim: LifeSim) {
         } ?: Town.ACTS.getValue("bench")
     }
     /** they set off (from the door) */
-    internal fun leave(p: Person, live: Boolean = true) {
+    fun leave(p: Person, live: Boolean = true) {
         val r = rngFor(live, p); val a = pickAct(p, r)
         sim.release(p); p.act = null; p.why = listOf("在小鎮"); p.recent["outing"] = life.minute
         val b = sim.body(p.id); b.arrivedAct = false; b.path = null; b.micro = null
@@ -208,12 +208,14 @@ class TownLife(private val sim: LifeSim) {
     fun takeCorner(corner: String) { val item = town.corners.remove(corner) ?: return; eco.move(item, 1, "從小鎮收回：${Economy.nameOf(life, item)}") }
 
     // ================= the workshop (plan 12.6 委託製作) =================
+    /** materials for one commission: a third of its price, at least 10 */
+    fun commissionCost(itemId: String): Int = max(10, (life.items.firstOrNull { it.id == itemId }?.price?.takeIf { it > 0 } ?: 30) / 3)
     /** ask a resident to make one of your items: materials cost coins, they craft at home for a few hours */
     fun commission(itemId: String, makerId: String): String? {
         val it0 = life.items.firstOrNull { it.id == itemId } ?: return "這個物品還沒有帶進這個世界（重新打開世界）"
         val m = sim.person(makerId) ?: return "沒有這個人"
         if (town.jobs.any { it.maker == makerId }) return "${m.name}手上已經有一件委託了"
-        val cost = max(10, (if (it0.price > 0) it0.price else 30) / 3)
+        val cost = commissionCost(itemId)
         if (!eco.spend(cost, "委託${m.name}做${it0.name}的材料費", m.id)) return "星幣不夠（材料費 $cost）"
         val skill = m.spec.skills.values.maxOrNull() ?: 0
         town.jobs += Job(life.soc.nextId++, itemId, makerId, life.minute, (180 - skill * 15).coerceIn(90, 180).toDouble(), cost)

@@ -75,7 +75,7 @@ class ItemEditor(val orig: LibItem?, picture: Raster?) : Screen() {
                 title("系列"); Widgets.chip(g, app, "series", G, y, it0.series.ifBlank { "（沒有）" }, false, 38f, W - G * 2); y += 52
             }
         }
-        title("價格 ${it0.price} 星幣（商店在 M6）"); Widgets.round(g, app, "price:-", G + 24, y + 20, 18f, "minus"); Widgets.round(g, app, "price:+", G + 74, y + 20, 18f, "plus"); y += 52
+        title("價格 ${it0.price} 星幣（市集攤位的建議價）"); Widgets.round(g, app, "price:-", G + 24, y + 20, 18f, "minus"); Widgets.round(g, app, "price:+", G + 74, y + 20, 18f, "plus"); y += 52
         title("說明"); Widgets.chip(g, app, "desc", G, y, it0.desc.ifBlank { "（點一下寫說明）" }, false, 40f, W - G * 2); y += 56
         // ---- checks
         val (bad, warn) = Items.check(it0.copy(image = if (front != null || it0.image.isNotBlank()) "x" else ""))
@@ -114,7 +114,7 @@ class ItemEditor(val orig: LibItem?, picture: Raster?) : Screen() {
                     val next = when (s?.pose) { null -> "sit"; "sit" -> "lie"; "lie" -> "stand"; else -> null }
                     item.copy(slots = rest + listOfNotNull(next?.let { ItemSlot(i + 0.5f, j + 0.5f, it) })) } }
             id.startsWith("offer:") -> { val k = id.removePrefix("offer:"); set { it.copy(offers = if (k in it.offers) it.offers - k else it.offers + k) } }
-            id == "series" -> app.platform.prompt("系列名稱（同系列擺在一起有加成，M6）", it0.series, 12) { s -> s?.let { v -> set { it.copy(series = v.trim()) } } }
+            id == "series" -> app.platform.prompt("系列名稱（同系列擺在一起的加成在 M7 製作）", it0.series, 12) { s -> s?.let { v -> set { it.copy(series = v.trim()) } } }
             id == "price:-" -> set { it.copy(price = (it.price - 10).coerceIn(0, 9999)) }; id == "price:+" -> set { it.copy(price = (it.price + 10).coerceIn(0, 9999)) }
             id == "desc" -> app.platform.prompt("說明", it0.desc, 60) { s -> s?.let { v -> set { it.copy(desc = v.trim()) } } }
             id == "export" -> runCatching { studio.exportItem(it0.id) }.onSuccess { d -> app.platform.saveFile(it0.name + ".ocitem", "application/octet-stream", d) { ok -> app.toast(if (ok) "匯出了「${it0.name}」" else "沒有匯出") } }.onFailure { app.toast(it.message ?: "匯出失敗") }

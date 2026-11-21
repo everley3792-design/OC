@@ -262,10 +262,11 @@ class Studio(val saves: SaveSystem) {
 object Items {
     val KINDS = linkedMapOf("furniture" to "家具", "decor" to "裝飾", "food" to "食物", "drink" to "飲料", "gift" to "禮物", "toy" to "玩具", "wallpaper" to "壁紙", "floor" to "地板",
         "rug" to "地毯", "plant" to "植物", "sticker" to "貼紙")
-    /** what each kind does in M5 (honest: placing furniture in a home arrives with decorating in M6) */
+    /** what each kind does (M6: furniture, rugs, plants, decor and toys are made by a resident in the workshop, then placed at home) */
     fun use(kind: String): String = when (kind) {
         "food", "drink" -> "可以在人物卡「給點心」裡給牠們吃"; "gift" -> "牠們會挑來送給彼此"; "wallpaper", "floor" -> "可以貼在家裡的房間"
-        else -> "放進家裡要等佈置（M6 製作）；現在先存在收藏庫"
+        "sticker" -> "貼紙用在創作裡；家裡還不能貼（M7 製作）"
+        else -> "在小鎮的工坊委託住民做出來，再用「擺家具」放進家裡"
     }
     val OFFERS = linkedMapOf("sit" to "坐", "sleep" to "睡", "read" to "看書", "play" to "玩", "eat" to "吃飯", "watch" to "看", "work" to "做事")
     val TASTES = listOf("甜", "鹹", "酸", "辣", "苦")

@@ -41,6 +41,8 @@ interface Platform {
     /** an imported sound (library-relative path): a voice clip or effect once, or music looping (plan 12.6) */
     fun clip(path: String, music: Boolean = false) {}
     fun stopMusic() {}
+    /** time-of-day music made by the app (plan N-03): morning, day, rain, evening, night; "" = stop */
+    fun bgm(kind: String) {}
 }
 
 /** a picture the player picked: the original file, a working PNG (≤ 1024 px) and that working copy's pixels for checking */
