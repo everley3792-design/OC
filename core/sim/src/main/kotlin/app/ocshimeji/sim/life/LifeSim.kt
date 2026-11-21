@@ -611,6 +611,7 @@ class LifeSim(val life: Life) {
     fun feed(id: String, food: String): String {
         val p = person(id) ?: return ""; val f = foodOf(food) ?: return ""; val b = body(id)
         if (b.held || b.flying) return ""
+        if (p.out != null) return "${p.name}去小鎮了"
         val bought = app.ocshimeji.sim.town.Goods.ALL.containsKey(food)
         if (bought && economy.count(food) <= 0) return "背包裡沒有${f.zh}了"
         if (asleep(p)) return "${p.name}睡著了"

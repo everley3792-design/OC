@@ -58,7 +58,7 @@ class WorldScreen(val slotId: String) : Screen() {
         if (!app.platform.deskRunning(slotId) && o.users == 1) for (p in sim.onDesk) sim.fromDesk(p.id)   /* the system stopped the desktop: they come home */
         catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName.ifBlank { app.saves.slot(slotId)?.name ?: "" })) }
         if (!app.saves.flag("tip:touch")) tip = true
-        decor(); if (sim.life.music.isNotBlank()) app.platform.clip(sim.life.music, music = true)
+        decor(); bgmKind = ""; if (sim.life.music.isNotBlank()) app.platform.clip(sim.life.music, music = true)
     }
     /** the player's wallpaper and floors (plan 12.6) */
     fun decor() {
@@ -69,7 +69,7 @@ class WorldScreen(val slotId: String) : Screen() {
     override fun leave() { app.platform.stopMusic(); val o = open ?: return; o.listeners -= listener; o.screenActive = false; app.host.release(slotId); open = null }
     override fun pause() { app.platform.stopMusic(); open?.let { it.screenActive = false; app.host.save(it) } }
     /** back from the background: the time that passed is caught up like an absence (the desktop may have kept it going) */
-    override fun wake() { val o = open ?: return; o.screenActive = true; catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName)) } }
+    override fun wake() { val o = open ?: return; o.screenActive = true; bgmKind = ""; if (sim.life.music.isNotBlank()) app.platform.clip(sim.life.music, music = true); catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName)) } }
 
     /** how far the world is behind: real time since it was last watched (away time runs at 1×); ≥ 60 game minutes = a summary */
     private fun catchUp(): AwaySummary? = open?.let { app.host.catchUp(it) }
@@ -106,6 +106,8 @@ class WorldScreen(val slotId: String) : Screen() {
     fun driveElsewhere(dt: Float): List<app.ocshimeji.sim.life.SimEvent> { val o = open ?: return emptyList(); app.host.drive(o, dt, "screen"); music(); val e = ArrayList(incoming); incoming.clear(); return e }
     /** time-of-day music (plan N-03), unless this home has its own */
     private var bgmKind = ""
+    /** the home's own music changed: the time-of-day music decides again */
+    fun resetMusic() { bgmKind = "" }
     fun music() {
         if (sim.life.music.isNotBlank()) return
         val h = sim.hour; val k = when { h >= 5 && h < 10 -> "morning"; h >= 10 && h < 17 -> if (sim.weather() == "rain") "rain" else "day"; h >= 17 && h < 20 -> "evening"; else -> "night" }
@@ -588,7 +590,7 @@ class DecorSheet(val ws: WorldScreen) : Overlay() {
             id.startsWith("wallpaper:") || id.startsWith("floor:") -> { val p = id.substringAfter(":"); val d = life.decor[room] ?: Decor()
                 val nd = if (id.startsWith("wallpaper:")) Decor(p, d.floor) else Decor(d.wall, p)
                 if (nd.wall.isBlank() && nd.floor.isBlank()) life.decor.remove(room) else life.decor[room] = nd; ws.decor(); ws.flush() }
-            id.startsWith("music:") -> { life.music = id.removePrefix("music:"); if (life.music.isBlank()) app.platform.stopMusic() else app.platform.clip(life.music, music = true); ws.flush() }
+            id.startsWith("music:") -> { life.music = id.removePrefix("music:"); if (life.music.isBlank()) { app.platform.stopMusic(); ws.resetMusic() } else app.platform.clip(life.music, music = true); ws.flush() }
         }
     }
 }

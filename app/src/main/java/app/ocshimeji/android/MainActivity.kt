@@ -58,6 +58,7 @@ class MainActivity : Activity() {
             override fun voice(v: Voice, text: String) { OcRuntime.sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
             override fun clip(path: String, music: Boolean) { OcRuntime.sounds.clip(java.io.File(filesDir, path.removePrefix("lib:")), music) }
             override fun stopMusic() { OcRuntime.sounds.stopMusic() }
+            override fun bgm(kind: String) { OcRuntime.sounds.bgm(kind) }
             override fun pickFiles(multiple: Boolean, done: (List<Importer.Source>?, String?) -> Unit) = pickMany(multiple, done)
             override val codec: Codec = Codec { b -> decodeRaster(b) }
             override fun canOverlay() = Settings.canDrawOverlays(this@MainActivity)

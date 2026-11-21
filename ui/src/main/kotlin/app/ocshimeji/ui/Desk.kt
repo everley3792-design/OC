@@ -49,6 +49,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
         if (id in pets) return null
         if (pets.size >= MAX) return "桌面上最多 $MAX 位"
         val p = sim.person(id) ?: return "這個世界沒有這位"
+        if (p.out != null) return "${p.name}去小鎮了，回家後才能帶到桌面"
         val c = app.saves.libChar(p.libId); val look = c?.let { Look(app, it, p.spec) }
         val img = look?.base; val aspect = if (img != null) img.w.toFloat() / img.h else 0.8f
         val dp = DeskPet(id, BASE * (look?.scale ?: 1f), aspect, Rng.hash("desk:$slotId:$id:${app.platform.now()}"))

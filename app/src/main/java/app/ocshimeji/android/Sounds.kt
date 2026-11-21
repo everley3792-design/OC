@@ -87,12 +87,60 @@ class Sounds {
     fun clip(f: java.io.File, loop: Boolean) {
         runCatching {
             if (!f.isFile) return
-            if (loop) { if (musicPath == f.path && music != null) return; stopMusic()
+            if (loop) { if (musicPath == f.path && music != null) return; stopMusic(); bgm("")
                 music = android.media.MediaPlayer().apply { setDataSource(f.path); isLooping = true; setVolume(0.5f, 0.5f); prepare(); start() }; musicPath = f.path; return }
             shorts.removeAll { p -> if (!p.isPlaying) { p.release(); true } else false }
             if (shorts.size >= 4) return
             shorts += android.media.MediaPlayer().apply { setDataSource(f.path); prepare(); setOnCompletionListener { it.release(); shorts.remove(it) }; start() }
         }
     }
-    fun stopMusic() { runCatching { music?.stop(); music?.release() }; music = null; musicPath = "" }
+    fun stopMusic() { runCatching { music?.stop(); music?.release() }; music = null; musicPath = ""; bgm("") }
+
+    // ---------------- time-of-day music (plan N-03): original loops made from a few notes, nothing borrowed ----------------
+    private var bgmTrack: AudioTrack? = null; private var bgmKind = ""
+    @Volatile private var bgmWant = ""
+    private val bgmCache = HashMap<String, ShortArray>()
+    /** "morning" / "day" / "rain" / "evening" / "night"; "" = stop. Made on a background thread the first time (about 16 seconds of sound). */
+    fun bgm(kind: String) {
+        bgmWant = kind
+        if (kind == bgmKind) return
+        runCatching { bgmTrack?.stop(); bgmTrack?.release() }; bgmTrack = null; bgmKind = ""
+        if (kind.isEmpty() || music != null) return
+        Thread {
+            runCatching {
+                val pcm = synchronized(bgmCache) { bgmCache.getOrPut(kind) { compose(kind) } }
+                if (bgmWant != kind) return@Thread
+                val tr = AudioTrack.Builder()
+                    .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                    .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                    .setBufferSizeInBytes(pcm.size * 2).setTransferMode(AudioTrack.MODE_STATIC).build()
+                tr.write(pcm, 0, pcm.size); tr.setLoopPoints(0, pcm.size, -1); tr.setVolume(0.35f)
+                synchronized(this) { if (bgmWant != kind) { tr.release(); return@Thread }; bgmTrack?.let { runCatching { it.stop(); it.release() } }; bgmTrack = tr; bgmKind = kind; tr.play() }
+            }
+        }.apply { isDaemon = true }.start()
+    }
+    /** a gentle loop: a pad of two chords and a pentatonic tune; tempo and register by the time of day */
+    private fun compose(kind: String): ShortArray {
+        val bpm = when (kind) { "morning" -> 96; "day" -> 104; "rain" -> 72; "evening" -> 84; else -> 64 }
+        val root = when (kind) { "morning" -> 261.63; "day" -> 293.66; "rain" -> 220.0; "evening" -> 246.94; else -> 196.0 }
+        val beat = 60.0 / bpm; val beats = 32; val n = (rate * beat * beats).toInt(); val out = FloatArray(n)
+        val scale = doubleArrayOf(0.0, 2.0, 4.0, 7.0, 9.0, 12.0, 14.0, 16.0)   /* major pentatonic, two octaves */
+        val chords = when (kind) { "rain", "night" -> listOf(doubleArrayOf(0.0, 3.0, 7.0), doubleArrayOf(-4.0, 0.0, 3.0)); else -> listOf(doubleArrayOf(0.0, 4.0, 7.0), doubleArrayOf(-3.0, 0.0, 4.0), doubleArrayOf(-7.0, -3.0, 0.0), doubleArrayOf(-5.0, -1.0, 2.0)) }
+        fun hz(semi: Double) = root * Math.pow(2.0, semi / 12)
+        // pad: each chord for 8 beats, slow attack and release so the loop joins without a click
+        for (b in 0 until beats step 8) { val ch = chords[(b / 8) % chords.size]; val s0 = (rate * beat * b).toInt(); val len = (rate * beat * 8).toInt()
+            for (semi in ch) { val f = hz(semi - 12); var ph = 0.0
+                for (k in 0 until len) { if (s0 + k >= n) break; ph += 2 * PI * f / rate; val t = k.toDouble() / len; val env = minOf(1.0, t * 6) * minOf(1.0, (1 - t) * 6)
+                    out[s0 + k] += (sin(ph) * 0.06 * env).toFloat() } } }
+        // tune: a seeded walk on the scale (a UI-side choice, fixed per kind so the music is always the same)
+        val rnd = java.util.Random(kind.hashCode().toLong()); var idx = 2
+        var b = 0.0
+        while (b < beats - 1) { val dur = if (kind == "night" || kind == "rain") 2.0 else if (rnd.nextInt(3) == 0) 0.5 else 1.0
+            if (rnd.nextInt(5) != 0) { idx = (idx + rnd.nextInt(5) - 2).coerceIn(0, scale.size - 1); val f = hz(scale[idx]); val s0 = (rate * beat * b).toInt(); val len = (rate * beat * dur * 0.95).toInt(); var ph = 0.0
+                for (k in 0 until len) { if (s0 + k >= n) break; ph += 2 * PI * f / rate; val t = k.toDouble() / len
+                    val env = minOf(1.0, t * 40) * exp(-3.0 * t); out[s0 + k] += ((sin(ph) + 0.25 * sin(ph * 2) + 0.1 * sin(ph * 3)) * 0.11 * env).toFloat() } }
+            b += dur }
+        if (kind == "rain") { var lp = 0f; for (i in 0 until n) { lp += (noise.nextFloat() * 2 - 1 - lp) * 0.08f; out[i] += lp * 0.05f } }
+        return ShortArray(n) { i -> (out[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort() }
+    }
 }
