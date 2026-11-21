@@ -45,6 +45,9 @@ object Acts {
         a("tidy", "整理房間", null, Pose.TIDY, 20, Need.ROOM to 150f, Need.FUN to -4f, tags = setOf("tidy", "active")),
         a("daydream", "發呆", null, Pose.DAYDREAM, 10, Need.FUN to 8f, Need.COMFORT to 4f, tags = setOf("dreamy")),
         a("chat", "聊天", null, Pose.TALK, 15, Need.SOCIAL to 90f, Need.FUN to 12f, tags = setOf("chat"), finish = "chatted"),
+        a("dishes", "洗碗", "stove", Pose.TIDY, 10, Need.ROOM to 30f, Need.FUN to -3f, tags = setOf("tidy")),
+        /* the bathroom is taken: wait outside (plan 12.11 共用設施排隊); offered only then (Society.queueCand) */
+        a("queue", "在浴室外排隊", null, Pose.STAND, 5, Need.COMFORT to -2f),
         // ---- only for some (tags, traits, quirks): plan 13.2 專屬活動 — the closest system pose plus a prop
         a("sword", "練劍", null, Pose.SWING, 20, Need.FUN to 18f, tags = setOf("active"), only = setOf("劍修", "騎士", "傭兵", "武俠"), prop = "sword"),
         a("meditate", "打坐", null, Pose.MEDITATE, 30, Need.COMFORT to 20f, Need.FUN to 8f, tags = setOf("calm"), only = setOf("宗門長老", "東方玄幻", "神明", "劍修", "武俠")),
@@ -84,6 +87,12 @@ object Moods {
         MoodDef("scared", "好高好可怕", -1, 1f), MoodDef("birthday", "今天生日", 3, 24f), MoodDef("plants", "身邊有植物", 1, 0.25f), MoodDef("annoyed", "被摸到不喜歡的地方", -1, 1f),
         MoodDef("spot", "被摸到最喜歡的地方", 2, 3f), MoodDef("chatted", "聊得很開心", 1, 3f), MoodDef("badchat", "聊得不太愉快", -1, 2f), MoodDef("secret", "說出了秘密", 1, 6f),
         MoodDef("angry", "生氣了", -2, 1f),
+        MoodDef("socgood", "相處得很開心", 1, 2f), MoodDef("rejected", "被拒絕了", -1, 2f), MoodDef("cried", "哭過了", -2, 2f), MoodDef("madeup", "和好了", 2, 6f),
+        MoodDef("feud", "正在冷戰", -1, 0.25f), MoodDef("helped", "你答應了我的請求", 2, 4f), MoodDef("wishdone", "心願實現了", 3, 12f), MoodDef("gift", "收到禮物", 2, 6f),
+        MoodDef("listened", "有人聽我說話", 2, 4f), MoodDef("nightmare", "做了惡夢", -1, 3f), MoodDef("heartbroken", "告白失敗", -3, 24f), MoodDef("together", "在一起了", 3, 48f),
+        MoodDef("played", "玩得很開心", 2, 3f), MoodDef("dayup", "今天狀態不錯", 1, 16f), MoodDef("daydown", "今天有點沒精神", -1, 16f), MoodDef("idea", "照你的主意，很順利", 1, 4f),
+        MoodDef("ideabad", "照你的主意，不太順利", -1, 3f), MoodDef("praised", "煮的飯被稱讚", 2, 6f), MoodDef("lostlast", "最後一塊被吃掉了", -1, 2f), MoodDef("ignoredask", "請求沒人理", -1, 2f),
+        MoodDef("waiting", "排隊等浴室", -1, 0.25f),
     ).associateBy { it.id }
 }
 

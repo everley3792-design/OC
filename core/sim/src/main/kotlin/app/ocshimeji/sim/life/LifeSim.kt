@@ -32,7 +32,7 @@ import kotlin.math.roundToInt
 class LifeSim(val life: Life) {
     val house: HouseType = Houses.get(life.houseId)
     val grid = Grid(house)
-    private val rng = Rng(life.rngState)
+    internal val rng = Rng(life.rngState)
     val events = ArrayList<SimEvent>()
 
     /** what the body is doing right now (never saved: a reopened world starts everyone standing where they were) */
@@ -51,11 +51,16 @@ class LifeSim(val life: Life) {
         var talkT = 0f; var waitT = 0f; var talkTurn = 0
         /** asleep on the desktop (the desk pet says so) */
         var deskSleep = false
+        /** decisions that skipped the plan's next step */
+        var planMiss = 0
     }
     private val bodies = HashMap<String, Body>()
     fun body(id: String) = bodies.getOrPut(id) { Body() }
     private val reserved = HashMap<String, String>()   /* "piece:slot" → person id */
+    internal fun reservedBy(piece: Int, slot: Int) = reserved["$piece:$slot"]
     private val arrived = HashSet<String>()
+    /** the social life (M4): acts, scenes, events, worries, the daily settlement */
+    val society = Society(this)
 
     init {
         for (p in life.people) if (p.act != null && p.actPiece >= 0) { reserved["${p.actPiece}:${p.actSlot}"] = p.id; body(p.id).arrivedAct = true; body(p.id).pose = Acts[p.act!!]?.pose ?: Pose.STAND }
@@ -84,6 +89,7 @@ class LifeSim(val life: Life) {
     val hour: Double get() = ((life.minute % 1440) + 1440) % 1440 / 60.0
     fun wakeOf(p: Person) = Math.floorMod(p.spec.wake + mods(p).wake, 24)
     fun sleepOf(p: Person) = Math.floorMod(p.spec.sleep + mods(p).sleep + (p.spec.nightOwl * 2).roundToInt(), 24)
+    internal fun isNight(p: Person) = night(p)
     private fun night(p: Person, h: Double = hour): Boolean { val w = wakeOf(p); val s = sleepOf(p); return if (s > w) (h >= s || h < w) else (h >= s && h < w) }
     fun rate(): Double = if (life.clockMode == "GAME") life.speed else 1.0
     /** today as MM-DD (game minutes are local minutes since 1970) */
@@ -100,6 +106,7 @@ class LifeSim(val life: Life) {
         val dm = dt / 60.0 * rate()
         life.minute += dm
         for (p in life.people) tick(p, dm, dt)
+        society.step(true, dt)
         if (life.arriving && arrived.size >= life.people.size && life.people.all { body(it.id).path == null }) life.arriving = false
     }
 
@@ -161,6 +168,7 @@ class LifeSim(val life: Life) {
             cond("sunburn", "sunlight" in m.flags && p.act == "window" && body(p.id).arrivedAct && h in 7.0..17.0)
             cond("noisy", "crowd" in m.flags && life.people.count { roomOf(it) == room } >= 3)
             cond("lonely", "alone" in m.flags && p.need(Need.SOCIAL) < 50 && life.people.none { it !== p && !asleep(it) })
+            cond("feud", society.inFeud(p.id))
             val day = floor(life.minute / 1440).toLong()
             if (p.spec.birthday.isNotBlank() && p.birthdayDay != day && p.spec.birthday == today()) {
                 p.birthdayDay = day; addMood(p, "birthday"); log(p, "今天是${p.spec.pronoun}的生日"); if (live) say(p, rng.pick(Lines.M["birthday"]!!), toPlayer = true)
@@ -183,8 +191,8 @@ class LifeSim(val life: Life) {
     fun moodSky(p: Person): String = when { asleep(p) -> "moon"; moodValue(p) >= 4 -> "rainbow"; moodValue(p) >= 1 -> "sun"; moodValue(p) >= -1 -> "cloud"; moodValue(p) >= -3 -> "drizzle"; else -> "rain" }
 
     // ---------------- deciding (utility AI) ----------------
-    private class Cand(val act: Activity, val piece: Int, val slot: Int, val tx: Float, val ty: Float, val score: Float, val why: List<String>, val partner: String? = null)
-    private fun gain(p: Person, a: Activity): Pair<Float, List<String>> {
+    internal class Cand(val act: Activity, val piece: Int, val slot: Int, val tx: Float, val ty: Float, val score: Float, val why: List<String>, val partner: String? = null, val soc: String? = null)
+    internal fun gain(p: Person, a: Activity): Pair<Float, List<String>> {
         var s = 0f; val hours = a.min / 60f; val parts = ArrayList<Pair<Float, String>>()
         for ((n, v) in a.per) {
             val cur = p.need(n); val g = if (v >= 0) min(v * hours * skillGain(p, a, n), 100f - cur) else v * hours * 0.5f
@@ -217,6 +225,8 @@ class LifeSim(val life: Life) {
     }
     /** skills (plan 12.4 能力): the activity gives more */
     private fun skillGain(p: Person, a: Activity, n: Need): Float { val sk = SKILL_OF[a.id] ?: return 1f; if (n == Need.FOOD || n == Need.ENERGY) return 1f; return 1f + 0.1f * p.spec.skill(sk) * (if (a.id == "tidy" && n == Need.ROOM) 1.2f else 1f) }
+    /** could they do this at all (only-for tags, naps)? */
+    internal fun canDo(p: Person, a: Activity) = allowed(p, a)
     private fun allowed(p: Person, a: Activity): Boolean {
         if (a.only.isNotEmpty() && a.only.none { it in mods(p).owns }) return false
         if (!p.spec.nap && (a.id == "nap" || a.id == "sofanap")) return false
@@ -227,17 +237,21 @@ class LifeSim(val life: Life) {
         for (a in Acts.ALL.values) {
             if (a.night && !isNight) continue
             if (a.day && isNight) continue
-            if (a.id == "meal" && p.next != "meal") continue
+            if (a.id == "meal" && p.next != "meal" && !society.canEat(p)) continue
             if (a.id == "tidy" && p.need(Need.ROOM) > 70) continue
+            if (a.id == "dishes" && life.soc.dishes <= 0) continue
+            if (a.id == "queue") { if (!abstract && dist != null && !isNight) society.queueCand(p, dist, out); continue }
             if (!allowed(p, a)) continue
-            if (a.id == "chat") { if (!abstract && dist != null) chatCands(p, a, dist, r, isNight, out); continue }
+            if (a.id == "chat") { if (!abstract && dist != null) society.socialCands(p, a, dist, r, isNight, out); continue }
             var (g, why) = gain(p, a)
             if (a.id == "sleep") { g += 30f; why = listOf("到了睡覺的時間") + why }
             if (isNight && a.id != "sleep" && a.id != "snack") g *= 0.25f
             val (k, pw) = appeal(p, a); g *= k; if (pw != null) why = why + pw
             if (life.minute - (p.recent[a.id] ?: -1e9) < 120) g *= 0.4f
             if (g <= 0.05f) continue
+            val exHere = society.extra(p, a, roomOf(p))
             if (a.kind == null) {
+                g *= exHere.first; exHere.second?.let { why = listOf(it) + why }
                 val tiles = grid.walkableTiles(house.rooms.indexOfFirst { it.id == roomOf(p) }.coerceAtLeast(0)); if (tiles.isEmpty()) continue
                 val t = tiles[r.nextInt(tiles.size)]; val d = dist?.get(t.second * grid.w + t.first) ?: 0; if (dist != null && d < 0) continue
                 out += Cand(a, -1, -1, t.first + 0.5f, t.second + 0.5f, g / (1f + d / 14f) * (0.85f + 0.3f * r.nextFloat()), why); continue
@@ -253,32 +267,19 @@ class LifeSim(val life: Life) {
                     val d = if (dist == null) 0 else { val (ax, ay) = approach(sx, sy); dist[ay * grid.w + ax] }
                     if (d < 0) return@forEachIndexed
                     val near = if (dist != null && d <= 3) listOf("剛好在附近") else emptyList()
-                    out += Cand(a, pi, si, sx, sy, g / (1f + (if (abstract) 0 else d) / 14f) * (0.85f + 0.3f * r.nextFloat()), why + near)
+                    val ex = if (piece.room == roomOf(p)) exHere else society.extra(p, a, piece.room)
+                    out += Cand(a, pi, si, sx, sy, g * ex.first / (1f + (if (abstract) 0 else d) / 14f) * (0.85f + 0.3f * r.nextFloat()), listOfNotNull(ex.second) + why + near)
                 }
             }
         }
         return out
     }
-    /** someone to talk to: awake, at home, not busy with something that cannot be interrupted; relationships decide who */
-    private fun chatCands(p: Person, a: Activity, dist: IntArray, r: Rng, isNight: Boolean, out: ArrayList<Cand>) {
-        if (isNight || life.minute - (p.recent["chat"] ?: -1e9) < 60) return
-        for (q in life.people) {
-            if (q === p || !free(q) || night(q)) continue
-            val (tx, ty) = besideOf(q, p) ?: continue
-            val d = dist[ty * grid.w + tx]; if (d < 0) continue
-            var (g, why) = gain(p, a); val (k, pw) = appeal(p, a)
-            val rel = rel(p.id, q.id); val w = Rel.chatWeight(rel)
-            g *= k * w * mods(q).act("chat").coerceAtLeast(0.3f)
-            val reason = when { rel == null -> "想跟${q.name}說說話"; w >= 1.4f -> "想找${rel.kind}${q.name}聊天"; else -> "想跟${q.name}聊聊" }
-            out += Cand(a, -1, -1, tx + 0.5f, ty + 0.5f, g / (1f + d / 14f) * (0.85f + 0.3f * r.nextFloat()), listOf(reason) + why + listOfNotNull(pw), q.id)
-        }
-    }
-    private fun free(q: Person): Boolean {
-        val b = body(q.id); if (q.desk || b.held || b.flying || b.petting || q.with != null || life.arriving) return false
+    internal fun free(q: Person): Boolean {
+        val b = body(q.id); if (q.desk || b.held || b.flying || b.petting || q.with != null || life.arriving || society.hiding(q.id) != null) return false
         val a = q.act ?: return true
         return b.arrivedAct && a in INTERRUPTIBLE
     }
-    private fun besideOf(q: Person, from: Person): Pair<Int, Int>? {
+    internal fun besideOf(q: Person, from: Person): Pair<Int, Int>? {
         val qx = q.x.toInt(); val qy = q.y.toInt(); var best: Pair<Int, Int>? = null; var bd = Float.MAX_VALUE
         for ((dx, dy) in listOf(1 to 0, -1 to 0, 0 to 1, 0 to -1, 1 to 1, -1 to 1)) { val x = qx + dx; val y = qy + dy
             if (!grid.walkable(x, y) || grid.roomIndex(x, y) != grid.roomIndex(qx, qy)) continue
@@ -291,18 +292,40 @@ class LifeSim(val life: Life) {
     private fun decide(p: Person, b: Body) {
         val tx = p.x.toInt(); val ty = p.y.toInt()
         val dist = grid.distances(tx, ty)
+        if (p.order != null && society.followOrder(p, dist)) return
         val c = candidates(p, dist, rng, false); val best = pick(c, rng)
         if (best == null || best.score < 1.2f) { idle(p, b); return }
+        p.plan.firstOrNull()?.let { step -> if (best.act.id != step) { b.planMiss++; if (b.planMiss >= 5) { b.planMiss = 0; society.planSkipped(p) } } else b.planMiss = 0 }
+        if (!commit(p, best, null)) idle(p, b)
+    }
+    /** start walking to a chosen candidate (and call the partner over); false when there is no way there */
+    internal fun commit(p: Person, best: Cand, why: List<String>?): Boolean {
+        val b = body(p.id); val tx = p.x.toInt(); val ty = p.y.toInt()
         if (best.piece >= 0) reserved["${best.piece}:${best.slot}"] = p.id
-        p.act = best.act.id; p.actPiece = best.piece; p.actSlot = best.slot; p.why = best.why.distinct().take(2).ifEmpty { listOf("想做就做") }
-        b.arrivedAct = false
+        p.act = best.act.id; p.actPiece = best.piece; p.actSlot = best.slot; p.why = (why.orEmpty() + best.why).distinct().take(2).ifEmpty { listOf("想做就做") }
+        b.arrivedAct = false; b.micro = null
         val (ax, ay) = approach(best.tx, best.ty)
         val tiles = grid.path(tx, ty, ax, ay)
-        if (tiles == null) { release(p); p.act = null; idle(p, b); return }
+        if (tiles == null) { release(p); p.act = null; return false }
         b.path = ArrayList(tiles.drop(1).map { floatArrayOf(it.first + 0.5f, it.second + 0.5f) }).apply { add(floatArrayOf(best.tx, best.ty)) }
         b.pose = Pose.WALK
-        best.partner?.let { qid -> val q = person(qid)!!; p.with = qid; stopFor(q); q.act = "chat"; q.with = p.id; q.why = listOf("${p.name}來找${q.spec.pronoun}說話"); body(qid).waitT = 0f; body(qid).pose = Pose.STAND }
+        p.soc = best.soc
+        best.partner?.let { qid -> val q = person(qid)!!; p.with = qid; stopFor(q); q.act = "chat"; q.with = p.id; q.soc = null; q.why = listOf("${p.name}來找${q.spec.pronoun}"); body(qid).waitT = 0f; body(qid).pose = Pose.STAND }
+        return true
     }
+    /** the best way to do one particular activity now (your suggestions), or null */
+    internal fun candidatesFor(p: Person, dist: IntArray, actId: String): Cand? = candidates(p, dist, rng, false).filter { it.act.id == actId && it.partner == null }.maxByOrNull { it.score }
+    /** `a` goes to `b` for a social act or an event (`soc`); both must be free */
+    internal fun startTogether(a: Person, b: Person, soc: String, why: List<String>): Boolean {
+        if (!free(a) || !free(b) || a === b) return false
+        val (tx, ty) = besideOf(b, a) ?: return false
+        stopFor(a)
+        return commit(a, Cand(Acts["chat"]!!, -1, -1, tx + 0.5f, ty + 0.5f, 1f, why, b.id, soc), why)
+    }
+    /** your suggestion was accepted: stop what they are doing (not sleep, not being held) and decide again right away */
+    internal fun nudge(p: Person) { val b = body(p.id); if (asleep(p) || b.held || b.flying || p.desk) return; if (p.with != null) return; release(p); p.act = null; b.arrivedAct = false; b.path = null; b.micro = null; b.pose = Pose.STAND; unstick(p); b.think = 0.2f }
+    /** stop everything (a minigame with you) */
+    internal fun breakFor(p: Person) { breakChat(p); stopFor(p) }
     /** stop what they are doing to talk */
     private fun stopFor(q: Person) { release(q); q.act = null; val b = body(q.id); b.arrivedAct = false; b.path = null; b.micro = null; b.pose = Pose.STAND; unstick(q) }
     /** someone who stopped on a piece of furniture steps off it */
@@ -343,7 +366,7 @@ class LifeSim(val life: Life) {
         log(p, "搬進了${house.room(p.room).zh}")
         b.think = 2f
     }
-    fun speedOf(p: Person) = SPEED * mods(p).speed
+    fun speedOf(p: Person) = SPEED * mods(p).speed * (society.statusOf(p)?.speed ?: 1f)
     private fun walk(p: Person, b: Body, dt: Float) {
         val path = b.path!!; var left = speedOf(p) * dt
         while (left > 0 && path.isNotEmpty()) {
@@ -365,9 +388,10 @@ class LifeSim(val life: Life) {
     private fun begin(p: Person, b: Body, a: Activity) {
         b.arrivedAct = true; b.pose = a.pose; b.poseT = 0f
         p.actStart = life.minute
-        p.actEnd = if (a.id == "sleep") life.minute + minutesUntil(wakeOf(p).toDouble()) + p.spec.oversleep * 90 + rng.nextInt(20) else life.minute + durationOf(p, a) * (0.85 + 0.3 * rng.nextDouble())
+        p.actEnd = if (a.id == "chat") life.minute + 1e6 else if (a.id == "sleep") life.minute + minutesUntil(wakeOf(p).toDouble()) + p.spec.oversleep * 90 + rng.nextInt(20) else life.minute + durationOf(p, a) * (0.85 + 0.3 * rng.nextDouble())
         if (a.pose == Pose.LIE || a.pose == Pose.SIT) Furniture.kind(house.pieces.getOrNull(p.actPiece)?.kind ?: "rug").let { if (it.id == "sofa" || it.id == "table") p.facing = 1 }
         if (a.id in mods(p).hate) { addMood(p, "hate"); say(p, "……雖然不想，還是${a.zh}吧。") }
+        if (a.id == "queue") { addMood(p, "waiting"); say(p, rng.pick(listOf("還沒好嗎？", "我也要用浴室……", "（敲敲門）"))) }
         if (a.id == "chat") startChat(p, b)
     }
     private fun minutesUntil(h: Double): Double { val now = hour; var d = (h - now) * 60; if (d <= 0) d += 1440; return d }
@@ -377,15 +401,34 @@ class LifeSim(val life: Life) {
         a.finish?.let { addMood(p, it) }
         if (a.id == "sleep") { if (p.need(Need.ENERGY) < 60) { p.moods.removeAll { it.id == "slept" }; addMood(p, "badsleep") }; say(p, rng.pick(Lines.M["wake"]!!)) }
         if (a.id in NOTABLE || a.only.isNotEmpty()) log(p, a.zh)
+        hooks(p, a, rng)
         p.act = null; p.why = emptyList()
         if (a.id == "cook") p.next = "meal" else if (a.id == "meal") p.next = null
         val b = body(p.id); b.arrivedAct = false; b.pose = Pose.STAND; b.think = 1f + rng.nextFloat() * 2f
         if (a.kind != null) { val (ax, ay) = approach(p.x, p.y); if (!grid.walkable(p.x.toInt(), p.y.toInt())) { p.x = ax + 0.5f; p.y = ay + 0.5f } }
     }
+    /** what finishing an activity means for the household (the pot, chores, the plan, today's status) */
+    private fun hooks(p: Person, a: Activity, r: Rng) {
+        if (a.id == "cook" || a.id == "bake") society.cooked(p, a, r)
+        if (a.id == "meal") society.ate(p)
+        if (a.id == "dishes" || a.id == "tidy") society.chore(p, a.id)
+        if (a.id == "sleep") society.woke(p)
+        society.actDone(p, a.id)
+    }
     private fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
-    private fun log(p: Person, text: String, away: Boolean = false) { life.log += LogLine(life.minute, p.id, "${p.name}：$text", away); if (life.log.size > 300) life.log.removeAt(0) }
-    /** a line in this character's own way of talking */
-    private fun say(p: Person, base: String, toPlayer: Boolean = false) { events += SimEvent("say", p.id, Speech.say(p.spec, base, rng, p.affinity, toPlayer)) }
+    /** the timeline (plan K-03); favourites are never dropped */
+    internal fun log(p: Person, text: String, away: Boolean = false, kind: String = "life", weight: Int = 1, cause: Int = -1, with: String = "") {
+        life.log += LogLine(life.minute, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with)
+        while (life.log.size > 600) { val i = life.log.indexOfFirst { !it.fav && it.weight <= 1 && it.kind == "life" }.let { if (it >= 0) it else life.log.indexOfFirst { l -> !l.fav } }; if (i < 0) break; life.log.removeAt(i) }
+    }
+    private var catching = false
+    /** a line in this character's own way of talking; quietly when someone sleeps in the same room (plan B-08) */
+    internal fun say(p: Person, base: String, toPlayer: Boolean = false) {
+        if (catching) return
+        var t = Speech.say(p.spec, base, rng, p.affinity, toPlayer)
+        if (!t.startsWith("（") && life.people.any { it !== p && asleep(it) && roomOf(it) == roomOf(p) }) t = "（小聲）$t"
+        events += SimEvent("say", p.id, t)
+    }
 
     // ---------------- chatting (two people; plan 4.4, the first small piece of M4) ----------------
     fun rel(a: String, b: String): Rel? = life.rels.firstOrNull { it.from == a && it.to == b }
@@ -397,7 +440,7 @@ class LifeSim(val life: Life) {
     }
     private fun waitForChat(q: Person, b: Body, dt: Float) {
         b.waitT += dt; val p = q.with?.let { person(it) }
-        if (p == null || p.with != q.id || p.act != "chat" || b.waitT > 25f) { q.act = null; q.with = null; q.why = emptyList(); if (p != null && p.with == q.id) { p.act = null; p.with = null; body(p.id).path = null }; b.think = 1f; return }
+        if (p == null || p.with != q.id || p.act != "chat" || b.waitT > 25f) { q.act = null; q.with = null; q.why = emptyList(); if (p != null && p.with == q.id) { p.act = null; p.with = null; p.soc = null; body(p.id).path = null; body(p.id).pose = Pose.STAND; body(p.id).think = 1f }; b.think = 1f; return }
         if (abs(p.x - q.x) > 0.05f) q.facing = if (p.x > q.x) 1 else -1
     }
     private fun startChat(p: Person, b: Body) {
@@ -405,32 +448,13 @@ class LifeSim(val life: Life) {
         if (q == null || q.with != p.id) { p.act = null; p.with = null; b.arrivedAct = false; b.pose = Pose.STAND; b.think = 1f; return }
         val qb = body(q.id); qb.arrivedAct = true; qb.pose = Pose.TALK; q.actStart = p.actStart; q.actEnd = p.actEnd
         p.facing = if (q.x > p.x) 1 else -1; q.facing = -p.facing
-        b.talkT = 0.5f; b.talkTurn = 0; qb.talkT = 1e9f
+        society.startScene(p, q)
     }
-    private fun talk(p: Person, b: Body, dt: Float) {
-        val q = p.with?.let { person(it) } ?: return
-        b.talkT -= dt; if (b.talkT > 0f) return
-        b.talkT = 5f + rng.nextFloat() * 4f
-        if (b.talkTurn % 2 == 0) {
-            val topics = Speech.topics(p.spec) + rel(p.id, q.id)?.story?.takeIf { it.isNotBlank() }?.let { listOf(it) }.orEmpty()
-            val topic = if (topics.isEmpty()) "今天的天氣" else rng.pick(topics)
-            val line = rng.pick(Lines.M["chatOpen"]!!).replace("{對方}", q.spec.nickname.ifBlank { q.name }).replace("{話題}", topic)
-            say(p, line); lastTopic[p.id] = topic
-        } else say(q, rng.pick(Lines.M["chatReply"]!!))
-        b.talkTurn++
-    }
-    private val lastTopic = HashMap<String, String>()
+    private fun talk(p: Person, b: Body, dt: Float) { if (society.play(p, dt)) endChat(p, true) }
     private fun endChat(p: Person, done: Boolean) {
         val q = p.with?.let { person(it) }
-        for (x in listOfNotNull(p, q)) { release(x); unstick(x); x.act = null; x.with = null; x.why = emptyList(); val xb = body(x.id); xb.arrivedAct = false; xb.pose = Pose.STAND; xb.think = 1f + rng.nextFloat() * 2f; x.recent["chat"] = life.minute }
-        if (!done || q == null) return
-        for ((a, c) in listOf(p to q, q to p)) {
-            val r = rel(a.id, c.id) ?: Rel(a.id, c.id)
-            val fit = r.fit; val good = fit >= 25
-            addMood(a, if (good) "chatted" else "badchat")
-            if (!r.locked) life.rels.apply { removeAll { it.from == a.id && it.to == c.id }; add(r.copy(familiar = min(100, r.familiar + 3), like = (r.like + (fit - 40) / 20 + 1).coerceIn(0, 100))) }
-        }
-        log(p, "和${q.name}聊了${lastTopic[p.id] ?: "一些事"}")
+        society.finishScene(p.id, done)
+        for (x in listOfNotNull(p, q)) { release(x); unstick(x); x.act = null; x.with = null; x.soc = null; x.why = emptyList(); val xb = body(x.id); xb.arrivedAct = false; xb.pose = Pose.STAND; xb.think = 1f + rng.nextFloat() * 2f; x.recent["chat"] = life.minute }
     }
     /** someone picked up / fed in the middle of a chat: the other one stops too */
     private fun breakChat(p: Person) { if (p.with != null || p.act == "chat") endChat(p, false) }
@@ -457,6 +481,7 @@ class LifeSim(val life: Life) {
         p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + gainA); p.setNeed(Need.SOCIAL, p.need(Need.SOCIAL) + min(15f, acc * 4f))
         p.lastPet = life.minute
         if (!cool) p.affinity = (p.affinity + if (spot) 3 else 2).coerceIn(0, 100)
+        society.petted(p, part)
         when {
             spot -> { addMood(p, "spot"); say(p, rng.pick(Lines.M["spot"]!!), toPlayer = true)
                 if (part !in p.found) { p.found += part; log(p, "發現了：${p.name}最喜歡被摸${part}") } }
@@ -552,6 +577,7 @@ class LifeSim(val life: Life) {
         val t = taste(p, food)
         p.setNeed(Need.FOOD, p.need(Need.FOOD) + f.second * (if (t < 0) 0.5f else 1f)); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 10f)
         addMood(p, when (t) { 1 -> "tasty"; -1 -> "yuck"; else -> "snack" })
+        society.fed(p, food, t)
         p.affinity = (p.affinity + when (t) { 1 -> 5; -1 -> -2; else -> 3 }).coerceIn(0, 100)
         if (p.act != null && !b.arrivedAct) { release(p); p.act = null; b.path = null }
         b.micro = Micro("eat", if (t < 0) Pose.SAD else Pose.EAT, 3f); b.microT = 3f; b.pose = b.micro!!.pose
@@ -569,6 +595,7 @@ class LifeSim(val life: Life) {
         if (to - from < 1) return null
         val counts = HashMap<String, HashMap<String, Int>>()
         for (p in life.people) { breakChat(p); body(p.id).path = null; body(p.id).micro = null; body(p.id).held = false; body(p.id).flying = false }
+        catching = true
         while (life.minute < to - 1e-6) {
             val dm = min(CHUNK, to - life.minute)
             for (p in life.people) {
@@ -585,9 +612,12 @@ class LifeSim(val life: Life) {
                     }
                 }
             }
+            society.awayChunk((life.minute / CHUNK).toLong())
             life.minute += dm
             for (p in life.people) { needs(p, dm); moods(p, live = false) }
+            society.step(false, 0f)
         }
+        catching = false
         for (p in life.people) { val a = p.act?.let { Acts[it] }; if (a != null && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }
             if (!grid.walkable(p.x.toInt(), p.y.toInt()) && p.act == null) { val (x, y) = grid.nearestWalkable(p.x, p.y); p.x = x + 0.5f; p.y = y + 0.5f } }
         life.arriving = false
@@ -602,6 +632,7 @@ class LifeSim(val life: Life) {
     }
     private fun finishQuiet(p: Person, a: Activity) {
         release(p); p.recent[a.id] = life.minute; a.finish?.let { addMood(p, it) }
+        hooks(p, a, Rng.of(life.seed, "quiet:${p.id}:${life.minute.toLong()}"))
         if (a.id == "cook") p.next = "meal" else if (a.id == "meal") p.next = null
         p.act = null; p.with = null; p.why = emptyList(); body(p.id).arrivedAct = false; body(p.id).pose = Pose.STAND
         if (!grid.walkable(p.x.toInt(), p.y.toInt())) { val (x, y) = grid.nearestWalkable(p.x, p.y); p.x = x + 0.5f; p.y = y + 0.5f }

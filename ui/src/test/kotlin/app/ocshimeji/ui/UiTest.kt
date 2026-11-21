@@ -247,6 +247,55 @@ class UiTest {
         assertTrue(menu.tapZone("m:home")); assertTrue(!p.desk); assertEquals("home", act)
         a.wake(); frames(a, 10); assertNotNull(ws.screenOf(p.id))
     }
+    /** M4: three residents — worry bubbles, a close-up, observation mode, the mailbox and timeline, the day-end card, games, talking, suggestions */
+    @Test fun socialLifeAtHome() {
+        val a = app()
+        fun png(c: java.awt.Color) = java.io.ByteArrayOutputStream().also { val b = java.awt.image.BufferedImage(120, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val g = b.createGraphics(); g.color = c; g.fillOval(20, 20, 80, 130); g.color = java.awt.Color.WHITE; g.fillOval(42, 50, 12, 12); g.fillOval(66, 50, 12, 12); g.dispose(); ImageIO.write(b, "png", it) }.toByteArray()
+        fun char(name: String, c: java.awt.Color, spec: app.ocshimeji.sim.chars.CharSpec) = a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", png(c))), platform.codec)), spec.copy(name = name), 1, true, emptyMap(), emptyList())
+        val b = char("小雨", java.awt.Color(0x7A, 0xAA, 0xD6), app.ocshimeji.sim.chars.CharSpec(traits = listOf("害羞", "書蟲"), tags = listOf("社畜"), likes = listOf("看書"), axes = listOf(-0.4f, -0.2f, 0f, -0.2f, 0.5f)))
+        val c = char("團子", java.awt.Color(0xE0, 0x8A, 0x9A), app.ocshimeji.sim.chars.CharSpec(traits = listOf("好勝", "貪吃"), tags = listOf("吸血鬼"), likes = listOf("布丁"), temper = 0.4f))
+        val ids = listOf(Presets.CINNAMON.id, b.id, c.id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2", ids[2] to "bed3"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen
+        frames(a, 400); val sim = ws.sim; val (p1, p2, p3) = sim.life.people
+        // a worry bubble over the head; tap it → the sheet with ways to help
+        p1.worry = app.ocshimeji.sim.social.Worry("friend", p2.id, since = sim.life.minute, shown = true); frames(a, 10)
+        shot("world-worry", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("worry:${p1.id}")); frames(a, 15); assertTrue(a.overlay is WorrySheet); shot("worry-sheet", frames(a, 1, scale = 2f))
+        promptAnswer = "一起看書好嗎？"; assertTrue(a.tapZone("wc:say:chat")); frames(a, 15); shot("worry-answer", frames(a, 1, scale = 2f))
+        assertNull(p1.worry); assertTrue(a.tapZone("worry:ok")); frames(a, 2)
+        // a close-up when it matters: tell 肉桂捲 to give 小雨 a gift (command mode)
+        sim.society.setControl(p1.id, "command"); assertTrue(sim.society.suggest(p1.id, "soc:gift", p2.id).isNotBlank())
+        var seen = false; for (i in 0 until 1500) { frames(a, 1); if (ws.inCloseup) { frames(a, 50); if (ws.inCloseup) { shot("world-closeup", frames(a, 1, scale = 2f)); seen = true; break } } }
+        assertTrue(seen, "no close-up for the gift"); frames(a, 400)
+        // the person card with today's status, wish, plan, narrative and what you can do
+        val (x, y) = ws.screenOf(p2.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15); assertTrue(a.overlay is PersonCard); shot("person-card-m4", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("card:talk")); frames(a, 15); assertTrue(a.tapZone("topic:最近怎麼樣")); frames(a, 5); shot("talk-sheet", frames(a, 1, scale = 2f)); a.back()
+        a.show(PersonCard(ws, p2.id)); frames(a, 15); assertTrue(a.tapZone("card:suggest")); frames(a, 15); assertTrue(a.tapZone("mode:suggest")); frames(a, 5); shot("suggest-sheet", frames(a, 1, scale = 2f)); a.back()
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:rps")); frames(a, 15); assertTrue(a.tapZone("rps:0")); frames(a, 15); shot("rps-sheet", frames(a, 1, scale = 2f))
+        var n = 0; while (a.hasZone("rps:1") && n++ < 10) { a.tapZone("rps:1"); frames(a, 12) }; assertTrue(a.tapZone("rps:done")); frames(a, 2)
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
+        // hide-and-seek: search the furniture
+        assertTrue(sim.society.hideStart(p1.id)); frames(a, 5); shot("world-hide", frames(a, 1, scale = 2f))
+        val spot = sim.society.hiding(p1.id)!!; assertTrue(a.tapZone("hide:$spot")); frames(a, 5); assertNull(sim.society.hiding(p1.id))
+        // observation mode: the strip, the speeds, fast-forward to the next notable thing
+        sim.life.clockMode = "GAME"; sim.life.speed = 1.0
+        assertTrue(a.tapZone("observe")); frames(a, 30); assertTrue(ws.observing); shot("world-observe", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("spd:60")); assertEquals(60.0, sim.life.speed)
+        val logBefore = sim.life.log.size; assertTrue(a.tapZone("ff")); frames(a, 1); assertTrue(ws.fastForwarding)
+        n = 0; while (ws.fastForwarding && n++ < 200) frames(a, 1); assertTrue(!ws.fastForwarding && sim.life.log.size > logBefore)
+        while (a.overlay != null) { a.back(); frames(a, 1) }
+        assertTrue(a.tapZone("observe")); frames(a, 5); assertTrue(!ws.observing); assertTrue(sim.life.speed <= 10.0, "30× / 60× end with observation")
+        // the day-end card, the mailbox and the timeline
+        sim.life.soc.cards += app.ocshimeji.sim.social.DayCard(1, listOf("肉桂捲：和小雨聊了甜點", "團子：送小雨一本舊書，小雨很開心", "小雨：心願實現了：想跟團子變熟")); frames(a, 15)
+        assertTrue(a.overlay is DayCardSheet); shot("day-card", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("dc:ok")); frames(a, 2)
+        sim.society.mail(p1.id, "ask", "肉桂捲的請求", "可以給我餅乾嗎？")
+        assertTrue(a.tapZone("mail")); frames(a, 15); assertTrue(a.screen is TimelineScreen); shot("mailbox", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("tab:log")); frames(a, 10); shot("timeline", frames(a, 1, scale = 2f))
+        val first = a.zoneIds.first { it.startsWith("l:") }; assertTrue(a.tapZone(first)); assertTrue(sim.life.log[first.removePrefix("l:").toInt()].fav)
+        assertTrue(a.tapZone("f:fav")); frames(a, 5); assertTrue(a.zoneIds.count { it.startsWith("l:") } == 1)
+    }
     @Test fun anM0WorldGetsAHouseWhenOpened() {
         val a = app(); val m = a.saves.create("舊世界", listOf(Presets.CINNAMON.id)); (a.screen as TitleScreen).reload(); frames(a, 2)
         (a.screen as TitleScreen).open(m.id); frames(a, 5); val ws = a.screen as WorldScreen

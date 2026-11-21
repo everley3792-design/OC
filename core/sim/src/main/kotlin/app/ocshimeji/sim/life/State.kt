@@ -2,6 +2,10 @@ package app.ocshimeji.sim.life
 
 import app.ocshimeji.sim.chars.CharSpec
 import app.ocshimeji.sim.chars.Rel
+import app.ocshimeji.sim.social.Ask
+import app.ocshimeji.sim.social.SocState
+import app.ocshimeji.sim.social.Wish
+import app.ocshimeji.sim.social.Worry
 import kotlinx.serialization.Serializable
 
 /** everything about one world's life that is saved (positions included, so a world reopens where it was) */
@@ -29,6 +33,8 @@ class Life(
     val rels: MutableList<Rel> = mutableListOf(),
     /** romance is off unless the player turns it on; never for minors */
     var romance: Boolean = false,
+    /** everything social (M4): the memory ledger, pair statistics, sparks, quarrels, the mailbox, day cards, the shared pot… */
+    val soc: SocState = SocState(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -61,6 +67,26 @@ class Person(
     var birthdayDay: Long = -1,
     /** out on the phone's desktop (plan 2.3: one simulation, the desktop is another way of watching it) */
     var desk: Boolean = false,
+    // ---- M4: life and social
+    /** today's little state (plan A-05) and the day it was rolled */
+    var status: String = "", var statusDay: Long = -1,
+    var wish: Wish? = null,
+    var worry: Worry? = null,
+    /** something they ask you for (plan E-06) */
+    var ask: Ask? = null,
+    /** observe / suggest / command (plan 4.2) */
+    var control: String = "observe",
+    /** a multi-step plan for the day (plan B-03): activity ids, first one next */
+    val plan: MutableList<String> = mutableListOf(),
+    /** foods and dishes whose taste you found out (plan A-10): id → 1 liked, 0 fine, −1 disliked */
+    val tasted: MutableMap<String, Int> = mutableMapOf(),
+    /** the social act (or event) of the current chat */
+    var soc: String? = null,
+    /** what you told them when they asked you (plan E-04) */
+    val knows: MutableMap<String, String> = mutableMapOf(),
+    var lastWorry: Double = -1e9, var lastAsk: Double = -1e9, var lastYouChat: Double = -1e9,
+    /** your suggestion or command waiting to be done: "act:<id>" or "soc:<act>:<person>" */
+    var order: String? = null,
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult
@@ -69,7 +95,12 @@ class Person(
 }
 
 @Serializable class MoodState(val id: String, var until: Double)
-@Serializable class LogLine(val minute: Double, val who: String, val text: String, val away: Boolean = false)
+/**
+ * One line of the timeline (plan K-03). `kind`: life / social / event / worry / you / day; `weight` 1 small … 3 big (the day-end card
+ * and fast-forward pick the big ones); `fav` = kept by the player (never dropped); `cause` = the memory it grew out of.
+ */
+@Serializable class LogLine(val minute: Double, val who: String, val text: String, val away: Boolean = false,
+                            val kind: String = "life", val weight: Int = 1, var fav: Boolean = false, val cause: Int = -1, val with: String = "")
 @Serializable class AwaySummary(val fromMinute: Double, val toMinute: Double, val lines: List<String>)
 
 /** personality axes by index */

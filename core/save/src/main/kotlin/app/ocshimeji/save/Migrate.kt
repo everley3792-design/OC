@@ -39,6 +39,18 @@ object Migrate {
                 JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("people", JsonArray(people)) })) })
             }
         },
+        /* 3 → 4 (M4): the social life starts today — relationships count as seen today (nothing fades at once), the daily settlement begins now */
+        3 to { w ->
+            val life = w["life"] as? JsonObject
+            if (life == null) w else {
+                val minute = (life["minute"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
+                val start = (life["startMinute"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: minute
+                val day = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(start / 1440).toLong() + 1
+                val rels = (life["rels"] as? JsonArray)?.map { r -> JsonObject((r as JsonObject).toMutableMap().apply { put("seenDay", JsonPrimitive(day)) }) } ?: emptyList()
+                val soc = buildJsonObject { put("settledDay", JsonPrimitive(day)) }
+                JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("rels", JsonArray(rels)); put("soc", soc) })) })
+            }
+        },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

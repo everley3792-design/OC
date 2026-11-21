@@ -32,23 +32,27 @@
   - `LifeSim`：桌上的人（`desk`、`toDesk/fromDesk/deskLift/deskLand/deskRest/deskSay`）；存檔格式 v3；
   - `ui`：`WorldHost`（App 與服務共用一個模擬）、`DeskStage`、`DeskMenuScreen`、`DeskSheet`、`DeskPermissionSheet`；
   - `app`：`DeskService`（specialUse、小懸浮窗、通知、電量／螢幕、穿透模式）、`OcRuntime`、`tools/framework-extras`。
-- 下一步：**M4 自主生活與社交**（計畫 12.11＋13.9：雙人互動、煩惱氣泡、特寫、話題碰撞、衝突火花、記憶帳本、敘事描寫、操控模式）。
+- **M4（0.5.0-reboot）自主生活與社交——完成**（`docs/reboot/m4-report.md`；節奏與手感待實機驗證）：
+  - `core:sim/social`：`SocialActs`（44 種社交行為＋反應光譜）、`Will`（意願）、`Topics`（概念與碰撞句型）、`Scenes`（化學反應 30、衝突火花 15、日常事件 20、連續劇）、`Games`（猜拳、躲貓貓）、`Narrate`、`State`（記憶帳本、配對統計、冷戰、煩惱、心願、請求、信箱、一天結束卡、共用的鍋）；
+  - `life/Society`：社交與事件的整合（選行為、演場景、後果、每日結算與風味標籤、煩惱與打擾預算、建議／操控、和你聊天、小遊戲、做飯與家務、情境判斷）；存檔格式 v4；
+  - `ui`：觀察模式（自動鏡頭、人物條、30×／60×、快轉）、煩惱泡泡與處理、大頭特寫、誇張特效、人物卡新增、`SocialUi`（WorrySheet／RpsSheet／TalkSheet／SuggestSheet／DayCardSheet／MemorySheet／TimelineScreen）。
+- 下一步：**M5 創作套件**（計畫 12.11＋13.9：繪圖工坊、動畫工作室、事件積木編輯器與劇本格式、標籤編輯器、自訂物品、壁紙地板、音樂與聲音匯入）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體）；
+core/sim/      純 Kotlin：social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件）；
                chars/（Spec＝CharSpec／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
 render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
-ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、ListSheet、Confirm
+ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、SocialUi（Fx 特效、Portrait 特寫、WorrySheet、RpsSheet、TalkSheet、SuggestSheet、DayCardSheet、MemorySheet、TimelineScreen）、ListSheet、Confirm
                src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/、m1/、m2/、m3/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/、m1/、m2/、m3/、m4/（截圖）
 ```
 
 ## 指令
@@ -68,6 +72,8 @@ pkill -f GradleDaemon                                             # 建完釋放
 - UI 是即時模式：每幀畫自己並用 `app.zone(id, …)` 登記點擊區；`Screen.tap(id)` 處理。捲動區裡登記點擊區前設 `app.zoneDy`。覆蓋層（`Overlay`）出現後 `Dim.GUARD`（0.3 秒）內不接受點擊；點覆蓋層外面＝關閉；返回鍵先關覆蓋層。
 - 生活畫面只看不改：觸碰經 `LifeSim` 的 `pet/petEnd/lift/hold/drop/feed`；畫面效果（泡泡、愛心、聲音）來自 `sim.events`。畫面自己的裝飾亂數不得影響模擬。
 - **角色的個性只經過 `CharSpec` 與 `Catalog`**：新的標籤、特質、怪癖就是新的一筆 `Effect` 資料；不要在 `LifeSim` 寫「如果名字是…」。新設定欄位要在 `SpecEffectsTest` 補一項「看得到的效果」。
+- **社交只經 `Society`**：新的社交行為、事件、化學反應、衝突火花都是 `core:sim/social` 裡的一筆資料（`Scenes` 的腳本 `A:句子@POSE#特效 / B:…`）；關係的每一次改變都經 `Society.relUpdate`（內部再過 `Relations.problem`），不得直接改 `life.rels`。需要玩家回應的事（煩惱、請求）一律經打擾預算，一次只顯示一個泡泡。
+- 場景只由開始的人推進（`Society.play`）；另一方只聽。場景不存檔，後果在場景結束時一次套用；補算時直接套用、不演。
 - **每一句台詞都經過 `Speech.say`**（`LifeSim.say()`）；寫台詞時用「我」「你」，由說話方式改寫。
 - **關係規則只在 `Relations.problem()`**：戀愛預設關閉、只限兩位成年角色；編輯器、開場、生活都呼叫它。
 - 匯入只經 `Importer`：用檔頭判斷格式；每個拒絕都要有原因（`MediaTest` 有壞檔集）；解碼一律經 `Codec.safe`；工作圖用 `Png.encode`（無損、各平台同位元組）。

@@ -129,11 +129,19 @@ data class Rel(
     val story: String = "",
     /** life will not change it */
     val locked: Boolean = false,
+    /** flavour tags made by life from what the two did together (plan 13.1: 死黨, 宿敵, 飯友…) */
+    val flavor: List<String> = emptyList(),
+    /** the daily settlement (plan C-04): a new step must hold two days in a row */
+    val pend: String = "", val pendDays: Int = 0,
+    /** the last day they met */
+    val seenDay: Long = -1,
 ) {
     companion object {
         val KINDS = listOf("陌生", "認識", "朋友", "好友", "知己", "家人", "對手", "前任", "戀人")
         val ROMANTIC = setOf("戀人", "前任")
+        val ROMANTIC_FLAVORS = setOf("單戀", "雙向暗戀")
         val IDENTITIES = listOf("", "室友", "同學", "同事", "青梅竹馬", "師徒", "鄰居", "兄弟姊妹", "親子")
+        val FLAVORS = listOf("死黨", "宿敵", "相愛相殺", "飯友", "商業互吹", "莫名其妙絕交又火速和好", "師徒", "單戀", "雙向暗戀")
         val PAIR_TAGS = listOf("愛拌嘴", "互相照顧", "無話不談", "默契", "互相較勁", "有點尷尬", "一起吃飯", "同好")
         /** how much a person wants to chat with the other (plan: relationships steer the life) */
         fun chatWeight(r: Rel?): Float {
@@ -149,7 +157,7 @@ object Relations {
     /** null = allowed; otherwise why not (shown as it is) */
     fun problem(r: Rel, a: CharSpec, b: CharSpec, romance: Boolean): String? {
         if (r.from == r.to) return "不能和自己建立關係"
-        val romantic = r.kind in Rel.ROMANTIC || r.crush > 0
+        val romantic = r.kind in Rel.ROMANTIC || r.crush > 0 || r.flavor.any { it in Rel.ROMANTIC_FLAVORS }
         if (romantic && (!a.adult || !b.adult)) return "未成年的角色不會有戀愛關係"
         if (romantic && !romance) return "戀愛關係要先在這個世界打開「戀愛」"
         if (r.tags.size > 3) return "相處標籤最多 3 個"

@@ -56,6 +56,14 @@ class WorldTest {
         val w = sys().parseWorld(raw); val p = w.life!!.people.single()
         assertEquals(WORLD_VERSION, w.v); assertEquals("可可", p.name); assertEquals(false, p.desk); assertEquals(listOf("書蟲"), p.spec.traits); assertEquals(1, w.life!!.rels.size)
     }
+    @Test fun anM3WorldFileIsUpgraded() {   /* format 3 → 4: the social life starts today; nothing else changes */
+        val raw = javaClass.getResourceAsStream("/world-v3.json")!!.readBytes()
+        val w = sys().parseWorld(raw); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals(3L, life.day); assertEquals(3L, life.soc.settledDay)
+        assertTrue(life.rels.all { it.seenDay == 3L }); assertEquals("朋友", life.rels[0].kind); assertEquals(55, life.rels[0].like)
+        assertEquals(true, life.people[1].desk); assertEquals("observe", life.people[0].control); assertEquals("life", life.log[0].kind)
+        assertTrue(life.soc.memories.isEmpty() && life.soc.feuds.isEmpty())
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))
