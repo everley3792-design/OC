@@ -177,7 +177,7 @@
   function card(o) { if (OC.Sim && OC.Sim.catching) return; cards.push(o); pump(); }   /* 17.1: not for what happened while away */
   function pump() {
     if (showing >= 2 || !cards.length) return;
-    if (OC.AwayUI && OC.AwayUI.open) { clearTimeout(pump.t); pump.t = setTimeout(pump, 700); return; }   /* 17.1: cards wait until 「你不在的時候」 is closed */
+    if (OC.AwayUI && (OC.AwayUI.open || (OC.AwayUI.Replay && OC.AwayUI.Replay.state))) { clearTimeout(pump.t); pump.t = setTimeout(pump, 700); return; }   /* 17.1: cards wait until 「你不在的時候」 is closed */
     const o = cards.shift(); showing++;
     let wrap = document.querySelector('.p6-cards'); if (!wrap) { wrap = h('div.p6-cards', { 'aria-live': 'polite' }); document.getElementById('app').append(wrap); }
     const art = o.item ? (() => { const im = OC.Style.itemImg(o.item); im.style.width = im.style.height = '40px'; return im; })() : h('div.card-ic.' + (o.kind || ''), null, OC.UI.stickerOr ? OC.UI.stickerOr(o.ic || 'sparkle', 'm') : icon(o.ic || 'sparkle'));

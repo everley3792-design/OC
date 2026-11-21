@@ -64,7 +64,7 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
     await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'full'; });   /* test 1 paused it */
     if (want(5)) {
       const r = await page.evaluate(() => {
-        const S0 = OC.Store.s; S0.life.settings.away17 = true; S0.life.settings.travel = true; OC.Sim.lifeSeed();
+        const S0 = OC.Store.s; S0.life.settings.away17 = true; S0.life.settings.travel = true; S0.life.settings.health16 = true; OC.Sim.lifeSeed();
         const snap = JSON.stringify(S0), T = Date.now(), coins = S0.coins, inv = JSON.stringify(S0.inv);
         const run = () => { OC.Store.s.life.lastReal = T - 30 * 864e5; const t0 = performance.now(); OC.Sim.awayRun('test', T); const ms = performance.now() - t0; const o = OC.Store.s.life.offline;
           return { ms, ch: OC.Chronicle.range(o.from, o.to).map((x) => x.gm + ' ' + x.text), rel: JSON.stringify(OC.Store.s.life.rel), needs: JSON.stringify(OC.Chars.all().map((c) => [c.life.loc, c.needs, c.life.skills])), coins: OC.Store.s.coins, inv: JSON.stringify(OC.Store.s.inv), sim: o.simulated, days: Object.keys(OC.Store.s.life.away17.days).length }; };
@@ -149,6 +149,63 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
       const ok = pl.none || await page.evaluate((id) => { const all = OC.Chronicle.days().flatMap((d) => OC.Chronicle.day(d)); const ids = [...document.querySelectorAll('.ch17-list .aw17-line')].map((e) => e.dataset.h); return ids.length > 0 && ids.every((h) => String((all.find((x) => x.id === h) || {}).place).replace('place:', '') === id); }, pl.id);
       await page.evaluate(() => OC.UI.back());
       check('12 時間線：今天最上面是「正在發生」（每個人現在在做什麼、在哪裡）；可以只看某個地點', now && !pl.none && ok, { now, pl, ok });
+    }
+    if (want(13)) {
+      const r = await page.evaluate(() => {
+        const S = OC.Store.s, [a, b] = OC.Chars.all(), c = b; S.life.settings.away17 = true; S.life.settings.health16 = true; S.life.settings.travel = true; S.life.settings.autonomy = 'full';
+        /* a cold that should pass, a quarrel that should start and run its course, friends who may plan outings */
+        OC.Health16.catchIt(c, 'cold', '測試', 'test17:cold');
+        const k = [a.id, b.id]; for (const [x, y] of [k, k.slice().reverse()]) { const rr = OC.Mind.rel(x, y); OC.Mind.relChange(x, y, { fam: 40 - (rr.fam || 0), conflict: 60 - (rr.conflict || 0), aff: 45 - (rr.aff || 0) }, 'test'); rr.fixed = false; }
+        const n0 = (S.life.chron17 ? Object.values(S.life.chron17.days).flat().length : 0), coins = S.coins, inv = JSON.stringify(S.inv);
+        S.life.lastReal = Date.now() - 12 * 864e5; OC.Sim.awayRun('test');
+        const rift = OC.Arcs.riftOf(a.id, b.id), ill = OC.Health16.H(c), all = Object.values(S.life.chron17.days).flat();
+        return { coldGone: !ill.conds.some((x) => x.id === 'cold'), hist: ill.hist.map((x) => x.id), rift: rift && rift.stage, riftLines: all.filter((x) => /鬧得有點僵|和好了|不再像以前/.test(x.text)).length, aiPlans: OC.Outing16.plans().filter((p) => p.by === 'ai').map((p) => p.status), coins: S.coins === coins, inv: inv === JSON.stringify(S.inv) };
+      });
+      check('13 離開時也會：感冒會好、冷戰會開始並走完（和好或疏遠）、朋友自己約出遊並結算；仍然不給星幣物品', r.coldGone && r.rift && r.rift !== 'cold' && r.riftLines >= 2 && r.coins && r.inv, r);
+    }
+    if (want(14)) {
+      const center = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
+      await page.evaluate(() => { for (const l of OC.UI.stack.slice()) l.close(); const S = OC.Store.s; S.life.settings.away17 = true; if (!OC.Chronicle.day(OC.Sim.day()).length) { S.life.lastReal = Date.now() - 1.5 * 864e5; OC.Sim.awayRun('test'); } });
+      await page.waitForTimeout(1200); await page.evaluate(() => { for (const l of OC.UI.stack.slice()) l.close(); });
+      await page.evaluate(() => OC.App.tab('island')); await page.waitForTimeout(800);   /* the first look at the island writes 「第一次來到」 — not the replay's doing */
+      const before = await page.evaluate(() => { OC.Store.s.life.ev.lastAny = Date.now() + 3.6e6; OC.Store.s.life.settings.autonomy = 'paused'; if (OC.Events.current) OC.Events.end('t'); OC.Store.s.settings.time = 'cycle'; OC.Store.s.settings.timePaused = true; /* the island clock stands still: only the replay could change anything */ const d = OC.Chronicle.days()[0]; OC.Pages.open('chron17', { day: d }); return { d, sig: JSON.stringify([OC.Store.s.life.chron17, OC.Store.s.life.rel, OC.Chars.all().map((c) => c.needs)]) }; });
+      await page.waitForTimeout(800);
+      let c = await center('[data-replay]'); await page.touchscreen.tap(c[0], c[1]);
+      const opened = await wait(() => !!document.querySelector('.rp17.on'));
+      await page.waitForTimeout(500);
+      c = await center('.rp17 [data-speed="1024"]'); await page.touchscreen.tap(c[0], c[1]);
+      const played = await wait(() => { const s = OC.AwayUI.Replay.state; return s && s.i >= Math.min(5, s.n); }, 8000);
+      c = await center('.rp17 [data-rp=play]'); await page.touchscreen.tap(c[0], c[1]);
+      const paused = await wait(() => OC.AwayUI.Replay.state && !OC.AwayUI.Replay.state.playing, 3000);
+      await page.evaluate(() => OC.AwayUI.Replay.jump(600)); const jumped = await page.evaluate(() => { const s = OC.AwayUI.Replay.state; return Math.round(s.t) === 600 && document.querySelectorAll('.rp17-feed .aw17-line').length === Math.min(60, s.i); });
+      c = await center('.rp17 [data-rp=island]'); await page.touchscreen.tap(c[0], c[1]); await page.waitForTimeout(600);
+      const island = await page.evaluate(() => { const s = OC.AwayUI.Replay.state; return !!s && s.island && OC.App.curTab === 'island' && document.querySelector('.rp17').classList.contains('mini') && s.speed <= 64 && ![...document.querySelectorAll('.rp17 [data-speed]')].some((e) => +e.dataset.speed > 64); });
+      await page.evaluate(() => { OC.AwayUI.Replay.jump(0); }); c = await center('.rp17 [data-speed="64"]'); await page.touchscreen.tap(c[0], c[1]); await page.waitForTimeout(2500);
+      c = await center('.rp17 [data-rp=close]') || null; await page.evaluate(() => OC.UI.back()); 
+      const closed = await wait(() => !document.querySelector('.rp17') && !document.documentElement.classList.contains('rp17-island'));
+      const same = await page.evaluate((sig) => JSON.stringify([OC.Store.s.life.chron17, OC.Store.s.life.rel, OC.Chars.all().map((c) => c.needs)]) === sig || (() => { const o = JSON.parse(sig), n = [OC.Store.s.life.chron17, OC.Store.s.life.rel, OC.Chars.all().map((c) => c.needs)]; const A0 = o[0], A1 = n[0]; const nd = Object.keys(A1.days).filter((d) => JSON.stringify(A0.days[d]) !== JSON.stringify(A1.days[d])); const added = nd.flatMap((d) => (A1.days[d] || []).filter((x) => !(A0.days[d] || []).some((y) => y.id === x.id)).map((x) => x.text)); return ['chron', 'rel', 'needs'].filter((k, i) => JSON.stringify(o[i]) !== JSON.stringify(n[i])).join(',') + ' days:' + nd + ' added:' + added.slice(0, 4).join('/') + ' ends:' + (JSON.stringify(A0.ends) !== JSON.stringify(A1.ends)) + ' seq:' + A0.seq + '>' + A1.seq; })(), before.sig);
+      await page.evaluate(() => { OC.Store.s.settings.timePaused = false; OC.Store.s.life.settings.autonomy = 'full'; });
+      check('14 回放一天（真實觸控）：播放、1024×、暫停、跳到某個時間、在島上看（最快 64×）、返回鍵關閉；回放不改任何資料（時間線、關係）', opened && played && paused && jumped && island && closed && same === true, { opened, played, paused, jumped, island, closed, same });
+    }
+    if (want(15)) {
+      const r = await page.evaluate(() => {
+        const S = OC.Store.s, [a, b] = OC.Chars.all(); S.life.settings.away17 = true; S.life.settings.travel = true; S.life.settings.health16 = true; S.life.settings.autonomy = 'full'; OC.Sim.lifeSeed();
+        /* something that will surely happen: a cold war to thaw, a relation about to change */
+        const k = [a.id, b.id]; for (const [x, y] of [k, k.slice().reverse()]) { const rr = OC.Mind.rel(x, y); OC.Mind.relChange(x, y, { fam: 40 - (rr.fam || 0), conflict: 60 - (rr.conflict || 0), aff: 45 - (rr.aff || 0) }, 'test'); }
+        S.life.lastReal = Date.now(); OC.Store.persist = () => {};
+        const before = OC.Store.exportJSON(), st0 = OC.Chars.all().map((c) => { const bb = OC.Brain.get(c.id); return bb && bb.st; }).join();
+        let sent = null, cleared = 0; window.OCNative = { forecastSet: (j) => { sent = JSON.parse(j); return true; }, forecastClear: () => { cleared++; } };
+        const f = OC.Forecast.run(24), same = OC.Store.exportJSON() === before, st1 = OC.Chars.all().map((c) => { const bb = OC.Brain.get(c.id); return bb && bb.st; }).join();
+        const off = OC.Forecast.pick(f, Object.assign({}, OC.Forecast.DEF)).length;
+        const on = OC.Forecast.pick(f, Object.assign({}, OC.Forecast.DEF, { on: true, max: 3, night: true }));
+        OC.Forecast.set().on = false; const pkt1 = OC.Forecast.onPause(); OC.Forecast.set().on = true; OC.Forecast.set().night = true; const pkt2 = OC.Forecast.onPause(); OC.Forecast.onResume();
+        /* now really live those 24 hours: the forecast's moments happen, at the same game minutes */
+        S.life.lastReal = f.base; OC.Sim.awayRun('test', f.base + 24 * 3600e3);
+        const real = OC.Chronicle.range(f.from, f.from + 1440).map((x) => x.gm + '|' + x.text), hit = f.items.filter((x) => real.includes(x.gm + '|' + x.text)).length;
+        delete window.OCNative;
+        return { list: f.items.map((x) => [x.kind, x.at - f.base, x.text]), same, brains: st0 === st1, items: f.items.length, hit, off, on: on.length, onOk: on.every((x) => x.at > f.base && x.title && x.text), doing: Object.values(f.doing).map((L) => L.length), pkt1: pkt1 && pkt1.items.length, pkt2: pkt2 && pkt2.items.length, sent: !!sent, cleared };
+      });
+      check('15 背景預測：App 進入背景時先算好接下來 24 小時（算完存檔完全還原、畫面上的角色不受影響）；之後真的過這 24 小時，預測的大事在同一個時間發生；通知預設關閉、打開後最多 N 則；小工具每小時一句「大概在做什麼」；回到 App 就清掉', r.same && r.brains && r.items > 0 && r.hit === r.items && r.off === 0 && r.on > 0 && r.on <= 3 && r.onOk && r.doing.every((n) => n >= 20) && r.pkt1 === 0 && r.pkt2 > 0 && r.sent && r.cleared >= 1, r);
     }
     /* last: it takes the 3D view down for good */
     if (want(3)) {

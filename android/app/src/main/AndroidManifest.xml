@@ -4,8 +4,8 @@
      (foregroundServiceType) are resolved through android/tools/framework-extras (see docs/android-build.md). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.ocshimeji"
-    android:versionCode="41"
-    android:versionName="0.17.1-alpha">
+    android:versionCode="42"
+    android:versionName="0.17.1.1-alpha">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
@@ -73,6 +73,16 @@
         <!-- reminders, pomodoro, alarms (+ re-register after reboot / update) -->
         <receiver
             android:name=".tools.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 17.1 island forecast: big moments while the app is closed (off unless the player turns it on) + the widget's line -->
+        <receiver
+            android:name=".tools.ForecastReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

@@ -95,34 +95,35 @@
   }
 
   // ---------------------------------------------------------------- causes, every ten game minutes
-  let acc = 0;
+  let acc = 0, aAcc = 0, afAcc = 0;   /* 17.1: separate counters for an absence (reset when it begins, so the same absence gives the same story) */
   const outside = (c) => { const pl = OC.Places.get(c.life.loc || 'isle'); return !(pl && pl.interior); };
   const resting = (c, b) => { const a = b && b.st === 'do' ? b.act : c.life.cur && c.life.cur.until > Sim().now() ? c.life.cur.act : null; return ['sleep', 'nap', 'rest'].includes(a) || (a && D().ACTS[a] && D().ACTS[a].cat === 'rest'); };
-  function step(g) {
-    if (!on() || Sim().catching) return;
+  function step(g, o) {
+    const away = !!(o && o.away);   /* 17.1: during a simulated absence: read the save only (no brains, no positions) */
+    if (!on() || (Sim().catching && !away)) return;
     const now = Sim().now();
     /* effects every minute */
     for (const c of Ch().all()) {
-      const h = H(c); if (!h.conds.length) continue; const b = B().get(c.id), rest = resting(c, b);
+      const h = H(c); if (!h.conds.length) continue; const b = away ? null : B().get(c.id), rest = resting(c, b);
       for (const x of active(c)) {
         const C = CONDS[x.id]; for (const [k, v] of Object.entries(C.drain)) if (c.needs[k] != null) c.needs[k] = clamp(c.needs[k] + v * g * (rest ? 0.4 : 1), 0, 100);
         if (!x.chronic && rest) x.until -= g * 0.8;   /* resting makes it pass faster */
       }
       for (const x of h.conds.slice()) if (!x.chronic && now >= x.until) recover(c, x, 'time');
     }
-    acc += g; if (acc < 10) return; acc = 0;
+    let inc = 10; if (away) { aAcc += g; if (aAcc < 10) return; inc = aAcc; aAcc = 0; } else { acc += g; if (acc < 10) return; acc = 0; }
     const wx = OC.Clock.weather(), day = Sim().day(), all = Ch().all();
     for (const c of all) {
       if (modeOf(c) === 'immortal' || c.status.onIsland === false) continue;
-      const h = H(c), e = h.exp, b = B().get(c.id), fr = frail(c);
+      const h = H(c), e = h.exp, b = away ? null : B().get(c.id), fr = frail(c);
       /* rain: an hour and a half outside in it */
-      if (wx === 'rain' && outside(c) && !resting(c, b)) e.rain = (e.rain || 0) + 10; else e.rain = Math.max(0, (e.rain || 0) - 5);
+      if (wx === 'rain' && outside(c) && !resting(c, b)) e.rain = (e.rain || 0) + inc; else e.rain = Math.max(0, (e.rain || 0) - inc / 2);
       if (e.rain >= 90) { e.rain = 0; if (hs(`rain:${c.id}:${day}:${Math.floor(now / 360)}`) < 0.22 * fr) catchIt(c, 'cold', '淋了雨', `rain:${day}`); }
       /* no sleep: three hours past exhaustion */
-      if (c.needs.sleep < 8) e.sleep = (e.sleep || 0) + 10; else e.sleep = Math.max(0, (e.sleep || 0) - 10);
+      if (c.needs.sleep < 8) e.sleep = (e.sleep || 0) + inc; else e.sleep = Math.max(0, (e.sleep || 0) - inc);
       if (e.sleep >= 240) { e.sleep = 0; if (hs(`ns:${c.id}:${day}`) < 0.25 * fr) catchIt(c, 'cold', '一直沒睡', `nosleep:${day}`); }
       /* worn out: low energy and sleep while still working, for a long time */
-      if (c.needs.energy < 10 && c.needs.sleep < 25 && !resting(c, b)) e.tired = (e.tired || 0) + 10; else e.tired = Math.max(0, (e.tired || 0) - 10);
+      if (c.needs.energy < 10 && c.needs.sleep < 25 && !resting(c, b)) e.tired = (e.tired || 0) + inc; else e.tired = Math.max(0, (e.tired || 0) - inc);
       if (e.tired >= 240) { e.tired = 0; if (hs(`tr:${c.id}:${day}`) < 0.4 * fr) catchIt(c, 'tired', '撐太久了', `tired:${day}`); }
       /* a cold that is not rested becomes a fever */
       const cold = h.conds.find((x) => x.id === 'cold'); if (cold && c.needs.energy < 12 && !resting(c, b) && now - cold.since > 240 && hs(`fv:${c.id}:${cold.since}`) < 0.3) catchIt(c, 'fever', '感冒沒好好休息', `fever:${cold.since}`);
@@ -134,8 +135,8 @@
     }
   }
   /** once a game day: the old aches, the twilight, grief passing */
-  function dayStep(day) {
-    if (Sim().catching) return;
+  function dayStep(day, away) {
+    if (Sim().catching && !away) return;
     for (const c of Ch().all()) {
       const h = H(c), st = OC.People && OC.People.stage(c);
       if (on() && modeOf(c) !== 'immortal' && st && st.from >= 60 && !h.conds.some((x) => x.chronic) && hs(`chr:${c.id}:${day}`) < 0.05) catchIt(c, hs(`chk:${c.id}`) < 0.5 ? 'joints' : 'cough', '上了年紀', `chronic:${day}`);
@@ -201,7 +202,7 @@
       M().remember(c, { type: 'milestone', imp: 0.8, text: '最近常常覺得累，想多陪陪大家', key: 'tw16:' + c.id });
       OC.Budget && OC.Budget.mail({ kind: 'life', oc: c.id, title: `${name(c)}最近常常說累`, text: `${name(c)}已經 ${a} 歲了。牠想多和大家在一起。（「健康」App 可以改壽命設定；七天後會道別）`, key: 'tw16:' + c.id + ':' + day });
       St().touch('life', { health: c.id });
-    } else if (h.twilight && day - h.twilight.since >= 7) farewell(c);
+    } else if (h.twilight && day - h.twilight.since >= 7 && !Sim().catching) farewell(c);   /* 17.1: a farewell is never decided while you are away — it waits until you are back */
   }
   /** the farewell: the friends say goodbye, a keepsake, then the character is archived (revocable) */
   function farewell(c) {
@@ -259,8 +260,9 @@
   const rifts = () => Object.values((OC.Arcs && OC.Arcs.state && OC.Arcs.state.rifts) || {});
   const liveRift = (r) => ['cold', 'thaw'].includes(r.stage);
   let fAcc = 0;
-  function feudStep(g) {
-    if (Sim().catching || !OC.Arcs) return; fAcc += g; if (fAcc < 30) return; fAcc = 0;
+  function feudStep(g, o) {
+    const away = !!(o && o.away); if ((Sim().catching && !away) || !OC.Arcs) return;
+    if (away) { afAcc += g; if (afAcc < 30) return; afAcc = 0; } else { fAcc += g; if (fAcc < 30) return; fAcc = 0; }
     const day = Sim().day();
     for (const r of rifts()) {
       if (!r.cause16 && liveRift(r)) { r.cause16 = causeOf(r); St().touch('life', { arcs: true }); }
@@ -326,6 +328,10 @@
   function init() {
     Sim().onStep((g) => { try { step(g); feudStep(g); } catch (e) { console.error('[health16]', e); } });
     Sim().onDay((d) => { try { dayStep(d); } catch (e) { console.error('[health16 day]', e); } });
+    /* 17.1: away too — falling ill, getting better, quarrels talked about behind backs, the old aches */
+    Sim().onAbstract((g, o) => { if (!o || !o.away) return; try { step(g, o); feudStep(g, o); } catch (e) { console.error('[health16 away]', e); } });
+    if (Sim().onAwayDay) Sim().onAwayDay((d) => { try { dayStep(d, true); } catch (e) { console.error('[health16 away day]', e); } });
+    St().on('away:begin', () => { aAcc = 0; afAcc = 0; });
     if (OC.Progress) OC.Progress.on(onProgress);
     St().on('touch:land', onLand); St().on('will:done', onWill);
   }

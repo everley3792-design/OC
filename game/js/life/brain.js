@@ -564,6 +564,7 @@
       if (placeOK() && settings().travel !== false && M().sleepTime(c) && loc !== myHome && OC.Places.open(myHome)) list.push({ act: 'sleep', pl: myHome, s: actScore(c, fake, 'sleep').s });
       list.sort((x, y) => y.s - x.s);
       if (OC.Aware) list = OC.Aware.absFilter(c, loc, list, now);   /* 16.7: the café has six seats */
+      if (OC.Health16 && OC.Health16.sick && OC.Health16.sick(c)) { for (const x of list) x.kind = 'act'; list = OC.Health16.shape(c, null, list); }   /* 17.1: ill while nobody is watching — rest, eat less */
       const ch = choose(c, list); if (!ch) return;
       if (ch.pl !== loc) { const tm = OC.Places.travelMin(loc, ch.pl); c.life.trip = { from: loc, to: ch.pl, act: ch.act, eta: now + tm }; c.life.loc = ch.pl; }
       const t0 = ch.pl !== loc ? now + OC.Places.travelMin(loc, ch.pl) : now, P0 = placeOK() ? OC.Places.get(ch.pl) : null;
@@ -836,7 +837,7 @@
   }
 
   OC.Brain = {
-    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); OC.Store.on('away:begin', () => { awayFresh.clear(); for (const b of Object.values(brains)) if (b.a) awayFresh.add(b.id); }); },
+    init(h) { hooks = Object.assign(hooks, h || {}); Sim().onStep(lifeStep); Sim().onAbstract(offlineStep); Sim().onDay((d) => { for (const c of OC.Chars.all()) M().dayStart(c); if (OC.Mind11) OC.Mind11.onDay(); }); OC.Store.on('life:offline', afterOffline); OC.Store.on('away:begin', (e) => { awayFresh.clear(); if (e && e.dry) return; for (const b of Object.values(brains)) if (b.a) awayFresh.add(b.id); });   /* a forecast must not touch the scene */ },
     goPlace, entryPoint, arrived, noticeNew, ctlOf, manualMode, setControl, startTravel, travelCands, exitPoint, here, rebuild, attach, detach, detachAll, hold, unhold, command, playerAct, candidates, actScore, ctxOf, abstractStep, dlog, charOf, available, finish, abort, start, reserve, release, free, findSlot, bestSlot, clearPoint, face,
     Social, brains, get aff() { return aff; }, get res() { return res; }, get convs() { return convs; }, get log() { return log; }, get explorePts() { return explorePts; },
     get: (id) => brains[id] || null,

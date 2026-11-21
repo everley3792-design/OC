@@ -67,6 +67,7 @@
           h('button.icon-btn', { 'aria-label': '前一天', 'data-nav': 'older', disabled: older == null, on: { click: () => { if (older != null) { p.f.day = older; re(); } } } }, OC.UI.icon('back')),
           h('b.grow.center', null, dayLabel(p.f.day)),
           h('button.icon-btn', { 'aria-label': '後一天', 'data-nav': 'newer', disabled: newer == null, on: { click: () => { if (newer != null) { p.f.day = newer; re(); } } } }, OC.UI.icon('next'))) : null,
+        p.f.tab === 'day' && list.length ? h('button.btn.s.ch17-play', { 'data-replay': p.f.day, on: { click: () => Replay.open(p.f.day) } }, OC.UI.icon('play', 's'), '回放這一天') : null,
         h('div.chips.scroll', null, chip(!p.f.who, '全員', { 'data-who': '' }, () => { p.f.who = null; re(); }), ...Ch().all().map((c) => chip(p.f.who === c.id, name(c), { 'data-who': c.id }, () => { p.f.who = c.id; re(); }))),
         places.length >= 2 ? h('div.chips.scroll', null, chip(!p.f.place, '所有地點', { 'data-place': '' }, () => { p.f.place = null; re(); }), ...places.map((id) => chip(p.f.place === id, (OC.Places.get(id) || { zh: id }).zh, { 'data-place': id }, () => { p.f.place = p.f.place === id ? null : id; re(); }))) : null,
         today ? h('div.ch17-now', null, h('small.muted', null, '正在發生'), ...Ch().all().filter((c) => !p.f.who || c.id === p.f.who).map((c) => { const P = OC.Places.get(c.life.loc || 'isle'); return h('button.ch17-nowrow', { 'data-now': c.id, on: { click: () => goTo(c.id) } }, av(c), h('div.grow', null, h('b', null, name(c)), h('span', null, [OC.LifeUI && OC.LifeUI.doingText ? OC.LifeUI.doingText(c) : '', P ? P.zh : ''].filter(Boolean).join('・') || '自由活動中'))); })) : null);
@@ -93,16 +94,88 @@
     return el;
   }
 
+
+  // ================================================================ replaying a day (17.1): the timeline played back; changes nothing
+  const SPEEDS = [1, 4, 16, 64, 256, 1024], ISLAND_MAX = 64;   /* game minutes per real second; on the island at most 64× */
+  const Replay = (() => {
+    let R = null;
+    function open(day) {
+      close();
+      const lines = C().day(day).slice().sort((a, b) => a.gm - b.gm); if (!lines.length) { OC.UI.toast('這一天沒有紀錄', 'info'); return; }
+      const g0 = day * 1440, el = h('div.rp17', { role: 'dialog', 'aria-label': '回放' });
+      R = { day, lines, g0, t: Math.max(0, Math.floor((lines[0].gm - g0) / 10) * 10), speed: 16, playing: true, i: 0, el, island: false, raf: 0, last: performance.now() };
+      R.layer = { el, close: () => close() };
+      R.clock = h('b.rp17-clock.num'); R.now = h('div.rp17-now'); R.feed = h('div.rp17-feed');
+      R.bar = h('input.rp17-bar', { type: 'range', min: 0, max: 1440, step: 1, value: R.t, 'aria-label': '跳到', on: { input: (e) => jump(+e.target.value) } });
+      R.play = h('button.icon-btn', { 'aria-label': '暫停', 'data-rp': 'play', on: { click: () => { R.playing = !R.playing; R.last = performance.now(); draw(); } } });
+      R.speeds = h('div.chips.rp17-speeds');
+      R.mode = h('button.btn.s', { 'data-rp': 'island', on: { click: () => setIsland(!R.island) } });
+      el.append(h('div.rp17-head', null, h('div.grow', null, h('small', null, '回放'), h('b', null, dayLabel(day))), R.clock, h('button.icon-btn', { 'aria-label': '關閉', 'data-rp': 'close', on: { click: close } }, OC.UI.icon('close'))),
+        R.feed, h('div.rp17-ctl', null, R.now, h('div.hstack', null, R.play, R.bar), R.speeds, h('div.hstack', null, R.mode, h('small.muted.grow', null, '回放只是重看，不會改變任何事'))));
+      document.getElementById('app').append(el); OC.UI.pushLayer(R.layer); if (OC.Pick && OC.Pick.guard) OC.Pick.guard(el);
+      jump(R.t); draw(); requestAnimationFrame(() => el.classList.add('on'));
+      R.raf = requestAnimationFrame(tick);
+    }
+    function close() {
+      if (!R) return; const x = R; R = null; cancelAnimationFrame(x.raf); OC.UI.popLayer(x.layer); x.el.remove();
+      document.documentElement.classList.remove('rp17-island');
+    }
+    /** move to a minute of the day: everything before it is shown, nothing is re-spoken */
+    function jump(t) {
+      R.t = Math.max(0, Math.min(1440, t)); R.i = R.lines.findIndex((x) => x.gm - R.g0 > R.t); if (R.i < 0) R.i = R.lines.length;
+      R.feed.replaceChildren(...R.lines.slice(0, R.i).slice(-60).map(row17)); R.feed.scrollTop = R.feed.scrollHeight; draw();
+    }
+    const row17 = (x) => { const el = line(x); el.addEventListener('click', () => jump(x.gm - R.g0 - 0.01)); return el; };
+    function show(x) {
+      R.feed.append(row17(x)); while (R.feed.children.length > 60) R.feed.firstChild.remove(); R.feed.scrollTop = R.feed.scrollHeight;
+      R.now.textContent = x.text;
+      if (R.island && x.who[0]) {   /* on the island: the one it was about says it again (a thought: no voice), the camera looks — nothing else */
+        const a = OC.App.actorOf(x.who[0]); if (a) { OC.App.bubble(a, trimName(x.text, name(Ch().get(x.who[0]) || {})), null, 2.6, { thought: true }); if (R.speed <= 16 && x.k !== 'act') OC.World.focus(a, 2.2); }
+      }
+    }
+    function tick(now) {
+      if (!R) return; const dt = Math.min(0.25, (now - R.last) / 1000); R.last = now;
+      if (R.playing) {
+        R.t = Math.min(1440, R.t + dt * R.speed);
+        let n = 0; while (R.i < R.lines.length && R.lines[R.i].gm - R.g0 <= R.t && n++ < 40) show(R.lines[R.i++]);
+        if (R.t >= 1440) R.playing = false;
+        draw();
+      }
+      R.raf = requestAnimationFrame(tick);
+    }
+    function setIsland(v) {
+      R.island = v; if (v) { OC.UI.popLayer(R.layer); OC.App.tab('island'); OC.UI.pushLayer(R.layer); if (R.speed > ISLAND_MAX) R.speed = ISLAND_MAX; }   /* tab() closes every layer: step out of the stack for it */
+      document.documentElement.classList.toggle('rp17-island', v); R.el.classList.toggle('mini', v); draw();
+    }
+    let sigD = '';
+    function draw() {
+      if (!R) return; const m = Math.floor(R.t), sig = [m, R.playing, R.speed, R.island].join();
+      if (sig === sigD) return; sigD = sig;
+      R.clock.textContent = hm(R.g0 + m); if (+R.bar.value !== m) R.bar.value = m;
+      R.play.replaceChildren(OC.UI.icon(R.playing ? 'pause' : 'play')); R.play.setAttribute('aria-label', R.playing ? '暫停' : '播放');
+      R.speeds.replaceChildren(...SPEEDS.filter((v) => !R.island || v <= ISLAND_MAX).map((v) => h('button.chip' + (R.speed === v ? '.on' : ''), { 'data-speed': v, on: { click: () => { R.speed = v; R.playing = true; R.last = performance.now(); draw(); } } }, `${v}×`)));
+      R.mode.replaceChildren(OC.UI.icon(R.island ? 'layers' : 'eye', 's'), R.island ? '回到清單' : '在島上看');
+    }
+    return { open, close, get state() { return R ? { day: R.day, t: R.t, i: R.i, n: R.lines.length, speed: R.speed, playing: R.playing, island: R.island } : null; }, jump: (t) => R && jump(t), SPEEDS };
+  })();
+
   // ================================================================ the end of a day you watched
   function dayCard(d, from) {
     if (Sim().catching || S().life.settings.away17 === false) return;
     const e = C().closeDay(from); if (!e || !e.n) return;
-    if (OC.Stage && OC.Stage.card) OC.Stage.card({ kind: 'day', ic: 'clock', title: `${OC.Clock.cal ? OC.Clock.cal(from).text : '這一天'} 結束了`, sub: e.big ? `${e.n} 件事・${e.big} 件大事（時間線看得到）` : `${e.n} 件事（時間線看得到）`, ms: 4200 });
+    if (OC.Stage && OC.Stage.card) OC.Stage.card({ kind: 'day', ic: 'clock', title: `${OC.Clock.cal ? OC.Clock.cal(from).text : '這一天'} 結束了`, sub: [e.big ? `${e.n} 件事・${e.big} 件大事（時間線看得到）` : `${e.n} 件事（時間線看得到）`].concat(ahead(d)).join('｜'), ms: 5200 });
+  }
+  /** what the new day holds: birthdays and plans (only what is really set) */
+  function ahead(d) {
+    const out = [];
+    try { for (const b of (OC.Island && OC.Island.birthdays ? OC.Island.birthdays() : [])) if (b.today) out.push(`今天是${name(b.c)}的生日`); } catch (e) { /* no birthdays */ }
+    try { for (const p of (OC.Outing16 ? OC.Outing16.plans() : [])) if (p.day === d && p.status === 'planned') { const P = OC.Places.get(p.place); out.push(`${String(p.hour).padStart(2, '0')}:00 ${[p.host].concat(p.guests.filter((g) => p.rsvp[g] && p.rsvp[g].yes)).map((id) => name(Ch().get(id) || {})).join('、')}要去${P ? P.zh : ''}`); } } catch (e) { /* no plans */ }
+    return out.slice(0, 3);
   }
 
   function init() {
     OC.Store.on('away:digest', (info) => setTimeout(() => showAway(info), 700));
     Sim().onDay(dayCard);
   }
-  OC.AwayUI = { init, showAway, get open() { return !!open; } };
+  OC.AwayUI = { init, showAway, Replay, get open() { return !!open; } };
 })();

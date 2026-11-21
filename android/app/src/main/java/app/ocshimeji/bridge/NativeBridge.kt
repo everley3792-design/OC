@@ -31,7 +31,7 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun appVersion(): String = "${BuildInfo.VERSION_NAME} (${BuildInfo.VERSION_CODE})"
     @JavascriptInterface fun sdkInt(): Int = Build.VERSION.SDK_INT
     /** bridge capability level: 7 = phase-7 desktop pets (multi-pet config, events, tools, widget) */
-    @JavascriptInterface fun bridgeLevel(): Int = 7
+    @JavascriptInterface fun bridgeLevel(): Int = 8   // 8: forecastSet / forecastClear (17.1)
 
     // ---- theme (UI theme only; the world's day/night is independent) ----
     @JavascriptInterface fun getThemeMode(): String = act.prefs.themeMode
@@ -146,7 +146,7 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun petEvents(): String = PetFiles.events(act).toString()
     @JavascriptInterface fun petAck(seq: Double) = PetFiles.ack(act, seq.toLong())
     /** management center → "clear desktop-pet data": stops the pets and removes their files and reminders */
-    @JavascriptInterface fun petClearAll() = act.runOnUiThread { act.stopPet(); Reminders.cancelAll(act); PetFiles.clearAll(act); PetWidget.refresh(act) }
+    @JavascriptInterface fun petClearAll() = act.runOnUiThread { act.stopPet(); Reminders.cancelAll(act); app.ocshimeji.tools.Forecast.clear(act); PetFiles.clearAll(act); PetWidget.refresh(act) }
 
     // ---- app-context lines (opt-in; package names only) ----
     @JavascriptInterface fun launchableApps(): String = UsageWatcher.launchable(act).toString()
@@ -155,6 +155,11 @@ class NativeBridge(private val act: MainActivity) {
     @JavascriptInterface fun reminderSet(json: String): String = runCatching { Reminders.schedule(act, JSONObject(json)).toString() }.getOrDefault("")
     @JavascriptInterface fun reminderCancel(id: String) = Reminders.cancel(act, id)
     @JavascriptInterface fun reminders(): String = Reminders.all(act).toString()
+
+    // ---- 17.1 island forecast (the game's dry run of the next 24 h) ----
+    @JavascriptInterface fun forecastSet(json: String): Boolean = app.ocshimeji.tools.Forecast.set(act, json)
+    @JavascriptInterface fun forecastClear() = app.ocshimeji.tools.Forecast.clear(act)
+    @JavascriptInterface fun forecast(): String = app.ocshimeji.tools.Forecast.data(act).toString()
 
     /** home-screen widget content (name, mood line, next to-do) + the avatar PNG */
     @JavascriptInterface fun widgetData(json: String, avatarDataUrl: String): Boolean = runCatching {

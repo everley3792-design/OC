@@ -51,7 +51,7 @@
     if (OC.People && !OC.People.canTravel(host)) return { ok: false, why: '年紀太小，不能自己出門' };
     const day = o.day != null ? o.day : Sim().day(), hour = o.hour || 14;
     if (day === Sim().day() && hour <= OC.Clock.hour()) return { ok: false, why: '這個時間已經過了' };
-    const p = { id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), kind: o.kind || 'outing', host: o.host, guests, place: o.place, day, hour, rsvp: {}, status: 'planned', by: o.by || 'player', at: Sim().now() };
+    const p = { id: Sim().catching ? 'pa' + Math.floor(Sim().now()).toString(36) + String(o.host).slice(-4) : 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),   /* 17.1: planned while away → an id from the save */ kind: o.kind || 'outing', host: o.host, guests, place: o.place, day, hour, rsvp: {}, status: 'planned', by: o.by || 'player', at: Sim().now() };
     for (const id of guests) p.rsvp[id] = answer(p, Ch().get(id));
     if (!guests.some((id) => p.rsvp[id].yes)) p.status = 'declined';
     plans().unshift(p); if (plans().length > 30) plans().length = 30;
@@ -116,8 +116,8 @@
     }
   }
   /** once a game day: friends sometimes plan an outing by themselves */
-  function dayStep(day) {
-    if (Sim().catching || S().life.settings.outing16 === false) return;
+  function dayStep(day, away) {
+    if ((Sim().catching && !away) || S().life.settings.outing16 === false) return;
     const cs = Ch().all(); if (cs.length < 2 || plans().some((p) => p.status === 'planned' && p.by === 'ai')) return;
     for (const a of cs) {
       if (hs('ai:' + a.id + ':' + day) > 0.12 || (OC.People && !OC.People.canTravel(a))) continue;
@@ -179,6 +179,6 @@
         x.status === 'declined' ? h('div.muted', null, '大家都不能去') : null,
         x.status === 'planned' ? h('button.btn.s.ghost', { 'data-cancel': x.id, on: { click: () => { cancel(x.id); re(p); } } }, '取消') : null)) : [h('div.muted', null, '還沒有約定。')]));
   }
-  function init() { Sim().onStep(step); Sim().onDay((d) => dayStep(d)); }
+  function init() { Sim().onStep(step); Sim().onDay((d) => dayStep(d)); if (Sim().onAwayDay) Sim().onAwayDay((d) => { try { dayStep(d, true); } catch (e) { console.error('[outing16 away]', e); } }); }   /* 17.1: friends plan outings while you are away too */
   OC.Outing16 = { plans, answer, invite, cancel, step, settle, dayStep, awayStep, init, HOURS };
 })();

@@ -727,3 +727,23 @@ html.page-open .toast-wrap { top: auto; bottom: calc(var(--sab) + var(--tabbar-h
 .ch17-nowrow { display: flex; gap: 10px; align-items: center; text-align: left; background: none; border: 0; padding: 4px 0; min-height: 48px; color: var(--ink); font: inherit; font-size: var(--fs-s); }
 .ch17-nowrow b { display: block; }
 .ch17-nowrow span { color: var(--ink-2); }
+/* 17.1 回放 */
+.ch17-play { align-self: flex-start; }
+.rp17 { position: fixed; inset: 0; z-index: 62; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); opacity: 0; transition: opacity var(--t-base) var(--ease-out), transform var(--t-slow) var(--spring-soft); pointer-events: auto; }
+.rp17.on { opacity: 1; }
+.rp17-head { display: flex; align-items: center; gap: 10px; padding: calc(var(--sat) + 14px) 16px 10px; background: linear-gradient(var(--sky-top), var(--sky-mid)); }
+.rp17-head small { display: block; color: var(--ink-2); font-size: var(--fs-s); }
+.rp17-clock { font-size: var(--fs-2xl); font-family: var(--font-num); }
+.rp17-feed { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overscroll-behavior: contain; }
+.rp17-feed .aw17-line { animation: rp17in var(--t-base) var(--ease-out); cursor: pointer; }
+@keyframes rp17in { from { opacity: 0; transform: translateY(6px); } }
+.rp17-ctl { background: var(--surface); padding: 10px 14px calc(var(--sab) + 12px); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -1px 0 var(--line), var(--shadow-1); border-radius: var(--r-l) var(--r-l) 0 0; }
+.rp17-now { font-size: var(--fs-m); min-height: 1.45em; }
+.rp17-bar { flex: 1; accent-color: var(--accent); min-height: 32px; }
+.rp17-speeds { flex-wrap: nowrap; overflow-x: auto; }
+/* on the island: only the controls stay, at the bottom; the world shows through */
+.rp17.mini { inset: auto 0 0 0; background: none; }
+.rp17.mini .rp17-head { display: none; }
+.rp17.mini .rp17-feed { display: none; }
+html.rp17-island #hud, html.rp17-island .tabbar { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .rp17-feed .aw17-line { animation: none; } }

@@ -38,7 +38,21 @@
   // ============================== notices ==============================
   let transient = [], pill = null;
   function noticeCount() { const now = Date.now(); transient = transient.filter((n) => now - n.at < 90000); return M().pending().length + S().life.notices.length + transient.length + (OC.Budget ? OC.Budget.unread() : 0); }
+  /** 17.1 背景通知: the forecast's big moments as Android notifications (off by default) */
+  function notifyBox() {
+    const F = OC.Forecast; if (!F) return null; const n = F.set();
+    if (!F.native()) return h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '用通知告訴我島上的大事'), h('span.tag', null, '只有 Android App'));
+    const save = () => OC.Store.touch('life', { k: 'notify17' });
+    const kinds = [['rel', '關係變化'], ['health', '有人生病'], ['big', '其他大事']];
+    return h('div', { 'data-n17': '1' },
+      h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '用通知告訴我島上的大事'), toggle(!!n.on, (v) => { n.on = v; save(); if (v && window.OCNative && OCNative.requestPermission) OCNative.requestPermission('notifications'); })),
+      small('App 關著時，先算好接下來 24 小時，大事發生的時候通知你；回來時重算，結果一樣。預設關閉。'),
+      h('div.chips', { style: { marginTop: '6px' } }, ...kinds.map(([k, zh]) => { const b = h('button.chip' + (n[k] ? '.on' : ''), { 'data-n17k': k, on: { click: () => { n[k] = !n[k]; b.classList.toggle('on', n[k]); save(); } } }, zh); return b; })),
+      h('div.hstack', { style: { marginTop: '8px' } }, h('span.grow', null, '一天最多'), seg([['1', '1 則'], ['3', '3 則'], ['5', '5 則']], String(n.max), (v) => { n.max = +v; save(); })),
+      h('div.hstack', { style: { marginTop: '8px' } }, h('span.grow', null, '晚上 10 點到早上 8 點也通知'), toggle(!!n.night, (v) => { n.night = v; save(); })));
+  }
   function pushNotice(n) {
+    if (OC.Sim && OC.Sim.catching) return;   /* 17.1: things that happened while away are in 「你不在的時候」 */
     if (n.info) { toast(n.text, 'gift'); return; }
     n.at = Date.now(); if (n.watch) transient.push(n);
     showPill(n);
@@ -465,6 +479,7 @@
           h('button.btn.block', { on: { click: () => controlSheet() } }, icon('sparkle', 's'), '各角色的操控模式…'), small('每個角色各自設定：手動（只聽你的；肚子餓、很睏才自己處理）、半自動（預設：自己生活，你一下指令牠就聽你的）、全自動。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 可以自己去別的地方'), toggle(st.travel !== false, (v) => set('travel', v))), small('關閉時，大家留在目前的地點生活（你仍然可以帶操控中的角色到處走）。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '背景生活（你不在時大家照常過日子）'), toggle(st.away17 !== false, (v) => set('away17', v))), small('打開時，關掉 App 的這段時間（最多 30 天）大家會照常生活、見面、出遊，回來時看「你不在的時候」；不會給星幣或物品。關閉時只推算 8 小時的需求變化。'),   /* 17.1 */
+          st.away17 !== false ? notifyBox() : null,
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '操控中的角色也可以自己換地點'), toggle(st.lead !== false, (v) => set('lead', v))), small('半自動／全自動時，牠想去別的地方就會自己走出去，畫面跟著牠過去（你正在看選單、佈置或對話時不會）。手動模式永遠不會自己離開。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, '角色會主動來找你'), toggle(st.visits !== false, (v) => set('visits', v))), small('同一個地點的角色偶爾會走過來：送東西、問問題、邀你玩、約時間。關掉後牠們不會主動打斷你。'),
           h('div.hstack', { style: { marginTop: '10px' } }, h('span.grow', null, 'OC 會向你提出請求'), toggle(st.requests !== false, (v) => set('requests', v))),

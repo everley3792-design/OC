@@ -47,9 +47,9 @@
   /** are these two in a cold war right now? (invitations between them are declined, they avoid each other) */
   const cold = (a, b) => { const r = riftOf(a, b); return !!r && r.stage === 'cold'; };
   const notice = (text) => { if (OC.LifeUI && OC.LifeUI.pushNotice) OC.LifeUI.pushNotice({ info: true, text }); };
-  let rT = 0, lastCheck = {};
-  function stepRifts(g) {
-    rT += g; if (rT < 30) return; rT = 0;
+  let rT = 0, arT = 0, lastCheck = {};
+  function stepRifts(g, away) {
+    if (away) { arT += g; if (arT < 30) return; arT = 0; } else { rT += g; if (rT < 30) return; rT = 0; }
     const L = S().life, gm = Sim().now(), day = Sim().day(), all = Ch().all(), S_ = ensure();
     if (L.settings.autonomy === 'paused') return;
     // start
@@ -68,7 +68,7 @@
       if (r.stage !== 'thaw') continue;                                         // a cold war holds the conflict where it is
       M().relPair(a.id, b.id, { conflict: -0.4 }, '');
       // somebody who cares about both may step in
-      const ba = live().find((x) => x.id === a.id), bb = live().find((x) => x.id === b.id);
+      const ba = !away && live().find((x) => x.id === a.id), bb = !away && live().find((x) => x.id === b.id);   /* 17.1: away there is no scene to gather in */
       if (ba && bb && free(ba) && free(bb) && !run && gm - (lastCheck[r.a + r.b] || 0) > 180) {
         lastCheck[r.a + r.b] = gm;
         const med = live().find((m) => m.id !== a.id && m.id !== b.id && free(m) && (M().relPeek(m.id, a.id) || {}).aff >= 30 && (M().relPeek(m.id, b.id) || {}).aff >= 30 && (Ch().get(m.id).personality.social >= 45 || has(Ch().get(m.id), 'gentle')));
@@ -85,7 +85,7 @@
     const S_ = ensure(), gm = Sim().now(), k = key(a.id, b.id), days = 2 + Math.floor(Sim().rnd() * 3);
     S_.rifts[k] = { a: a.id, b: b.id, stage: 'cold', since: Sim().day(), startedAt: gm, until: gm + days * 1440, tries: 0, lastEnc: 0, why: conflict };
     S_.n.rifts++;
-    for (const [x, y] of [[a, b], [b, a]]) { M().feel(x, has(x, 'stubborn') ? 'annoyed' : 'down', 0.25, `和${nm(y)}鬧僵了`, y.id); M().remember(x, { type: 'social', imp: 0.6, text: `和${nm(y)}鬧得有點僵`, key: 'rift:start:' + k + ':' + Sim().day() }); }
+    for (const [x, y] of [[a, b], [b, a]]) { M().feel(x, has(x, 'stubborn') ? 'annoyed' : 'down', 0.25, `和${nm(y)}鬧僵了`, y.id); M().remember(x, { type: 'social', imp: 0.6, who: [y.id], text: `和${nm(y)}鬧得有點僵`, key: 'rift:start:' + k + ':' + Sim().day() }); }
     notice(`${nm(a)}和${nm(b)}之間有點僵，這幾天大概會互相避開。`);
     St_touch();
   }
@@ -95,13 +95,13 @@
     const a = Ch().get(r.a), b = Ch().get(r.b); if (!a || !b || !['cold', 'thaw'].includes(r.stage)) return false;
     r.stage = 'reconciled'; r.endedAt = Sim().now(); r.how = how;
     M().relPair(a.id, b.id, { conflict: -30, trust: 8, aff: 8, intim: 2 }, '和好了');
-    for (const [x, y] of [[a, b], [b, a]]) { M().feel(x, 'content', 0.5, `和${nm(y)}和好了`, y.id); M().remember(x, { type: 'milestone', imp: 0.8, text: `和${nm(y)}和好了`, key: 'rift:end:' + key(a.id, b.id) + ':' + Sim().day() }); }
+    for (const [x, y] of [[a, b], [b, a]]) { M().feel(x, 'content', 0.5, `和${nm(y)}和好了`, y.id); M().remember(x, { type: 'milestone', imp: 0.8, who: [y.id], text: `和${nm(y)}和好了`, key: 'rift:end:' + key(a.id, b.id) + ':' + Sim().day() }); }
     ensure().n.reconciled++; OC.Sound && OC.Sound.cue && OC.Sound.cue('reconcile'); notice(`${nm(a)}和${nm(b)}和好了。`); St_touch(); return true;
   }
   function drift(r) {
     const a = Ch().get(r.a), b = Ch().get(r.b); if (!a || !b) return; r.stage = 'drifted'; r.endedAt = Sim().now();
     M().relPair(a.id, b.id, { aff: -6, intim: -3 }, '漸行漸遠');
-    for (const [x, y] of [[a, b], [b, a]]) M().remember(x, { type: 'social', imp: 0.5, text: `和${nm(y)}不再像以前那樣親近了`, key: 'rift:drift:' + key(a.id, b.id) });
+    for (const [x, y] of [[a, b], [b, a]]) M().remember(x, { type: 'social', imp: 0.5, who: [y.id], text: `和${nm(y)}不再像以前那樣親近了`, key: 'rift:drift:' + key(a.id, b.id) });
     ensure().n.drifted++; notice(`${nm(a)}和${nm(b)}沒能和好，慢慢疏遠了。`); St_touch();
   }
   /** the player lets them talk it out (success is likely, never certain) */
@@ -233,6 +233,11 @@
     const out = []; for (const r of Object.values(ensure().rifts)) if ((r.a === c.id || r.b === c.id) && ['cold', 'thaw'].includes(r.stage)) { const o = Ch().get(r.a === c.id ? r.b : r.a); if (o) out.push({ other: o.id, zh: nm(o), stage: r.stage, text: r.stage === 'cold' ? `還在和${nm(o)}冷戰` : `和${nm(o)}之間的氣氛慢慢緩和了` }); }
     return out;
   }
-  function init() { if (OC.Sim && OC.Sim.onStep) OC.Sim.onStep(step); }
+  function init() {
+    if (OC.Sim && OC.Sim.onStep) OC.Sim.onStep(step);
+    /* 17.1: quarrels start, thaw, make up or drift apart while you are away too (no gathering: that needs the scene) */
+    if (OC.Sim && OC.Sim.onAbstract) OC.Sim.onAbstract((g, o) => { if (o && o.away) { try { stepRifts(g, true); } catch (e) { console.error('[arcs away]', e); } } });
+    OC.Store.on('away:begin', () => { arT = 0; });
+  }
   OC.Arcs = { init, step, update, contagion, shape, onSocial, cold, riftOf, reconcile, mediate, gather, explain, KINDS, get running() { return run ? { kind: run.kind, ids: run.ids.slice(), phase: run.phase } : null; }, get state() { return ensure(); }, abort: () => finish(false), holding };
 })();

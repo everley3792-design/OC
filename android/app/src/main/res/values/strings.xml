@@ -11,6 +11,8 @@
     <string name="pet_touch_off">觸控穿透</string>
     <string name="pet_touch_on">恢復觸控</string>
     <string name="tools_channel">番茄鐘與提醒</string>
+    <string name="island_channel">島上的大事</string>
+    <string name="widget_probably">大概%1$s</string>
     <string name="widget_name">OC 小卡</string>
     <string name="widget_open_once">打開遊戲一次就會顯示心情</string>
     <string name="widget_no_todo">沒有待辦事項</string>

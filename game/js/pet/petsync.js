@@ -346,7 +346,7 @@
     const line = (() => { const life = S().life, said = JSON.stringify(life.said); try { const r = OC.Talk.say('desk_idle', c, null); return r ? r.text : ''; } finally { life.said = JSON.parse(said); } })();
     const NZ = Object.fromEntries(OC.LifeData.NEEDS.map((x) => [x.id, x.zh]));
     const emo = (OC.LifeData.EMOTIONS[M().dominant(c)] || {}).e || '';
-    try { return !!n.widgetData(JSON.stringify({ name: name(c), mood: `${M().label(c)}${line ? '・' + line : ''}`, moodShort: `${emo ? emo + ' ' : ''}${M().label(c)}`, todo: todo ? todo.text : '', needs: W.needs.slice(0, 3).map((k) => ({ id: k, zh: NZ[k] || k, v: Math.round(c.needs[k] || 0) })), showNeeds: W.showNeeds, showTodo: W.showTodo, avatar2Data: frame(true), at: Date.now() }), frame(false)); } catch (e) { return false; }
+    try { return !!n.widgetData(JSON.stringify({ oc: c.id, at: Date.now(), name: name(c), mood: `${M().label(c)}${line ? '・' + line : ''}`, moodShort: `${emo ? emo + ' ' : ''}${M().label(c)}`, todo: todo ? todo.text : '', needs: W.needs.slice(0, 3).map((k) => ({ id: k, zh: NZ[k] || k, v: Math.round(c.needs[k] || 0) })), showNeeds: W.showNeeds, showTodo: W.showTodo, avatar2Data: frame(true), at: Date.now() }), frame(false)); } catch (e) { return false; }
   }
 
   // ------------------------------------------------------------------ tools (pomodoro / rest / alarms; to-dos & notes live in the save)

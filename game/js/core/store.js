@@ -180,10 +180,13 @@
     if (d.v === 7) d = migrateV7(d);
     S = deepMerge(fresh(), d); for (const id of Object.keys(S.chars)) OC.Chars.normalize(S.chars[id]); persist(); emit('reset');
   }
+  /** 17.1: put a snapshot (exportJSON) back in place, keeping the same save object — for a dry run (OC.Sim.forecast) that must leave no trace.
+   *  No migration, no persist, no events: the snapshot was taken from this very save a moment ago. */
+  function restore(json) { const d = JSON.parse(json); for (const k of Object.keys(S)) delete S[k]; Object.assign(S, d); }
   function reset() { const keepSettings = S.settings; S = fresh(); S.settings = keepSettings; persist(); emit('reset'); }
 
   OC.Store = {
-    load, persist, touch, mark, on, emit, add, take, count, coins, needs, stat, exportJSON, importJSON, reset, fresh,
+    load, persist, touch, mark, on, emit, add, take, count, coins, needs, stat, exportJSON, importJSON, restore, reset, fresh,
     get s() { return S; }, get dirty() { return dirty; }, NATIVE,
   };
 })();

@@ -1073,9 +1073,9 @@
     setInsets(t, r, b, l) { const s = document.documentElement.style; s.setProperty('--sat', t + 'px'); s.setProperty('--sar', r + 'px'); s.setProperty('--sab', b + 'px'); s.setProperty('--sal', l + 'px'); },
     onSystemTheme(dark) { nativeSysDark = !!dark; applyTheme(); },
     lifecycle(state) {
-      if (state === 'pause') { if (paused) return; paused = true; S().life.lastReal = Date.now(); saveMatePos(); OC.PetSync.onPause(); St.persist(); }
+      if (state === 'pause') { if (paused) return; paused = true; S().life.lastReal = Date.now(); saveMatePos(); OC.PetSync.onPause(); St.persist(); if (OC.Forecast) OC.Forecast.onPause(); }   /* 17.1: the next 24 hours, for notifications and the widget */
       // resume: offline catch-up FIRST (no events / rewards), then the desktop pets' interactions are applied once
-      else { if (!paused) return; paused = false; OC.Sim.catchUp('resume'); OC.PetSync.onResume(); syncTreeFruit(); last = lastSim = performance.now(); window.OCApp.onPermission('resume', 'ok'); }   // permissions may have changed in system settings
+      else { if (!paused) return; paused = false; if (OC.Forecast) OC.Forecast.onResume(); OC.Sim.catchUp('resume'); OC.PetSync.onResume(); syncTreeFruit(); last = lastSim = performance.now(); window.OCApp.onPermission('resume', 'ok'); }   // permissions may have changed in system settings
     },
     /** pet sync (future App-context dialogue): current mood + a line for the pet OC, as JSON */
     petContext(app) { try { return JSON.stringify(OC.LifeUI.petState(app)); } catch (e) { return '{}'; } },
@@ -1131,7 +1131,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Chronicle) OC.Chronicle.init(); if (OC.Away) OC.Away.init(); if (OC.AwayUI) OC.AwayUI.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Chronicle) OC.Chronicle.init(); if (OC.Away) OC.Away.init(); if (OC.Forecast) OC.Forecast.init(); if (OC.AwayUI) OC.AwayUI.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.lifeSeed();   /* 17.1: the seed of this island's absences lives in the save */
     OC.Sim.catchUp('boot');

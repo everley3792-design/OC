@@ -21,7 +21,7 @@
   const OFFLINE_CAP = 8 * 60;           // game minutes simulated at most for one absence (legacy, away17 off)
   const AWAY_CAP = 30 * 1440, AWAY_FINE = 72 * 60;   /* 17.1: thirty days at most; ten-minute steps for the first three days, hourly after */
   const SPEEDS = [1, 2, 5, 10];
-  let catching = false, acc = 0, steps = [], days = [], abstracts = [], awayDays = [], lastDay = null, stepN = 0, virtual = false;
+  let catching = false, acc = 0, steps = [], days = [], abstracts = [], awayDays = [], lastDay = null, stepN = 0, virtual = false, dry = false;
 
   // ---------------- deterministic RNG (seedable for tests) ----------------
   let seed = (Date.now() ^ 0x5bd1e995) >>> 0;
@@ -122,7 +122,7 @@
     const keep = seed; seed = (Math.imul(lifeSeed(), 2654435761) ^ Math.floor(start)) >>> 0;   /* the same absence → the same story */
     const deep = total >= 10;   /* a few minutes (a stall, a quick switch to another app): the ones on screen carry on with what they were doing */
     catching = true; virtual = true; let done = 0, d0 = day(start);
-    if (deep) OC.Store.emit('away:begin', { from: start, min: total, reason });
+    if (deep) OC.Store.emit('away:begin', { from: start, min: total, reason, dry });
     try {
       while (done < total - 1e-6) {
         const g = Math.min(done < AWAY_FINE ? 10 : 60, total - done), at = start + done;
@@ -134,13 +134,27 @@
     } finally { catching = false; virtual = false; seed = keep; }
     c.gm = Math.max(c.gm, target); lastDay = day(c.gm);
     l.offline = { at: t, min: Math.round(elapsedMin), simulated: Math.round(total), from: start, to: c.gm, capped: elapsedMin > AWAY_CAP, reason, away17: true };
-    OC.Store.emit('life:offline', l.offline);
+    if (!dry) OC.Store.emit('life:offline', l.offline);
     return total;
   }
 
+  /** 17.1: a dry run of the next `hours` (the same away simulation, from the save as it is now), then everything is put back.
+   *  `fn(info)` reads what happened (the timeline, OC.Forecast's per-hour notes) before the save is restored. The same absence later
+   *  tells the same story (same seed, same chunks), which is what makes a forecast for notifications honest. */
+  function forecast(hours, fn) {
+    if (!away17() || catching) return null; const l = L();
+    if (mode() === 'cycle' && l.settings.awayPause) return null;
+    const snap = OC.Store.exportJSON(), keepDay = lastDay, keepAcc = acc, base = l.lastReal || Date.now(); let out = null;
+    dry = true;
+    try { l.lastReal = base; awayRun('forecast', base + hours * 3600e3); out = fn ? fn(l.offline, base) : l.offline; }
+    catch (e) { console.error('[sim forecast]', e); }
+    finally { dry = false; OC.Store.restore(snap); lastDay = keepDay; acc = keepAcc; }
+    return out;
+  }
+
   OC.Sim = {
-    STEP, OFFLINE_CAP, AWAY_CAP, SPEEDS, update, advance, catchUp, awayRun, step, onStep, onDay, onAbstract, onAwayDay, skipTo, msOf, lifeSeed,
+    STEP, OFFLINE_CAP, AWAY_CAP, SPEEDS, update, advance, catchUp, awayRun, forecast, step, onStep, onDay, onAbstract, onAwayDay, skipTo, msOf, lifeSeed,
     now, day, hourOf, rate, mode, speed, setMode, setSpeed, realGm,
-    get catching() { return catching; }, get virtual() { return virtual; }, rnd, pick, wpick, seed(v) { seed = v >>> 0; }, get steps() { return stepN; },
+    get catching() { return catching; }, get virtual() { return virtual; }, get dry() { return dry; }, rnd, pick, wpick, seed(v) { seed = v >>> 0; }, get steps() { return stepN; },
   };
 })();

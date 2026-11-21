@@ -52,7 +52,9 @@ class PetWidget : AppWidgetProvider() {
             val v = RemoteViews(ctx.packageName, if (small) R.layout.widget_pet_small else R.layout.widget_pet)
             val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             v.setTextViewText(R.id.w_name, d.optString("name").ifEmpty { ctx.getString(R.string.app_name) })
-            v.setTextViewText(R.id.w_mood, (if (small) d.optString("moodShort") else "") .ifEmpty { d.optString("mood").ifEmpty { ctx.getString(R.string.widget_open_once) } })
+            // 17.1: while the app is closed, the forecast's line ("大概在咖啡館吃飯") once it is newer than what the game last wrote
+            val fc = app.ocshimeji.tools.Forecast.widgetLine(ctx, d.optString("oc"), d.optLong("at"))
+            v.setTextViewText(R.id.w_mood, if (fc != null) ctx.getString(R.string.widget_probably, fc) else (if (small) d.optString("moodShort") else "") .ifEmpty { d.optString("mood").ifEmpty { ctx.getString(R.string.widget_open_once) } })
             // avatar: two idle frames (open eyes / blink) flipped by the launcher's ViewFlipper → a living character without waking the app
             val a1 = bmp(ctx, d.optString("avatar")); val a2 = bmp(ctx, d.optString("avatar2")) ?: a1
             if (a1 != null) v.setImageViewBitmap(R.id.w_avatar, a1) else v.setImageViewResource(R.id.w_avatar, R.mipmap.ic_launcher)
