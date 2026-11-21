@@ -9,6 +9,7 @@ import app.ocshimeji.sim.house.HouseType
 import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.sim.life.Economy
 import app.ocshimeji.sim.life.Pose
+import app.ocshimeji.sim.life.Env as EnvZh
 import app.ocshimeji.sim.life.SimEvent
 import app.ocshimeji.sim.town.Goods
 import app.ocshimeji.sim.town.Town
@@ -19,7 +20,7 @@ import kotlin.math.sin
 
 /** weather and seasons on screen (plan J-02): rain, snow, fog over a scene; the grass of each season; the sky of the weather */
 object Wx {
-    fun icon(w: String) = when (w) { "sunny" -> "sun"; "cloudy" -> "cloud"; "rain" -> "rain"; "snow" -> "snow"; "fog" -> "fog"; else -> "sun" }
+    fun icon(w: String) = when (w) { "sunny", "petals" -> "sun"; "cloudy", "aurora" -> "cloud"; "rain", "storm" -> "rain"; "snow" -> "snow"; "fog" -> "fog"; "stars" -> "moon"; else -> "sun" }
     /** the grass under everything, by season */
     fun grass(t: Theme, season: String): Int = when (season) {
         "winter" -> Colors.mix(t.grass, if (t.dark) 0xFF8C8AA8.toInt() else 0xFFF4F6F8.toInt(), 0.62f)
@@ -29,13 +30,20 @@ object Wx {
     }
     fun sky(t: Theme, w: String, light: Float): Int {
         val base = Colors.mix(t.skyTop, if (t.dark) 0xFF141A33.toInt() else 0xFF2E3A66.toInt(), (1 - light) * 0.7f)
-        return when (w) { "rain" -> Colors.mix(base, 0xFF8A94A6.toInt(), 0.45f); "cloudy", "fog" -> Colors.mix(base, 0xFFC4CAD4.toInt(), 0.35f); "snow" -> Colors.mix(base, 0xFFE4E8F0.toInt(), 0.35f); else -> base }
+        return when (w) { "storm" -> Colors.mix(base, 0xFF4A5266.toInt(), 0.6f); "stars" -> Colors.mix(base, 0xFF1A2050.toInt(), 0.55f); "aurora" -> Colors.mix(base, 0xFF20406A.toInt(), 0.45f); "petals" -> Colors.mix(base, 0xFFF8D8E4.toInt(), 0.3f)
+            "rain" -> Colors.mix(base, 0xFF8A94A6.toInt(), 0.45f); "cloudy", "fog" -> Colors.mix(base, 0xFFC4CAD4.toInt(), 0.35f); "snow" -> Colors.mix(base, 0xFFE4E8F0.toInt(), 0.35f); else -> base }
     }
     /** falling rain / snow and drifting fog over the whole screen (screen-side decoration, never touches the life) */
     /** 減少動態 (plan O-04): no falling particles */
     var calm = false
     fun draw(g: Gfx, W: Float, H: Float, w: String, time: Float) {
         when (w) {
+            "storm" -> { draw(g, W, H, "rain", time); if (!calm && ((time * 0.37f) % 7f) < 0.12f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.35f)) }   /* lightning now and then */
+            "petals" -> { if (calm) return; for (i in 0 until 40) { val x0 = ((i * 151) % 991) / 991f * W; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * (40f + (i % 5) * 10)) % (H + 20) - 10
+                val x = x0 + sin(time * 1.1f + i) * 16; g.fillRound(x - 3, y - 2, 6f, 4f, 2f, if (i % 3 == 0) 0xFFFFFFFF.toInt() else 0xFFF6B2C8.toInt()) } }
+            "stars" -> { for (i in 0 until 30) { val x = ((i * 137) % 997) / 997f * W; val y = ((i * 263) % 1009) / 1009f * H * 0.3f; g.fillCircle(x, y, if (i % 4 == 0) 1.6f else 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.5f + 0.5f * sin(time * 2 + i))) }
+                if (!calm) for (k in 0 until 2) { val ph = ((time * 0.5f + k * 0.5f) % 1f); val sx = W * (0.2f + 0.5f * k) + ph * 120; val sy = H * 0.05f + ph * 70; g.line(sx, sy, sx - 30, sy - 18, 2f, Colors.withAlpha(0xFFFFFFFF.toInt(), 1 - ph)) } }
+            "aurora" -> for (i in 0 until 3) { val y = H * (0.05f + i * 0.05f) + sin(time * 0.4f + i) * 8; g.fillRound(-40f, y, W + 80, 22f, 11f, Colors.withAlpha(if (i == 1) 0xFF8AF0C8.toInt() else 0xFF9AB8F8.toInt(), 0.22f)) }
             "rain" -> { if (calm) return; val c = Colors.withAlpha(0xFFB8D4EE.toInt(), 0.55f)
                 for (i in 0 until 70) { val x0 = ((i * 137) % 997) / 997f * (W + 60) - 30; val sp = 520f + (i % 7) * 40; val y = ((i * 263) % 1009) / 1009f * (H + 40) + time * sp
                     val yy = (y % (H + 40)) - 20; val xx = x0 - (yy * 0.18f); g.line(xx, yy, xx - 4f, yy + 16f, 1.6f, c) } }
@@ -71,7 +79,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
             "say" -> if (sim.person(e.who)?.out != null) said[e.who] = Said(e.text, app.time)
             "goal" -> app.toast("完成小目標：${e.text}")
         }
-        val w = sim.weather(); val season = sim.season(); val lt = ws.light(sim.hour)
+        val w = sim.sky(); val season = sim.season(); val lt = ws.light(sim.hour)
         g.fillRect(0f, 0f, W, H, Wx.grass(t, season))
         g.fillGradientV(0f, 0f, W, mapTop + 30, Wx.sky(t, w, lt), Wx.grass(t, season))
         // ---- roads: home → plaza → every place
@@ -111,10 +119,10 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         // ---- top: back, the name, the weather, the wallet
         Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back")
         g.text("${sim.life.townName.ifBlank { "小鎮" }}", G + 60, top + 34, Dim.FS_L, t.ink)
-        g.text("${Weather.SEASON_ZH[season]}天・${Weather.ZH[w]}・${ws.timeText()}", G + 60, top + 56, Dim.FS_S, t.ink2)
+        g.text("${Weather.SEASON_ZH[season]}天・${EnvZh.zh(w)}・${ws.timeText()}", G + 60, top + 56, Dim.FS_S, t.ink2)
         Widgets.sky(g, t, Wx.icon(w), W - G - 130, top + 34, 13f)
         wallet(g, app, ws, W - G - 104, top + 14)
-        if (sim.weather() == "rain" && Weather.rainbow(sim.life.seed, sim.life.minute)) Widgets.sky(g, t, "rainbow", W / 2, top + 92, 22f)
+        if (sim.weather() == "rain" && sim.env.rainbow()) Widgets.sky(g, t, "rainbow", W / 2, top + 92, 22f)
         // ---- bottom: who is out, the four town things
         val by = H - app.insetBottom - 150
         Widgets.card(g, t, G, by, W - G * 2, 138f, Dim.RADIUS_L)

@@ -65,6 +65,8 @@ class Life(
     val goals: MutableList<Goal> = mutableListOf(), var goalsDay: Long = -1,
     // ---- M7: counts, titles, diary, dreams, achievements, the book, plants, stars
     val prog: Progress = Progress(),
+    // ---- R2: your hand on the weather, the season and the clock
+    val env: EnvState = EnvState(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1

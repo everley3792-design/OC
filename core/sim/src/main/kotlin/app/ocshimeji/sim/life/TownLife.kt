@@ -168,7 +168,7 @@ class TownLife(private val sim: LifeSim) {
         if (w == "snow" && sim.season() == "winter") { val year = java.time.LocalDate.ofEpochDay(day).let { if (it.monthValue <= 2) it.year - 1 else it.year }
             if (town.firstSnowYear != year && home.isNotEmpty()) { town.firstSnowYear = year; for (p in home) sim.addMood(p, "firstsnow")
                 home.firstOrNull()?.let { sim.say(it, "下雪了！是今年的第一場雪！"); sim.log(it, "大家一起看了今年的初雪", kind = "event", weight = 3) } } }
-        if (Weather.rainbow(life.seed, life.minute) && !life.soc.seen.containsKey("rainbow:$day") && home.isNotEmpty()) {
+        if (sim.env.rainbow() && !life.soc.seen.containsKey("rainbow:$day") && home.isNotEmpty()) {
             life.soc.seen["rainbow:$day"] = life.minute; for (p in home) sim.addMood(p, "rainbow")
             home.first().let { sim.say(it, "快看！外面有彩虹！"); sim.log(it, "雨停了，大家看到了彩虹", kind = "event", weight = 3) } }
     }

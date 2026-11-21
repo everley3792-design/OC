@@ -168,7 +168,7 @@ class WorldScreen(val slotId: String) : Screen() {
         val life = sim.life; val lt = light(sim.hour)
 
         // ---- outside: sky to grass
-        val wx = sim.weather(); val grass = Wx.grass(t, sim.season())
+        val wx = sim.sky(); val grass = Wx.grass(t, sim.season())
         g.fillRect(0f, 0f, W, H, grass)
         g.fillGradientV(0f, 0f, W, sy(-30f), Wx.sky(t, wx, lt), grass)
         // ---- the house, everyone in it

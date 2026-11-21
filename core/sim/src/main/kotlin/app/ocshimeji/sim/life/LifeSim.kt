@@ -49,8 +49,12 @@ class LifeSim(val life: Life) {
     val journal = Journal(this)
     val decorate = Decorate(this)
     /** today's weather and the season (plan J-02) */
-    fun weather(): String = app.ocshimeji.sim.town.Weather.of(life.seed, life.minute)
-    fun season(): String = app.ocshimeji.sim.town.Weather.season(life.minute)
+    val env = Env(this)
+    /** today's weather for living (a special sky counts as its everyday kind) and the season — both go through `Env` (R2: you can set them) */
+    fun weather(): String = env.weather()
+    fun season(): String = env.season()
+    /** the sky as drawn (may be 流星雨, 極光, 花瓣雨, 雷雨) */
+    fun sky(): String = env.sky()
     internal val rng = Rng(life.rngState)
     val events = ArrayList<SimEvent>()
 
@@ -112,7 +116,7 @@ class LifeSim(val life: Life) {
     private fun rhythm(p: Person): Int = if (p.spec.wake == 7 && p.spec.sleep == 23) Math.floorMod(Rng.hash("rhythm:${life.seed}:${p.id}"), 3L).toInt() - 1 else 0
     internal fun isNight(p: Person) = night(p)
     private fun night(p: Person, h: Double = hour): Boolean { val w = wakeOf(p); val s = sleepOf(p); return if (s > w) (h >= s || h < w) else (h >= s && h < w) }
-    fun rate(): Double = if (hold) 0.0 else if (life.clockMode == "GAME") life.speed else 1.0
+    fun rate(): Double = if (hold || life.env.paused) 0.0 else if (life.clockMode == "GAME") life.speed else 1.0
     /** the clock waits (R1 T1): in real-time mode the world got ahead of the phone (after fast game time); everyone keeps moving, time does not */
     var hold = false
     /** today as MM-DD (game minutes are local minutes since 1970) */

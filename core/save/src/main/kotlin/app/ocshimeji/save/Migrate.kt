@@ -75,6 +75,9 @@ object Migrate {
         },
         /* 7 → 8 (R1): memories gain a sound, a line and a length; residents count what they did today — old lines and people just start without them */
         7 to { w -> w },
+        /* 8 → 9 (R2): your hand on the environment (chosen weather per day, a locked season, a paused clock) — an old world follows the date */
+        8 to { w -> val life = w["life"] as? JsonObject
+            if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("env", buildJsonObject { put("season", JsonPrimitive("")); put("paused", JsonPrimitive(false)) }) })) }) },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {
