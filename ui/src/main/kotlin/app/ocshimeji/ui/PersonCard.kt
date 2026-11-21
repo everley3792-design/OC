@@ -27,9 +27,13 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         g.text(Widgets.fit(g, p.name, Dim.FS_L, W - 160), G + 68, y + 48, Dim.FS_L, t.ink)
         val room = sim.house.rooms.firstOrNull { it.id == p.room }?.zh ?: ""
         g.text("${sim.moodLabel(p)}・住在$room" + if (!p.adult) "・未成年" else "", G + 68, y + 72, Dim.FS_S, t.ink2)
-        Widgets.sky(g, t, sim.moodSky(p), W - G - 26, y + 52, 15f)
+        Widgets.round(g, app, "card:edit", W - G - 24, y + 48, 20f, "edit"); Widgets.round(g, app, "card:rels", W - G - 74, y + 48, 20f, "people")
+        Widgets.sky(g, t, sim.moodSky(p), G + 50, y + 34, 9f)
+        for (i in 0 until 5) Widgets.heart(g, G + 74 + i * 15f, y + 84, 4.2f, if (p.affinity >= (i + 1) * 20 - 10) 0xFFF0705A.toInt() else t.lip)
+        val sp = listOfNotNull(p.spec.species.takeIf { it != "未知" }, "喜歡被摸${p.found.joinToString("、")}".takeIf { p.found.isNotEmpty() }).joinToString("・")
+        if (sp.isNotEmpty()) g.text(Widgets.fit(g, sp, Dim.FS_S - 2, W - 190), G + 154, y + 88, Dim.FS_S - 2, t.ink3)
         // ---- now + why
-        var yy = y + 96
+        var yy = y + 100
         g.fillRound(G, yy, W - G * 2, 62f, 16f, t.surface2)
         g.text("現在", G + 14, yy + 25, Dim.FS_S, t.accentLip); g.text(Widgets.fit(g, ws.doing(p, b), Dim.FS_M, W - G * 2 - 70), G + 56, yy + 25, Dim.FS_M, t.ink)
         val why = if (p.why.isEmpty()) "沒有特別的理由，隨意地過著" else "因為：" + p.why.joinToString("、")
@@ -75,6 +79,26 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         listOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶").forEachIndexed { i, (k, zh) -> Widgets.button(g, app, "feed:$k", G + i * (bw + 8), fy, bw, 48f, zh) }
     }
     override fun tap(id: String) {
+        if (id == "card:edit") { edit(); return }
+        if (id == "card:rels") { rels(); return }
         if (id.startsWith("feed:")) { val msg = ws.sim.feed(this.id, id.removePrefix("feed:")); app.closeOverlay(); if (msg.isNotEmpty()) app.toast(msg) }
+    }
+
+    /** edit this resident (their own copy in this world) */
+    private fun edit() {
+        val p = ws.sim.person(id) ?: return; val c = ws.libOf(p) ?: return; app.closeOverlay()
+        app.push(CharacterEditor(c, p.spec, world = true, title = p.name, houseId = ws.sim.house.id, housemates = ws.sim.life.people.size) { s, _ ->
+            ws.sim.editSpec(id, s); ws.refresh(); ws.flush(); null })
+    }
+    /** this world's relationships */
+    private fun rels() {
+        val sim = ws.sim; if (sim.life.people.size < 2) { app.toast("這裡只住了一位"); return }
+        app.closeOverlay()
+        val people = sim.life.people.map { Triple(it.id, it.spec, ws.libOf(it)) }
+        app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom ->
+            val keep = sim.life.rels.toList(); val keepRom = sim.life.romance
+            sim.life.romance = rom; sim.life.rels.clear()
+            val err = r.firstNotNullOfOrNull { sim.setRel(it) }
+            if (err != null) { sim.life.rels.clear(); sim.life.rels += keep; sim.life.romance = keepRom; err } else { ws.flush(); null } })
     }
 }

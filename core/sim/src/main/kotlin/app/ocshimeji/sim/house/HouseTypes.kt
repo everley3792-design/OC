@@ -40,7 +40,7 @@ object Houses {
             Piece("sofa", 1, 6, "living"), Piece("tv", 1, 5, "living"), Piece("window", 3, 4, "living"), Piece("plant", 0, 7, "living"), Piece("rug", 3, 6, "living"),
             Piece("fridge", 6, 5, "kitchen"), Piece("stove", 7, 5, "kitchen"), Piece("table", 7, 6, "kitchen")),
         doors = listOf(Door(2, 4), Door(5, 4), Door(8, 4), Door(6, 6)), entrance = Door(2, 7), capacity = 2,
-        rules = listOf("最多 2 位住民", "臥室 A 可以兩個人一起睡（同房依關係，M4 後）", "未成年的住民要有成年住民同住"))
+        rules = listOf("最多 2 位住民", "臥室 A 可以兩個人一起睡", "未成年的住民要有成年住民同住"))
     val APARTMENT = HouseType("apartment", "三房公寓", "三間臥室，熱鬧的大家庭感。", 12, 9,
         rooms = listOf(Room("bed1", "臥室 1", RoomKind.BEDROOM, 0, 0, 4, 4, sleeps = 2), Room("bed2", "臥室 2", RoomKind.BEDROOM, 4, 0, 4, 4, sleeps = 1), Room("bed3", "臥室 3", RoomKind.BEDROOM, 8, 0, 4, 4, sleeps = 1),
             Room("living", "客廳", RoomKind.LIVING, 0, 4, 7, 5), Room("kitchen", "廚房", RoomKind.KITCHEN, 7, 4, 3, 5), Room("bath", "浴室", RoomKind.BATH, 10, 4, 2, 5)),
@@ -65,10 +65,12 @@ object Houses {
         for (t in tenants) { val r = h.bedrooms.firstOrNull { (left[it.id] ?: 0) > 0 } ?: break; out[t.id] = r.id; left[r.id] = left[r.id]!! - 1 }
         return out
     }
-    fun checkRooms(h: HouseType, tenants: List<Tenant>, rooms: Map<String, String>): String? {
+    /** `family(a, b)`: these two are family (both directions) — a minor may share a room with adult family (plan 12.3) */
+    fun checkRooms(h: HouseType, tenants: List<Tenant>, rooms: Map<String, String>, family: (String, String) -> Boolean = { _, _ -> false }): String? {
         for (t in tenants) if (rooms[t.id] == null) return "${t.name}還沒有房間"
         for (r in h.bedrooms) { val n = tenants.count { rooms[it.id] == r.id }; if (n > r.sleeps) return "${r.zh}只睡得下 ${r.sleeps} 位" }
-        for (r in h.bedrooms) { val inRoom = tenants.filter { rooms[it.id] == r.id }; if (inRoom.size > 1 && inRoom.any { !it.adult } && inRoom.any { it.adult }) return "未成年和成年住民不同房（家人同房在 M4 加入關係後開放）" }
+        for (r in h.bedrooms) { val inRoom = tenants.filter { rooms[it.id] == r.id }; val kids = inRoom.filter { !it.adult }; val grown = inRoom.filter { it.adult }
+            if (kids.isNotEmpty() && grown.isNotEmpty() && kids.any { k -> grown.any { g -> !family(k.id, g.id) } }) return "未成年和成年住民不同房，除非是家人（在關係裡設定）" }
         return null
     }
 }

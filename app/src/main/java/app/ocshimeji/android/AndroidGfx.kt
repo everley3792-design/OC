@@ -19,7 +19,13 @@ class AImg(val bmp: Bitmap) : Img { override val w get() = bmp.width; override v
 
 /** images from the APK's assets, decoded no bigger than needed (a 3072 px drawing is never held at full size) */
 class AndroidAssets(private val am: AssetManager) : Assets {
-    private val cache = HashMap<String, AImg?>()
+    /* least recently used first; bitmaps of the app's own art are small, the player's frames can be many — keep about 48 MB */
+    private val cache = object : LinkedHashMap<String, AImg?>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AImg?>?): Boolean {
+            var bytes = 0L; for (v in values) bytes += v?.bmp?.byteCount?.toLong() ?: 0L
+            return bytes > 48L * 1024 * 1024 && size > 8
+        }
+    }
     val ui: Typeface by lazy { runCatching { Typeface.createFromAsset(am, "fonts/Huninn-Regular.ttf") }.getOrDefault(Typeface.DEFAULT) }
     val num: Typeface by lazy { runCatching { Typeface.createFromAsset(am, "fonts/Nunito-ExtraBold.ttf") }.getOrDefault(Typeface.DEFAULT_BOLD) }
     override fun image(path: String, maxSide: Int): Img? = cache.getOrPut("$path@$maxSide") {

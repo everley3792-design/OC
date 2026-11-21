@@ -29,6 +29,11 @@ class WorldScreen(val slotId: String) : Screen() {
     private var playT = 0f; private var saveT = 0f
     private val chars = HashMap<String, LibChar?>()
     fun libOf(p: Person): LibChar? = chars.getOrPut(p.libId) { app.saves.libChar(p.libId) }
+    private val looks = HashMap<String, Look>()
+    /** how a resident looks: the library character's pictures with this world's copy of who they are */
+    fun lookOf(p: Person): Look? { val c = libOf(p) ?: return null; val l = looks[p.id]; if (l != null && l.spec === p.spec) return l; return Look(app, c, p.spec).also { looks[p.id] = it } }
+    /** after editing someone: forget the cached pictures and settings */
+    fun refresh() { chars.clear(); looks.clear() }
 
     // camera: the house point at the middle of the view (base dp) and the zoom
     var camX = 0f; var camY = 0f; var zoom = 1f; private var fitZoom = 1f
@@ -60,7 +65,7 @@ class WorldScreen(val slotId: String) : Screen() {
         val s = sim.catchUp(target, summarize = big); flush()
         return if (big) s else null
     }
-    private fun flush() {
+    fun flush() {
         val w = world ?: return; val s = playT.toLong(); playT -= s
         sim.life.lastRealMs = app.platform.now()
         world = w.copy(life = sim.life, minute = sim.life.minute, clockMode = sim.life.clockMode)
@@ -93,7 +98,7 @@ class WorldScreen(val slotId: String) : Screen() {
         touchFrame(dt)
         sim.update(dt); sim.life.lastRealMs = app.platform.now()
         for (e in sim.events) when (e.kind) {
-            "say" -> bubbles[e.who] = Bubble(e.text, app.time)
+            "say" -> { bubbles[e.who] = Bubble(e.text, app.time); sim.person(e.who)?.let { app.platform.voice(it.spec.voice, e.text) } }
             "heart" -> hearts += Heart(e.who, app.time, ((app.time * 977) % 1f) - 0.5f)
             "sound" -> app.platform.sound(e.text)
         }
@@ -112,7 +117,7 @@ class WorldScreen(val slotId: String) : Screen() {
         val ds = ArrayList<HouseView.D>(); val CH = view.T * 1.62f
         val used = HashSet<Int>()
         life.people.forEachIndexed { i, p ->
-            val b = sim.body(p.id); val c = libOf(p) ?: return@forEachIndexed; val img = app.charImg(c, 512)
+            val b = sim.body(p.id); val look = lookOf(p) ?: return@forEachIndexed
             val onPiece = if (b.arrivedAct && p.act != null) p.actPiece else -1; if (onPiece >= 0) used += onPiece
             val kind = sim.house.pieces.getOrNull(onPiece)?.kind
             val x = view.bx(p.x); val y = view.by(p.y)
@@ -121,11 +126,12 @@ class WorldScreen(val slotId: String) : Screen() {
             val asleep = sim.asleep(p); val phase = i * 1.37f
             ds += HouseView.D(if (b.held || b.flying) 99f + i else key) {
                 if (!b.held && kind != "bed" && kind != "bed2" && kind != "tub") Widgets.footShadow(g, t, x, y, CH * 0.5f * (1f - min(0.5f, b.z * 0.2f)))
-                Actors.draw(g, img, c, x, y, CH, b.pose, app.time, phase, p.facing, lift, kind, asleep)
-                Actors.extras(g, t, b.pose, x, y - lift, CH, app.time, phase, p.facing, asleep)
+                Actors.draw(g, look, x, y, CH, b.pose, app.time, phase, p.facing, lift, kind, asleep, sim.moodSky(p))
+                Actors.extras(g, t, look, b.pose, x, y - lift, CH, app.time, phase, p.facing, asleep, sim.propOf(p))
             }
-            val top0 = y - lift - CH * (if (b.pose == Pose.LIE) 0.75f else 1f)
-            hits += p.id to floatArrayOf(sx(x - CH * 0.36f), sy(top0), CH * 0.72f * zoom, (y - top0 + 6) * zoom)
+            val ch = CH * look.scale
+            val top0 = y - lift - ch * (if (b.pose == Pose.LIE) 0.75f else 1f)
+            hits += p.id to floatArrayOf(sx(x - ch * 0.36f), sy(top0), ch * 0.72f * zoom, (y - top0 + 6) * zoom)
         }
         view.draw(g, t, app.time, lt, ds) { it in used }
         g.restore()
@@ -141,7 +147,7 @@ class WorldScreen(val slotId: String) : Screen() {
         for (h in hearts) { val r = hits.firstOrNull { it.first == h.who }?.second ?: continue; val k = (app.time - h.born) / 1.4f
             g.save(); g.alpha(1 - k); Widgets.heart(g, r[0] + r[2] / 2 + h.dx * 40, r[1] - k * 40, 6f + k * 3, 0xFFF0705A.toInt()); g.restore() }
         bubbles.entries.removeAll { app.time - it.value.born > 3.2f }
-        for ((id, b) in bubbles) { val r = hits.firstOrNull { it.first == id }?.second ?: continue; bubble(g, t, b, r[0] + r[2] / 2, r[1] - 10) }
+        for ((id, b) in bubbles) { val r = hits.firstOrNull { it.first == id }?.second ?: continue; bubble(g, t, b, r[0] + r[2] / 2, r[1] - 10, sim.person(id)?.spec?.tint) }
         // ---- the bar on top: back, the home's name, the clock
         Widgets.round(g, app, "back", Dim.GUTTER + 24, top + 34, 24f, "back")
         val clock = timeText(); val dayS = "第 ${life.day} 天" + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
@@ -196,16 +202,18 @@ class WorldScreen(val slotId: String) : Screen() {
             if (kotlin.math.abs(x - ex) < 26) continue
             val c = petals[i % petals.size]; for (k in 0 until 4) { val a = k * Math.PI.toFloat() / 2 + i; g.fillCircle(x + kotlin.math.cos(a) * 3.2f, y + kotlin.math.sin(a) * 3.2f, 2.8f, c) }; g.fillCircle(x, y, 2f, 0xFFF4A259.toInt()) }
     }
-    private fun bubble(g: Gfx, t: Theme, b: Bubble, cx: Float, bottom: Float) {
+    private fun bubble(g: Gfx, t: Theme, b: Bubble, cx: Float, bottom: Float, tint: String?) {
         val age = app.time - b.born; val k = Ease.outBack(min(1f, age / 0.25f)); val fade = if (age > 2.8f) 1 - (age - 2.8f) / 0.4f else 1f
         val lines = Widgets.wrap(g, b.text, Dim.FS_S + 1, 180f, 2); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 26; val h = 16f + lines.size * 20f
         val x = (cx - w / 2).coerceIn(8f, app.w - w - 8); val y = bottom - h - 8
         g.save(); g.alpha(fade.coerceIn(0f, 1f)); g.translate(cx, bottom); g.scale(k, k); g.translate(-cx, -bottom)
         g.fillRound(x, y + 2, w, h, 16f, t.shadow); g.fillRound(x, y, w, h, 16f, t.surface)
+        tintColor(tint)?.let { g.strokeRound(x + 1, y + 1, w - 2, h - 2, 15f, 2f, it) }   /* their representative colour */
         g.save(); g.translate(cx.coerceIn(x + 16, x + w - 16), y + h - 2); g.rotate((Math.PI / 4).toFloat()); g.fillRect(-5f, -5f, 10f, 10f, t.surface); g.restore()
         lines.forEachIndexed { i, s -> g.text(s, x + w / 2, y + 23 + i * 20f, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER) }
         g.restore()
     }
+    private fun tintColor(s: String?): Int? = s?.takeIf { it.matches(Regex("#[0-9A-Fa-f]{6}")) }?.let { Colors.hex(it) }
     fun timeText(): String { val m = ((sim.life.minute % 1440) + 1440) % 1440; return "%02d:%02d".format((m / 60).toInt(), (m % 60).toInt()) }
     /** 「在做什麼」 in a few words */
     fun doing(p: Person, b: LifeSim.Body = sim.body(p.id)): String = when {
@@ -281,8 +289,14 @@ class WorldScreen(val slotId: String) : Screen() {
             val p = sim.person(id)!!; tc.offX = sx(view.bx(p.x)) - tc.x; tc.offY = sy(view.by(p.y)) - tc.y
             if (tip) dismissTip()
         }
-        if (tc.petting) { if (tc.rub > 2f) sim.pet(id, dt); tc.rub = 0f }
+        if (tc.petting) { if (tc.rub > 2f) sim.pet(id, dt, partAt(id, tc.x, tc.y)); tc.rub = 0f }
         if (tc.lifted) { holdAt(tc); val p = sim.person(id) ?: return; tc.samples += floatArrayOf(app.time, p.x, p.y); tc.samples.removeAll { app.time - it[0] > 0.12f } }
+    }
+    /** which part of them the finger is on (plan E-01) */
+    private fun partAt(id: String, fx: Float, fy: Float): String {
+        val p = sim.person(id) ?: return "身體"; val look = lookOf(p) ?: return "身體"
+        val bx = camX + (fx - app.w / 2) / zoom; val by = camY + (fy - viewCy) / zoom
+        return Actors.part(look, bx, by, view.bx(p.x), view.by(p.y), view.T * 1.62f, p.facing)
     }
     private fun holdAt(tc: Touch) {
         val id = tc.id ?: return; val b = sim.body(id)

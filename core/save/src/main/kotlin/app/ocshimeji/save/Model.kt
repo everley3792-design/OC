@@ -1,5 +1,6 @@
 package app.ocshimeji.save
 
+import app.ocshimeji.sim.chars.CharSpec
 import app.ocshimeji.sim.life.Life
 import kotlinx.serialization.Serializable
 
@@ -11,7 +12,7 @@ import kotlinx.serialization.Serializable
  */
 
 const val LIBRARY_VERSION = 1
-const val WORLD_VERSION = 1
+const val WORLD_VERSION = 2
 
 /** a character as it sits in the library (its original) */
 @Serializable
@@ -32,9 +33,32 @@ data class LibChar(
     val adult: Boolean = true,
     /** which way the drawing faces: -1 left, 1 right (the renderer mirrors it when walking the other way) */
     val facing: Int = 1,
-    /** the drawing had no transparent background when imported (background removal comes in M2) */
+    /** the drawing had no transparent background when imported (the importer can remove it) */
     val opaque: Boolean = false,
-)
+    /** who they are (M2); null for characters made before M2 — `specOf()` fills it from the old fields */
+    val spec: CharSpec? = null,
+    /** the player's own animations: action → frames (plan 3.3) */
+    val anims: Map<String, Anim> = emptyMap(),
+    /** 系統預設 / 混合 / 我的 (plan 12.7) */
+    val animSource: String = "混合",
+    /** per action: true = use mine, false = use the system's (overrides animSource) */
+    val animUse: Map<String, Boolean> = emptyMap(),
+    /** expression variants: emotion (happy, angry, sad, shy, sleep, surprised) → image (plan P-17) */
+    val faces: Map<String, String> = emptyMap(),
+    /** marks on the picture (fractions of the image): 頭, 臉, 手, 耳朵, 尾巴, 身體 (plan 13.3) */
+    val marks: Map<String, Mark> = emptyMap(),
+    /** mirror when walking the other way (off for asymmetric characters) */
+    val flip: Boolean = true,
+) {
+    fun specOf(): CharSpec = spec ?: CharSpec.fromWords(name, adult, traits, likes).copy(species = species)
+}
+
+/** an animation: frames (library-relative image paths), each frame's time, looping or once */
+@Serializable
+data class Anim(val frames: List<String>, val ms: List<Int>, val loop: Boolean = true)
+/** a circle on the picture, as fractions of its width / height */
+@Serializable
+data class Mark(val x: Float, val y: Float, val r: Float)
 
 @Serializable
 data class LibraryIndex(val v: Int = LIBRARY_VERSION, val chars: List<LibChar> = emptyList())

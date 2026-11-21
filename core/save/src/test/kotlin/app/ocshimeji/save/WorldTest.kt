@@ -1,6 +1,7 @@
 package app.ocshimeji.save
 
 import app.ocshimeji.sim.house.Houses
+import app.ocshimeji.sim.chars.Rel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -41,6 +42,22 @@ class WorldTest {
         assertEquals(js.encodeToString(World.serializer(), s.loadWorld(m.id)!!), js.encodeToString(World.serializer(), other.loadWorld(m2.id)!!), "the imported world is exactly the exported one")
         assertNotNull(other.libChar(a.id)); assertTrue(other.readFile(a.image.removePrefix("lib:"))!!.contentEquals(byteArrayOf(1, 2, 3)))
         assertTrue(assertFailsWith<IllegalArgumentException> { other.importSave(byteArrayOf(1, 2, 3, 4)) }.message!!.contains("不是"))
+    }
+    @Test fun anM1WorldFileIsUpgraded() {   /* format 1 → 2: the old fields become the resident's CharSpec */
+        val raw = javaClass.getResourceAsStream("/world-v1.json")!!.readBytes()
+        val w = sys().parseWorld(raw); val p = w.life!!.people.single()
+        assertEquals(WORLD_VERSION, w.v); assertEquals("肉桂捲", p.name); assertEquals(6, p.spec.wake); assertEquals(22, p.spec.sleep)
+        assertEquals(listOf("甜點", "曬太陽"), p.spec.likes); assertEquals(0.4f, p.spec.axes[0]); assertTrue(p.adult)
+        val tooNew = raw.decodeToString().replaceFirst("\"v\":1", "\"v\":99").encodeToByteArray()
+        assertTrue(assertFailsWith<IllegalArgumentException> { sys().parseWorld(tooNew) }.message!!.contains("更新"))
+    }
+    @Test fun relationshipsAndFamilyRoomsWhenCreating() {
+        val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
+        assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))
+        val fam = listOf(Rel(a.id, k.id, "家人"), Rel(k.id, a.id, "家人"))
+        val m = s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0, fam)
+        assertEquals(2, s.loadWorld(m.id)!!.life!!.rels.size)
+        assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("B", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedB"), 0.0, listOf(Rel(a.id, k.id, "戀人")), romance = true) }.message!!.contains("未成年"))
     }
     @Test fun anM0WorldGetsAHouse() {
         val s = sys(); val m = s.create("舊的", listOf(Presets.CINNAMON.id)); val w = s.loadWorld(m.id)!!

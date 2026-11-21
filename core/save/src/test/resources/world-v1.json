@@ -1,0 +1,5 @@
+{"v":1,"seed":12345,"created":1700000000000,"townName":"舊鎮","clockMode":"REAL","minute":28800000.0,"residents":[{"id":"r_preset.cinnamon","libId":"preset.cinnamon","name":"肉桂捲"}],
+ "life":{"houseId":"studio","townName":"舊鎮","homeName":"小窩","minute":28800000.0,"clockMode":"REAL","speed":1.0,"seed":12345,"rngState":99,
+  "people":[{"id":"r_preset.cinnamon","libId":"preset.cinnamon","name":"肉桂捲","adult":true,"room":"main","needs":{"FOOD":50.0},"moods":[],"x":2.5,"y":3.5,"facing":1,
+    "act":null,"actPiece":-1,"actSlot":-1,"actStart":0.0,"actEnd":0.0,"next":null,"wake":6,"sleep":22,"axes":[0.4,0.4,0.0,0.0,0.4],"likes":["甜點","曬太陽"],"recent":{},"lastPet":-1.0E9,"why":[]}],
+  "mess":{"main":5.0},"lastRealMs":1700000000000,"log":[],"away":null,"arriving":false,"startMinute":28800000.0}}

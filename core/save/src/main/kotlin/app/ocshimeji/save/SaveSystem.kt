@@ -4,6 +4,15 @@ import app.ocshimeji.sim.Rng
 import app.ocshimeji.sim.house.HouseType
 import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.sim.house.Tenant
+import app.ocshimeji.sim.chars.CharSpec
+import app.ocshimeji.sim.chars.Rel
+import app.ocshimeji.save.media.Importer
+import app.ocshimeji.save.media.PkgAction
+import app.ocshimeji.save.media.PkgManifest
+import app.ocshimeji.save.media.Png
+import app.ocshimeji.save.media.Prepared
+import app.ocshimeji.save.media.Raster
+import app.ocshimeji.sim.chars.Relations
 import app.ocshimeji.sim.life.LifeSim
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -75,14 +84,19 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
      * 開始新的觀察 (plan 12.2): a world with a house type, its residents (library ids) in their rooms, and move-in day to play.
      * `nowMinute` = the phone's local time as game minutes (the default clock follows the phone).
      */
-    fun createWorld(name: String, town: String, home: String, house: HouseType, libIds: List<String>, rooms: Map<String, String>, nowMinute: Double): SlotMeta {
+    fun createWorld(name: String, town: String, home: String, house: HouseType, libIds: List<String>, rooms: Map<String, String>, nowMinute: Double,
+                    rels: List<Rel> = emptyList(), romance: Boolean = false): SlotMeta {
         val t = now(); val id = newId("s"); val seed = Rng.hash("$id:$t")
         val chars = libIds.mapNotNull { libChar(it) }
-        val tenants = chars.map { Tenant("r_" + it.id, it.name, it.adult) }
+        val specs = chars.associate { "r_" + it.id to it.specOf() }
+        val tenants = chars.map { Tenant("r_" + it.id, it.name, specs["r_" + it.id]!!.adult) }
         Houses.check(house, tenants)?.let { throw IllegalArgumentException(it) }
         val rr = chars.associate { "r_" + it.id to (rooms[it.id] ?: error("${it.name}還沒有房間")) }
-        Houses.checkRooms(house, tenants, rr)?.let { throw IllegalArgumentException(it) }
-        val life = LifeSim.create(seed, house, tenants, rr, chars.associate { "r_" + it.id to it.id }, chars.associate { "r_" + it.id to it.likes }, chars.associate { "r_" + it.id to it.traits }, town, home, nowMinute, t)
+        /* relationships are given between library ids; in the world they are between residents */
+        val wr = rels.map { it.copy(from = "r_" + it.from, to = "r_" + it.to) }
+        for (r in wr) Relations.problem(r, specs[r.from] ?: continue, specs[r.to] ?: continue, romance)?.let { throw IllegalArgumentException(it) }
+        Houses.checkRooms(house, tenants, rr) { a, b -> Relations.family(wr, a, b) }?.let { throw IllegalArgumentException(it) }
+        val life = LifeSim.create(seed, house, tenants, rr, chars.associate { "r_" + it.id to it.id }, specs, town, home, nowMinute, t, wr, romance)
         val world = World(seed = seed, created = t, townName = town, residents = chars.map { Resident("r_" + it.id, it.id, it.name) }, life = life)
         writeWorld(id, world)
         val meta = SlotMeta(id, name.ifBlank { "新的觀察" }, t, t, residents = chars.map { it.id })
@@ -93,13 +107,18 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
         if (w.life != null) return w
         val chars = w.residents.mapNotNull { r -> libChar(r.libId)?.let { r to it } }
         val house = Houses.ALL.firstOrNull { it.capacity >= chars.size } ?: Houses.APARTMENT
-        val tenants = chars.take(house.capacity).map { (r, c) -> Tenant(r.id, r.name, c.adult) }
-        val life = LifeSim.create(w.seed, house, tenants, Houses.autoRooms(house, tenants), chars.associate { (r, c) -> r.id to c.id }, chars.associate { (r, c) -> r.id to c.likes }, chars.associate { (r, c) -> r.id to c.traits }, w.townName, "", nowMinute, now())
+        val tenants = chars.take(house.capacity).map { (r, c) -> Tenant(r.id, r.name, c.specOf().adult) }
+        val life = LifeSim.create(w.seed, house, tenants, Houses.autoRooms(house, tenants), chars.associate { (r, c) -> r.id to c.id }, chars.associate { (r, c) -> r.id to c.specOf() }, w.townName, "", nowMinute, now())
         val up = w.copy(life = life); writeWorld(id, up); return up
     }
 
     // ---------------- importing a character from one picture (M1; the full creation is M2) ----------------
     /** `working` = the PNG the game draws (≤ 1024 px), `original` = the file as picked (kept, never changed) */
+    /** save an edited library character (its spec, settings and media); presets stay as they are */
+    fun updateLibChar(c: LibChar): String? {
+        if (Presets.ALL.any { it.id == c.id }) return "內建角色不能修改（可以複製一份再改）"
+        addLibChar(c.copy(name = c.spec?.name ?: c.name, adult = c.spec?.adult ?: c.adult)); return null
+    }
     fun importChar(name: String, adult: Boolean, facing: Int, info: ImageInfo, working: ByteArray, original: ByteArray, originalExt: String): LibChar {
         val cid = newId("c"); val dir = "library/chars/$cid"
         store.write("$dir/idle.png", working); store.write("$dir/original.$originalExt", original)
@@ -108,6 +127,55 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
             footX = if (info.transparent) (info.left + info.footX * (info.right - info.left)) / info.w else 0.5f, footY = footY, adult = adult, facing = facing, opaque = !info.transparent, created = now()))
     }
     fun readFile(path: String): ByteArray? = store.read(path)
+
+    // ---------------- characters from the import studio (M2) ----------------
+    /**
+     * Save an imported character: the working frames as PNG (lossless, the same bytes everywhere), the originals untouched, and a
+     * LibChar with its spec, animations, marks and expression variants. `edit` = replace the pictures of an existing character.
+     */
+    fun saveCharacter(prep: Prepared, spec: CharSpec, facing: Int, flip: Boolean, marks: Map<String, Mark>, originals: List<Importer.Source>, edit: LibChar? = null,
+                      foot: Pair<Float, Float>? = null): LibChar {
+        val cid = edit?.id ?: newId("c"); val dir = "library/chars/$cid"
+        if (edit != null) store.deleteDir(dir)
+        val idle = prep.clips["idle"]?.frames?.firstOrNull() ?: prep.clips.values.first().frames[0]
+        store.write("$dir/idle.png", Png.encode(idle))
+        originals.forEachIndexed { i, o -> store.write("$dir/orig/${i}_${safeName(o.name)}", o.bytes) }
+        val anims = LinkedHashMap<String, Anim>()
+        for ((a, c) in prep.clips) { if (c.frames.size <= 1 && a == "idle") continue
+            val paths = c.frames.mapIndexed { i, f -> "$dir/f/${a}_$i.png".also { store.write(it, Png.encode(f)) } }
+            anims[a] = Anim(paths.map { "lib:$it" }, c.ms, c.loop) }
+        val faces = prep.faces.mapValues { (e, f) -> "lib:$dir/face_$e.png".also { store.write(it.removePrefix("lib:"), Png.encode(f)) } }
+        val info = prep.info
+        val fx = foot?.first ?: if (info.transparent) (info.left + info.footX * (info.right - info.left)) / info.w else 0.5f
+        val fy = foot?.second ?: if (info.transparent) (info.bottom + 1f) / info.h else 1f
+        val c = LibChar(id = cid, name = spec.name.trim().take(MAX_NAME).ifBlank { "新角色" }, species = spec.species, source = edit?.source ?: "import", image = "lib:$dir/idle.png",
+            footX = fx, footY = fy, created = edit?.created ?: now(), adult = spec.adult, facing = facing, opaque = prep.opaque, spec = spec.copy(name = spec.name.trim().ifBlank { "新角色" }),
+            anims = anims, animSource = edit?.animSource ?: "混合", animUse = edit?.animUse.orEmpty(), faces = faces, marks = marks, flip = flip)
+        return addLibChar(c)
+    }
+    private fun safeName(n: String): String = n.substringAfterLast('/').map { if (it.isLetterOrDigit() || it == '.' || it == '-' || it == '_') it else '_' }.joinToString("").take(60)
+    /** an expression variant (one picture) for an existing character; null removes it */
+    fun setFace(id: String, emotion: String, img: Raster?): String? {
+        val c = libChar(id) ?: return "沒有這個角色"; if (c.source == "preset") return "內建角色不能修改"
+        val path = "library/chars/$id/face_$emotion.png"
+        val faces = c.faces.toMutableMap(); if (img == null) { store.delete(path); faces.remove(emotion) } else { store.write(path, Png.encode(img)); faces[emotion] = "lib:$path" }
+        addLibChar(c.copy(faces = faces)); return null
+    }
+    /** `.ocpkg` (plan 3.1): the character with its settings, ready to share; presets are not exported (they are in every app) */
+    fun exportPkg(id: String, author: String = ""): ByteArray {
+        val c = libChar(id) ?: throw IllegalArgumentException("沒有這個角色"); require(c.source != "preset") { "內建角色已經在每個人的 App 裡了" }
+        val bos = ByteArrayOutputStream(); val files = LinkedHashMap<String, ByteArray>()
+        fun add(lib: String, name: String): String { files[name] = store.read(lib.removePrefix("lib:")) ?: throw IllegalArgumentException("少了圖片：$lib"); return name }
+        val actions = LinkedHashMap<String, PkgAction>()
+        actions["idle"] = c.anims["idle"]?.let { a -> PkgAction(a.frames.mapIndexed { i, f -> add(f, "frames/idle_$i.png") }, a.ms, a.loop) } ?: PkgAction(listOf(add(c.image, "frames/idle_0.png")), listOf(120))
+        for ((a, an) in c.anims) if (a != "idle") actions[a] = PkgAction(an.frames.mapIndexed { i, f -> add(f, "frames/${a}_$i.png") }, an.ms, an.loop)
+        val faces = c.faces.mapValues { (e, f) -> add(f, "faces/$e.png") }
+        store.read(c.image.removePrefix("lib:"))?.let { files["preview.png"] = it }
+        val m = PkgManifest(name = c.name, author = author, license = "作者保留所有權利", foot = listOf(c.footX, c.footY), facing = c.facing, flip = c.flip, actions = actions, faces = faces, marks = c.marks, spec = c.specOf())
+        ZipOutputStream(bos).use { z -> fun put(n: String, d: ByteArray) { z.putNextEntry(ZipEntry(n)); z.write(d); z.closeEntry() }
+            put("manifest.json", json.encodeToString(PkgManifest.serializer(), m).encodeToByteArray()); for ((n, d) in files) put(n, d) }
+        return bos.toByteArray()
+    }
 
     // ---------------- .ocsave (export / import a whole save) ----------------
     /** one file with the world, its card, and the library characters it uses (their pictures included) */

@@ -6,6 +6,8 @@ import app.ocshimeji.render.FontKind
 import app.ocshimeji.render.Gfx
 import app.ocshimeji.render.Img
 import app.ocshimeji.save.ImageCheck
+import app.ocshimeji.sim.chars.Rel
+import app.ocshimeji.sim.chars.Relations
 import app.ocshimeji.sim.house.HouseType
 import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.sim.house.Tenant
@@ -53,6 +55,8 @@ class OpeningScreen : Screen() {
     var house: HouseType = Houses.COTTAGE
     val chosen = LinkedHashSet<String>()
     val rooms = HashMap<String, String>()
+    /** relationships between the chosen characters (library ids) and whether romance is on (plan 12.5) */
+    val rels = ArrayList<Rel>(); var romance = false
     private val list = Scroller()
     private val enterK = Spring(0f, 1f, 200f, 22f)
     override val animating get() = true
@@ -62,7 +66,7 @@ class OpeningScreen : Screen() {
     fun problem(): String? = when (step) {
         1 -> null
         2 -> Houses.check(house, tenants())
-        3 -> Houses.checkRooms(house, tenants(), rooms)
+        3 -> Houses.checkRooms(house, tenants(), rooms) { a, b -> Relations.family(rels, a, b) }
         else -> null
     }
 
@@ -138,7 +142,7 @@ class OpeningScreen : Screen() {
         val sink = if (app.pressed == "import") Dim.LIP - 1 else 0f
         g.strokeRound(G + 1, y + sink, W - G * 2 - 2, rowH - 14, 20f, 2f, t.lip)
         g.fillCircle(G + 36, y + 33 + sink, 23f, t.surface2); Widgets.icon(g, "image", G + 36, y + 33 + sink, 22f, t.ink2)
-        g.text("從圖片匯入", G + 70, y + 30 + sink, Dim.FS_M + 1, t.ink); g.text("一張圖就能住進來；完整的創角在 M2", G + 70, y + 52 + sink, Dim.FS_S, t.ink3)
+        g.text("匯入新角色", G + 70, y + 30 + sink, Dim.FS_M + 1, t.ink); g.text("圖片、動畫、Sprite Sheet 或角色包", G + 70, y + 52 + sink, Dim.FS_S, t.ink3)
         app.zone("import", G, y, W - G * 2, rowH - 10); y += rowH
         g.restore(); app.zoneDy = 0f
         list.max = maxOf(0f, y - (btnY - 16))
@@ -153,6 +157,7 @@ class OpeningScreen : Screen() {
         val top = y0 + 202; val sc = list.step(dt)
         g.save(); g.clip(0f, top, W, btnY - 16 - top); g.translate(0f, -sc); app.zoneDy = -sc
         var y = top + 4
+        if (chosen.size >= 2) { val f = Form(app, g, G, W - G * 2, y); f.button("rels", "設定他們的關係（選用）${if (rels.isNotEmpty()) "・已設定 ${rels.size / 2} 組" else ""}"); y = f.y }
         for (lid in chosen) {
             val c = app.saves.libChar(lid) ?: continue
             Widgets.face(g, t, app.charImg(c, 256), G + 22, y + 22, 18f)
@@ -176,15 +181,17 @@ class OpeningScreen : Screen() {
             id.startsWith("pick:") -> { val c = id.removePrefix("pick:")
                 if (!chosen.remove(c)) { if (chosen.size >= house.capacity) app.toast("${house.zh}最多住 ${house.capacity} 位") else chosen += c } }
             id == "import" -> pickImage()
+            id == "btn:rels" -> editRels()
             id.startsWith("room:") -> { val (lid, rid) = id.removePrefix("room:").split(":"); rooms[lid] = rid }
         }
     }
     private fun pickImage() {
         if (chosen.size >= house.capacity) { app.toast("${house.zh}最多住 ${house.capacity} 位"); return }
-        app.platform.pickImage { img, err ->
-            if (err != null) app.toast(err)
-            if (img != null) app.show(ImportSheet(img) { c -> if (chosen.size < house.capacity) chosen += c.id })
-        }
+        app.push(ImportStudio(onDone = { c -> if (chosen.size < house.capacity) chosen += c.id }))
+    }
+    private fun editRels() {
+        val people = chosen.mapNotNull { app.saves.libChar(it) }.map { Triple(it.id, it.specOf(), it) }
+        app.push(RelationsScreen(people, rels, romance) { r, rom -> rels.clear(); rels += r; romance = rom; null })
     }
     private fun next() {
         when (step) {
@@ -195,7 +202,7 @@ class OpeningScreen : Screen() {
     }
     private fun finish() {
         try {
-            val m = app.saves.createWorld(home, town, home, house, chosen.toList(), rooms, app.platform.realMinute())
+            val m = app.saves.createWorld(home, town, home, house, chosen.toList(), rooms, app.platform.realMinute(), rels.filter { it.from in chosen && it.to in chosen }, romance)
             app.replace(WorldScreen(m.id))
         } catch (e: IllegalArgumentException) { app.toast(e.message ?: "沒辦法搬進去") }
     }
@@ -205,50 +212,3 @@ class OpeningScreen : Screen() {
     override fun release() { list.release() }
 }
 
-/**
- * A new character from one picture (plan M1; the full creation with traits, voice and relationships is M2): a name, adult or not,
- * which way the drawing faces. A picture without a transparent background is accepted but marked (background removal is M2).
- */
-class ImportSheet(val pic: PickedImage, val added: (app.ocshimeji.save.LibChar) -> Unit) : Overlay() {
-    private val slide = Spring(0f, 1f)
-    var name = "新角色"; var adult = true; var facing = 1
-    private val info = runCatching { ImageCheck.analyze(pic.w, pic.h, pic.px) }.getOrNull()
-    override fun frame(g: Gfx, dt: Float) {
-        val t = app.theme; val s = slide.step(dt); val W = app.w; val G = Dim.GUTTER
-        g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, s.coerceIn(0f, 1f)))
-        val h = 520f + app.insetBottom; val y = app.h - h * s
-        g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); g.fillRound(W / 2 - 20, y + 10, 40f, 5f, 3f, t.line)
-        app.zone("imp:body", 0f, y, W, h)
-        g.text("從圖片匯入", G + 4, y + 44, Dim.FS_L, t.ink)
-        // preview, standing on the floor, mirrored the way it will face
-        val img = app.assets.decode("pick:${pic.original.size}:${pic.w}x${pic.h}", 512) { pic.working }
-        g.fillRound(G, y + 60, 132f, 170f, 20f, t.surface2)
-        if (img != null) { val ph = 150f; val pw = ph * img.w / img.h; val k = minOf(1f, 120f / pw); g.save(); g.translate(G + 66, y + 220); g.scale(k * (if (facing == 1) 1f else -1f), k); g.image(img, -pw / 2, -ph, pw, ph); g.restore() }
-        if (info == null) g.text("看不懂這張圖", G + 66, y + 150, Dim.FS_S, t.alert, FontKind.UI, Align.CENTER)
-        val x2 = G + 148; val w2 = W - G - x2
-        val sink = if (app.pressed == "imp:name") Dim.LIP - 1 else 0f
-        Widgets.card(g, t, x2, y + 60, w2, 64f, 18f, t.surface, t.lip, sink)
-        g.text("名字", x2 + 14, y + 82 + sink, Dim.FS_S, t.ink2); g.text(Widgets.fit(g, name, Dim.FS_M + 1, w2 - 28), x2 + 14, y + 108 + sink, Dim.FS_M + 1, t.ink)
-        app.zone("imp:name", x2, y + 60, w2, 68f)
-        var cx = x2; cx += Widgets.chip(g, app, "imp:adult", cx, y + 140, "成年", adult, 38f) + 6; Widgets.chip(g, app, "imp:minor", cx, y + 140, "未成年", !adult, 38f)
-        cx = x2; cx += Widgets.chip(g, app, "imp:left", cx, y + 190, "朝左", facing == -1, 38f) + 6; Widgets.chip(g, app, "imp:right", cx, y + 190, "朝右", facing == 1, 38f)
-        var yy = y + 262
-        val notes = ArrayList<String>()
-        if (info != null && !info.transparent) notes += "這張圖的背景不是透明的：會連背景一起出現。去背在 M2 製作。"
-        notes += "原圖會原封不動保存在收藏庫；遊戲用的是縮到 1024 px 的工作副本。"
-        notes += "未成年的角色永遠不會涉及戀愛。"
-        for (n in notes) for (l in Widgets.wrap(g, n, Dim.FS_S, W - G * 2 - 8, 2)) { g.text(l, G + 4, yy, Dim.FS_S, t.ink2); yy += 22 }
-        val by = y + h - app.insetBottom - 72
-        if (info == null) { g.fillRound(G, by, W - G * 2, 56f, 28f, t.surface2); g.text("換一張圖試試", W / 2, by + 34, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER) }
-        else Widgets.button(g, app, "imp:ok", G, by, W - G * 2, 56f, "加入收藏庫並選擇", Kind.PRIMARY, Dim.FS_L)
-    }
-    override fun tap(id: String) {
-        when (id) {
-            "imp:name" -> app.platform.prompt("角色的名字", name, 20) { n -> if (!n.isNullOrBlank()) name = n.trim() }
-            "imp:adult" -> adult = true; "imp:minor" -> adult = false
-            "imp:left" -> facing = -1; "imp:right" -> facing = 1
-            "imp:ok" -> { val i = info ?: return
-                val c = app.saves.importChar(name, adult, facing, i, pic.working, pic.original, pic.ext); app.closeOverlay(); added(c); app.toast("${c.name}加入了收藏庫") }
-        }
-    }
-}

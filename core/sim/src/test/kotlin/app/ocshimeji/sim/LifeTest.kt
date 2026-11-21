@@ -1,5 +1,6 @@
 package app.ocshimeji.sim
 
+import app.ocshimeji.sim.chars.CharSpec
 import app.ocshimeji.sim.house.Furniture
 import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.sim.house.Tenant
@@ -24,7 +25,8 @@ class LifeTest {
         val h = Houses.get(houseId)
         val ts = (1..n).map { Tenant("p$it", "角色$it", true) }
         val rooms = Houses.autoRooms(h, ts)
-        val life = LifeSim.create(42, h, ts, rooms, ts.associate { it.id to "lib${it.id}" }, mapOf("p1" to listOf("甜點")), mapOf("p1" to listOf("好奇", "溫和"), "p2" to listOf("慵懶")), "鎮", "家", day0 + hour * 60, 0)
+        val specs = mapOf("p1" to CharSpec.fromWords("角色1", true, listOf("好奇", "溫和"), listOf("甜點")), "p2" to CharSpec.fromWords("角色2", true, listOf("慵懶"), emptyList()))
+        val life = LifeSim.create(42, h, ts, rooms, ts.associate { it.id to "lib${it.id}" }, specs, "鎮", "家", day0 + hour * 60, 0)
         life.clockMode = "GAME"; life.speed = 60.0
         return LifeSim(life)
     }
@@ -39,6 +41,15 @@ class LifeTest {
                 assertTrue(d[ay * g.w + ax] >= 0, "${h.id}: ${p.kind} at ${p.x},${p.y} cannot be reached")
             }
             for (r in h.rooms) assertTrue(g.walkableTiles(h.rooms.indexOf(r)).any { d[it.second * g.w + it.first] >= 0 }, "${h.id}: room ${r.id} is cut off")
+        }
+    }
+    @Test fun everyBedroomInEveryHouseCanBeSleptIn() {   /* M1 bug: the double bed (bed2) was never chosen for sleeping */
+        for (h in Houses.ALL) for (room in h.bedrooms) {
+            val t = Tenant("s", "睡", true)
+            val life = LifeSim.create(3, h, listOf(t), mapOf("s" to room.id), mapOf("s" to "s"), mapOf("s" to CharSpec(name = "睡")), "鎮", "家", day0 + 23.5 * 60, 0)
+            life.arriving = false; life.clockMode = "GAME"; life.speed = 60.0; val s = LifeSim(life); val p = life.people[0]
+            for (n in Need.values()) p.setNeed(n, 90f); p.setNeed(Need.ENERGY, 10f)
+            run(s, 90f); assertEquals("sleep", p.act, "${h.id}/${room.id}"); assertEquals(room.id, h.pieces[p.actPiece].room)
         }
     }
     @Test fun houseRules() {

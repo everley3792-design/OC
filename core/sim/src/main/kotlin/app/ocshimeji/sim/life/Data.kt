@@ -7,7 +7,7 @@ enum class Need(val zh: String, val low: String, val decay: Float) {
 }
 
 /** what the body does while an activity runs (the renderer turns these into motion) */
-enum class Pose { STAND, WALK, SIT, LIE, EAT, BATHE, READ, WATCH, WATER, TIDY, PRIMP, LOOK, DAYDREAM, HELD, FLY, DIZZY, HAPPY, PETTED }
+enum class Pose { STAND, WALK, SIT, LIE, EAT, BATHE, READ, WATCH, WATER, TIDY, PRIMP, LOOK, DAYDREAM, HELD, FLY, DIZZY, HAPPY, PETTED, TALK, SWING, MEDITATE, SING, SHY, ANGRY, SAD }
 
 /**
  * Activities. `kind` = the furniture that offers it (null = anywhere on the floor); `per` = need change per game hour;
@@ -16,11 +16,16 @@ enum class Pose { STAND, WALK, SIT, LIE, EAT, BATHE, READ, WATCH, WATER, TIDY, P
 data class Activity(
     val id: String, val zh: String, val kind: String?, val pose: Pose, val min: Int, val per: Map<Need, Float>,
     val tags: Set<String> = emptySet(), val night: Boolean = false, val day: Boolean = false, val finish: String? = null, val sameRoomAs: String? = null,
+    /** only characters with one of these tags / traits / quirks do it (plan 13.2 專屬活動) */
+    val only: Set<String> = emptySet(),
+    /** a little thing in their hands (drawn by the screen: sword, laptop, cup…) */
+    val prop: String? = null,
 )
 
 object Acts {
-    private fun a(id: String, zh: String, kind: String?, pose: Pose, min: Int, vararg per: Pair<Need, Float>, tags: Set<String> = emptySet(), night: Boolean = false, day: Boolean = false, finish: String? = null, sameRoomAs: String? = null) =
-        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs)
+    private fun a(id: String, zh: String, kind: String?, pose: Pose, min: Int, vararg per: Pair<Need, Float>, tags: Set<String> = emptySet(), night: Boolean = false, day: Boolean = false, finish: String? = null, sameRoomAs: String? = null,
+                  only: Set<String> = emptySet(), prop: String? = null) =
+        Activity(id, zh, kind, pose, min, per.toMap(), tags, night, day, finish, sameRoomAs, only, prop)
     val ALL: Map<String, Activity> = listOf(
         a("sleep", "睡覺", "bed", Pose.LIE, 420, Need.ENERGY to 14f, Need.COMFORT to 4f, tags = setOf("rest"), night = true, finish = "slept"),
         a("nap", "午睡", "bed", Pose.LIE, 45, Need.ENERGY to 16f, Need.COMFORT to 6f, tags = setOf("rest", "lazy"), day = true),
@@ -39,6 +44,28 @@ object Acts {
         a("window", "看窗外", "window", Pose.LOOK, 10, Need.FUN to 18f, Need.COMFORT to 6f, tags = setOf("dreamy"), day = true),
         a("tidy", "整理房間", null, Pose.TIDY, 20, Need.ROOM to 150f, Need.FUN to -4f, tags = setOf("tidy", "active")),
         a("daydream", "發呆", null, Pose.DAYDREAM, 10, Need.FUN to 8f, Need.COMFORT to 4f, tags = setOf("dreamy")),
+        a("chat", "聊天", null, Pose.TALK, 15, Need.SOCIAL to 90f, Need.FUN to 12f, tags = setOf("chat"), finish = "chatted"),
+        // ---- only for some (tags, traits, quirks): plan 13.2 專屬活動 — the closest system pose plus a prop
+        a("sword", "練劍", null, Pose.SWING, 20, Need.FUN to 18f, tags = setOf("active"), only = setOf("劍修", "騎士", "傭兵", "武俠"), prop = "sword"),
+        a("meditate", "打坐", null, Pose.MEDITATE, 30, Need.COMFORT to 20f, Need.FUN to 8f, tags = setOf("calm"), only = setOf("宗門長老", "東方玄幻", "神明", "劍修", "武俠")),
+        a("laptop", "抱著筆電嘆氣", null, Pose.READ, 25, Need.FUN to 6f, only = setOf("社畜", "駭客", "研究員", "作家"), prop = "laptop"),
+        a("coffee", "喝黑咖啡", null, Pose.EAT, 10, Need.ENERGY to 30f, Need.FUN to 5f, only = setOf("咖啡成癮", "社畜"), prop = "cup", day = true),
+        a("sing", "練唱", null, Pose.SING, 15, Need.FUN to 22f, Need.SOCIAL to 5f, tags = setOf("active"), only = setOf("偶像", "音樂家", "追星族"), prop = "note", day = true),
+        a("paint", "畫畫", null, Pose.READ, 30, Need.FUN to 20f, tags = setOf("calm"), only = setOf("畫家"), prop = "brush"),
+        a("potion", "調配藥水", "stove", Pose.TIDY, 20, Need.FUN to 18f, only = setOf("鍊金術師", "魔法師"), prop = "flask"),
+        a("bake", "研究新甜點", "stove", Pose.TIDY, 25, Need.FUN to 15f, Need.FOOD to 20f, only = setOf("甜點師", "重度甜食控"), prop = "cake"),
+        a("money", "數錢", null, Pose.READ, 10, Need.FUN to 15f, only = setOf("財迷"), prop = "coin"),
+        a("game", "打電動", "sofa", Pose.WATCH, 40, Need.FUN to 26f, tags = setOf("lazy"), sameRoomAs = "tv", only = setOf("遊戲廢人"), prop = "game"),
+        a("selfie", "自拍", null, Pose.PRIMP, 6, Need.FUN to 16f, tags = setOf("vain"), only = setOf("愛拍照", "自戀", "偶像"), prop = "phone"),
+        a("workout", "健身", null, Pose.SWING, 20, Need.FUN to 12f, Need.COMFORT to 6f, tags = setOf("active"), only = setOf("健身狂", "運動員"), prop = "dumbbell", day = true),
+        a("posing", "擺帥氣的姿勢", null, Pose.HAPPY, 5, Need.FUN to 14f, only = setOf("中二病", "魔王"), prop = "star"),
+        a("sunbathe", "曬太陽", "window", Pose.SIT, 25, Need.COMFORT to 20f, Need.FUN to 8f, tags = setOf("lazy"), day = true, only = setOf("獸人", "植物系", "貓系", "冷血", "樹人")),
+        a("charge", "充電", null, Pose.SIT, 40, Need.ENERGY to 28f, only = setOf("仿生人", "機器人"), prop = "bolt"),
+        a("drift", "飄來飄去", null, Pose.DAYDREAM, 10, Need.FUN to 14f, tags = setOf("dreamy"), only = setOf("幽靈")),
+        a("deduce", "推理", null, Pose.READ, 20, Need.FUN to 16f, tags = setOf("smart"), only = setOf("偵探"), prop = "magnifier"),
+        a("magic", "練習魔法", null, Pose.SWING, 20, Need.FUN to 18f, only = setOf("魔法師", "西幻"), prop = "star"),
+        a("fortune", "占卜", null, Pose.READ, 10, Need.FUN to 14f, only = setOf("占卜師"), prop = "star"),
+        a("pillow", "抱著抱枕滾來滾去", "rug", Pose.LIE, 10, Need.COMFORT to 20f, Need.FUN to 6f, only = setOf("愛抱枕", "抱枕不離身"), prop = "pillow"),
     ).associateBy { it.id }
     operator fun get(id: String) = ALL[id]
 }
@@ -53,11 +80,15 @@ object Moods {
         MoodDef("dizzy", "頭暈", -1, 0.5f), MoodDef("lifted", "被抱起來", 1, 1f),
         MoodDef("hungry", "肚子餓", -2, 0.25f), MoodDef("tired", "好累", -2, 0.25f), MoodDef("dirty", "身上黏黏的", -1, 0.25f), MoodDef("bored", "好無聊", -1, 0.25f),
         MoodDef("messy", "房間好亂", -1, 0.25f), MoodDef("ignored", "好久沒人理", -1, 0.25f), MoodDef("lonely", "有點寂寞", -1, 0.25f), MoodDef("newhome", "搬進新家", 2, 24f),
+        MoodDef("hate", "做了討厭的事", -1, 1f), MoodDef("dark", "好黑好可怕", -2, 0.25f), MoodDef("sunburn", "陽光好刺眼", -1, 1f), MoodDef("noisy", "人太多好吵", -1, 0.25f),
+        MoodDef("scared", "好高好可怕", -1, 1f), MoodDef("birthday", "今天生日", 3, 24f), MoodDef("plants", "身邊有植物", 1, 0.25f), MoodDef("annoyed", "被摸到不喜歡的地方", -1, 1f),
+        MoodDef("spot", "被摸到最喜歡的地方", 2, 3f), MoodDef("chatted", "聊得很開心", 1, 3f), MoodDef("badchat", "聊得不太愉快", -1, 2f), MoodDef("secret", "說出了秘密", 1, 6f),
+        MoodDef("angry", "生氣了", -2, 1f),
     ).associateBy { it.id }
 }
 
 /** idle micro-behaviours (plan 13.5, first batch of 30): short, in real seconds, a pose and maybe a line */
-data class Micro(val id: String, val pose: Pose, val sec: Float, val line: String? = null, val needs: Need? = null, val dreamy: Boolean = false)
+data class Micro(val id: String, val pose: Pose, val sec: Float, val line: String? = null, val needs: Need? = null, val dreamy: Boolean = false, val prop: String? = null)
 object Micros {
     val ALL = listOf(
         Micro("stretch", Pose.HAPPY, 2.5f, "嗯——伸個懶腰。"), Micro("yawn", Pose.STAND, 2f, "哈啊……", Need.ENERGY), Micro("lookaround", Pose.LOOK, 3f),
@@ -86,5 +117,16 @@ object Lines {
         "full" to listOf("吃不下了。"),
         "wake" to listOf("早安……", "睡飽了。"),
         "arrive" to listOf("這裡就是新家嗎？", "打擾了。", "哇，好漂亮。", "我的房間在哪裡？"),
+        "spot" to listOf("就是那裡！", "再多摸一下那裡……", "（舒服得眯起眼睛）"),
+        "annoyed" to listOf("那裡不行！", "不、不要摸那裡啦。"),
+        "stranger" to listOf("請、請不要突然摸我。", "……（僵住）", "我們還不太熟吧？"),
+        "come" to listOf("我來找你了！", "你在那裡嗎？", "陪我一下好不好？"),
+        "scared" to listOf("好高！快放我下來！", "我、我不要在上面……"),
+        "angry" to listOf("你在做什麼啦！", "我生氣了！"),
+        "birthday" to listOf("今天是我的生日！", "生日耶，嘿嘿。"),
+        "dark" to listOf("好黑……燈呢？", "有、有人在嗎？"),
+        "yuckfood" to listOf("……這個味道我不行。", "嗚，不喜歡。"),
+        "chatOpen" to listOf("吶，{對方}，你知道{話題}嗎？", "說到{話題}……", "{對方}，跟你說{話題}的事。", "對了，{話題}的事你聽說了嗎？"),
+        "chatReply" to listOf("真的嗎？", "嗯嗯，然後呢？", "哈哈，好好笑。", "我也這麼覺得。", "咦——是喔？", "原來如此。"),
     )
 }

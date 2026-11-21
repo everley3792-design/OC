@@ -49,6 +49,7 @@ class TitleScreen : Screen() {
         y += 116
         g.text(if (slots.isEmpty()) "你的觀察" else "你的觀察（${slots.size}）", Dim.GUTTER + 4, y, Dim.FS_M, t.ink2)
         val iw = g.measure("匯入存檔", Dim.FS_S + 1) + 28; Widgets.chip(g, app, "importSave", W - Dim.GUTTER - iw, y - 28, "匯入存檔", false, 36f)
+        val lw = g.measure("收藏庫", Dim.FS_S + 1) + 28; Widgets.chip(g, app, "library", W - Dim.GUTTER - iw - lw - 8, y - 28, "收藏庫", false, 36f)
         y += 14
         if (slots.isEmpty()) {
             Widgets.card(g, t, Dim.GUTTER, y, nw, 84f, Dim.RADIUS_L, t.surface2, t.surface2)
@@ -57,7 +58,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("0.2.0-reboot（M1）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("0.3.0-reboot（M2）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }
@@ -85,6 +86,7 @@ class TitleScreen : Screen() {
     override fun tap(id: String) {
         when {
             id == "new" -> app.push(OpeningScreen())
+            id == "library" -> app.push(LibraryScreen())
             id == "importSave" -> app.platform.openFile("application/octet-stream") { bytes -> if (bytes != null) {
                 try { val m = app.saves.importSave(bytes); reload(); app.toast("匯入了「${m.name}」") } catch (e: IllegalArgumentException) { app.toast(e.message ?: "匯入失敗") } } }
             id.startsWith("slot:") -> open(id.removePrefix("slot:"))

@@ -21,6 +21,10 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import app.ocshimeji.save.FileStorage
 import app.ocshimeji.save.SaveSystem
+import app.ocshimeji.save.media.Codec
+import app.ocshimeji.save.media.Importer
+import app.ocshimeji.save.media.Raster
+import app.ocshimeji.sim.chars.Voice
 import app.ocshimeji.ui.PickedImage
 import app.ocshimeji.ui.Platform
 import app.ocshimeji.ui.Theme
@@ -47,6 +51,9 @@ class MainActivity : Activity() {
             override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) = create(name, mime, data, done)
             override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)
             override fun sound(name: String) { sounds.play(name) }
+            override fun voice(v: Voice, text: String) { sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
+            override fun pickFiles(multiple: Boolean, done: (List<Importer.Source>?, String?) -> Unit) = pickMany(multiple, done)
+            override val codec: Codec = Codec { b -> decodeRaster(b) }
         }
         ui = UiApp(SaveSystem(FileStorage(filesDir)), assets, platform)
         ui.theme = themeFor(resources.configuration)
@@ -123,6 +130,27 @@ class MainActivity : Activity() {
         ask(i) { d -> val uri = d?.data ?: run { done(false); return@ask }
             background { val ok = runCatching { contentResolver.openOutputStream(uri, "w")?.use { it.write(data) } != null }.getOrDefault(false); view.post { done(ok); view.kick() } } }
     }
+    /** any still picture the phone can decode → ARGB pixels (the importer has already refused anything over 4096 px) */
+    private fun decodeRaster(b: ByteArray): Raster? {
+        val bmp = BitmapFactory.decodeByteArray(b, 0, b.size, BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888; inPremultiplied = false }) ?: return null
+        val px = IntArray(bmp.width * bmp.height); bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+        return Raster(bmp.width, bmp.height, px).also { bmp.recycle() }
+    }
+    /** one or several files (pictures, animations, ZIP, .ocpkg, a JSON atlas) through the system picker */
+    private fun pickMany(multiple: Boolean, done: (List<Importer.Source>?, String?) -> Unit) {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"; putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple) }
+        ask(i) { data -> if (data == null) { done(null, null); return@ask }
+            val uris = ArrayList<Uri>(); data.clipData?.let { c -> for (k in 0 until c.itemCount) uris += c.getItemAt(k).uri }; if (uris.isEmpty()) data.data?.let { uris += it }
+            if (uris.isEmpty()) { done(null, null); return@ask }
+            background {
+                var total = 0L; var err: String? = null; val out = ArrayList<Importer.Source>()
+                for (u in uris) { val b = runCatching { readAll(u, 64L * 1024 * 1024) }.getOrNull(); if (b == null) { err = "檔案太大或讀不到（上限 64 MB）"; break }
+                    total += b.size; if (total > 64L * 1024 * 1024) { err = "檔案加起來超過 64 MB"; break }; out += Importer.Source(nameOf(u), b) }
+                view.post { if (err != null) done(null, err) else done(out, null); view.kick() }
+            }
+        }
+    }
+    private fun nameOf(u: Uri): String = runCatching { contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null } }.getOrNull() ?: u.lastPathSegment ?: "file"
     private fun open(done: (ByteArray?) -> Unit) {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
         ask(i) { d -> val uri = d?.data ?: run { done(null); return@ask }

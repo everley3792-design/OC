@@ -55,5 +55,29 @@ class Sounds {
             tr.reloadStaticData(); tr.play()
         }
     }
-    fun release() { for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
+    private var voiceTrack: AudioTrack? = null
+    /** a short babble for a line: one soft syllable per few characters, pitch wandering like speech (plan 12.4 聲線) */
+    fun voice(pitch: Float, speed: Float, timbre: String, bright: Float, text: String) {
+        runCatching {
+            val syl = (text.count { !it.isWhitespace() && it !in "，。！？、…～（）「」" } / 2).coerceIn(2, 10)
+            val sylSec = 0.085f / speed.coerceIn(0.5f, 2f); val gap = sylSec * 0.35f
+            val n = (rate * (syl * (sylSec + gap))).toInt(); val pcm = ShortArray(n); val base = 220f * pitch.coerceIn(0.5f, 2f)
+            var i = 0; var ph = 0.0; val rnd = java.util.Random(text.hashCode().toLong())
+            for (s in 0 until syl) {
+                val f = base * (1f + (rnd.nextFloat() - 0.5f) * 0.35f); val len = (rate * sylSec).toInt()
+                for (k in 0 until len) { if (i >= n) break; val t = k.toFloat() / len; ph += 2 * PI * f * (1 + 0.05 * sin(t * PI)) / rate
+                    val env = sin(t * PI).toFloat()
+                    val w = when (timbre) { "清脆" -> sin(ph) + 0.35 * sin(ph * 3); "沙啞" -> sin(ph) * 0.8 + (rnd.nextFloat() - 0.5) * 0.35; "電子" -> if (sin(ph) >= 0) 0.6 else -0.6; else -> sin(ph) + 0.15 * sin(ph * 2) }
+                    val bright2 = 0.6 + 0.4 * bright
+                    pcm[i++] = (w * env * 0.22 * bright2 * Short.MAX_VALUE).toInt().coerceIn(-32767, 32767).toShort() }
+                i += (rate * gap).toInt()
+            }
+            voiceTrack?.let { runCatching { it.stop(); it.release() } }
+            voiceTrack = AudioTrack.Builder()
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.play() }
+        }
+    }
+    fun release() { voiceTrack?.let { runCatching { it.release() } }; voiceTrack = null; for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
 }

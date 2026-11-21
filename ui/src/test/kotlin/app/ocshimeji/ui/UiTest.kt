@@ -23,6 +23,9 @@ class UiTest {
     private var now = 1_700_042_400_000L   /* 10:00 UTC: daylight in the home */
     private var promptAnswer: String? = null
     private var saved: ByteArray? = null
+    /** what the file picker hands over next */
+    private var files: List<app.ocshimeji.save.media.Importer.Source> = emptyList()
+    private fun pngOf(p: PickedImage) = p.working
     private val platform = object : Platform {
         override fun now() = now
         override fun realMinute() = now / 60000.0
@@ -30,6 +33,8 @@ class UiTest {
         override fun pickImage(done: (PickedImage?, String?) -> Unit) = done(testPicture(), null)
         override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) { saved = data; done(true) }
         override fun openFile(mime: String, done: (ByteArray?) -> Unit) = done(saved)
+        override fun pickFiles(multiple: Boolean, done: (List<app.ocshimeji.save.media.Importer.Source>?, String?) -> Unit) = done(files, null)
+        override val codec = app.ocshimeji.save.media.Codec { b -> ImageIO.read(java.io.ByteArrayInputStream(b))?.let { r -> app.ocshimeji.save.media.Raster(r.width, r.height, r.getRGB(0, 0, r.width, r.height, null, 0, r.width)) } }
     }
     /** an original test character: a round mint body with eyes on a transparent background */
     private fun testPicture(): PickedImage {
@@ -74,19 +79,32 @@ class UiTest {
         assertTrue(a.tapZone("house:cottage")); assertTrue(a.tapZone("next")); frames(a, 15); assertEquals(2, o.step)
         assertFalse(a.hasZone("next"), "nobody chosen yet: the reason is shown instead of the button")
         assertTrue(a.tapZone("pick:${Presets.CINNAMON.id}")); frames(a, 2)
-        assertTrue(a.tapZone("import")); frames(a, 15); assertTrue(a.overlay is ImportSheet)
-        promptAnswer = "小麥"; assertTrue(a.tapZone("imp:name")); assertTrue(a.tapZone("imp:left"))
-        shot("import-sheet", frames(a, 10, scale = 2f))
-        assertTrue(a.tapZone("imp:ok")); frames(a, 3); assertNull(a.overlay); assertEquals(2, o.chosen.size)
+        assertTrue(a.tapZone("import")); frames(a, 15); val st = a.screen as ImportStudio
+        shot("studio-pick", frames(a, 1, scale = 2f))
+        files = listOf(app.ocshimeji.save.media.Importer.Source("me.png", pngOf(testPicture())))
+        assertTrue(a.tapZone("btn:files")); frames(a, 10); assertEquals(1, st.step)
+        shot("studio-clean", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("next")); frames(a, 5); assertTrue(a.tapZone("chip:facing:圖上朝左")); assertTrue(a.tapZone("next")); frames(a, 5); assertTrue(a.tapZone("next")); frames(a, 5)
+        promptAnswer = "小麥"; assertTrue(a.tapZone("row:name")); assertTrue(a.tapZone("next")); frames(a, 20)
+        val ed = a.screen as CharacterEditor; assertEquals("小麥", ed.spec.name)
+        shot("editor-new", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("save")); frames(a, 5); assertTrue(a.screen is OpeningScreen); assertEquals(2, o.chosen.size)
         val mai = a.saves.library().chars.first { it.name == "小麥" }; assertEquals(-1, mai.facing); assertTrue(mai.image.startsWith("lib:"))
         assertTrue(a.tapZone("pick:${Presets.CINNAMON.id}")); assertTrue(a.tapZone("pick:${Presets.CINNAMON.id}"))   /* off and on again */
         shot("opening-people", frames(a, 10, scale = 2f))
         assertTrue(a.tapZone("next")); frames(a, 15); assertEquals(3, o.step); assertNull(o.problem(), "rooms are given automatically")
         assertTrue(a.tapZone("room:${mai.id}:bedB")); frames(a, 15); shot("opening-rooms", frames(a, 1, scale = 2f))
+        // relationships (optional): friends both ways
+        assertTrue(a.tapZone("btn:rels")); frames(a, 15); val rs = a.screen as RelationsScreen
+        assertTrue(a.tapZone("p:${Presets.CINNAMON.id}")); assertTrue(a.tapZone("p:${mai.id}")); frames(a, 15); assertTrue(a.overlay is PairSheet)
+        assertTrue(a.tapZone("chip:kind:朋友")); assertTrue(a.tapZone("chip:side:小麥 怎麼看 肉桂捲")); assertTrue(a.tapZone("chip:kind:好友")); frames(a, 2)
+        shot("relations-pair", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("pair:done")); frames(a, 15); shot("relations", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("done")); frames(a, 5); assertEquals(2, o.rels.size); assertTrue(rs.rels.any { it.kind == "好友" })
         assertTrue(a.tapZone("next")); frames(a, 5)
         val ws = a.screen as WorldScreen; val life = ws.sim.life
         assertEquals("cottage", life.houseId); assertEquals("雲朵鎮", life.townName); assertTrue(life.arriving)
-        assertEquals(setOf("bedA", "bedB"), life.people.map { it.room }.toSet())
+        assertEquals(setOf("bedA", "bedB"), life.people.map { it.room }.toSet()); assertEquals(2, life.rels.size)
         frames(a, 90); shot("world-movein", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("back")); frames(a, 2); assertTrue(a.screen is TitleScreen)
         assertEquals("我們的家", a.saves.slots().single().name)
@@ -138,6 +156,46 @@ class UiTest {
         assertTrue(a.tapZone("importSave")); frames(a, 2); assertEquals(2, a.saves.slots().size)
         val other = a.saves.slots().first { it.id != id }; assertTrue(other.name.endsWith("（匯入）"))
         assertNotNull(a.saves.loadWorld(other.id)!!.life)
+    }
+    @Test fun theCharacterEditorTabsToolsAndSaving() {
+        val a = app(); val c = a.saves.addLibChar(Presets.CINNAMON.copy(id = "", name = "可可", source = "import", spec = Presets.CINNAMON.spec!!.copy(name = "可可")))
+        a.push(LibraryScreen()); frames(a, 10); shot("library", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("char:${c.id}")); frames(a, 15); val ed = a.screen as CharacterEditor
+        shot("editor-looks", frames(a, 1, scale = 2f))
+        for ((i, name) in listOf(3 to "editor-personality", 2 to "editor-speech")) { assertTrue(a.tapZone("tab:$i")); frames(a, 4); shot(name, frames(a, 1, scale = 2f)) }
+        assertTrue(a.tapZone("tab:3")); frames(a, 2); assertTrue(a.tapZone("chip:trait:書蟲")); assertTrue("書蟲" in ed.spec.traits)
+        assertTrue(a.tapZone("undo")); assertTrue("書蟲" !in ed.spec.traits); assertTrue(a.tapZone("redo")); assertTrue("書蟲" in ed.spec.traits)
+        assertTrue(a.tapZone("step:axis0:+")); assertEquals(0.6f, ed.spec.axis(0), 0.01f)
+        assertTrue(a.tapZone("tab:2")); frames(a, 2); assertTrue(a.tapZone("chip:say:被稱讚")); frames(a, 10); shot("editor-scene", frames(a, 1, scale = 2f))
+        // the quiz: ten answers
+        assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:quiz")); frames(a, 12); assertTrue(a.overlay is QuizSheet)
+        shot("editor-quiz", frames(a, 1, scale = 2f)); repeat(10) { frames(a, 12); assertTrue(a.tapZone("ans:${it % 3}")) }; frames(a, 2); assertNull(a.overlay); assertTrue(ed.spec.traits.size >= 4)
+        // dice with a lock: the speech tab stays
+        val style = ed.spec.style; assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:dice")); frames(a, 12)
+        assertTrue(a.tapZone("chip:lock:鎖住說話")); assertTrue(a.tapZone("dice:go")); frames(a, 2); assertEquals(style, ed.spec.style)
+        assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:template")); frames(a, 12); assertTrue(a.tapZone("row:天然呆")); assertTrue("天然呆" in ed.spec.traits)
+        assertTrue(a.tapZone("tab:1")); frames(a, 2); assertTrue(a.tapZone("btn:tagpick")); frames(a, 15); assertTrue(a.tapZone("cat:RACE")); frames(a, 2); assertTrue(a.tapZone("chip:tag:精靈")); frames(a, 2)
+        shot("editor-tags", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("tags:done")); assertTrue("精靈" in ed.spec.tags)
+        assertTrue(a.tapZone("save")); frames(a, 5); assertTrue(a.screen is LibraryScreen)
+        val back = a.saves.libChar(c.id)!!; assertTrue("精靈" in back.spec!!.tags); assertTrue("天然呆" in back.spec!!.traits)
+    }
+    @Test fun editingAResidentAndAnAnimatedCharacterAtHome() {
+        val a = app()
+        // an animated character from a PNG sequence (walk + idle)
+        val frames0 = (0..3).map { i -> java.awt.image.BufferedImage(120, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB).also { val g = it.createGraphics(); g.color = java.awt.Color(0xF4, 0xA2, 0x59); g.fillOval(20 + i * 4, 20, 80, 130); g.dispose() } }
+        fun png(b: java.awt.image.BufferedImage) = java.io.ByteArrayOutputStream().also { ImageIO.write(b, "png", it) }.toByteArray()
+        val im = app.ocshimeji.save.media.Importer.read(frames0.mapIndexed { i, b -> app.ocshimeji.save.media.Importer.Source("walk_$i.png", png(b)) } + app.ocshimeji.save.media.Importer.Source("idle.png", png(frames0[0])), platform.codec)
+        val c = a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(im), app.ocshimeji.sim.chars.CharSpec(name = "橘子", traits = listOf("急性子")), 1, true, emptyMap(), emptyList())
+        val ws = world(a, listOf(c.id)); val p = ws.sim.life.people[0]; frames(a, 200)
+        val look = ws.lookOf(p)!!; assertEquals("walk", look.mine(app.ocshimeji.sim.life.Pose.WALK, false)); assertEquals(4, look.frames("walk")!!.size)
+        assertEquals(null, look.mine(app.ocshimeji.sim.life.Pose.EAT, false), "mixed: no eat animation → the system's motion")
+        // edit them from the card: the world copy changes, the library one does not
+        val (x, y) = ws.screenOf(p.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15); assertTrue(a.overlay is PersonCard)
+        shot("person-card-m2", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("card:edit")); frames(a, 15); val ed = a.screen as CharacterEditor; assertTrue(ed.world)
+        assertTrue(a.tapZone("tab:5")); frames(a, 2); assertTrue(a.tapZone("step:wake:-")); assertTrue(a.tapZone("save")); frames(a, 5)
+        assertTrue(a.screen is WorldScreen); assertEquals(6, ws.sim.person(p.id)!!.spec.wake); assertEquals(7, a.saves.libChar(c.id)!!.spec!!.wake, "the library original is unchanged")
+        assertEquals(6, a.saves.loadWorld(ws.slotId)!!.life!!.people[0].spec.wake, "saved with the world")
     }
     @Test fun anM0WorldGetsAHouseWhenOpened() {
         val a = app(); val m = a.saves.create("舊世界", listOf(Presets.CINNAMON.id)); (a.screen as TitleScreen).reload(); frames(a, 2)

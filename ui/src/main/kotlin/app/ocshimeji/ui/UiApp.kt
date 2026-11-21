@@ -22,6 +22,12 @@ interface Platform {
     fun openFile(mime: String, done: (ByteArray?) -> Unit) { done(null) }
     /** a short original sound (tick, pop, lift, whoosh, land, bounce, munch, chime) */
     fun sound(name: String) {}
+    /** let the player pick one or more files (pictures, animations, ZIP, .ocpkg, JSON); null = cancelled; a String = why it failed */
+    fun pickFiles(multiple: Boolean, done: (List<app.ocshimeji.save.media.Importer.Source>?, String?) -> Unit) { done(null, "這個版本還不能選檔案") }
+    /** decodes still pictures (PNG, JPEG, WebP…) for the importer */
+    val codec: app.ocshimeji.save.media.Codec get() = app.ocshimeji.save.media.Codec { null }
+    /** the character's babble voice (plan 12.4 聲線) for a line */
+    fun voice(v: app.ocshimeji.sim.chars.Voice, text: String) {}
 }
 
 /** a picture the player picked: the original file, a working PNG (≤ 1024 px) and that working copy's pixels for checking */
@@ -96,7 +102,10 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
     }
     /** a second finger (pinch): kind 0 down, 1 move, 2 up — only screens that want it */
     fun second(kind: Int, x: Float, y: Float) { if (overlay == null) screen.pointer(10 + kind, x, y) }
+    /** where the last finger went up (for taps that need a position: placing a mark, a foot point) */
+    var tapX = 0f; var tapY = 0f; private set
     fun up(x: Float, y: Float) {
+        tapX = x; tapY = y
         if (raw) { raw = false; screen.pointer(2, x, y); return }
         val id = pressed; pressed = null
         if (moved) { if (overlay == null) screen.release(); return }
