@@ -80,4 +80,19 @@ class Sounds {
         }
     }
     fun release() { voiceTrack?.let { runCatching { it.release() } }; voiceTrack = null; for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
+
+    // ---------------- imported sounds (plan 12.6): played from the app's own files, nothing else is read ----------------
+    private var music: android.media.MediaPlayer? = null; private var musicPath = ""
+    private val shorts = ArrayList<android.media.MediaPlayer>()
+    fun clip(f: java.io.File, loop: Boolean) {
+        runCatching {
+            if (!f.isFile) return
+            if (loop) { if (musicPath == f.path && music != null) return; stopMusic()
+                music = android.media.MediaPlayer().apply { setDataSource(f.path); isLooping = true; setVolume(0.5f, 0.5f); prepare(); start() }; musicPath = f.path; return }
+            shorts.removeAll { p -> if (!p.isPlaying) { p.release(); true } else false }
+            if (shorts.size >= 4) return
+            shorts += android.media.MediaPlayer().apply { setDataSource(f.path); prepare(); setOnCompletionListener { it.release(); shorts.remove(it) }; start() }
+        }
+    }
+    fun stopMusic() { runCatching { music?.stop(); music?.release() }; music = null; musicPath = "" }
 }

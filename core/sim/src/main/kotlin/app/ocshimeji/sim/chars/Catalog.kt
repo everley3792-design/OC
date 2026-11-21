@@ -251,7 +251,8 @@ object Catalog {
     )).associateBy { it.id }
 
     /** effects of everything a character has (tags + traits + quirks + values) */
-    fun effects(s: CharSpec): List<Effect> = s.tags.mapNotNull { TAGS[it]?.fx } + s.traits.mapNotNull { TRAITS[it]?.fx } + s.quirks.mapNotNull { QUIRKS[it]?.fx } + s.values.mapNotNull { VALUES[it]?.fx }
+    fun effects(s: CharSpec, custom: List<CustomTag> = emptyList()): List<Effect> = s.tags.mapNotNull { t -> TAGS[t]?.fx ?: custom.firstOrNull { it.id == t }?.effect() } +
+        s.traits.mapNotNull { TRAITS[it]?.fx } + s.quirks.mapNotNull { QUIRKS[it]?.fx } + s.values.mapNotNull { VALUES[it]?.fx }
 
     /** a first guess of the five axes from words (presets and M1 characters) */
     fun axesFromWords(words: List<String>): List<Float> {

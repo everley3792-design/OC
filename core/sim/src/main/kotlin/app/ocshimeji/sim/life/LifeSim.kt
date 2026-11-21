@@ -81,7 +81,7 @@ class LifeSim(val life: Life) {
         val owns: Set<String> = (s.tags + s.traits + s.quirks).toSet()
     }
     private val modCache = HashMap<String, Pair<CharSpec, Mods>>()
-    fun mods(p: Person): Mods { val c = modCache[p.id]; if (c != null && c.first === p.spec) return c.second; val m = Mods(Catalog.effects(p.spec), p.spec); modCache[p.id] = p.spec to m; return m }
+    fun mods(p: Person): Mods { val c = modCache[p.id]; if (c != null && c.first === p.spec) return c.second; val m = Mods(Catalog.effects(p.spec, life.tags), p.spec); modCache[p.id] = p.spec to m; return m }
     /** change who someone is (the editor); takes effect at once */
     fun editSpec(id: String, spec: CharSpec) { person(id)?.let { it.spec = spec; modCache.remove(id) } }
 
@@ -341,7 +341,7 @@ class LifeSim(val life: Life) {
         if (rng.chance(0.55)) {
             val m = rng.pick(pool); b.micro = m; b.microT = m.sec; b.pose = m.pose; b.poseT = 0f
             if (m.line != null && rng.chance(0.6)) say(p, m.line, toPlayer = m.needs == Need.ATTENTION)
-            else if (rng.chance(0.3)) Speech.idle(p.spec, rng)?.let { events += SimEvent("say", p.id, it) }
+            else if (rng.chance(0.3)) Speech.idle(p.spec, rng, life.tags)?.let { events += SimEvent("say", p.id, it) }
         } else {
             val tiles = grid.walkableTiles(house.rooms.indexOfFirst { it.id == roomOf(p) }.coerceAtLeast(0))
             if (tiles.isNotEmpty()) { val t = tiles[rng.nextInt(tiles.size)]; grid.path(p.x.toInt(), p.y.toInt(), t.first, t.second)?.let { path -> b.path = ArrayList(path.drop(1).map { floatArrayOf(it.first + 0.5f, it.second + 0.5f) }); b.pose = Pose.WALK } }
@@ -562,27 +562,36 @@ class LifeSim(val life: Life) {
     val onDesk: List<Person> get() = life.people.filter { it.desk }
     /** what one of your snacks tastes like to them: 1 liked, 0 fine, −1 disliked */
     fun taste(p: Person, food: String): Int {
-        val (cat, _) = FOODS[food] ?: return 0; val zh = FOOD_ZH[food] ?: ""
+        val f = foodOf(food) ?: return 0; val cat = f.cat; val zh = f.zh
         if (p.spec.dislikes.any { cat.contains(it) || it.contains(cat) || it.contains(zh) }) return -1
         if (p.spec.likes.any { cat.contains(it) || it.contains(cat) || it.contains(zh) }) return 1
-        return p.spec.tastes[FOOD_TASTE[food]] ?: 0
+        return p.spec.tastes[f.taste] ?: 0
     }
+    /** a snack you can give: the three built-in ones, or a food / drink the player made ("item:<id>", plan 12.6) */
+    class Food(val cat: String, val full: Float, val zh: String, val taste: String)
+    fun foodOf(food: String): Food? {
+        if (food.startsWith("item:")) { val it0 = life.items.firstOrNull { "item:" + it.id == food && (it.kind == "food" || it.kind == "drink") } ?: return null
+            return Food(if (it0.kind == "drink") "飲料" else "料理", it0.full.coerceIn(5f, 60f), it0.name, it0.taste) }
+        val (cat, full) = FOODS[food] ?: return null; return Food(cat, full, FOOD_ZH[food] ?: food, FOOD_TASTE[food] ?: "")
+    }
+    /** every snack you can give in this world */
+    val snacks: List<Pair<String, String>> get() = FOOD_ZH.entries.map { it.key to it.value } + life.items.filter { it.kind == "food" || it.kind == "drink" }.map { "item:${it.id}" to it.name }
     /** player's snacks (M1: free; the shop and inventory arrive in M5/M6) */
     fun feed(id: String, food: String): String {
-        val p = person(id) ?: return ""; val f = FOODS[food] ?: return ""; val b = body(id)
+        val p = person(id) ?: return ""; val f = foodOf(food) ?: return ""; val b = body(id)
         if (b.held || b.flying) return ""
         if (asleep(p)) return "${p.name}睡著了"
         if (p.need(Need.FOOD) > 92) { say(p, rng.pick(Lines.M["full"]!!), toPlayer = true); return "${p.name}吃不下了" }
         breakChat(p)
         val t = taste(p, food)
-        p.setNeed(Need.FOOD, p.need(Need.FOOD) + f.second * (if (t < 0) 0.5f else 1f)); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 10f)
+        p.setNeed(Need.FOOD, p.need(Need.FOOD) + f.full * (if (t < 0) 0.5f else 1f)); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 10f)
         addMood(p, when (t) { 1 -> "tasty"; -1 -> "yuck"; else -> "snack" })
         society.fed(p, food, t)
         p.affinity = (p.affinity + when (t) { 1 -> 5; -1 -> -2; else -> 3 }).coerceIn(0, 100)
         if (p.act != null && !b.arrivedAct) { release(p); p.act = null; b.path = null }
         b.micro = Micro("eat", if (t < 0) Pose.SAD else Pose.EAT, 3f); b.microT = 3f; b.pose = b.micro!!.pose
         say(p, rng.pick(Lines.M[when (t) { 1 -> "tasty"; -1 -> "yuckfood"; else -> "snackok" }]!!), toPlayer = true); events += SimEvent("sound", id, "munch")
-        log(p, "吃了你給的${FOOD_ZH[food]}" + when (t) { 1 -> "，很喜歡"; -1 -> "，不太喜歡"; else -> "" })
+        log(p, "吃了你給的${f.zh}" + when (t) { 1 -> "，很喜歡"; -1 -> "，不太喜歡"; else -> "" })
         return ""
     }
     /** what they hold in their hands now (drawn by the screen) */

@@ -42,9 +42,9 @@ object Speech {
     }
 
     /** something to say while nothing happens: from their tags and traits, likes, season, dream, fears, memories */
-    fun idle(s: CharSpec, r: Rng): String? {
+    fun idle(s: CharSpec, r: Rng, custom: List<CustomTag> = emptyList()): String? {
         val pool = ArrayList<String>()
-        Catalog.effects(s).forEach { pool += it.lines }
+        Catalog.effects(s, custom).forEach { pool += it.lines }
         s.likes.take(4).forEach { pool += "好想要$it。"; pool += "說到$it，我最喜歡了。" }
         if (s.season.isNotBlank()) pool += "我最喜歡${s.season}天了。"
         if (s.color.isNotBlank()) pool += "${s.color}色的東西，看了就開心。"
@@ -59,7 +59,7 @@ object Speech {
     }
 
     /** chat topics between two characters */
-    fun topics(s: CharSpec): List<String> = Catalog.effects(s).flatMap { it.topics } + s.likes.map { "$it 的事" } + s.hobbies + s.memories.map { "以前$it" }
+    fun topics(s: CharSpec, custom: List<CustomTag> = emptyList()): List<String> = Catalog.effects(s, custom).flatMap { it.topics } + s.likes.map { "$it 的事" } + s.hobbies + s.memories.map { "以前$it" }
 
     // ---------------- 情境預覽 (plan P-18) and 說話測試 ----------------
     val SCENES = listOf("早安", "被稱讚", "收到禮物", "被摸", "被丟出去", "肚子餓", "吵架", "生日", "晚安")

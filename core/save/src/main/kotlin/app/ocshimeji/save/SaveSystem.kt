@@ -32,7 +32,8 @@ import java.util.TimeZone
  * The library and the saves. Everything the save menu does goes through here: new, continue, copy, branch, rename, delete,
  * daily backups (the last three days of each save). Time comes from `now` (tests pass their own clock).
  */
-class SaveSystem(private val store: Storage, private val now: () -> Long = { System.currentTimeMillis() }) {
+class SaveSystem(private val store: Storage, internal val now: () -> Long = { System.currentTimeMillis() }) {
+    internal val storage: Storage get() = store
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyPrint = false }
     private var idSeq = 0L
 
@@ -55,6 +56,8 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
     private var prefCache: Map<String, String>? = null
     private fun prefs(): Map<String, String> = prefCache ?: (store.read(PREFS)?.let { runCatching { json.decodeFromString<Map<String, String>>(it.decodeToString()) }.getOrNull() } ?: emptyMap()).also { prefCache = it }
     private fun flags(): Set<String> = flagCache ?: (store.read(FLAGS)?.let { runCatching { json.decodeFromString<Set<String>>(it.decodeToString()) }.getOrNull() } ?: emptySet()).also { flagCache = it }
+    /** the player's own library file (without the presets) */
+    internal fun ownLib(): LibraryIndex = store.read(LIB)?.let { json.decodeFromString<LibraryIndex>(it.decodeToString()) } ?: LibraryIndex()
     fun libChar(id: String): LibChar? = library().chars.firstOrNull { it.id == id }
     fun addLibChar(c: LibChar): LibChar {
         val own = store.read(LIB)?.let { json.decodeFromString<LibraryIndex>(it.decodeToString()) } ?: LibraryIndex()
@@ -69,7 +72,7 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
         val own = store.read(LIB)?.let { json.decodeFromString<LibraryIndex>(it.decodeToString()) } ?: return null
         writeLib(own.copy(chars = own.chars.filter { it.id != id })); return null
     }
-    private fun writeLib(x: LibraryIndex) { store.write(LIB, json.encodeToString(x).encodeToByteArray()); libCache = null }
+    internal fun writeLib(x: LibraryIndex) { store.write(LIB, json.encodeToString(x).encodeToByteArray()); libCache = null }
 
     // ---------------- saves ----------------
     fun slots(): List<SlotMeta> = index().slots.sortedByDescending { it.lastPlayed }
@@ -260,7 +263,7 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
     private fun update(id: String, f: (SlotMeta) -> SlotMeta) = writeIndex(index().let { ix -> ix.copy(slots = ix.slots.map { if (it.id == id) f(it) else it }) })
     private fun writeWorld(id: String, w: World) = store.write(worldPath(id), json.encodeToString(w).encodeToByteArray())
     private fun worldPath(id: String) = "saves/$id/world.json"
-    private fun newId(p: String): String { idSeq++; return p + java.lang.Long.toString(now(), 36) + java.lang.Long.toString(idSeq, 36) }
+    internal fun newId(p: String): String { idSeq++; return p + java.lang.Long.toString(now(), 36) + java.lang.Long.toString(idSeq, 36) }
     private fun dayKey(ms: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getDefault() }.format(Date(ms))
 
     @kotlinx.serialization.Serializable private class SaveFileHeader(val v: Int, val slot: SlotMeta)

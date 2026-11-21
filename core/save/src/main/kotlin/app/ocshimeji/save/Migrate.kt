@@ -51,6 +51,12 @@ object Migrate {
                 JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("rels", JsonArray(rels)); put("soc", soc) })) })
             }
         },
+        /* 4 → 5 (M5): a world can hold what the player made — custom food and gifts, room decor, tags, scripts, music; old worlds start with none */
+        4 to { w ->
+            val life = w["life"] as? JsonObject
+            if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply {
+                put("items", JsonArray(emptyList())); put("decor", JsonObject(emptyMap())); put("tags", JsonArray(emptyList())); put("scripts", JsonArray(emptyList())); put("music", JsonPrimitive("")) })) })
+        },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

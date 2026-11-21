@@ -33,9 +33,9 @@ object Topics {
         "睡神" to listOf("被窩", "鬧鐘", "午睡"), "貓奴" to listOf("貓", "肉球"), "夜宵派" to listOf("宵夜", "泡麵"), "健身狂" to listOf("蛋白質", "深蹲", "肌肉"), "追星族" to listOf("偶像", "應援"),
     )
     /** concepts of one character: tags, likes, hobbies (plain words of the player count too) */
-    fun conceptsOf(s: CharSpec): List<String> {
+    fun conceptsOf(s: CharSpec, custom: List<app.ocshimeji.sim.chars.CustomTag> = emptyList()): List<String> {
         val out = ArrayList<String>()
-        for (t in s.tags) CONCEPTS[t]?.let { out += it }
+        for (t in s.tags) (CONCEPTS[t] ?: custom.firstOrNull { it.id == t }?.concepts)?.let { out += it }
         for (l in s.likes) out += l.removeSuffix("的事")
         out += s.hobbies
         return out.distinct()
@@ -56,8 +56,8 @@ object Topics {
     /** how they take a topic: serious (認真) or the straight man (吐槽); personality decides */
     fun serious(s: CharSpec): Boolean = s.axis(3) < 0.3f || s.axis(2) > 0.3f || "天然呆" in s.traits
     /** a collision between two characters, or null when they share no concepts to collide */
-    fun collide(a: CharSpec, b: CharSpec, r: Rng): Triple<String, String, Boolean>? {
-        val ca = conceptsOf(a); val cb = conceptsOf(b)
+    fun collide(a: CharSpec, b: CharSpec, r: Rng, custom: List<app.ocshimeji.sim.chars.CustomTag> = emptyList()): Triple<String, String, Boolean>? {
+        val ca = conceptsOf(a, custom); val cb = conceptsOf(b, custom)
         if (ca.isEmpty() || cb.isEmpty()) return null
         val x = r.pick(ca); val y = r.pick(cb.filter { it != x }.ifEmpty { return null })
         val p = r.pick(PATTERNS); val ser = serious(b)

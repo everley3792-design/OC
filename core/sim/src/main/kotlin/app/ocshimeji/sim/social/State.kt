@@ -77,4 +77,9 @@ class SocState(
     val choresYesterday: MutableMap<String, Int> = mutableMapOf(),
     /** next minute the event scan runs */
     var nextScan: Double = 0.0,
+    /** flags set by the player's scripts (plan 13.3) */
+    val flags: MutableList<String> = mutableListOf(),
+    /** a script waiting for your answer before it plays */
+    var choice: PendingChoice? = null,
 )
+@Serializable class PendingChoice(val script: String, val a: String, val b: String, val since: Double)

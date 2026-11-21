@@ -38,6 +38,9 @@ interface Platform {
     fun deskRunning(slotId: String): Boolean = false
     /** the character's babble voice (plan 12.4 聲線) for a line */
     fun voice(v: app.ocshimeji.sim.chars.Voice, text: String) {}
+    /** an imported sound (library-relative path): a voice clip or effect once, or music looping (plan 12.6) */
+    fun clip(path: String, music: Boolean = false) {}
+    fun stopMusic() {}
 }
 
 /** a picture the player picked: the original file, a working PNG (≤ 1024 px) and that working copy's pixels for checking */
@@ -96,6 +99,8 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
 
     // ---------------- input (dp) ----------------
     var pressed: String? = null; private set
+    /** the stylus pressure of the finger now (0..1; a finger reports 1) — the paint workshop reads it */
+    var pressure = 1f
     private var downX = 0f; private var downY = 0f; private var moved = false
     /** the screen took this finger for itself (a world: touching characters, panning) — zones and drags are skipped */
     private var raw = false

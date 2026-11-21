@@ -183,12 +183,12 @@ class Society(private val sim: LifeSim) {
         val who = sim.person(if (bt.who == 0) run.a else run.b) ?: return true
         val other = sim.person(if (bt.who == 0) run.b else run.a) ?: return true
         val text = fill(bt.text, other, run)
-        sim.say(who, text)
+        if (text.isNotBlank()) sim.say(who, text)
         val pose = bt.pose ?: if (bt.who == 1 && run.act != null) run.re.pose else Pose.TALK
         sim.body(who.id).pose = pose; sim.body(who.id).poseT = 0f
         val fx = bt.fx ?: if (bt.who == 1 && run.act != null) run.re.fx else null
         fx?.let { sim.events += SimEvent("fx", who.id, it) }
-        run.t = min(4.6f, 2.4f + text.length * 0.07f)
+        run.t = if (text.isBlank()) 0.8f else min(4.6f, 2.4f + text.length * 0.07f)
         return false
     }
     /** `id` = either of the two */
@@ -208,7 +208,7 @@ class Society(private val sim: LifeSim) {
         var thing = ""; var third = ""; var gift: Gift? = null
         when (act.id) {
             "gift" -> { gift = pickGift(p, q, r); thing = gift.zh; val fit = giftFit(q, gift); re = shift(re, if (fit > 0) 1 else if (fit < 0) -2 else 0) }
-            "recommend", "show", "share_snack" -> thing = (Topics.conceptsOf(p.spec) + p.spec.likes).ifEmpty { listOf("這個") }.let { r.pick(it) }
+            "recommend", "show", "share_snack" -> thing = (Topics.conceptsOf(p.spec, life.tags) + p.spec.likes).ifEmpty { listOf("這個") }.let { r.pick(it) }
             "compete" -> thing = r.pick(listOf("吃完點心", "跑到門口", "數到一百", "憋氣"))
             "joke" -> thing = r.pick(listOf("冰箱", "枕頭", "盆栽", "襪子"))
             "praise_cook" -> thing = st.pot?.let { Dishes.ALL[it.dish]?.zh } ?: "飯"
@@ -251,7 +251,7 @@ class Society(private val sim: LifeSim) {
     }
     /** a chat: a collision of their worlds, or something from around them; disagreement is remembered */
     private fun chatBeats(p: Person, q: Person, re: Reaction, r: Rng, out: ArrayList<Beat>): String {
-        val col = if (r.chance(0.5)) Topics.collide(p.spec, q.spec, r) else null
+        val col = if (r.chance(0.5)) Topics.collide(p.spec, q.spec, r, life.tags) else null
         if (col != null) {
             out += Beat(0, col.first)
             out += Beat(1, if (re.good || re == Reaction.OK) col.second else (SocialActs.REPLY[re]!!).let { r.pick(it) }, if (!col.third && re.good) Pose.ANGRY else null, if (!col.third && re.good) "sweat" else null)
@@ -259,7 +259,7 @@ class Society(private val sim: LifeSim) {
             return col.first.take(14).trimEnd('？', '。') + "……"
         }
         val pool = ArrayList<String>()
-        pool += Speech.topics(p.spec)
+        pool += Speech.topics(p.spec, life.tags)
         p.spec.likes.filter { l -> q.spec.likes.any { it.contains(l) || l.contains(it) } }.forEach { pool += "${it}的事"; pool += "${it}的事" }
         sim.rel(p.id, q.id)?.story?.takeIf { it.isNotBlank() }?.let { pool += it }
         st.pot?.let { pot -> if (p.id in pot.eaters) Dishes.ALL[pot.dish]?.let { pool += "剛剛的${it.zh}" } }
@@ -323,8 +323,9 @@ class Society(private val sim: LifeSim) {
     }
     private fun pickGift(p: Person, q: Person, r: Rng): Gift {
         val knows = (sim.rel(p.id, q.id)?.familiar ?: 30) >= 40
-        val liked = Gifts.ALL.filter { giftFit(q, it) > 0 }
-        return if (knows && liked.isNotEmpty() && r.chance(0.8)) r.pick(liked) else r.pick(Gifts.ALL)
+        val pool = Gifts.ALL + life.items.filter { it.kind == "gift" }.map { Gift("item:" + it.id, it.name, it.words.ifEmpty { listOf(it.name) }, it.taste.ifBlank { null }) }
+        val liked = pool.filter { giftFit(q, it) > 0 }
+        return if (knows && liked.isNotEmpty() && r.chance(0.8)) r.pick(liked) else r.pick(pool)
     }
     /** 1 = they love it, −1 = they dislike it */
     fun giftFit(q: Person, g: Gift): Int {
@@ -337,7 +338,7 @@ class Society(private val sim: LifeSim) {
     // ================= events: chemistry, sparks, everyday, the serial, the last piece =================
     private fun eventRun(p: Person, q: Person, id: String, r: Rng): Run {
         val kind = id.substringBefore(":"); val key = id.substringAfter(":")
-        val things = (Topics.conceptsOf(p.spec) + p.spec.likes).ifEmpty { listOf("鑰匙", "襪子", "髮夾") }
+        val things = (Topics.conceptsOf(p.spec, life.tags) + p.spec.likes).ifEmpty { listOf("鑰匙", "襪子", "髮夾") }
         val thing = r.pick(listOf("鑰匙", "襪子", "髮夾", "眼鏡") + things.take(2))
         val third = life.people.filter { it !== p && it !== q && !it.desk }.let { if (it.isEmpty()) "" else r.pick(it).id }
         when (kind) {
@@ -366,6 +367,7 @@ class Society(private val sim: LifeSim) {
                     sim.log(p, "連續劇「${Events.SERIAL_ZH}」第 ${n + 1} 集：${e.zh.substringAfter("）")}", kind = "event", weight = 3, with = q.id)
                     mail(p.id, "serial", "連續劇「${Events.SERIAL_ZH}」（${n + 1}/5）", "${p.name}和${q.name}：${e.zh.substringAfter("）")}") } }
             "last" -> return lastPiece(p, q, r)
+            "script" -> return scriptRun(p, q, key.substringBefore(":"), key.substringAfter(":", "").toIntOrNull())
             else -> { val e = Events.DAILY.first { it.id == key }
                 return Run(id, null, p.id, q.id, e.beats, Reaction.HAPPY, e.closeup, thing, third) {
                     for ((a, b) in listOf(p to q, q to p)) { relUpdate(a, b) { it.copy(like = it.like + e.like, familiar = it.familiar + 2, seenDay = life.day) }; a.setNeed(Need.FUN, a.need(Need.FUN) + e.fun_); a.setNeed(Need.SOCIAL, a.need(Need.SOCIAL) + 18f) }
@@ -431,6 +433,7 @@ class Society(private val sim: LifeSim) {
             val se = st.serial
             if (se.episode < Events.SERIAL.size && life.day >= se.nextDay && (se.cast.isEmpty() || (se.cast[0] == a.id && se.cast[1] == b.id)) && eventOk(Events.SERIAL[se.episode], a, b)) { out += Triple(a, b, "serial:${se.episode}"); ws += 5.0 }
             st.pot?.let { pot -> val d = Dishes.ALL[pot.dish]; if (d?.sweet == true && pot.servings == 1 && a.id !in pot.eaters && b.id !in pot.eaters) { out += Triple(a, b, "last"); ws += 8.0 } }
+            for (sc in life.scripts) if (scriptOk(sc, a, b)) { out += Triple(a, b, "script:${sc.id}"); ws += sc.trigger.chance / 8.0 }
         }
         if (out.isEmpty()) return emptyList()
         val i = r.weighted(out.indices.toList()) { ws[it] } ?: return emptyList()
@@ -438,7 +441,63 @@ class Society(private val sim: LifeSim) {
     }
     private fun markSeen(a: Person, b: Person, id: String) {
         when { id.startsWith("chem:") -> st.seen["$id:${a.id}:${b.id}"] = life.minute; id.startsWith("day:") -> st.seen[id] = life.minute
-            id.startsWith("serial:") -> if (st.serial.cast.isEmpty()) st.serial.cast = listOf(a.id, b.id) }
+            id.startsWith("serial:") -> if (st.serial.cast.isEmpty()) st.serial.cast = listOf(a.id, b.id)
+            id.startsWith("script:") -> st.seen[id.substringBeforeLast(":").let { if (it == "script") id else it }] = life.minute }
+    }
+
+    // ================= the player's scripts (plan 13.3) =================
+    fun matches(p: Person, m: String): Boolean = when {
+        m == "any" -> true
+        m.startsWith("tag:") -> m.drop(4) in p.spec.tags
+        m.startsWith("trait:") -> m.drop(6) in p.spec.traits || m.drop(6) in p.spec.quirks
+        m.startsWith("name:") -> p.name == m.drop(5) || p.spec.nickname == m.drop(5)
+        else -> false
+    }
+    /** can this script play with `a` as A and `b` as B now? Romance in a script = two adults with romance on, like everywhere else */
+    fun scriptOk(sc: app.ocshimeji.sim.script.ScriptDef, a: Person, b: Person): Boolean {
+        if (!sc.enabled || app.ocshimeji.sim.script.Scripts.problems(sc).isNotEmpty()) return false
+        if (sc.romantic && !romanceOk(a, b)) return false
+        val ra = sc.roles.firstOrNull { it.key == "A" }?.match ?: "any"; val rb = sc.roles.firstOrNull { it.key == "B" }?.match ?: "any"
+        if (!matches(a, ra) || !matches(b, rb)) return false
+        val t = sc.trigger; if (!hourIn(t.from, t.to)) return false
+        val like = sim.rel(a.id, b.id)?.like ?: 30; if (like < t.minLike || like > t.maxLike) return false
+        if (t.flag.isNotBlank() && t.flag !in st.flags) return false
+        if (t.notFlag.isNotBlank() && t.notFlag in st.flags) return false
+        if (t.mood == "good" && sim.moodValue(a) < 1) return false
+        if (t.mood == "bad" && sim.moodValue(a) > -1) return false
+        return life.minute - (st.seen["script:${sc.id}"] ?: -1e9) > sc.cooldownDays * 1440.0
+    }
+    private fun scriptRun(p: Person, q: Person, id: String, option: Int?): Run {
+        val sc = life.scripts.first { it.id == id }
+        val opt = option?.let { sc.choice?.options?.getOrNull(it) }
+        val steps = sc.steps + (opt?.steps ?: emptyList()); val results = sc.results + (opt?.results ?: emptyList())
+        val beats = steps.map { st -> Beat(if (st.role == "B") 1 else 0, if (st.kind == "say") st.text else "", st.pose.takeIf { it.isNotBlank() }?.let { runCatching { Pose.valueOf(it) }.getOrNull() }, st.fx.ifBlank { null }) }
+        return Run("ev:script:$id", null, p.id, q.id, beats, Reaction.HAPPY, sc.closeup) {
+            for (r in results) {
+                val from = if (r.role == "B") q else p; val to = if (r.to == "A") p else q
+                when (r.kind) {
+                    "like" -> relUpdate(from, to) { it.copy(like = it.like + r.value, seenDay = life.day) }
+                    "trust" -> relUpdate(from, to) { it.copy(trust = it.trust + r.value) }
+                    "conflict" -> relUpdate(from, to) { it.copy(conflict = it.conflict + r.value) }
+                    "crush" -> if (romanceOk(from, to)) relUpdate(from, to) { it.copy(crush = it.crush + r.value) }
+                    "mood" -> if (Moods.ALL.containsKey(r.text)) sim.addMood(from, r.text)
+                    "memory" -> remember(from, if (from === p) q.id else p.id, if (r.value >= 0) Memory.FAVOR else Memory.GRUDGE, r.text, kotlin.math.abs(r.value).coerceIn(1, 5))
+                    "flag" -> { if (r.text !in st.flags) st.flags += r.text; while (st.flags.size > 200) st.flags.removeAt(0) }
+                }
+            }
+            count(p.id, q.id, "all"); count(p.id, q.id, "event")
+            sim.log(p, "和${q.name}：${sc.name}" + (opt?.let { "（你選了：${it.label}）" } ?: ""), kind = "event", weight = 2, with = q.id)
+        }
+    }
+    /** the waiting script question (null when none) */
+    fun pendingChoice(): Pair<app.ocshimeji.sim.script.ScriptDef, app.ocshimeji.sim.social.PendingChoice>? { val c = st.choice ?: return null; val sc = life.scripts.firstOrNull { it.id == c.script } ?: run { st.choice = null; return null }; return sc to c }
+    /** you answered: the scene plays (or, if one of them is busy, it waits for the next chance) */
+    fun answerChoice(option: Int): Boolean {
+        val (sc, c) = pendingChoice() ?: return false; st.choice = null
+        val a = sim.person(c.a) ?: return false; val b = sim.person(c.b) ?: return false
+        if (option !in sc.choice!!.options.indices) return false
+        if (sim.startTogether(a, b, "ev:script:${sc.id}:$option", listOf(sc.name))) return true
+        build(a, b, "ev:script:${sc.id}:$option", sim.rng).apply(); return true
     }
 
     // ================= the scan: worries, requests, events (every 15 game minutes live; every chunk away) =================
@@ -453,9 +512,11 @@ class Society(private val sim: LifeSim) {
         scan(live, if (live) sim.rng else Rng.of(life.seed, "scan:${(life.minute / 15).toLong()}"))
     }
     private fun budgetMax() = listOf(1, 2, 4)[st.lively.coerceIn(0, 2)]
-    private fun budgetOk(): Boolean {
+    private fun budgetOk(): Boolean = budgetLeft() && life.people.none { it.worry?.shown == true }
+    /** the disturbance budget alone (a script question may wait beside a worry bubble) */
+    private fun budgetLeft(): Boolean {
         if (st.realSec - st.windowStart >= 600) { st.windowStart = st.realSec; st.windowUsed = 0 }
-        return st.windowUsed < budgetMax() && life.people.none { it.worry?.shown == true }
+        return st.windowUsed < budgetMax()
     }
     private fun scan(live: Boolean, r: Rng) {
         if (life.arriving) return   /* move-in day: nobody has worries yet */
@@ -482,11 +543,19 @@ class Society(private val sim: LifeSim) {
             val sp = st.sparks.firstOrNull { it.id == def.id && it.a == a.id && it.b == b.id } ?: Spark(def.id, a.id, b.id).also { st.sparks += it }
             if (sp.stage >= 1 && sp.stage < 2 && sim.roomOf(a) == sim.roomOf(b) && !a.desk && !b.desk) sp.heat = min(sp.heat + 1, 99)
         }
+        st.choice?.let { c -> if (life.minute - c.since > 120) answerChoice(0) }   /* nobody answered: the first answer */
         if (live && scenes.isNotEmpty()) return     /* one scene at a time is enough to watch */
         val chance = listOf(0.1, 0.2, 0.32)[st.lively.coerceIn(0, 2)] * (if (live) 1.0 else 0.6)
         if (!r.chance(chance)) return
         val (a, b, id) = eventChoices(r).firstOrNull() ?: return
         markSeen(a, b, id)
+        val sc = if (id.startsWith("script:")) life.scripts.firstOrNull { it.id == id.removePrefix("script:") } else null
+        if (sc?.choice != null) {   /* it asks you first (live: a bubble and the mailbox; away: the first answer) */
+            if (!live) { build(a, b, "ev:$id:0", r).apply(); return }
+            if (st.choice != null || !budgetLeft()) return
+            st.choice = app.ocshimeji.sim.social.PendingChoice(sc.id, a.id, b.id, life.minute); st.windowUsed++
+            sim.events += SimEvent("choice", a.id, sc.choice.prompt); mail(a.id, "choice", "劇本「${sc.name}」", sc.choice.prompt); return
+        }
         if (live) sim.startTogether(a, b, "ev:$id", listOf(eventName(id)))
         else build(a, b, "ev:$id", r).apply()
     }
@@ -496,6 +565,7 @@ class Society(private val sim: LifeSim) {
         id.startsWith("day:") -> Events.DAILY.first { it.id == id.substringAfter(":") }.zh
         id.startsWith("serial:") -> "連續劇「${Events.SERIAL_ZH}」"
         id == "last" -> "搶最後一塊"
+        id.startsWith("script:") -> life.scripts.firstOrNull { it.id == id.removePrefix("script:").substringBefore(":") }?.name ?: "劇本"
         else -> "一件小事"
     }
 
@@ -964,7 +1034,7 @@ class Society(private val sim: LifeSim) {
         val p = sim.person(id) ?: return null; val a = p.act ?: return null
         if (!sim.body(id).arrivedAct) return null
         val m = sim.moodValue(p).let { if (it >= 2) 1 else if (it <= -2) -1 else 0 }
-        return Narrate.describe(p.name, if (a == "tvrug") "tv" else if (a == "sitrug") "daydream" else a, m, Topics.conceptsOf(p.spec), Rng.of(life.seed, "narr:${p.id}:${p.actStart.toLong()}"))
+        return Narrate.describe(p.name, if (a == "tvrug") "tv" else if (a == "sitrug") "daydream" else a, m, Topics.conceptsOf(p.spec, life.tags), Rng.of(life.seed, "narr:${p.id}:${p.actStart.toLong()}"))
     }
     fun cardFor(day: Long) = st.cards.firstOrNull { it.day == day }
     fun unreadMail() = st.mail.count { !it.read }

@@ -56,6 +56,8 @@ class MainActivity : Activity() {
             override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)
             override fun sound(name: String) { OcRuntime.sounds.play(name) }
             override fun voice(v: Voice, text: String) { OcRuntime.sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
+            override fun clip(path: String, music: Boolean) { OcRuntime.sounds.clip(java.io.File(filesDir, path.removePrefix("lib:")), music) }
+            override fun stopMusic() { OcRuntime.sounds.stopMusic() }
             override fun pickFiles(multiple: Boolean, done: (List<Importer.Source>?, String?) -> Unit) = pickMany(multiple, done)
             override val codec: Codec = Codec { b -> decodeRaster(b) }
             override fun canOverlay() = Settings.canDrawOverlays(this@MainActivity)
@@ -174,7 +176,8 @@ class MainActivity : Activity() {
 
     private fun askText(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) {
         val pad = (20 * resources.displayMetrics.density).toInt()
-        val edit = EditText(this).apply { setText(initial); setSelection(initial.length); filters = arrayOf(InputFilter.LengthFilter(maxLength)); isSingleLine = true }
+        val edit = EditText(this).apply { setText(initial); setSelection(initial.length); filters = arrayOf(InputFilter.LengthFilter(maxLength))
+            if (maxLength > 200) { isSingleLine = false; minLines = 6; maxLines = 14; gravity = android.view.Gravity.TOP } else isSingleLine = true }   /* long texts (scripts) get a multi-line box */
         val box = FrameLayout(this).apply { setPadding(pad, pad / 2, pad, 0); addView(edit) }
         AlertDialog.Builder(this).setTitle(title).setView(box)
             .setPositiveButton("好") { _, _ -> done(edit.text.toString()); view.kick() }
@@ -210,11 +213,12 @@ class GameView(ctx: Context, private val ui: UiApp, private val gfx: AndroidGfx)
     override fun onTouchEvent(e: MotionEvent): Boolean {
         fun px(i: Int): Float = e.getX(i) / density
         fun py(i: Int): Float = e.getY(i) / density
+        fun pr(i: Int): Float = if (e.getToolType(i) == MotionEvent.TOOL_TYPE_STYLUS) e.getPressure(i).coerceIn(0.05f, 1f) else 1f   /* fingers report noise, a stylus the real thing */
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { first = e.getPointerId(0); second = -1; ui.down(px(0), py(0)) }
+            MotionEvent.ACTION_DOWN -> { first = e.getPointerId(0); second = -1; ui.pressure = pr(0); ui.down(px(0), py(0)) }
             MotionEvent.ACTION_POINTER_DOWN -> if (second < 0) { second = e.getPointerId(e.actionIndex); ui.second(0, px(e.actionIndex), py(e.actionIndex)) }
             MotionEvent.ACTION_MOVE -> {
-                val a = e.findPointerIndex(first); if (a >= 0) ui.move(px(a), py(a))
+                val a = e.findPointerIndex(first); if (a >= 0) { ui.pressure = pr(a); ui.move(px(a), py(a)) }
                 val b = if (second >= 0) e.findPointerIndex(second) else -1; if (b >= 0) ui.second(1, px(b), py(b))
             }
             MotionEvent.ACTION_POINTER_UP -> { val id = e.getPointerId(e.actionIndex)

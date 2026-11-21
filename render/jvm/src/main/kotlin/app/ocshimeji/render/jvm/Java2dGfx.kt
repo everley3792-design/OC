@@ -28,6 +28,10 @@ class JvmAssets(private val artDir: File) : Assets {
     override fun image(path: String, maxSide: Int): Img? = cache.getOrPut("$path@$maxSide") {
         val f = File(artDir, path); if (!f.isFile) null else ImageIO.read(f)?.let { JImg(downscale(it, maxSide)) }
     }
+    override fun pixels(w: Int, h: Int, px: IntArray, reuse: Img?): Img {
+        val bi = (reuse as? JImg)?.bi?.takeIf { it.width == w && it.height == h } ?: BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+        bi.setRGB(0, 0, w, h, px, 0, w); return (reuse as? JImg)?.takeIf { it.bi === bi } ?: JImg(bi)
+    }
     override fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img? = cache.getOrPut(key) { bytes()?.let { b -> ImageIO.read(java.io.ByteArrayInputStream(b))?.let { JImg(downscale(it, maxSide)) } } }
     val ui: Font by lazy { Font.createFont(Font.TRUETYPE_FONT, File(artDir, "fonts/Huninn-Regular.ttf")) }
     val num: Font by lazy { Font.createFont(Font.TRUETYPE_FONT, File(artDir, "fonts/Nunito-ExtraBold.ttf")) }
@@ -68,6 +72,19 @@ class Java2dGfx(private val g: Graphics2D, override val width: Float, override v
         val bi = (img as JImg).bi; g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, a)
         val t = g.transform; g.translate(x.toDouble(), y.toDouble()); g.scale((w / bi.width).toDouble(), (h / bi.height).toDouble()); g.drawImage(bi, 0, 0, null); g.transform = t
         g.composite = AlphaComposite.SrcOver
+    }
+    /** each cell drawn with the affine map that sends its corners (top-left, top-right, bottom-left) where the grid says */
+    override fun imageMesh(img: Img, cols: Int, rows: Int, verts: FloatArray) {
+        val bi = (img as JImg).bi; g.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, a)
+        val cw = bi.width.toDouble() / cols; val ch = bi.height.toDouble() / rows; val t0 = g.transform
+        for (r in 0 until rows) for (c in 0 until cols) {
+            fun v(i: Int, j: Int) = (j * (cols + 1) + i) * 2
+            val p0 = v(c, r); val p1 = v(c + 1, r); val p2 = v(c, r + 1)
+            val sx0 = (c * cw).toInt(); val sy0 = (r * ch).toInt(); val sw = maxOf(1, ((c + 1) * cw).toInt() - sx0); val sh = maxOf(1, ((r + 1) * ch).toInt() - sy0)
+            val m = java.awt.geom.AffineTransform((verts[p1] - verts[p0]) / sw.toDouble(), (verts[p1 + 1] - verts[p0 + 1]) / sw.toDouble(), (verts[p2] - verts[p0]) / sh.toDouble(), (verts[p2 + 1] - verts[p0 + 1]) / sh.toDouble(), verts[p0].toDouble(), verts[p0 + 1].toDouble())
+            g.transform = t0; g.transform(m); g.drawImage(bi.getSubimage(sx0, sy0, minOf(sw + 1, bi.width - sx0), minOf(sh + 1, bi.height - sy0)), 0, 0, null)
+        }
+        g.transform = t0; g.composite = AlphaComposite.SrcOver
     }
     private fun font(kind: FontKind, size: Float) = (if (kind == FontKind.NUM) assets.num else assets.ui).deriveFont(size)
     override fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind, align: Align) {

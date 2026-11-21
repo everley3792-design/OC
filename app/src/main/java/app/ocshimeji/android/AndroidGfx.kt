@@ -36,6 +36,11 @@ class AndroidAssets(private val am: AssetManager) : Assets {
             am.open(path).use { BitmapFactory.decodeStream(it, null, opt) }?.let { AImg(it) }
         }.getOrNull()
     }
+    override fun pixels(w: Int, h: Int, px: IntArray, reuse: Img?): Img {
+        val old = (reuse as? AImg)?.bmp?.takeIf { it.width == w && it.height == h && it.isMutable }
+        val bmp = old ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        bmp.setPixels(px, 0, w, 0, 0, w, h); return if (old != null) reuse!! else AImg(bmp)
+    }
     override fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img? = cache.getOrPut(key) {
         runCatching {
             val b = bytes() ?: return@runCatching null
@@ -81,6 +86,7 @@ class AndroidGfx(private val assets: AndroidAssets) : Gfx {
     }
     override fun line(x1: Float, y1: Float, x2: Float, y2: Float, width: Float, color: Int) { col(stroke, color); stroke.strokeWidth = width; c.drawLine(x1, y1, x2, y2, stroke) }
     override fun image(img: Img, x: Float, y: Float, w: Float, h: Float) { bmpPaint.alpha = (255 * a).toInt().coerceIn(0, 255); rect.set(x, y, x + w, y + h); c.drawBitmap((img as AImg).bmp, null, rect, bmpPaint) }
+    override fun imageMesh(img: Img, cols: Int, rows: Int, verts: FloatArray) { bmpPaint.alpha = (255 * a).toInt().coerceIn(0, 255); c.drawBitmapMesh((img as AImg).bmp, cols, rows, verts, 0, null, 0, bmpPaint) }
     private fun tp(size: Float, font: FontKind) { textPaint.textSize = size; textPaint.typeface = if (font == FontKind.NUM) assets.num else assets.ui }
     override fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind, align: Align) {
         tp(size, font); col(textPaint, color)

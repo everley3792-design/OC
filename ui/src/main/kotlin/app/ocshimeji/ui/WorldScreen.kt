@@ -1,5 +1,7 @@
 package app.ocshimeji.ui
 
+import app.ocshimeji.sim.life.Decor
+import app.ocshimeji.save.Studio
 import app.ocshimeji.sim.social.Worries
 import app.ocshimeji.render.Align
 import app.ocshimeji.render.Colors
@@ -34,7 +36,12 @@ class WorldScreen(val slotId: String) : Screen() {
     fun libOf(p: Person): LibChar? = chars.getOrPut(p.libId) { app.saves.libChar(p.libId) }
     private val looks = HashMap<String, Look>()
     /** how a resident looks: the library character's pictures with this world's copy of who they are */
-    fun lookOf(p: Person): Look? { val c = libOf(p) ?: return null; val l = looks[p.id]; if (l != null && l.spec === p.spec) return l; return Look(app, c, p.spec).also { looks[p.id] = it } }
+    fun lookOf(p: Person): Look? { val c = libOf(p) ?: return null; val l = looks[p.id]; if (l != null && l.spec === p.spec) return l
+        return Look(app, c, p.spec).also { looks[p.id] = it; it.onEvent = { e -> frameEvent(p.id, e) } } }
+    private val studioSounds: Map<String, String> by lazy { Studio(app.saves).sounds().associate { it.id to it.path } }
+    /** an animation frame's event (plan 12.6 影格事件) */
+    private fun frameEvent(who: String, e: String) { if (ff != null) return; when {
+        e == "step" -> app.platform.sound("tick"); e.startsWith("sound:") -> studioSounds[e.drop(6)]?.let { app.platform.clip(it) }; e.startsWith("fx:") -> fxs += FxAt(who, e.drop(3), app.time) } }
     /** after editing someone: forget the cached pictures and settings */
     fun refresh() { chars.clear(); looks.clear() }
 
@@ -50,9 +57,15 @@ class WorldScreen(val slotId: String) : Screen() {
         if (!app.platform.deskRunning(slotId) && o.users == 1) for (p in sim.onDesk) sim.fromDesk(p.id)   /* the system stopped the desktop: they come home */
         catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName.ifBlank { app.saves.slot(slotId)?.name ?: "" })) }
         if (!app.saves.flag("tip:touch")) tip = true
+        decor(); if (sim.life.music.isNotBlank()) app.platform.clip(sim.life.music, music = true)
     }
-    override fun leave() { val o = open ?: return; o.listeners -= listener; o.screenActive = false; app.host.release(slotId); open = null }
-    override fun pause() { open?.let { it.screenActive = false; app.host.save(it) } }
+    /** the player's wallpaper and floors (plan 12.6) */
+    fun decor() {
+        fun img(p: String) = if (p.isBlank()) null else app.assets.decode("lib:$p@256", 256) { app.saves.readFile(p) }
+        view.walls = sim.life.decor.mapNotNull { (r, d) -> img(d.wall)?.let { r to it } }.toMap(); view.floors = sim.life.decor.mapNotNull { (r, d) -> img(d.floor)?.let { r to it } }.toMap()
+    }
+    override fun leave() { app.platform.stopMusic(); val o = open ?: return; o.listeners -= listener; o.screenActive = false; app.host.release(slotId); open = null }
+    override fun pause() { app.platform.stopMusic(); open?.let { it.screenActive = false; app.host.save(it) } }
     /** back from the background: the time that passed is caught up like an absence (the desktop may have kept it going) */
     override fun wake() { val o = open ?: return; o.screenActive = true; catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName)) } }
 
@@ -99,7 +112,9 @@ class WorldScreen(val slotId: String) : Screen() {
         open?.let { o -> if (ff != null) fastForward(o) else app.host.drive(o, dt, "screen") }
         val evs = ArrayList(incoming); incoming.clear()
         for (e in evs) if (sim.person(e.who)?.desk != true) when (e.kind) {
-            "say" -> { bubbles[e.who] = Bubble(e.text, app.time); if (ff == null) sim.person(e.who)?.let { val m = sim.moodValue(it).coerceIn(-4, 4); app.platform.voice(it.spec.voice.copy(pitch = it.spec.voice.pitch * (1f + 0.025f * m), speed = it.spec.voice.speed * (1f + 0.02f * m)), e.text) }
+            "say" -> { bubbles[e.who] = Bubble(e.text, app.time); if (ff == null) sim.person(e.who)?.let { p -> val clips = libOf(p)?.voices.orEmpty().mapNotNull { v -> studioSounds[v] }
+                    if (clips.isNotEmpty()) app.platform.clip(clips[((app.time * 1000).toInt() and 0x7fffffff) % clips.size])   /* the player's own voice clips (screen-side choice, not the life's) */
+                    else { val m = sim.moodValue(p).coerceIn(-4, 4); app.platform.voice(p.spec.voice.copy(pitch = p.spec.voice.pitch * (1f + 0.025f * m), speed = p.spec.voice.speed * (1f + 0.02f * m)), e.text) } }
                 if (observing && !lockFollow) follow = e.who }
             "heart" -> hearts += Heart(e.who, app.time, ((app.time * 977) % 1f) - 0.5f)
             "sound" -> if (ff == null) app.platform.sound(e.text)
@@ -179,7 +194,8 @@ class WorldScreen(val slotId: String) : Screen() {
         // ---- the bar on top: back, the home's name, the clock
         Widgets.round(g, app, "back", Dim.GUTTER + 24, top + 34, 24f, "back")
         if (closeup == null) { Widgets.round(g, app, "observe", Dim.GUTTER + 24, top + 92, 22f, if (observing) "close" else "eye")
-            Widgets.round(g, app, "mail", Dim.GUTTER + 24, top + 144, 22f, "mail") }
+            Widgets.round(g, app, "mail", Dim.GUTTER + 24, top + 144, 22f, "mail")
+            Widgets.round(g, app, "decor", Dim.GUTTER + 24, top + 196, 22f, "image") }
         if (closeup == null && sim.society.unreadMail() > 0) { g.fillCircle(Dim.GUTTER + 40, top + 128, 8f, t.alert); g.text("${min(99, sim.society.unreadMail())}", Dim.GUTTER + 40, top + 132, 10f, t.onAlert, FontKind.NUM, Align.CENTER) }
         val clock = timeText(); val dayS = "第 ${life.day} 天" + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
         val cw = maxOf(g.measure(clock, Dim.FS_M, FontKind.NUM), g.measure(dayS, 11f)) + 50
@@ -415,6 +431,7 @@ class WorldScreen(val slotId: String) : Screen() {
             id.startsWith("who:") -> { val pid = id.removePrefix("who:"); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() }; openCard(pid) }
             id == "observe" -> setObserving(!observing)
             id == "mail" -> app.push(TimelineScreen(this))
+            id == "decor" -> app.show(DecorSheet(this))
             id.startsWith("spd:") -> { sim.life.speed = id.removePrefix("spd:").toDouble(); flush() }
             id == "ff" -> ff = if (ff != null) null else FF(sim.life.log.size, sim.life.minute, sim.life.clockMode, sim.life.speed)
             id.startsWith("worry:") -> app.show(WorrySheet(this, id.removePrefix("worry:")))
@@ -477,4 +494,42 @@ class AwaySheet(val s: AwaySummary, val home: String) : Overlay() {
         g.restore()
     }
     override fun tap(id: String) { if (id == "away:ok") app.closeOverlay() }
+}
+
+/** wallpaper, floor and music for this home (plan 12.6: what the player made, used at home; placing furniture arrives in M6) */
+class DecorSheet(val ws: WorldScreen) : Overlay() {
+    private val slide = Spring(0f, 1f)
+    private var room = ws.sim.house.rooms.first().id
+    override fun frame(g: Gfx, dt: Float) {
+        val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w; val st = Studio(app.saves); val life = ws.sim.life
+        g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
+        val h = 470f + app.insetBottom; val y = app.h - h * s
+        g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("dc:body", 0f, y, W, h)
+        g.text("佈置：壁紙、地板、音樂", G + 4, y + 40, Dim.FS_L, t.ink); g.text("家具的擺放在 M6 製作", G + 4, y + 62, Dim.FS_S, t.ink2)
+        var x = G; var yy = y + 78
+        for (r in ws.sim.house.rooms) { val w0 = g.measure(r.zh, Dim.FS_S + 1) + 28; if (x + w0 > W - G) { x = G; yy += 46 }; x += Widgets.chip(g, app, "room:${r.id}", x, yy, r.zh, room == r.id, 38f) + 6 }
+        yy += 52
+        val d = life.decor[room]
+        for ((kind, zh) in listOf("wallpaper" to "牆", "floor" to "地板")) {
+            g.text(zh, G + 4, yy + 26, Dim.FS_S + 1, t.ink2); x = G + 44
+            val cur = if (kind == "wallpaper") d?.wall else d?.floor
+            x += Widgets.chip(g, app, "$kind:", x, yy, "原本的", cur.isNullOrBlank(), 38f) + 6
+            for (it0 in st.items().filter { it.kind == kind }) { val p = it0.image.removePrefix("lib:"); val w0 = g.measure(it0.name, Dim.FS_S + 1) + 28; if (x + w0 > W - G) { x = G + 44; yy += 46 }; x += Widgets.chip(g, app, "$kind:$p", x, yy, it0.name, cur == p, 38f) + 6 }
+            yy += 52
+        }
+        if (st.items().none { it.kind == "wallpaper" || it.kind == "floor" }) { g.text("還沒有壁紙或地板：可以在「創作 → 繪圖工坊」畫一張", G + 4, yy + 14, Dim.FS_S, t.ink3); yy += 30 }
+        g.text("家裡的音樂", G + 4, yy + 26, Dim.FS_S + 1, t.ink2); x = G + 96
+        x += Widgets.chip(g, app, "music:", x, yy, "沒有", life.music.isBlank(), 38f) + 6
+        for (m in st.sounds().filter { it.kind == "music" }) { val w0 = g.measure(m.name, Dim.FS_S + 1) + 28; if (x + w0 > W - G) { x = G + 96; yy += 46 }; x += Widgets.chip(g, app, "music:${m.path.removePrefix("lib:")}", x, yy, m.name, life.music == m.path.removePrefix("lib:"), 38f) + 6 }
+    }
+    override fun tap(id: String) {
+        val life = ws.sim.life
+        when {
+            id.startsWith("room:") -> room = id.removePrefix("room:")
+            id.startsWith("wallpaper:") || id.startsWith("floor:") -> { val p = id.substringAfter(":"); val d = life.decor[room] ?: Decor()
+                val nd = if (id.startsWith("wallpaper:")) Decor(p, d.floor) else Decor(d.wall, p)
+                if (nd.wall.isBlank() && nd.floor.isBlank()) life.decor.remove(room) else life.decor[room] = nd; ws.decor(); ws.flush() }
+            id.startsWith("music:") -> { life.music = id.removePrefix("music:"); if (life.music.isBlank()) app.platform.stopMusic() else app.platform.clip(life.music, music = true); ws.flush() }
+        }
+    }
 }

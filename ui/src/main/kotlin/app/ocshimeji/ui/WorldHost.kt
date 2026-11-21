@@ -29,6 +29,7 @@ class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -
         worlds[slotId]?.let { it.users++; return it }
         val w0 = saves.loadWorld(slotId) ?: throw IllegalArgumentException("找不到這個存檔")
         val w = if (w0.life == null) saves.upgradeM0(slotId, w0, realMinute()) else w0
+        app.ocshimeji.save.Studio(saves).syncWorld(w.life!!)   /* what the player made (food, gifts, tags, scripts) comes into the world */
         return Open(slotId, w, LifeSim(w.life!!)).also { it.users = 1; worlds[slotId] = it }
     }
     fun release(slotId: String) { val o = worlds[slotId] ?: return; o.users--; save(o); if (o.users <= 0) worlds.remove(slotId) }

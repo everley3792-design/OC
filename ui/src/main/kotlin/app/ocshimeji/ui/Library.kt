@@ -41,6 +41,7 @@ class LibraryScreen : Screen() {
         g.restore(); app.zoneDy = 0f; scroll.max = maxOf(0f, y - (btnY - 12))
         g.fillRect(0f, 0f, W, listTop, Colors.withAlpha(t.bg, 0f))
         Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back")
+        Widgets.button(g, app, "create", W - G - 96, top + 14, 96f, 42f, "創作", Kind.SECONDARY, Dim.FS_S + 1)
         g.text("收藏庫", G + 4, top + 92, Dim.FS_TITLE - 4, t.ink); g.text("${app.saves.library().chars.size} 位角色", W - G, top + 92, Dim.FS_S, t.ink2, FontKind.UI, Align.RIGHT)
         g.fillRect(0f, btnY - 12, W, H - btnY + 12, t.bg)
         Widgets.button(g, app, "import", G, btnY, W - G * 2, 56f, "匯入角色", Kind.PRIMARY, Dim.FS_L)
@@ -49,6 +50,7 @@ class LibraryScreen : Screen() {
         when {
             id == "back" -> app.pop()
             id == "import" -> app.push(ImportStudio())
+            id == "create" -> app.push(CreateHub())
             id.startsWith("char:") -> open(id.removePrefix("char:"))
             id.startsWith("more:") -> more(id.removePrefix("more:"))
         }
@@ -66,10 +68,10 @@ class LibraryScreen : Screen() {
     }
     private fun more(id: String) {
         val c = app.saves.libChar(id) ?: return; val preset = c.source == "preset"
-        val rows = if (preset) listOf("copy" to "複製一份來改") else listOf("edit" to "編輯", "copy" to "複製一份", "export" to "匯出成角色包（.ocpkg）", "delete" to "刪除")
+        val rows = if (preset) listOf("copy" to "複製一份來改") else listOf("edit" to "編輯", "anim" to "動畫工作室", "copy" to "複製一份", "export" to "匯出成角色包（.ocpkg）", "delete" to "刪除")
         app.show(ListSheet(c.name, rows, danger = setOf("delete")) { a ->
             when (a) {
-                "edit" -> open(id); "copy" -> copy(c)
+                "edit" -> open(id); "copy" -> copy(c); "anim" -> app.push(AnimStudio(c))
                 "export" -> { val data = try { app.saves.exportPkg(id) } catch (e: Exception) { app.toast(e.message ?: "匯出失敗"); return@ListSheet }
                     app.platform.saveFile(c.name + ".ocpkg", "application/octet-stream", data) { ok -> app.toast(if (ok) "匯出了「${c.name}」" else "沒有匯出") } }
                 "delete" -> { val why = app.saves.slots().filter { id in it.residents }.takeIf { it.isNotEmpty() }?.let { "還住在：" + it.joinToString("、") { s -> s.name } }

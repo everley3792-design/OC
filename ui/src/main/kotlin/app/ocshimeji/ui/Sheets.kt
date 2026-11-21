@@ -8,10 +8,19 @@ import app.ocshimeji.render.Gfx
 /** a bottom sheet: title, rows (each one tap), slides up with a spring; outside / back closes it */
 open class ListSheet(val title: String, val rows: List<Pair<String, String>>, val subtitle: String? = null, val danger: Set<String> = emptySet(), val onPick: (String) -> Unit) : Overlay() {
     private val slide = Spring(0f, 1f)
+    /** long lists come in pages (an overlay does not scroll): the last row turns the page */
+    private var page = 0
+    private fun shown(per: Int): List<Pair<String, String>> {
+        if (rows.size <= per) return rows
+        val n = per - 1; val pages = (rows.size + n - 1) / n; val p = page % pages
+        return rows.drop(p * n).take(n) + ("__next" to "下一頁（${p + 1}／$pages）")
+    }
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt)
         g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, s.coerceIn(0f, 1f)))
         val rowH = 56f; val head = if (subtitle != null) 84f else 64f
+        val per = ((app.h - app.insetTop - 40 - head - 16 - app.insetBottom) / rowH).toInt().coerceAtLeast(3)
+        val rows = shown(per)
         val h = head + rows.size * rowH + 16 + app.insetBottom
         val y = app.h - h * s
         g.fillRound(0f, y, app.w, h + 40, Dim.RADIUS_L, t.surface)
@@ -26,7 +35,7 @@ open class ListSheet(val title: String, val rows: List<Pair<String, String>>, va
             app.zone("row:$id", 8f, ry, app.w - 16, rowH - 4)
         }
     }
-    override fun tap(id: String) { if (id.startsWith("row:")) { app.closeOverlay(); onPick(id.removePrefix("row:")) } }
+    override fun tap(id: String) { if (id == "row:__next") { page++; return }; if (id.startsWith("row:")) { app.closeOverlay(); onPick(id.removePrefix("row:")) } }
 }
 
 /** asks before something that cannot be undone (deleting) — the only kind of question the UI asks (plan 6.2) */

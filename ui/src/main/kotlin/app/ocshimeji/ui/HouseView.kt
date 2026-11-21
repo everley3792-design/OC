@@ -1,5 +1,6 @@
 package app.ocshimeji.ui
 
+import app.ocshimeji.render.Img
 import app.ocshimeji.render.Colors
 import app.ocshimeji.render.Colors.hex
 import app.ocshimeji.render.Gfx
@@ -24,6 +25,11 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     val height get() = house.h * T * K
     /** a thing drawn in depth order (bigger key = nearer = later) */
     class D(val key: Float, val draw: () -> Unit)
+    /** the player's wallpaper / floor per room (plan 12.6): pictures tiled seamlessly; null = the house's own */
+    var walls: Map<String, Img> = emptyMap(); var floors: Map<String, Img> = emptyMap()
+    private fun tile(g: Gfx, img: Img, x: Float, y: Float, w: Float, h: Float, tw: Float, th: Float) {
+        g.save(); g.clip(x, y, w, h); var yy = y; while (yy < y + h) { var xx = x; while (xx < x + w) { g.image(img, xx, yy, tw, th); xx += tw }; yy += th }; g.restore()
+    }
 
     /**
      * Draw the house. `light` 0 = night … 1 = day (the windows show it, lamps glow at night). `occupied(piece)` = someone is using
@@ -91,6 +97,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     // ---------------- rooms ----------------
     private fun floor(g: Gfx, p: Pal, r: Room) {
         val x = bx(r.x.toFloat()); val y = by(r.y + 1f); val w = r.w * T; val h = (r.h - 1) * T * K; val c = floorColor(p, r)
+        floors[r.id]?.let { img -> tile(g, img, x, y, w, h, T * 1.5f, T * 1.5f * K); g.fillRect(x, y, w, 3f, Colors.withAlpha(0xFF000000.toInt(), 0.08f)); return }
         g.fillRect(x, y, w, h, c)
         val line = Colors.mix(c, 0xFF000000.toInt(), 0.07f)
         when (r.kind) {
@@ -114,6 +121,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
             g.fillRect(x, y + h - 5, w, 5f, p.white); var xx = x + 4; while (xx < x + w) { g.fillRect(xx, y + h * 0.35f, 2.5f, h * 0.65f, p.white); xx += 7 }
             g.fillRect(x, y + h * 0.33f, w, 3f, p.white); return
         }
+        walls[r.id]?.let { img -> tile(g, img, x, y, w, h, h, h); g.fillRect(x, y + h - 4, w, 4f, p.base); g.fillRect(x, y - 3, w, 4f, p.cap); return }
         g.fillRect(x, y, w, h, c)
         var xx = x + 6; while (xx < x + w) { g.fillRect(xx, y, 2f, h, Colors.withAlpha(Colors.mix(c, 0xFFFFFFFF.toInt(), 0.5f), 0.6f)); xx += 12 }
         g.fillRect(x, y + h - 4, w, 4f, p.base)

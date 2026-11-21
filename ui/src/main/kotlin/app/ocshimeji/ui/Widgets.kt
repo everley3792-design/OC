@@ -70,6 +70,8 @@ object Widgets {
             "gift" -> { g.fillRect(cx - 4f * u, cy - 1f * u, 8f * u, 5f * u, color); g.fillRect(cx - 4.6f * u, cy - 3f * u, 9.2f * u, 2f * u, color); g.fillRect(cx - 0.6f * u, cy - 3f * u, 1.2f * u, 7f * u, 0xFFFFFDF7.toInt()); g.fillCircle(cx - 1.6f * u, cy - 4f * u, 1.2f * u, color); g.fillCircle(cx + 1.6f * u, cy - 4f * u, 1.2f * u, color) }
             "dots" -> for (i in -1..1) g.fillCircle(cx + i * 3f * u, cy + 1f * u, 1.1f * u, color)
             "pinky" -> { g.line(cx - 3.6f * u, cy + 2f * u, cx - 0.6f * u, cy - 1f * u, 1.6f * u, color); g.line(cx + 3.6f * u, cy + 2f * u, cx + 0.6f * u, cy - 1f * u, 1.6f * u, color); g.strokeRound(cx - 1.6f * u, cy - 3f * u, 3.2f * u, 3.2f * u, 1.6f * u, 1.2f * u, color) }
+            "import" -> { g.line(cx, cy - 4f * u, cx, cy + 1.6f * u, 1.5f * u, color); g.line(cx - 2.6f * u, cy - 1f * u, cx, cy + 1.8f * u, 1.5f * u, color); g.line(cx + 2.6f * u, cy - 1f * u, cx, cy + 1.8f * u, 1.5f * u, color); g.line(cx - 4f * u, cy + 4f * u, cx + 4f * u, cy + 4f * u, 1.5f * u, color) }
+            "note2" -> { g.fillCircle(cx - 1.6f * u, cy + 2.6f * u, 2.2f * u, color); g.fillRect(cx + 0.2f * u, cy - 4.4f * u, 1.3f * u, 7f * u, color); g.fillRect(cx + 0.2f * u, cy - 4.4f * u, 3.6f * u, 1.6f * u, color) }
             "share" -> { g.line(cx, cy + 2.6f * u, cx, cy - 3.6f * u, 1.5f * u, color); g.line(cx - 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx + 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx - 4f * u, cy + 4f * u, cx + 4f * u, cy + 4f * u, 1.5f * u, color) }
         }
     }

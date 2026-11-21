@@ -27,6 +27,15 @@ interface Gfx {
     fun line(x1: Float, y1: Float, x2: Float, y2: Float, width: Float, color: Int)
     /** an image into a rectangle (null = whole image) */
     fun image(img: Img, x: Float, y: Float, w: Float, h: Float)
+    /**
+     * an image bent over a grid (plan 13.3 網格變形): `verts` holds (cols + 1) × (rows + 1) points (x, y pairs, row by row) where the
+     * evenly spaced grid points of the picture land. Without a mesh-capable backend it is drawn into the grid's bounding box.
+     */
+    fun imageMesh(img: Img, cols: Int, rows: Int, verts: FloatArray) {
+        var x0 = Float.MAX_VALUE; var y0 = Float.MAX_VALUE; var x1 = -Float.MAX_VALUE; var y1 = -Float.MAX_VALUE
+        for (i in 0 until verts.size / 2) { x0 = minOf(x0, verts[i * 2]); x1 = maxOf(x1, verts[i * 2]); y0 = minOf(y0, verts[i * 2 + 1]); y1 = maxOf(y1, verts[i * 2 + 1]) }
+        image(img, x0, y0, x1 - x0, y1 - y0)
+    }
 
     fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind = FontKind.UI, align: Align = Align.LEFT)
     fun measure(s: String, size: Float, font: FontKind = FontKind.UI): Float
@@ -43,6 +52,8 @@ interface Assets {
     fun image(path: String, maxSide: Int = 2048): Img?
     /** decode bytes that live elsewhere (the player's library), cached by key; `bytes` is only called on a cache miss */
     fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img?
+    /** an image made from ARGB pixels (the paint canvas); `reuse` = the previous image of the same size, updated in place */
+    fun pixels(w: Int, h: Int, px: IntArray, reuse: Img? = null): Img
 }
 
 object Colors {

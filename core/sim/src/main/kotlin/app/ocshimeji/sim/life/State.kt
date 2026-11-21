@@ -2,6 +2,8 @@ package app.ocshimeji.sim.life
 
 import app.ocshimeji.sim.chars.CharSpec
 import app.ocshimeji.sim.chars.Rel
+import app.ocshimeji.sim.chars.CustomTag
+import app.ocshimeji.sim.script.ScriptDef
 import app.ocshimeji.sim.social.Ask
 import app.ocshimeji.sim.social.SocState
 import app.ocshimeji.sim.social.Wish
@@ -35,6 +37,16 @@ class Life(
     var romance: Boolean = false,
     /** everything social (M4): the memory ledger, pair statistics, sparks, quarrels, the mailbox, day cards, the shared pot… */
     val soc: SocState = SocState(),
+    // ---- M5: what the player made, copied into this world (so the world plays the same wherever it is opened)
+    /** custom food, drinks and gifts (plan 12.6 自訂物品) */
+    val items: MutableList<WorldItem> = mutableListOf(),
+    /** wallpaper and floor per room: library-relative picture paths (plan G-02 in part) */
+    val decor: MutableMap<String, Decor> = mutableMapOf(),
+    /** the player's tags (tag editor) and events (script editor) in use in this world */
+    val tags: MutableList<CustomTag> = mutableListOf(),
+    val scripts: MutableList<ScriptDef> = mutableListOf(),
+    /** imported music for this home (library-relative path) */
+    var music: String = "",
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -110,3 +122,7 @@ object Axis { const val OUTGOING = 0; const val ACTIVE = 1; const val DILIGENT =
 
 /** something that happened this step, for the screen (bubbles, hearts, sounds); never saved */
 data class SimEvent(val kind: String, val who: String, val text: String = "")
+
+/** a custom item as one world knows it: food / drink (taste, how filling) and gifts (the words people like) */
+@Serializable class WorldItem(val id: String, val name: String, val kind: String, val taste: String = "", val full: Float = 0f, val words: List<String> = emptyList(), val image: String = "")
+@Serializable class Decor(val wall: String = "", val floor: String = "")

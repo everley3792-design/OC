@@ -1,0 +1,8 @@
+{"v":4,"seed":778,"created":1700000000000,"townName":"楓糖鎮","clockMode":"REAL","minute":28803000.0,"residents":[{"id":"r_a","libId":"a","name":"可可"},{"id":"r_b","libId":"b","name":"栗子"}],
+ "life":{"houseId":"cottage","townName":"楓糖鎮","homeName":"小屋","minute":28803000.0,"clockMode":"REAL","speed":1.0,"seed":778,"rngState":9,
+  "people":[{"id":"r_a","libId":"a","spec":{"name":"可可","age":20,"traits":["書蟲"]},"room":"bedA","needs":{"FOOD":60.0},"moods":[],"x":2.5,"y":3.5,"facing":1,
+    "act":null,"actPiece":-1,"actSlot":-1,"actStart":0.0,"actEnd":0.0,"next":null,"recent":{},"lastPet":-1.0E9,"why":[],"affinity":55,"found":[],"secretTold":false,"with":null,"birthdayDay":-1,"desk":false},
+   {"id":"r_b","libId":"b","spec":{"name":"栗子","age":25,"traits":["健談"]},"room":"bedB","needs":{"FOOD":70.0},"moods":[],"x":5.5,"y":3.5,"facing":-1,
+    "act":null,"actPiece":-1,"actSlot":-1,"actStart":0.0,"actEnd":0.0,"next":null,"recent":{},"lastPet":-1.0E9,"why":[],"affinity":50,"found":[],"secretTold":false,"with":null,"birthdayDay":-1,"desk":true}],
+  "mess":{"bedA":5.0},"lastRealMs":1700000000000,"log":[{"minute":28802000.0,"who":"r_a","text":"可可：和栗子聊了書","away":false}],"away":null,"arriving":false,"startMinute":28800000.0,
+  "rels":[{"from":"r_a","to":"r_b","kind":"朋友","like":55},{"from":"r_b","to":"r_a","kind":"認識"}],"romance":false,"soc":{"settledDay":3,"flags":[]}}}

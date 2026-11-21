@@ -296,6 +296,57 @@ class UiTest {
         val first = a.zoneIds.first { it.startsWith("l:") }; assertTrue(a.tapZone(first)); assertTrue(sim.life.log[first.removePrefix("l:").toInt()].fav)
         assertTrue(a.tapZone("f:fav")); frames(a, 5); assertTrue(a.zoneIds.count { it.startsWith("l:") } == 1)
     }
+    /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
+    @Test fun theCreatorSuite() {
+        val a = app(); a.push(LibraryScreen()); frames(a, 5)
+        assertTrue(a.tapZone("create")); frames(a, 10); assertTrue(a.screen is CreateHub); shot("create-hub", frames(a, 1, scale = 2f))
+        // ---- paint: a new character canvas, strokes with two colours, a layer, undo and redo, a draft
+        assertTrue(a.tapZone("paint")); frames(a, 5); assertTrue(a.tapZone("new")); frames(a, 15); assertTrue(a.tapZone("row:CHARACTER")); frames(a, 5)
+        val ps = a.screen as PaintScreen; val doc = ps.doc
+        fun stroke(pts: List<Pair<Float, Float>>) { a.down(pts[0].first, pts[0].second); for (p0 in pts.drop(1)) { a.move(p0.first, p0.second); frames(a, 1) }; a.up(pts.last().first, pts.last().second) }
+        doc.brush.size = 60f; doc.brush.color = 0xFFF4A259.toInt()
+        stroke((0..20).map { 180f + 50 * kotlin.math.cos(it * 0.31f) to 330f + 70 * kotlin.math.sin(it * 0.31f) })
+        assertEquals(1, doc.undoCount); assertTrue(doc.layer.r.px.any { (it ushr 24) > 0 }, "the finger drew")
+        assertTrue(a.tapZone("color")); frames(a, 15); assertTrue(a.overlay is ColorSheet); shot("paint-color", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("c:13")); assertTrue(a.tapZone("ok")); frames(a, 2)
+        assertTrue(a.tapZone("layers")); frames(a, 15); assertTrue(a.tapZone("add")); frames(a, 2); assertEquals(2, doc.layers.size); shot("paint-layers", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        doc.brush.size = 20f; stroke((0..10).map { 120f + it * 12f to 260f + it * 4f })
+        assertTrue(a.tapZone("undo")); frames(a, 2); assertTrue(a.tapZone("redo")); frames(a, 2)
+        shot("paint", frames(a, 1, scale = 2f))
+        assertTrue(a.back()); frames(a, 15); assertTrue(a.overlay is ListSheet, "leaving with changes asks first"); assertTrue(a.tapZone("row:keep")); frames(a, 5)
+        assertTrue(a.screen is DraftsPage); assertEquals(1, app.ocshimeji.save.Studio(a.saves).drafts().size); shot("drafts", frames(a, 1, scale = 2f)); a.back(); frames(a, 5)
+        // ---- a character from the drawing, then its animation studio
+        val c = app.ocshimeji.save.Studio(a.saves).charFromDrawing(doc, app.ocshimeji.sim.chars.CharSpec(name = "手繪君"))
+        a.push(AnimStudio(c)); frames(a, 10); assertTrue(a.tapZone("addframe")); frames(a, 5); val fp = a.screen as PaintScreen
+        assertTrue(fp.doc.layers.any { it.trace }, "onion skin: the frame before is shown faintly")
+        fp.doc.brush.size = 30f; stroke((0..8).map { 160f + it * 6f to 300f })
+        assertTrue(a.tapZone("done")); frames(a, 5); assertTrue(a.screen is AnimStudio)
+        assertTrue(a.tapZone("mode:pingpong")); assertTrue(a.tapZone("event")); frames(a, 15); assertTrue(a.tapZone("row:fx:heart")); frames(a, 5)
+        shot("anim-studio", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("save")); frames(a, 2); val idle = a.saves.libChar(c.id)!!.anims["idle"]!!; assertEquals(2, idle.frames.size); assertEquals("pingpong", idle.playMode)
+        assertTrue(a.tapZone("chain")); frames(a, 15); shot("anim-chain", frames(a, 1, scale = 2f)); a.back(); a.back(); frames(a, 5)
+        // ---- an item: food with a picture
+        assertTrue(a.tapZone("items")); frames(a, 5); assertTrue(a.tapZone("new")); frames(a, 5)
+        assertTrue(a.tapZone("pic:front")); frames(a, 15); assertTrue(a.tapZone("row:import")); frames(a, 5)
+        promptAnswer = "手作布丁"; assertTrue(a.tapZone("name")); frames(a, 2)
+        shot("item-editor", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("save")); frames(a, 5); assertEquals("手作布丁", app.ocshimeji.save.Studio(a.saves).items().single().name)
+        // a wallpaper drawn on a seamless canvas
+        app.ocshimeji.save.Studio(a.saves).saveItem(app.ocshimeji.save.LibItem("", "格子壁紙", "wallpaper"), app.ocshimeji.save.media.Raster(32, 32, IntArray(32 * 32) { i -> if ((i % 32 / 8 + i / 32 / 8) % 2 == 0) 0xFFF6D0B8.toInt() else 0xFFFFF4E4.toInt() }))
+        shot("items", frames(a, 1, scale = 2f)); a.back(); frames(a, 5)
+        // ---- a script in blocks
+        assertTrue(a.tapZone("scripts")); frames(a, 5); assertTrue(a.tapZone("new")); frames(a, 10); assertTrue(a.screen is ScriptEditor); shot("script-editor", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("save")); frames(a, 5); assertEquals(1, app.ocshimeji.save.Studio(a.saves).scripts().size); a.back(); frames(a, 5)
+        // ---- a tag
+        promptAnswer = "烘焙魂"; assertTrue(a.tapZone("tags")); frames(a, 5); assertTrue(a.tapZone("new")); frames(a, 5); assertTrue(a.screen is TagEditor)
+        repeat(3) { assertTrue(a.tapZone("a+:food")) }; shot("tag-editor", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("save")); frames(a, 5); assertEquals(1.6f, app.ocshimeji.save.Studio(a.saves).tags().single().act["food"]!!, 0.01f)
+        a.back(); frames(a, 5); assertTrue(a.tapZone("space")); frames(a, 5); shot("space", frames(a, 1, scale = 2f)); a.back(); a.back(); a.back(); frames(a, 5)
+        // ---- at home: the drawn character with a tail that sways (mesh), the wallpaper, the food in the snack menu
+        a.saves.addLibChar(a.saves.libChar(c.id)!!.copy(marks = mapOf("尾巴" to app.ocshimeji.save.Mark(0.8f, 0.7f, 0.15f), "頭" to app.ocshimeji.save.Mark(0.5f, 0.3f, 0.2f)), anims = emptyMap()))
+        val ws = world(a, listOf(c.id)); frames(a, 200)
+        assertTrue(ws.sim.snacks.any { it.second == "手作布丁" }, "the item came into the world"); assertEquals(1, ws.sim.life.scripts.size); assertEquals(1, ws.sim.life.tags.size)
+        assertTrue(a.tapZone("decor")); frames(a, 15); assertTrue(a.overlay is DecorSheet)
+        val wz = a.zoneIds.first { it.startsWith("wallpaper:") && it.length > 10 }; assertTrue(a.tapZone(wz)); frames(a, 2); shot("decor", frames(a, 1, scale = 2f)); a.back(); frames(a, 30)
+        assertTrue(ws.sim.life.decor["main"]?.wall?.isNotBlank() == true); shot("world-decor", frames(a, 1, scale = 2f))
+    }
     @Test fun anM0WorldGetsAHouseWhenOpened() {
         val a = app(); val m = a.saves.create("舊世界", listOf(Presets.CINNAMON.id)); (a.screen as TitleScreen).reload(); frames(a, 2)
         (a.screen as TitleScreen).open(m.id); frames(a, 5); val ws = a.screen as WorldScreen

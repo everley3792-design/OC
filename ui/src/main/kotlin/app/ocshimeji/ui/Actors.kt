@@ -27,6 +27,12 @@ class Look(val app: UiApp, val c: LibChar, val spec: CharSpec) {
     val render: Set<String> = Catalog.effects(spec).flatMap { it.render }.toSet()
     val scale: Float get() = (spec.height / 100f).coerceIn(0.6f, 1.5f)
     fun mark(name: String): Mark? = c.marks[name]
+    /** frame events (plan 12.6 影格事件) reach whoever shows the character: "step", "sound:<id>", "fx:<kind>" */
+    var onEvent: ((String) -> Unit)? = null
+    private val lastFrame = HashMap<String, Int>()
+    /** called by the drawing with the frame now on screen; fires the frame's event once when it starts */
+    internal fun shown(action: String, i: Int) { if (lastFrame[action] == i) return; lastFrame[action] = i; c.anims[action]?.events?.get(i.toString())?.let { e -> onEvent?.invoke(e) } }
+    fun layer(name: String) = name in c.procedural
     /** which of their own animations plays for a pose (plan 12.7): null = the system's procedural animation */
     fun mine(pose: Pose, asleep: Boolean): String? {
         val want = if (asleep) "sleep" else Actors.ACTION[pose] ?: "idle"
@@ -64,12 +70,15 @@ object Actors {
      */
     fun draw(g: Gfx, look: Look, x: Float, y: Float, h0: Float, pose: Pose, time: Float, phase: Float, facing: Int, lift: Float, where: String?, asleep: Boolean, sky: String = "sun") {
         val mine = look.mine(pose, asleep); val frames = mine?.let { look.frames(it) }
-        val img: Img = if (frames != null) { val an = look.c.anims[mine]!!; frameAt(frames, an.ms, an.loop, time) }
+        var footX = look.c.footX; var footY = look.c.footY
+        val img: Img = if (frames != null) { val an = look.c.anims[mine]!!; val i = frameIndex(frames.size, an.ms, an.playMode, time); look.shown(mine!!, i)
+                an.anchors.getOrNull(i)?.let { if (it.size == 2) { footX = it[0]; footY = it[1] } }; frames[i] }
             else (emotion(pose, asleep, sky)?.let { look.face(it) } ?: look.base) ?: return
+        val warp = frames == null && img === look.base && (look.mark("耳朵") != null || look.mark("尾巴") != null || look.mark("頭") != null)
         val h = h0 * look.scale; val (amp0, spd) = style(look.spec.motion); val amp = if (frames != null) amp0 * 0.3f else amp0
         var flip = if (facing == look.c.facing || !look.c.flip) 1f else -1f
         val w = h * img.w / img.h; val tt = time * spd + phase
-        val breath = 1f + (if (asleep) 0.03f else 0.018f) * amp0.coerceAtMost(1.2f) * sin(tt * (if (asleep) 1.3f else 2.4f))
+        val breath = if (!look.layer("breath")) 1f else 1f + (if (asleep) 0.03f else 0.018f) * amp0.coerceAtMost(1.2f) * sin(tt * (if (asleep) 1.3f else 2.4f))
         var sx = 1f; var sy = 1f; var rot = 0f; var dy = 0f; var pivotTop = false; var clipBottom = 0f
         if (frames == null || pose == Pose.HELD || pose == Pose.FLY) when (pose) {
             Pose.WALK -> { dy = -abs(sin(tt * 10f)) * 3.2f * amp; rot = sin(tt * 10f) * 0.05f * amp }
@@ -95,6 +104,8 @@ object Actors {
             Pose.LIE, Pose.STAND -> {}
         }
         if (pose == Pose.BATHE && frames != null) { clipBottom = h * 0.5f; dy = h * 0.28f }
+        if (!look.layer("bounce") && pose != Pose.BATHE && pose != Pose.HELD) dy = 0f       /* the player turned these layers off (plan 12.6) */
+        if (!look.layer("sway") && pose != Pose.HELD && pose != Pose.FLY && pose != Pose.DIZZY) rot = 0f
         var floatY = 0f; if ("float" in look.render && pose != Pose.LIE && pose != Pose.BATHE) floatY = 6f + 2.5f * sin(tt * 2f)
         if ("wobble" in look.render) { val k = sin(tt * 4f) * 0.05f; sx *= 1f + k; sy *= 1f - k }
         if ("sway" in look.render) rot += sin(tt * 0.9f) * 0.04f
@@ -104,21 +115,25 @@ object Actors {
         if (pose == Pose.LIE && frames == null) {
             if (where == "bed" || where == "bed2") { g.translate(0f, h * 0.2f); g.scale(flip * 0.92f, 0.92f * breath) }   /* in bed: upright, the blanket covers the body */
             else { g.translate(0f, -h * 0.16f); g.rotate((-PI / 2).toFloat() * flip); g.scale(flip * 0.9f, 0.9f * breath); g.translate(0f, h * 0.45f) }   /* on a sofa or the floor: on its side */
-            g.image(img, -w * look.c.footX, -h * look.c.footY, w, h); g.restore(); return
+            g.image(img, -w * footX, -h * footY, w, h); g.restore(); return
         }
         if (clipBottom > 0f) g.clip(-w, -h * 1.2f - dy, w * 2, h * 1.2f - clipBottom)
         if (pivotTop) { g.translate(0f, -h * 0.9f); g.rotate(rot); g.translate(0f, h * 0.9f) } else g.rotate(rot)
         g.scale(flip * sx / sqrt(breath), sy * breath)
-        g.image(img, -w * look.c.footX, -h * look.c.footY, w, h)
+        if (warp) g.imageMesh(img, MESH, MESH, Warp.verts(look, -w * footX, -h * footY, w, h, tt, pose)) else g.image(img, -w * footX, -h * footY, w, h)
         g.restore()
         if ("sparkle" in look.render) for (i in 0 until 3) { val a = time * 1.5f + i * 2.1f; val k = (sin(a * 1.7f) + 1) / 2
             g.save(); g.alpha(k); star(g, x + cos(a) * h * 0.35f, y - lift - h * (0.4f + 0.3f * sin(a)), 2.5f + k * 1.5f, 0xFFFFF1B8.toInt()); g.restore() }
     }
-    private fun frameAt(frames: List<Img>, ms: List<Int>, loop: Boolean, time: Float): Img {
-        val total = (frames.indices.sumOf { ms.getOrElse(it) { 120 }.coerceAtLeast(20) }).coerceAtLeast(1)
-        var t = (time * 1000).toLong(); t = if (loop) t % total else minOf(t, total - 1L)
-        var acc = 0L; for (i in frames.indices) { acc += ms.getOrElse(i) { 120 }.coerceAtLeast(20); if (t < acc) return frames[i] }
-        return frames.last()
+    const val MESH = 8
+    /** which frame is on screen: each frame its own time; loop / once / pingpong (there and back, the ends not repeated) */
+    fun frameIndex(n: Int, ms: List<Int>, mode: String, time: Float): Int {
+        if (n <= 1) return 0
+        val order = if (mode == "pingpong") (0 until n).toList() + (n - 2 downTo 1).toList() else (0 until n).toList()
+        val total = order.sumOf { ms.getOrElse(it) { 120 }.coerceAtLeast(20) }.toLong().coerceAtLeast(1)
+        var t = (time * 1000).toLong(); t = if (mode == "once") minOf(t, total - 1L) else t % total
+        var acc = 0L; for (i in order) { acc += ms.getOrElse(i) { 120 }.coerceAtLeast(20); if (t < acc) return i }
+        return order.last()
     }
     /** a point on the picture (a mark) → base dp, for a character standing at (x, y) */
     fun at(look: Look, m: Mark, x: Float, y: Float, h0: Float, facing: Int): Pair<Float, Float> {
@@ -177,4 +192,27 @@ object Actors {
     }
     private fun note(g: Gfx, x: Float, y: Float, c: Int) { g.fillCircle(x, y, 3f, c); g.fillRect(x + 2f, y - 10f, 1.6f, 10f, c); g.fillRect(x + 2f, y - 10f, 5f, 2f, c) }
     private fun star(g: Gfx, cx: Float, cy: Float, r: Float, c: Int) { g.save(); g.translate(cx, cy); for (i in 0 until 2) { g.rotate((PI / 4).toFloat()); g.fillRect(-r * 0.35f, -r, r * 0.7f, r * 2, c) }; g.restore() }
+}
+
+/**
+ * Mesh deformation for one-picture characters (plan 13.3 部位標記與網格變形): the marked parts move on their own —
+ * ears flick now and then, the tail sways, the head tilts a little. Not a skeleton: grid points near a mark are pushed, the rest stay.
+ */
+object Warp {
+    fun verts(look: Look, x0: Float, y0: Float, w: Float, h: Float, t: Float, pose: Pose): FloatArray {
+        val n = Actors.MESH; val v = FloatArray((n + 1) * (n + 1) * 2)
+        val ear = look.mark("耳朵"); val tail = look.mark("尾巴"); val head = look.mark("頭")
+        val flick = sin(t * 9f) * (if (sin(t * 0.9f) > 0.85f) 1f else 0f)                           /* a flick every few seconds */
+        val wag = sin(t * (if (pose == Pose.HAPPY || pose == Pose.PETTED) 9f else 3f)) * (if (pose == Pose.HAPPY || pose == Pose.PETTED) 1.6f else 1f)
+        val tilt = sin(t * 0.7f) * 0.06f + (if (pose == Pose.LOOK || pose == Pose.DAYDREAM) 0.08f else 0f)
+        for (j in 0..n) for (i in 0..n) {
+            val u = i.toFloat() / n; val q = j.toFloat() / n; var px = u; var py = q
+            fun weight(m: app.ocshimeji.save.Mark, k: Float): Float { val d = kotlin.math.hypot((u - m.x).toDouble(), (q - m.y).toDouble()).toFloat(); return (1f - d / (m.r * k)).coerceIn(0f, 1f) }
+            head?.let { m -> val k = weight(m, 1.6f); if (k > 0f) { val dx = px - m.x; val dy = py - (m.y + m.r); val a = tilt * k; px = m.x + dx * cos(a) - dy * sin(a); py = m.y + m.r + dx * sin(a) + dy * cos(a) } }
+            ear?.let { m -> val k = weight(m, 1.3f); py -= k * k * flick * m.r * 0.25f; px += k * k * flick * m.r * 0.1f }
+            tail?.let { m -> val k = weight(m, 1.5f); px += k * k * wag * m.r * 0.22f }
+            v[(j * (n + 1) + i) * 2] = x0 + px * w; v[(j * (n + 1) + i) * 2 + 1] = y0 + py * h
+        }
+        return v
+    }
 }
