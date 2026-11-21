@@ -4,17 +4,16 @@
 
 > 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-## 目前版本 1.1.0（R1：地基修復）
+## 目前版本 1.2.0（R2：導覽與彈窗）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.1.0-debug.apk`](deliverables/apk/oc-shimeji-1.1.0-debug.apk)
-- 依照玩家確認的[全面重構計畫](docs/reboot/overhaul-plan.md)，這是 R1～R8 的第一步：
-  - **生活節奏**：不再半夜煮飯、晚上午睡；多了 12 種日常小事；會膩、會想做新的；每個人有自己的作息；
-  - **時間**：切回現實時間時不會停在未來；顯示遊戲日期；離開超過 30 天會說明；
-  - **回憶**：每件小事有擬聲、旁白、花了多久；可以回放一整天（1～1024×）、收藏名場面；
-  - **長的選單可以捲動**；
-  - 修掉「你不在的時候」會刪掉收藏的名場面的錯誤。
-- **全部都還沒在實機驗證**：請照 [R1 報告](docs/reboot/r1-report.md) 的「請你在手機上試」。
-- 紀錄：[R1](docs/reboot/r1-report.md)（之前：[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.2.0-debug.apk`](deliverables/apk/oc-shimeji-1.2.0-debug.apk)
+- 這一版（[全面重構計畫](docs/reboot/overhaul-plan.md)的第 2 步）：
+  - **底部 5 個入口**：家、小鎮、住民、收納、紀錄；家的畫面只剩一個時間／天氣膠囊；
+  - **環境面板**：暫停、撥時刻、選天氣（含流星雨、極光、花瓣雨、雷雨）、定季節，每個改變都記在存檔；
+  - **收納**：有物品圖的格子，點一格就能給誰吃、擺到家裡、放上攤位；
+  - **住民**頁、整合的**紀錄**頁；畫面轉場。
+- **全部都還沒在實機驗證**：請照 [R2 報告](docs/reboot/r2-report.md) 的「請你在手機上試」。
+- 紀錄：[R2](docs/reboot/r2-report.md)（之前：[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
 
 ## 計畫
 完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)

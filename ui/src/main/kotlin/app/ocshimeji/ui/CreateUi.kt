@@ -24,12 +24,15 @@ abstract class Page(val title: String) : Screen() {
     open val primary: Pair<String, String>? = null
     open val tools: List<Pair<String, String>> = emptyList()
     open val empty: String = "還沒有東西"
+    /** a page inside a world shows the bottom navigation (R2): the world and which tab it is */
+    open val nav: Pair<WorldScreen, String>? = null
     /** drawn above the rows; returns its height */
     open fun header(g: Gfx, x: Float, y: Float, w: Float): Float = 0f
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, H, t.bg); g.fillGradientV(0f, 0f, W, top + 120, t.skyTop, t.bg)
-        val btnY = H - app.insetBottom - 76; val listTop = top + 70; val bottom = if (primary != null) btnY - 12 else H - app.insetBottom
+        val navH = if (nav != null) Nav.height(app) else 0f
+        val btnY = H - app.insetBottom - 76 - navH + (if (nav != null) app.insetBottom else 0f); val listTop = top + 70; val bottom = if (primary != null) btnY - 12 else H - app.insetBottom - navH + (if (nav != null) app.insetBottom else 0f)
         val sc = scroll.step(dt)
         g.save(); g.clip(0f, listTop, W, bottom - listTop); g.translate(0f, -sc); app.zoneDy = -sc
         var y = listTop + 6 + header(g, G, listTop + 6, W - G * 2)
@@ -51,6 +54,7 @@ abstract class Page(val title: String) : Screen() {
         g.text(title, G + 60, top + 42, Dim.FS_L, t.ink)
         tools.forEachIndexed { i, (id, icon) -> Widgets.round(g, app, id, W - G - 24 - i * 52, top + 34, 22f, icon) }
         primary?.let { (id, label) -> g.fillRect(0f, btnY - 12, W, H - btnY + 12, t.bg); Widgets.button(g, app, id, G, btnY, W - G * 2, 56f, label, Kind.PRIMARY, Dim.FS_L) }
+        nav?.let { (ws, tab) -> Nav.draw(g, app, tab, Nav.badges(ws)) }
     }
     override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) = scroll.drag(dy, y, start)
     override fun release() = scroll.release()

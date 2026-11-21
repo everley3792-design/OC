@@ -110,14 +110,17 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             ws.sim.editSpec(id, s); ws.refresh(); ws.flush(); null })
     }
     /** this world's relationships */
-    private fun rels() {
-        val sim = ws.sim; if (sim.life.people.size < 2) { app.toast("這裡只住了一位"); return }
-        app.closeOverlay()
-        val people = sim.life.people.map { Triple(it.id, it.spec, ws.libOf(it)) }
-        app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom ->
-            val keep = sim.life.rels.toList(); val keepRom = sim.life.romance
-            sim.life.romance = rom; sim.life.rels.clear()
-            val err = r.firstNotNullOfOrNull { sim.setRel(it) }
-            if (err != null) { sim.life.rels.clear(); sim.life.rels += keep; sim.life.romance = keepRom; err } else { ws.flush(); null } })
-    }
+    private fun rels() { if (ws.sim.life.people.size >= 2) app.closeOverlay(); openWorldRelations(app, ws) }
+
+}
+
+/** the relationship map of this home (edits go through LifeSim.setRel → the relationship rules) */
+fun openWorldRelations(app: UiApp, ws: WorldScreen) {
+    val sim = ws.sim; if (sim.life.people.size < 2) { app.toast("這裡只住了一位"); return }
+    val people = sim.life.people.map { Triple(it.id, it.spec, ws.libOf(it)) }
+    app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom ->
+        val keep = sim.life.rels.toList(); val keepRom = sim.life.romance
+        sim.life.romance = rom; sim.life.rels.clear()
+        val err = r.firstNotNullOfOrNull { sim.setRel(it) }
+        if (err != null) { sim.life.rels.clear(); sim.life.rels += keep; sim.life.romance = keepRom; err } else { ws.flush(); null } })
 }

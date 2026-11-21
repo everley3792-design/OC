@@ -238,31 +238,25 @@ class WorldScreen(val slotId: String) : Screen() {
         for ((id, b) in bubbles) { val r = hits.firstOrNull { it.first == id }?.second ?: continue; bubble(g, t, b, r[0] + r[2] / 2, r[1] - 10, sim.person(id)?.spec?.tint) }
         // ---- a close-up of the two (plan 13.1): portraits left and right, what they just said
         closeup?.let { (a, b, born) -> closeupBand(g, t, a, b, app.time - born) }
-        // ---- the bar on top: back, the home's name, the clock
+        // ---- the top (R2): back, one capsule (weather, time, day — tap = 環境面板), observe, the wallet
         Widgets.round(g, app, "back", Dim.GUTTER + 24, top + 34, 24f, "back")
-        if (closeup == null) { Widgets.round(g, app, "observe", Dim.GUTTER + 24, top + 92, 22f, if (observing) "close" else "eye")
-            Widgets.round(g, app, "mail", Dim.GUTTER + 24, top + 144, 22f, "mail")
-            Widgets.round(g, app, "decor", Dim.GUTTER + 24, top + 196, 22f, "image")
-            Widgets.round(g, app, "town", W - Dim.GUTTER - 24, top + 140, 22f, "town")
-            Widgets.round(g, app, "place", W - Dim.GUTTER - 24, top + 192, 22f, if (placing) "close" else "move") }
-        if (closeup == null && sim.society.unreadMail() > 0) { g.fillCircle(Dim.GUTTER + 40, top + 128, 8f, t.alert); g.text("${min(99, sim.society.unreadMail())}", Dim.GUTTER + 40, top + 132, 10f, t.onAlert, FontKind.NUM, Align.CENTER) }
+        if (closeup == null) Widgets.round(g, app, "observe", W - Dim.GUTTER - 24, top + 34, 22f, if (observing) "close" else "eye")
         val clock = timeText()
         /* R1 T3: the world's date differs from the phone's → say whose date it is; T1: waiting for the phone to catch up */
         val gameDay = kotlin.math.floor(life.minute / 1440).toLong(); val phoneDay = kotlin.math.floor(app.platform.realMinute() / 1440).toLong()
         val dateNote = if (gameDay != phoneDay) java.time.LocalDate.ofEpochDay(gameDay).let { "・遊戲 ${it.monthValue}/${it.dayOfMonth}" } else ""
-        val dayS = if (sim.hold) "等手機時間追上" else "第 ${life.day} 天" + dateNote + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
-        val cw = maxOf(g.measure(clock, Dim.FS_M, FontKind.NUM), g.measure(dayS, 11f)) + 50
+        val dayS = if (sim.hold) "等手機時間追上" else if (life.env.paused) "時間暫停中" else "第 ${life.day} 天" + dateNote + if (life.clockMode == "GAME") "・${life.speed.toInt()}×" else ""
+        val cx0 = Dim.GUTTER + 56; val cw = W - Dim.GUTTER * 2 - 112
         val cdown = app.pressed == "clock"; val csink = if (cdown) Dim.LIP - 1 else 0f
-        Widgets.card(g, t, W - Dim.GUTTER - cw, top + 12, cw, 44f, 22f, t.surface, t.lip, csink)
-        Widgets.icon(g, "clock", W - Dim.GUTTER - cw + 22, top + 34 + csink, 14f, if (life.clockMode == "GAME") t.accentLip else t.ink2)
-        g.text(clock, W - Dim.GUTTER - cw + 36, top + 33 + csink, Dim.FS_M, t.ink, FontKind.NUM)
-        g.text(dayS, W - Dim.GUTTER - cw + 36, top + 49 + csink, 11f, if (life.clockMode == "GAME") t.accentLip else t.ink2)
-        app.zone("clock", W - Dim.GUTTER - cw, top + 8, cw, 52f)
-        wallet(g, app, this, W - Dim.GUTTER - 104, top + 64); Widgets.sky(g, t, Wx.icon(wx), W - Dim.GUTTER - 70 - g.measure("${sim.economy.wallet}", Dim.FS_M, FontKind.NUM), top + 84, 11f)
-        val name = listOf(life.townName, life.homeName).filter { it.isNotBlank() }.joinToString("・").ifBlank { app.saves.slot(slotId)?.name ?: "" }
-        val nx = Dim.GUTTER + 58; val nw = W - Dim.GUTTER - cw - 8 - nx
-        if (nw > 60) { Widgets.card(g, t, nx, top + 12, nw, 44f, 22f); g.text(Widgets.fit(g, name, Dim.FS_S + 1, nw - 24), nx + nw / 2, top + 39, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER) }
-        var y0 = top + 112
+        Widgets.card(g, t, cx0, top + 12, cw, 46f, 23f, t.surface, t.lip, csink)
+        g.fillCircle(cx0 + 26, top + 35 + csink, 17f, Wx.sky(t, wx, light(sim.hour))); Widgets.sky(g, t, Wx.icon(wx), cx0 + 26, top + 35 + csink, 11f)   /* the sky behind the weather, so a cloud shows on the light capsule */
+        g.text(clock, cx0 + 48, top + 34 + csink, Dim.FS_M, t.ink, FontKind.NUM)
+        g.text(Widgets.fit(g, dayS, 11f, cw - 60), cx0 + 48, top + 50 + csink, 11f, if (life.clockMode == "GAME" || life.env.paused) t.accentLip else t.ink2)
+        val nm = listOf(life.homeName).filter { it.isNotBlank() }.joinToString().ifBlank { app.saves.slot(slotId)?.name ?: "" }
+        if (cw > 220) g.text(Widgets.fit(g, nm, Dim.FS_S - 1, cw - 160), cx0 + cw - 16, top + 40 + csink, Dim.FS_S - 1, t.ink3, FontKind.UI, Align.RIGHT)
+        app.zone("clock", cx0, top + 8, cw, 54f)
+        if (!observing) wallet(g, app, this, W - Dim.GUTTER - 104, top + 66)
+        var y0 = top + 116
         if (life.arriving) { val s = "搬家日：大家一個一個到了"; val w = g.measure(s, Dim.FS_S) + 32
             g.fillRound((W - w) / 2, y0, w, 32f, 16f, Colors.withAlpha(t.surface, 0.92f)); g.text(s, W / 2, y0 + 21, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER); y0 += 40 }
         // ---- hide-and-seek: every piece of furniture can be searched
@@ -277,8 +271,9 @@ class WorldScreen(val slotId: String) : Screen() {
             g.fillRound((W - w0) / 2, y0, w0, 32f, 16f, Colors.withAlpha(t.ink, 0.85f)); Widgets.icon(g, "ff", (W - w0) / 2 + 18, y0 + 16, 12f, t.bg); g.text(s0, W / 2 + 8, y0 + 21, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER); y0 += 40 }
         if (observing) { observeBar(g, t); return }
         if (placing) { Placing.bar(g, app, this, placeSel, placeBag); return }
+        Nav.draw(g, app, "home", Nav.badges(this))
         // ---- the bottom: residents (tap = their card)
-        val by = H - app.insetBottom - 84
+        val by = H - Nav.height(app) - 80
         Widgets.card(g, t, Dim.GUTTER, by, W - Dim.GUTTER * 2, 72f, Dim.RADIUS_L)
         life.people.forEachIndexed { i, p ->
             val cx = Dim.GUTTER + 44 + i * 66f; if (cx > W - 40) return@forEachIndexed; val id = "who:${p.id}"; val sink = if (app.pressed == id) 2f else 0f
@@ -394,7 +389,7 @@ class WorldScreen(val slotId: String) : Screen() {
     }
 
     fun fit() {
-        val availH = app.h - app.insetTop - app.insetBottom - 220
+        val availH = app.h - app.insetTop - app.insetBottom - 290
         fitZoom = min((app.w - 24) / view.width, availH / (view.height + 50)).coerceAtLeast(0.4f)
         zoom = fitZoom; camX = view.width / 2; camY = view.height / 2 - 18
     }
@@ -486,7 +481,8 @@ class WorldScreen(val slotId: String) : Screen() {
         when {
             id == "back" -> app.pop()
             id == "tip:close" -> dismissTip()
-            id == "clock" -> timeSheet()
+            id == "clock" -> app.show(EnvSheet(this))
+            Nav.tap(app, this, id) -> {}
             id.startsWith("who:") && observing -> { val pid = id.removePrefix("who:"); if (follow == pid && lockFollow) { lockFollow = false } else { follow = pid; lockFollow = true } }
             id.startsWith("who:") -> { val pid = id.removePrefix("who:"); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() }; openCard(pid) }
             id == "observe" -> setObserving(!observing)

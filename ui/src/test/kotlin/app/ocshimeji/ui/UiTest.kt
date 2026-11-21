@@ -292,7 +292,7 @@ class UiTest {
         sim.life.soc.cards += app.ocshimeji.sim.social.DayCard(1, listOf("肉桂捲：和小雨聊了甜點", "團子：送小雨一本舊書，小雨很開心", "小雨：心願實現了：想跟團子變熟")); frames(a, 15)
         assertTrue(a.overlay is DayCardSheet); shot("day-card", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("dc:ok")); frames(a, 2)
         sim.society.mail(p1.id, "ask", "肉桂捲的請求", "可以給我餅乾嗎？")
-        assertTrue(a.tapZone("mail")); frames(a, 15); assertTrue(a.screen is TimelineScreen); shot("mailbox", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("nav:records")); frames(a, 10); assertTrue(a.tapZone("timeline")); frames(a, 15); assertTrue(a.screen is TimelineScreen); shot("mailbox", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("tab:log")); frames(a, 10); shot("timeline", frames(a, 1, scale = 2f))
         val first = a.zoneIds.first { it.startsWith("l:") }; assertTrue(a.tapZone(first)); assertTrue(sim.life.log[first.removePrefix("l:").toInt()].fav)
         assertTrue(a.tapZone("f:fav")); frames(a, 5); assertTrue(a.zoneIds.count { it.startsWith("l:") } == 1)
@@ -312,7 +312,7 @@ class UiTest {
         assertTrue(a.tapZone("wallet")); frames(a, 15); assertTrue(a.overlay is BoardSheet); shot("wallet-goals", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("bd:ledger")); frames(a, 10); assertTrue(a.screen is LedgerPage); a.back(); frames(a, 2)
         // the town: someone goes out, the grocery, the board
-        sim.townLife.leave(sim.life.people[1]); assertTrue(a.tapZone("town")); frames(a, 30); assertTrue(a.screen is TownScreen)
+        sim.townLife.leave(sim.life.people[1]); assertTrue(a.tapZone("nav:town")); frames(a, 30); assertTrue(a.screen is TownScreen)
         shot("town", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("place:grocery")); frames(a, 15); shot("town-shop", frames(a, 1, scale = 2f))
         val food = sim.townLife.stock("grocery").first(); assertTrue(a.tapZone("row:${food.id}")); frames(a, 2); assertEquals(1, sim.economy.count(food.id)); assertEquals(300 - food.price, sim.economy.wallet)
@@ -326,7 +326,7 @@ class UiTest {
         assertTrue(a.tapZone("mv:yes")); frames(a, 30); assertTrue(a.screen is WorldScreen); assertEquals("bungalow", sim.life.houseId)
         frames(a, 200); shot("world-bungalow", frames(a, 1, scale = 2f))
         // decorating: pick what you bought, tap the floor
-        assertTrue(a.tapZone("place")); frames(a, 5); assertTrue(ws.placing); assertTrue(a.tapZone("pl:${f.id}"))
+        assertTrue(a.tapZone("nav:storage")); frames(a, 10); assertTrue(a.tapZone("place")); frames(a, 5); assertTrue(ws.placing); assertTrue(a.tapZone("pl:${f.id}"))
         val living = sim.house.rooms.first { it.kind == app.ocshimeji.sim.house.RoomKind.LIVING }
         loop@ for (y in living.y + 1 until living.y + living.h) for (x in living.x until living.x + living.w) { ws.placeAt(x, y); if (sim.economy.count(f.id) == 0) break@loop }
         assertEquals(0, sim.economy.count(f.id), "placed"); frames(a, 5); shot("world-placing", frames(a, 1, scale = 2f))
@@ -350,11 +350,11 @@ class UiTest {
         assertTrue(a.tapZone("titles")); frames(a, 10); a.back(); frames(a, 2); assertTrue(a.tapZone("stats")); frames(a, 10); a.back(); frames(a, 2); a.back(); frames(a, 2)
         // the town as a scene: the resident in full at the café, treat them
         sim.townLife.leave(p); p.out!!.act = "coffee"; p.out!!.place = "cafe"; p.out!!.stage = "at"; p.out!!.until = sim.life.minute + 30
-        assertTrue(a.tapZone("town")); frames(a, 20); shot("town-scene", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("nav:town")); frames(a, 20); shot("town-scene", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("place:cafe")); frames(a, 15); assertTrue(a.tapZone("row:treat")); frames(a, 2); assertTrue(p.moods.any { it.id == "treated" })
         a.back(); frames(a, 2); p.out = null
         // decorating shows the room's line and scores; flip a piece
-        assertTrue(a.tapZone("place")); frames(a, 3); val i = sim.decorate.pieces().indexOfFirst { it.kind == "sofa" }; val pc = sim.decorate.pieces()[i]
+        assertTrue(a.tapZone("nav:storage")); frames(a, 10); assertTrue(a.tapZone("place")); frames(a, 3); val i = sim.decorate.pieces().indexOfFirst { it.kind == "sofa" }; val pc = sim.decorate.pieces()[i]
         ws.placeAt(pc.x, pc.y); assertEquals(i, ws.placeSel); assertTrue(a.tapZone("pl:flip")); assertTrue(sim.house.pieces[i].flip)
         frames(a, 5); shot("world-placing-m7", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("pl:done"))
         assertTrue(sim.economy.consistent())
@@ -377,6 +377,28 @@ class UiTest {
         sim.life.minute += 3 * 1440.0; frames(a, 3); shot("world-game-date", frames(a, 1, scale = 2f))
         // back to real time while ahead of the phone: time waits
         sim.life.clockMode = "REAL"; val m = sim.life.minute; frames(a, 30); assertTrue(sim.hold); assertEquals(m, sim.life.minute, 1e-6)
+    }
+    /** R2: the bottom navigation, the environment panel, storage with pictures, residents, records, screen transitions */
+    @Test fun navigationEnvironmentAndStorage() {
+        val a = app(); val ws = world(a); val sim = ws.sim; frames(a, 60)
+        shot("world-r2", frames(a, 1, scale = 2f))
+        // the environment panel: a special sky, a locked season, a pause — each recorded
+        assertTrue(a.tapZone("clock")); frames(a, 15); assertTrue(a.overlay is EnvSheet); shot("env-sheet", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("w:petals")); assertEquals("petals", sim.sky()); assertTrue(a.tapZone("s:winter")); assertEquals("winter", sim.season())
+        assertTrue(a.tapZone("t:pause")); assertTrue(sim.life.env.paused); val m = sim.life.minute; frames(a, 20); assertEquals(m, sim.life.minute, 1e-9)
+        assertTrue(a.tapZone("t:pause")); assertTrue(!sim.life.env.paused); assertTrue(sim.life.env.changes.size >= 4)
+        a.back(); frames(a, 30); shot("world-petals", frames(a, 1, scale = 2f))
+        // storage: a grid with pictures; tap one for what to do
+        sim.economy.earn(200, "測試"); for (g in listOf("pudding", "onigiri", "f:plant", "f:sofa", "w:flower", "v:carrot")) sim.economy.move(g, 2, "測試")
+        assertTrue(a.tapZone("nav:storage")); frames(a, 12); assertTrue(a.screen is StoragePage); shot("storage", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("it:pudding")); frames(a, 15); assertTrue(a.overlay is ItemSheet); shot("item-sheet", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("ia:feed")); frames(a, 15); assertTrue(a.tapZone("row:${sim.life.people[0].id}")); frames(a, 3); assertEquals(1, sim.economy.count("pudding"))
+        assertTrue(a.tapZone("tab:furn")); frames(a, 3); assertTrue(a.hasZone("it:f:plant") && !a.hasZone("it:pudding"))
+        // residents and records; switching tabs goes back through the home
+        assertTrue(a.tapZone("nav:people")); frames(a, 12); assertTrue(a.screen is ResidentsPage); assertEquals(3, a.screens.size); shot("residents", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("nav:records")); frames(a, 12); assertTrue(a.screen is JournalHub); assertEquals(3, a.screens.size); shot("records", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("nav:home")); frames(a, 5); assertTrue(a.screen === ws)
+        assertTrue(sim.economy.consistent())
     }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {
@@ -425,7 +447,7 @@ class UiTest {
         a.saves.addLibChar(a.saves.libChar(c.id)!!.copy(marks = mapOf("尾巴" to app.ocshimeji.save.Mark(0.8f, 0.7f, 0.15f), "頭" to app.ocshimeji.save.Mark(0.5f, 0.3f, 0.2f)), anims = emptyMap()))
         val ws = world(a, listOf(c.id)); frames(a, 200)
         assertTrue(ws.sim.snacks.any { it.second == "手作布丁" }, "the item came into the world"); assertEquals(1, ws.sim.life.scripts.size); assertEquals(1, ws.sim.life.tags.size)
-        assertTrue(a.tapZone("decor")); frames(a, 15); assertTrue(a.overlay is DecorSheet)
+        assertTrue(a.tapZone("nav:storage")); frames(a, 10); assertTrue(a.tapZone("decor")); frames(a, 15); assertTrue(a.overlay is DecorSheet)
         val wz = a.zoneIds.first { it.startsWith("wallpaper:") && it.length > 10 }; assertTrue(a.tapZone(wz)); frames(a, 2); shot("decor", frames(a, 1, scale = 2f)); a.back(); frames(a, 30)
         assertTrue(ws.sim.life.decor["main"]?.wall?.isNotBlank() == true); shot("world-decor", frames(a, 1, scale = 2f))
     }

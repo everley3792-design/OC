@@ -70,7 +70,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
     private fun px(x: Float) = Dim.GUTTER + x * (app.w - Dim.GUTTER * 2)
     private fun py(y: Float) = mapTop + y * mapH
     private val mapTop get() = app.insetTop + 112f
-    private val mapH get() = app.h * 0.6f - mapTop + 60
+    private val mapH get() = app.h * 0.6f - mapTop + 20
     private val home get() = 0.5f to 1.02f
 
     override fun frame(g: Gfx, dt: Float) {
@@ -124,13 +124,14 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         wallet(g, app, ws, W - G - 104, top + 14)
         if (sim.weather() == "rain" && sim.env.rainbow()) Widgets.sky(g, t, "rainbow", W / 2, top + 92, 22f)
         // ---- bottom: who is out, the four town things
-        val by = H - app.insetBottom - 150
+        val by = H - Nav.height(app) - 146
         Widgets.card(g, t, G, by, W - G * 2, 138f, Dim.RADIUS_L)
         val names = out.map { (p, o) -> p.name + "（" + when (o.stage) { "go" -> "路上"; "back" -> "回家路上"; else -> Town.act(o.act)?.zh ?: "" } + "）" }
         g.text(Widgets.fit(g, if (names.isEmpty()) "現在大家都在家裡" else "在小鎮：" + names.joinToString("、"), Dim.FS_S + 1, W - G * 2 - 32), G + 16, by + 30, Dim.FS_S + 1, t.ink)
         val jobs = sim.life.town.jobs; g.text(Widgets.fit(g, if (jobs.isEmpty()) "點地點：買東西、看布告欄、擺東西" else "工坊：" + jobs.joinToString("、") { j -> "${sim.person(j.maker)?.name ?: ""}在做${sim.life.items.firstOrNull { it.id == j.item }?.name ?: "作品"} ${(j.worked * 100 / j.need).toInt().coerceAtMost(99)}%" }, Dim.FS_S, W - G * 2 - 32), G + 16, by + 52, Dim.FS_S, t.ink2)
         val bw = (W - G * 2 - 24 - 24) / 4
         listOf("stall" to "市集攤位", "work" to "工坊委託", "board" to "布告欄", "move" to "搬家").forEachIndexed { i, (id, s) -> Widgets.button(g, app, id, G + 12 + i * (bw + 8), by + 70, bw, 52f, s, size = Dim.FS_S + 1) }
+        Nav.draw(g, app, "town", Nav.badges(ws))
     }
     private fun lerp(ax: Float, ay: Float, bx: Float, by: Float, k: Float) = (ax + (bx - ax) * (1 - k)) to (ay + (by - ay) * (1 - k))
     /** one place, drawn from simple shapes (original) */
@@ -157,6 +158,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
 
     override fun tap(id: String) {
         val tl = sim.townLife
+        if (Nav.tap(app, ws, id)) return
         when {
             id == "back" -> app.pop()
             id == "wallet" -> app.show(BoardSheet(ws, false))

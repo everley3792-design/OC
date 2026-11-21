@@ -73,9 +73,12 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     private var toast: Pair<String, Float>? = null
     val toastText: String? get() = toast?.first
 
-    fun push(s: Screen) { stack += s; s.app = this; s.enter() }
+    fun push(s: Screen) { stack += s; s.app = this; s.enter(); transition("in") }
     fun replace(s: Screen) { if (stack.isNotEmpty()) { stack.removeAt(stack.size - 1).leave() }; push(s) }
-    fun pop() { if (stack.size > 1) { stack.removeAt(stack.size - 1).leave(); screen.resume() } }
+    fun pop() { if (stack.size > 1) { stack.removeAt(stack.size - 1).leave(); screen.resume(); transition("back") } }
+    /** screen changes (R2, plan C-5): in = slide 24dp from the right + fade (240 ms); back = from the left; fade = the bottom navigation (180 ms) */
+    private var transKind = ""; private var transAt = -10f
+    fun transition(kind: String) { transKind = kind; transAt = time }
     fun show(o: Overlay) { overlay = o; o.app = this; o.born = time; platform.haptic("tick") }
     fun closeOverlay() { overlay = null }
     fun toast(text: String) { toast = text to time }
@@ -90,7 +93,11 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     fun zone(id: String, x: Float, y: Float, w: Float, h: Float) { zones += Zone(id, x + zoneDx, y + zoneDy, w, h, layer, overlay?.born ?: -1f) }
     fun frame(g: Gfx, dt: Float) {
         time += dt; w = g.width; h = g.height; zones.clear(); zoneDx = 0f; zoneDy = 0f
-        layer = 0; screen.frame(g, dt)
+        layer = 0
+        val dur = if (saves.flag("a11y:calm")) 0.12f else if (transKind == "fade") 0.18f else 0.24f; val k = ((time - transAt) / dur).coerceIn(0f, 1f)
+        if (k < 1f) { val e = Ease.outCubic(k); g.save(); g.alpha(0.35f + 0.65f * e)
+            if (!saves.flag("a11y:calm") && transKind != "fade") g.translate((if (transKind == "back") -24f else 24f) * (1 - e), 0f)
+            screen.frame(g, dt); g.restore() } else screen.frame(g, dt)
         overlay?.let { layer = 1; it.frame(g, dt) }
         toast?.let { (t, at) -> val age = time - at; if (age > 2.6f) toast = null else Widgets.toast(g, this, t, age) }
     }
