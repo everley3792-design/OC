@@ -52,6 +52,7 @@
     refresh(p, el) {
       const arg = p.params; p.params = null;
       if (arg) p.f = { day: null, who: null, place: null, tab: 'day' };   /* every opening starts on today, everyone, every place */
+      if (arg && arg.who && Ch().get(arg.who)) p.f.who = arg.who;   /* 17.2: from a person's card in observation mode */
       if (arg && arg.day != null) { const ds = C().days(); p.f.day = (!arg.away || C().day(arg.day).length || !ds.length) ? arg.day : (ds.find((d) => d <= arg.day) != null ? ds.find((d) => d <= arg.day) : arg.day); p.f.tab = 'day'; }   /* an absence that ended just after midnight: open on the last day with something in it */
       if (p.f.day == null) p.f.day = Sim().day();
       const C0 = C(), list = p.f.tab === 'fav' ? C0.favs() : C0.day(p.f.day), favN = C0.favs().length;

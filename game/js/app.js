@@ -157,7 +157,8 @@
     hud.cam = h('button.rail-btn', { 'aria-label': '鏡頭模式', on: { click: () => { haptic('tick'); rail(false); camSheet(); } } }, stk('camera'), h('small', null, '鏡頭'));
     hud.deco = h('button.rail-btn', { 'aria-label': '佈置模式', on: { click: () => { haptic('tick'); rail(false); setDecorate(!decorate); } } }, stk('sofa'), h('small', null, '佈置'));
     hud.railBtn = h('button.rail-btn.rail-toggle', { 'aria-label': '工具', 'aria-expanded': 'false', on: { click: () => { haptic('tick'); rail(!hud.rail.classList.contains('open')); } } }, stk('more'));
-    hud.rail = h('div.hud-rail', null, hud.railBtn, hud.cam, hud.deco);
+    hud.obs = h('button.rail-btn', { 'aria-label': '觀察模式', 'data-obs17': '1', on: { click: () => { haptic('tick'); rail(false); OC.Observe && OC.Observe.enter(); } } }, stk('eye'), h('small', null, '觀察'));   /* 17.2 */
+    hud.rail = h('div.hud-rail', null, hud.railBtn, hud.cam, hud.deco, hud.obs);
     hud.questT = h('b.ellipsis'); hud.questS = h('small.ellipsis'); hud.questIc = h('span.hud-qic');
     hud.quest = h('button.hud-quest', { 'aria-label': '今天的任務', hidden: true, on: { click: () => { haptic('tick'); tab('more'); } } }, hud.questIc, h('div.grow', null, hud.questT, hud.questS), icon('chev', 's'));
     // ≤ 6 permanent controls (name plate, weather, 3 tools, quest card); the bell only appears with notices.
@@ -524,6 +525,7 @@
     if (window.__ocInputLog) window.__ocInputLog.push(`onTap dlg=${!!dlgOpen} placing=${!!placing} decorate=${decorate} covered=${curTab}`);
     if (dlgOpen) { advanceDialogue(); return; }
     if (placing) return;
+    if (OC.Observe && OC.Observe.on) { OC.Observe.onTap(r); return; }   /* 17.2: watching — a character is followed (its card), nothing is done */
     if (observing) { stopObserve(); }
     const it = r.it;
     // 11.0: a tap on a tree / bush / flower patch shakes it (leaves come down, it rustles) — the OC keeps doing what it was doing
@@ -583,6 +585,7 @@
     }
   }
   function onLongPress(r) {
+    if (OC.Observe && OC.Observe.on) { OC.Observe.onTap(r); return; }
     haptic();
     const it = r.it;
     if (it && (it.type === 'mate' || it.type === 'self') && !placing && !dlgOpen) return startCarry(it.type === 'self' ? S().activeId : it.id);
@@ -1019,7 +1022,7 @@
     if (!covered || !world_rendered_once) { OC.Ambient.update(dt); Wd.frame(now, dt); world_rendered_once = true; updateOverlays(dt); positionMarker(); } else Wd.tickActors(dt);
     // life simulation: fixed steps fed with REAL elapsed time (independent of the fps cap)
     OC.Sim.update((now - lastSim) / 1000); lastSim = now;
-    OC.Events.update(dt); updateObserve(); OC.WorldUI.tick(dt, now / 1000);
+    OC.Events.update(dt); updateObserve(); if (OC.Observe) OC.Observe.tick(dt); OC.WorldUI.tick(dt, now / 1000);
     if (now - presT > 1000) { presT = now; syncPresence(); }
     OC.Stage.tick(dt); OC.Sound.tick(dt); OC.PetSync.tick(dt); if (curTab === 'island') OC.Requests.frame();
     if (OC.Budget && !paused) OC.Budget.tick(dt);
@@ -1131,7 +1134,7 @@
     OC.Progress.on((d) => OC.Quests.onEvent(d)); OC.Progress.on((d) => OC.Requests.onEvent(d)); OC.Progress.on((d) => OC.Growth.onEventAsp(d));
     OC.Sound.boot();
     St.on('life:skillUp', (e) => OC.Growth.onSkillUp({ oc: e.id, skill: e.skill, lv: e.lv }));
-    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Chronicle) OC.Chronicle.init(); if (OC.Away) OC.Away.init(); if (OC.Forecast) OC.Forecast.init(); if (OC.AwayUI) OC.AwayUI.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
+    if (OC.People) OC.People.init(); if (OC.Will) OC.Will.init(); if (OC.Food16) OC.Food16.init(); OC.Brain.init(lifeHooks); OC.Events.init(lifeHooks); if (OC.Arcs) OC.Arcs.init(); if (OC.Aware) OC.Aware.init(); if (OC.House16) OC.House16.init(); if (OC.Career16) OC.Career16.init(); if (OC.Outing16) OC.Outing16.init(); if (OC.Health16) OC.Health16.init(); if (OC.Theatre) OC.Theatre.wire(); if (OC.Guard) OC.Guard.init(); if (OC.Chronicle) OC.Chronicle.init(); if (OC.Away) OC.Away.init(); if (OC.Forecast) OC.Forecast.init(); if (OC.Observe) OC.Observe.init(); if (OC.AwayUI) OC.AwayUI.init(); if (OC.Fun) OC.Fun.init(); if (OC.Queue) OC.Queue.init(); if (OC.Island) OC.Island.init(); if (OC.Jobs) OC.Jobs.init(); if (OC.Life15) OC.Life15.init();
     OC.Sim.onStep((g) => OC.Places.growAll(g)); OC.Sim.onAbstract((g) => OC.Places.growAll(g));
     OC.Sim.lifeSeed();   /* 17.1: the seed of this island's absences lives in the save */
     OC.Sim.catchUp('boot');

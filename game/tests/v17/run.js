@@ -7,7 +7,9 @@
  *   backwards is not simulated · 7 the game cycle goes on while away (離開時暫停 stops it) · 8 outings happen and are settled while away,
  *   a day away is not a missed work day · 9 「你不在的時候」 and the timeline by real touch (open, long press = 收藏, filters, 繼續觀察)
  *   · 10 the end of a day you watched: a card and the day closed in the timeline · 11 background life off = the old eight hours
- *   · 12 the timeline: 「正在發生」 on top of today, a filter by place */
+ *   · 12 the timeline: 「正在發生」 on top of today, a filter by place
+ * 17.2 observation mode: 16 the switch by real touch (controls hidden, modes made 全自動 and put back, faces, the person card, a tap in the
+ *   world follows) · 17 speeds 1×–60× only while watching · 18 the camera goes to what happens; your own pick is kept · 19 the floor plan */
 const H = require('../life/harness.js'); const { check } = H;
 const only = process.argv.slice(2).map(Number); const want = (n) => !only.length || only.includes(n);
 (async () => {
@@ -206,6 +208,98 @@ const only = process.argv.slice(2).map(Number); const want = (n) => !only.length
         return { list: f.items.map((x) => [x.kind, x.at - f.base, x.text]), same, brains: st0 === st1, items: f.items.length, hit, off, on: on.length, onOk: on.every((x) => x.at > f.base && x.title && x.text), doing: Object.values(f.doing).map((L) => L.length), pkt1: pkt1 && pkt1.items.length, pkt2: pkt2 && pkt2.items.length, sent: !!sent, cleared };
       });
       check('15 背景預測：App 進入背景時先算好接下來 24 小時（算完存檔完全還原、畫面上的角色不受影響）；之後真的過這 24 小時，預測的大事在同一個時間發生；通知預設關閉、打開後最多 N 則；小工具每小時一句「大概在做什麼」；回到 App 就清掉', r.same && r.brains && r.items > 0 && r.hit === r.items && r.off === 0 && r.on > 0 && r.on <= 3 && r.onOk && r.doing.every((n) => n >= 20) && r.pkt1 === 0 && r.pkt2 > 0 && r.sent && r.cleared >= 1, r);
+    }
+    /* 17.2 observation mode */
+    const ctr = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
+    const tapSel = async (sel) => { const c = await ctr(sel); if (!c) return false; await page.touchscreen.tap(c[0], c[1]); return true; };
+    const calmObs = () => page.evaluate(async () => { if (OC.Observe.on) OC.Observe.leave(); for (const l of OC.UI.stack.slice()) l.close(); OC.App.tab('island'); if (OC.Events.current) OC.Events.end('t'); const S = OC.Store.s; S.life.ev.lastAny = Date.now() + 3.6e6; S.settings.timePaused = false;
+      if (OC.World.area.id !== 'isle') { OC.WorldUI.travel('isle', { instant: true }); await new Promise((r) => setTimeout(r, 2500)); }
+      for (const c of OC.Chars.all()) { c.life.loc = 'isle'; c.life.trip = null; c.status.onIsland = true; } OC.App.syncPresence(); await new Promise((r) => setTimeout(r, 1200)); });
+    if (want(16)) {
+      await calmObs();
+      const before = await page.evaluate(() => { const S = OC.Store.s, [a, b] = OC.Chars.all(); OC.Brain.setControl(a.id, 'manual'); OC.Brain.setControl(b.id, 'semi'); OC.Chars.setActive(a.id); OC.App.refreshActors(); S.settings.time = 'cycle'; OC.Sim.setSpeed(2);
+        return { a: a.id, b: b.id, ctl: OC.Chars.all().map((c) => c.life.control), speed: OC.Sim.speed(), active: S.activeId }; });
+      await page.waitForTimeout(600);
+      await page.evaluate(() => { for (const l of OC.UI.stack.slice()) l.close(); }); await page.waitForTimeout(400);
+      await tapSel('.rail-toggle');
+      await wait(() => { const r = document.querySelector('[data-obs17]').getBoundingClientRect(); const ok = r.width >= 44 && Math.abs(r.left - (window.__rl || 0)) < 0.5; window.__rl = r.left; return ok; }, 5000);   /* the rail has finished opening */
+      const dbg16 = await page.evaluate(() => { const b = document.querySelector('[data-obs17]'), r = b.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { r: [Math.round(r.left), Math.round(r.top), Math.round(r.width)], e: e && (e.tagName + '.' + String(e.className).slice(0, 40)), open: document.querySelector('.hud-rail').classList.contains('open'), stack: OC.UI.stack.length }; });
+      const railOk = await tapSel('[data-obs17]');
+      const entered = await wait(() => document.documentElement.classList.contains('obs17-on') && !!document.querySelector('.obs17 .obs17-p'));
+      const ui = await page.evaluate(() => { const vis = (s) => [...document.querySelectorAll(s)].some((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== 'hidden'); return { name: vis('.hud-me'), rail: vis('.hud-rail'), tabs: vis('.tabbar'), time: vis('.hud-time'), faces: document.querySelectorAll('.obs17-p').length, ctl: OC.Chars.all().map((c) => c.life.control) }; });
+      /* tap the other one's face: the camera follows, the card tells what they are doing, how they are, today and who they are close to */
+      await page.waitForTimeout(700);
+      await tapSel(`.obs17-p[data-oc="${before.b}"]`);
+      const card = await wait(() => { const c = document.querySelector('.obs17-card'); return c && !c.hidden && /現在/.test(c.textContent) && /精力/.test(c.textContent) && /今天/.test(c.textContent) && /和誰/.test(c.textContent); }, 4000);
+      const followed = await wait(() => OC.Observe.state.follow === OC.Chars.all()[1].id && !!OC.World.camTarget && OC.World.camTarget === OC.App.actorOf(OC.Chars.all()[1].id), 4000);
+      /* tapping a character in the world while watching = the same (nothing is done to it) */
+      await tapSel(`.obs17-p[data-oc="${before.b}"]`); const closedCard = await wait(() => { const c = document.querySelector('.obs17-card'); return c.hidden && c.getBoundingClientRect().height === 0; }, 3000);   /* the face again closes the card */
+      await page.evaluate((id) => { window.__ocInputLog = []; OC.Store.s.life.settings.autonomy = 'paused'; const bb = OC.Brain.get(id); if (bb.st === 'do') OC.Brain.finish(bb, 't'); if (bb.st === 'go') OC.Brain.abort(bb, 't'); const a = OC.App.actorOf(id), p = OC.World.nearestWalkable(200, 470, 40); if (p) { a.x = p.x; a.y = p.y; a.path = null; } OC.World.setAction(a, 'idle'); }, before.b);   /* standing on open ground (not on a bench) */
+      await page.waitForTimeout(1800);   /* the camera is on them: they stand in the middle */
+      const pt = await page.evaluate((id) => { const a = OC.App.actorOf(id), p = OC.World.project(a.x, a.y, OC.World.levelAt(a.x, a.y), 16); return [p.x, p.y]; }, before.b);
+      await page.touchscreen.tap(pt[0], pt[1]);
+      const worldTap = closedCard && await wait(() => OC.Observe.card === OC.Chars.all()[1].id && !document.querySelector('.obs17-card').hidden && !OC.Radial.open_ && !document.querySelector('.pick-card.on'), 4000);
+      const dbgTap = await page.evaluate(() => ({ card: OC.Observe.card, follow: OC.Observe.state.follow, ring: !!OC.Radial.open_, log: (window.__ocInputLog || []).slice(-4) }));
+      dbgTap.pt = pt; dbgTap.at = await page.evaluate((pt) => document.elementsFromPoint(pt[0], pt[1]).slice(0, 4).map((e) => e.tagName + '#' + e.id + '.' + String(e.className).slice(0, 30)), pt);
+      await tapSel('[data-obs="end"]');
+      await page.evaluate(() => { OC.Store.s.life.settings.autonomy = 'full'; window.__ocInputLog = null; });
+      const left = await wait(() => !document.documentElement.classList.contains('obs17-on') && !document.querySelector('.obs17'));
+      const after = await page.evaluate(() => ({ ctl: OC.Chars.all().map((c) => c.life.control), speed: OC.Sim.speed(), active: OC.Store.s.activeId, focus: OC.World.camTarget, tabs: getComputedStyle(document.querySelector('.tabbar')).visibility }));
+      check('16 觀察模式（真實觸控）：工具把手 →「觀察」→ 操作按鈕與導覽列收起、只留時間與人物條；你操控的（和手動的）角色改成全自動；點頭像＝鏡頭跟著那個人、人物卡寫現在在做什麼、精力／飽腹／心情、今天的事、和誰；在世界裡點角色也是看他（不會打開選單）；「結束觀察」恢復原本的操控模式、速度與操控的角色',
+        railOk && entered && !ui.name && !ui.rail && !ui.tabs && ui.time && ui.faces === 2 && ui.ctl.every((m) => m === 'auto' || m === 'semi') && ui.ctl[0] === 'auto' && card && followed && worldTap && left && JSON.stringify(after.ctl) === JSON.stringify(before.ctl) && after.speed === before.speed && after.active === before.active && !after.focus && after.tabs !== 'hidden',
+        { dbg16, before, ui, card, followed, worldTap, dbgTap, after: Object.assign({}, after, { focus: !!after.focus }) });
+    }
+    if (want(17)) {
+      await calmObs();
+      const r0 = await page.evaluate(() => { const S = OC.Store.s; S.settings.time = 'cycle'; OC.Sim.setSpeed(1); OC.Observe.enter(); return { speed: OC.Sim.speed() }; });
+      await page.waitForTimeout(800);
+      const segs = await page.evaluate(() => [...document.querySelectorAll('.obs17-speed button')].map((b) => b.textContent));
+      await tapSel('.obs17-speed button:last-child');
+      const fast = await wait(() => OC.Sim.speed() === 60 && OC.World.walkMul === 2, 3000);
+      const g0 = await page.evaluate(() => [OC.Sim.now(), performance.now()]); await page.waitForTimeout(2500);
+      const rate = await page.evaluate((g0) => (OC.Sim.now() - g0[0]) / ((performance.now() - g0[1]) / 1000), g0);   /* game minutes per real second */
+      const outside = await page.evaluate(() => { OC.Observe.leave(); const back = OC.Sim.speed(), walk = OC.World.walkMul; OC.Sim.setSpeed(60); const no60 = OC.Sim.speed(); OC.Store.s.settings.timeSpeed = 60; const stale = OC.Sim.speed(); OC.Sim.setSpeed(1); return { back, walk, no60, stale }; });
+      const real = await page.evaluate(() => { OC.Store.s.settings.time = 'real'; OC.Observe.enter(); return null; });
+      await page.waitForTimeout(800);
+      const realUi = await page.evaluate(() => ({ seg: !!document.querySelector('.obs17-speed'), btn: !!document.querySelector('[data-obs="time"]') }));
+      await page.evaluate(() => { OC.Observe.leave(); OC.Store.s.settings.time = 'cycle'; });
+      check('17 觀察時的時間速度：遊戲循環可選 1×、2×、5×、10×、30×、60×（60× ＝ 每秒約 60 遊戲分鐘，走路也快一點）；離開觀察回到原本的速度，30×／60× 在觀察以外不能用；真實時間時改成一個說明按鈕',
+        JSON.stringify(segs) === JSON.stringify(['×1', '×2', '×5', '×10', '×30', '×60']) && fast && rate > 35 && rate < 75 && outside.back === 1 && outside.walk === 1 && outside.no60 === 1 && outside.stale === 1 && !realUi.seg && realUi.btn,
+        { segs, fast, rate: Math.round(rate), outside, realUi });
+    }
+    if (want(18)) {
+      await calmObs();
+      const ids = await page.evaluate(() => { const [a, b] = OC.Chars.all(); for (const c of [a, b]) OC.Brain.setControl(c.id, 'semi'); OC.Store.s.settings.time = 'cycle'; OC.Sim.setSpeed(1); OC.Observe.enter(); OC.Observe.follow(a.id); return [a.id, b.id]; });
+      await page.waitForTimeout(700);
+      /* something happens between the two: the director goes there by itself */
+      const started = await page.evaluate(async (ids) => { const [ba, bb] = ids.map((id) => OC.Brain.get(id)); for (const b of [ba, bb]) { [...b.holds].forEach((x) => OC.Brain.unhold(b.id, x)); if (b.st === 'do') OC.Brain.finish(b, 't'); if (b.st === 'go') OC.Brain.abort(b, 't'); b.st = 'think'; b.thinkAt = 1e9; }
+        const ok = OC.Brain.Social.start(bb, ba, 'chat'); return ok; }, ids);
+      const talking = await wait(() => OC.Brain.convs.some((c) => c.st === 'talk'), 20000);
+      const directed = await wait(() => { const h = OC.Observe.hot(); return h.length && /在/.test(h[0].why) && /在/.test(document.querySelector('.obs17-cap').textContent) && OC.Observe.state.follow === h[0].id; }, 15000);
+      const cap = await page.evaluate(() => document.querySelector('.obs17-cap').textContent);
+      /* picking someone yourself: the director leaves them alone */
+      await tapSel(`.obs17-p[data-oc="${ids[0]}"]`); const picked = await page.evaluate(() => OC.Observe.state.follow);
+      await page.waitForTimeout(7000); const kept = await page.evaluate(() => OC.Observe.state.follow);
+      await page.evaluate(() => OC.Observe.leave());
+      check('18 自動鏡頭：島上有事（兩個人聊起來）鏡頭自己過去、上方寫「誰和誰在聊天」；自己點了某個人之後，自動鏡頭不會馬上把鏡頭搶走',
+        started && talking && directed && /在/.test(cap) && picked === ids[0] && kept === ids[0], { started, talking, directed, cap, picked, kept });
+    }
+    if (want(19)) {
+      await calmObs();
+      const r = await page.evaluate(() => { const [a, b] = OC.Chars.all(); OC.Chars.setActive(a.id); OC.App.refreshActors();
+        OC.Homes.assign(b, 'coral'); b.life.loc = 'home'; b.life.trip = null; b.life.pos = { area: 'home', x: 150, y: 400 }; OC.App.syncPresence();
+        OC.Observe.enter(); OC.Pages.open('plan17', { place: 'home' }); return { a: a.id, b: b.id, homes: OC.Observe.homes(), dots: OC.Observe.dots('home').map((d) => [d.id, d.exact]) }; });
+      await page.waitForTimeout(900);
+      const page1 = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('[data-plan]')].map((e) => e.dataset.plan), out: [...document.querySelectorAll('[data-plan-oc]')].map((e) => e.dataset.planOc), drawn: (() => { const cv = document.querySelector('.plan17-cv'); const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; })() }));
+      const dot = await page.evaluate((id) => { const p = OC.Pages.pages.plan17, cv = p.cv.getBoundingClientRect(), hit = p.hits.find((x) => x.id === id); return hit ? [cv.left + hit.x, cv.top + hit.y] : null; }, r.b);
+      if (dot) await page.touchscreen.tap(dot[0], dot[1]);
+      const went = await wait((id) => OC.World.area && OC.World.area.id === 'home' && !document.documentElement.classList.contains('page-open') && OC.Observe.state.follow === OC.Chars.all()[1].id, 9000);
+      const mid = await page.evaluate(() => ({ area: OC.World.area.id, active: OC.Store.s.activeId }));
+      await page.evaluate(() => OC.Observe.leave());
+      const back = await wait((id) => OC.Store.s.activeId === OC.Chars.all()[0].id && OC.World.area && OC.World.area.id === 'isle', 9000);
+      check('19 戶型總覽：住處的 2D 俯瞰圖（每間一個分頁），圓點標出在家的人（沒在畫面上的是空心＝大概位置），不在家的列在下面；點圓點＝關掉頁面、鏡頭去那個人那裡（別的地點就過去）；結束觀察回到原本操控的角色',
+        r.homes.includes('home') && r.dots.some((d) => d[0] === r.b && d[1] === false) && page1.tabs.length === r.homes.length && page1.out.includes(r.a) && page1.drawn > 1000 && !!dot && went && back,
+        { r, page1, dot: !!dot, went, mid, back });
     }
     /* last: it takes the 3D view down for good */
     if (want(3)) {

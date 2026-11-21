@@ -747,3 +747,54 @@ html.page-open .toast-wrap { top: auto; bottom: calc(var(--sab) + var(--tabbar-h
 .rp17.mini .rp17-feed { display: none; }
 html.rp17-island #hud, html.rp17-island .tabbar { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .rp17-feed .aw17-line { animation: none; } }
+
+/* ---------- 17.2 observation mode (OC.Observe) ---------- */
+html.obs17-on #hud > :not(.hud-time):not(.hud-sys), html.obs17-on .tabbar, html.obs17-on .ctl-mark, html.obs17-on .hud-queue, html.obs17-on .obs-bar { visibility: hidden; pointer-events: none; }
+html.obs17-on .hud-time { top: calc(var(--sat) + 12px); }
+html.page-open .obs17, html.rp17-island .obs17 { visibility: hidden; }
+.obs17 { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+.obs17 button { pointer-events: auto; }
+.obs17-top { position: absolute; top: calc(var(--sat) + 12px); right: 12px; display: flex; gap: 8px; }
+.obs17-btn { min-width: 52px; min-height: 52px; padding: 4px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: var(--r-m); background: var(--hud-glass); color: var(--ink); box-shadow: 0 3px 0 var(--lip), var(--shadow-1); transition: transform var(--t-press); }
+.obs17-btn small { font-size: var(--fs-xs, 11px); color: var(--ink-2); }
+.obs17-btn.end { background: var(--sun); }
+.obs17-btn.end small { color: var(--ink); }
+.obs17-btn:active, .obs17-p:active { transform: translateY(2px); }
+.obs17-cap { position: absolute; top: calc(var(--sat) + 74px); left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 6px 14px; border-radius: 999px; background: var(--balloon, var(--surface)); color: var(--balloon-ink, var(--ink)); font-size: var(--fs-s); box-shadow: var(--shadow-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obs17-dock { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(var(--sab) + 10px); display: flex; flex-direction: column; gap: 8px; }
+.obs17-bar { pointer-events: auto; background: var(--surface); border-radius: var(--r-l); padding: 8px 10px; box-shadow: 0 3px 0 var(--lip), var(--shadow-2); display: flex; flex-direction: column; gap: 8px; }
+.obs17-ppl { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.obs17-ppl::-webkit-scrollbar { display: none; }
+.obs17-p { flex: 0 0 64px; min-height: 64px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 2px; border-radius: var(--r-m); color: var(--ink); background: transparent; transition: transform var(--t-press), background var(--t-fast); }
+.obs17-p b { font-size: var(--fs-s); max-width: 60px; }
+.obs17-p small { font-size: 10px; color: var(--ink-3); max-width: 60px; min-height: 1.2em; }
+.obs17-av { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--line-strong); display: block; }
+.obs17-av canvas { width: 100%; height: 100%; display: block; }
+.obs17-p.on { background: var(--surface-2); }
+.obs17-p.on .obs17-av { box-shadow: inset 0 0 0 3px var(--sun); }
+.obs17-p.away .obs17-av { opacity: .55; }
+.obs17-ctl { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.obs17-ctl .chip-btn { flex: 0 0 auto; }
+.obs17-speed { flex: 1 1 auto; flex-wrap: nowrap; }
+.obs17-card { pointer-events: auto; background: var(--surface); color: var(--ink); border-radius: var(--r-l); padding: 12px 14px; box-shadow: 0 3px 0 var(--lip), var(--shadow-2); max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; animation: obs17in var(--t-base) var(--spring); }
+@keyframes obs17in { from { opacity: 0; transform: translateY(10px); } }
+.obs17-card[hidden], .obs17-cap[hidden] { display: none; }   /* the class sets display: flex, which would beat the hidden attribute */
+.obs17-ch { display: flex; align-items: center; gap: 8px; }
+.obs17-ch b { font-size: var(--fs-l); }
+.obs17-ch .muted { flex: 1; font-size: var(--fs-s); }
+.obs17-x { min-width: 44px; min-height: 44px; border-radius: 50%; font-size: 22px; color: var(--ink-2); background: var(--surface-2); }
+.obs17-k { display: inline-block; min-width: 3em; margin-right: 6px; font-size: var(--fs-s); color: var(--leaf, var(--accent)); font-weight: 700; }
+.obs17-needs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.obs17-need { display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-s); }
+.obs17-need i { display: block; height: 7px; border-radius: 4px; background: linear-gradient(90deg, var(--accent) var(--v), var(--surface-3) var(--v)); }
+.obs17-need small { color: var(--ink-3); }
+.obs17-sec ul { margin: 4px 0 0; padding-left: 1.1em; font-size: var(--fs-s); display: flex; flex-direction: column; gap: 2px; }
+.obs17-sec small.num { color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { .obs17-card { animation: none; } }
+/* floor plan */
+.plan17-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.plan17-box { background: var(--surface); border-radius: var(--r-l); padding: 8px; box-shadow: 0 3px 0 var(--lip), var(--shadow-1); }
+.plan17-cv { width: 100%; display: block; touch-action: manipulation; }
+.plan17-note { margin-top: 10px; font-size: var(--fs-s); }
+.plan17-out { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plan17-out b { width: 100%; font-size: var(--fs-s); color: var(--ink-2); }

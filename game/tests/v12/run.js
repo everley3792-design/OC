@@ -186,7 +186,7 @@ const { check, wait } = H;
       const open = await page.evaluate((q) => ({ n: eval(q), exp: document.querySelector('.rail-toggle').getAttribute('aria-expanded') }), vis('.hud-rail button'));
       await page.evaluate(() => OC.App.rail(false)); await wait(page, 300);
       const shut = await page.evaluate((q) => eval(q), vis('.hud-rail button'));
-      check('7b 點工具把手：展開背包、鏡頭、佈置（共 4 個鈕），再收起只剩把手', open.n === 4 && open.exp === 'true' && shut === 1, { open, shut });
+      check('7b 點工具把手：展開背包、鏡頭、佈置、觀察（共 5 個鈕；17.2 加了觀察），再收起只剩把手', open.n === 5 && open.exp === 'true' && shut === 1, { open, shut });
       const tb = await page.evaluate(() => [...document.querySelectorAll('.tab')].map((t) => ({ on: t.classList.contains('on'), label: parseFloat(getComputedStyle(t.querySelector('span:not(.stk)')).opacity), icon: t.querySelector('.stk').getBoundingClientRect().width > 0 })));
       check('7c 導覽列：五個圖示都看得到，而且每個分頁都有文字（14.0）', tb.length === 5 && tb.every((t) => t.icon) && tb.every((t) => t.label > 0.5), tb); /* 14.0: every tab shows its word (icons alone were hard to tell apart) */
       await page.evaluate(() => document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); await wait(page, 7500);   /* a touch restarts the 6 s quiet timer (removing the class by hand left no timer when steps 7a–7c took longer than 6 s) */

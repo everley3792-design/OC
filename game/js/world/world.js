@@ -211,7 +211,7 @@
     let moving = false;
     const busy = a.act && a.act.priority >= 5 && (a.act.until == null || a.t < a.act.until);
     if (a.path && a.path.length && !busy) {
-      const p = a.path[0], dx = p.x - a.x, dy = p.y - a.y, d = Math.hypot(dx, dy), step = a.speed * dt;
+      const p = a.path[0], dx = p.x - a.x, dy = p.y - a.y, d = Math.hypot(dx, dy), step = a.speed * dt * walkMul;
       if (d <= step) { a.x = p.x; a.y = p.y; a.path.shift(); if (!a.path.length) { a.path = null; a.onArrive && (a.onArrive(a), (a.onArrive = null)); } }
       else { a.x += (dx / d) * step; a.y += (dy / d) * step; }
       if (d > 0.01) { const sd = designToScreenDir(dx, dy), sm = Math.hypot(sd.x, sd.y) || 1; a.tFace = clamp((sd.x / sm) * 1.1, -1, 1); a.tBack = sd.y < -0.45 * sm ? 1 : 0; }
@@ -667,6 +667,8 @@
     if (bbChanged) { bbRes = bbTarget(); actors.forEach(resizeActorCanvas); }
   }
   let last = 0, envCur = null, camTarget = null, seasonId = null;
+  let walkMul = 1;   /* 17.2: observation mode at a fast time speed walks a little faster too (paths only) */
+  function setWalkMul(v) { walkMul = v > 0 && v < 4 ? v : 1; }
   /** move actors without rendering (the world is covered by a page) — keeps the life simulation moving */
   function tickActors(dt) { if (!area) return; for (const a of actors.slice()) updateActor(a, dt); }
   /** camera follows another actor (observe / important events); null = back to the player */
@@ -729,7 +731,7 @@
     swayInfo(s) { return s && s.c ? { dx: s.c.x, dy: s.c.z * SIN } : null; },
     get cloudsVisible() { return !!(env && env.fx && env.fx.clouds && env.fx.clouds.visible); },
     get contacts() { let n = 0; if (root) root.traverse((o) => { if (o.userData && o.userData.contact) n += o.isInstancedMesh ? o.count : 1; }); return n; },
-    init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H, dx: x.c.x, dy: x.c.z * SIN }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
+    init, resize, setQuality, loadArea, frame, tickActors, focus, camTo, setWalkMul, get walkMul() { return walkMul; }, actor, removeActor, setAction, poseOf, walkTo, jump, shakeAt, shake, puff, get fx() { return { leaves: leaves.length, puffs: puffs.length, drawnLeaves: leafMesh ? leafMesh.count : 0, leafT: leaves.length ? +Math.max(...leaves.map((l) => l.t)).toFixed(2) : 0, drawnPuffs: puffMesh ? puffMesh.count : 0, shaking: sways.filter((x) => x.shake).length, calls: R ? R.info.render.calls : 0 }; }, swayTargets() { return sways.map((x) => { shakeAt(-1e4, -1e4); if (!x.c) return null; _pv.copy(x.c).project(cam); return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * H, dx: x.c.x, dy: x.c.z * SIN }; }).filter(Boolean); }, findPath, walkable, levelAt, groundY, nearestWalkable, pick,
     screenToDesign, project, setZoom, pick, spawnDrop, removeDrop, addFurniture, removeFurniture, canPlace, setGhost, moveGhost, furnRect, buildGrid,
     V3, Zof, SIN, COS, HY, CELL,
     get root() { return root; }, get season() { return seasonId; }, get camCenter() { return { x: camX + panX, y: camY + panY }; }, get actors() { return actors; }, get interacts() { return interacts; }, get drops() { return drops; }, get furn() { return furn; }, get ghost() { return ghost; }, get camTarget() { return camTarget; }, get area() { return area; }, get env() { return envCur; }, get zoom() { return zoom; }, get renderer() { return R; }, get quality() { return quality; },

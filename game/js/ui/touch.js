@@ -150,6 +150,7 @@
     if (cur.engaged && !cur.lifted) { t = cur; endStroke(false); t = null; return; }
     if (!cur.lifted) {
       if (cur.moved) return;                              // a slip: nothing else
+      if (OC.Observe && OC.Observe.on) { OC.Observe.pick(cur.id, true); return; }   /* 17.2: watching — a tap shows who it is (the card), it opens no menu */
       A().menuFor({ type: cur.id === OC.Store.s.activeId ? 'self' : 'mate', id: cur.id }, A().screenOf(cur.a));
       return;
     }

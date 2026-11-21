@@ -44,8 +44,9 @@
 - **17.0（0.17.0-alpha）灰色畫面與全面檢查**：`OC.Guard`（`ui/guard17.js`）安全網＋紀錄；遮罩沒有模糊、點遮罩關掉它的視窗；視窗下滑可靠；腳本過場收起黑邊；3D 中斷的重新載入卡片；頁面開著時卡片／提示移開。**17.1–17.6 的計畫（含所有未完成項目）在 `docs/v17-plan.md`**。紀錄：`docs/v17.0-report.md`。
 - **17.1（0.17.1-alpha）背景生活**：離開時大家照常生活（`OC.Sim.awayRun`：虛擬時鐘、最多 30 天、固定的亂數、遊戲循環照現實時間前進＋「離開時暫停」、時間往回調不推算）；時間線 `OC.Chronicle`（回憶／活動／關係變化各寫一條、收藏、篩選、「正在發生」）；「你不在的時候」`OC.Away`＋`OC.AwayUI`（頁面 `chron17`）；一天結束的卡片。離開時不給星幣物品、不算缺勤、不跳通知。（離開時的生病、冷戰、回放、Android 背景通知在 17.1.1 補上；事件與來訪離開時仍不發生。） 驗收：`node game/tests/v17/run.js`。紀錄：`docs/v17.1-report.md`。
 - **17.1.1（0.17.1.1-alpha）背景生活補完**：離開時也會生病／好起來、冷戰開始到和好或疏遠、背後說壞話、角色自己約出遊（不下廚：會產生物品；不傳染、不調解、不告別）；回放一天（`OC.AwayUI.Replay`：1×–1024×、跳到時刻、「在島上看」＝泡泡＋鏡頭，不改資料）；背景預測 `OC.Sim.forecast`／`OC.Forecast`（App 進背景時乾跑 24 小時再完整還原）→ Android 通知（預設關，`tools/Forecast.kt`＋`core:pet` 的 `ForecastPlan`）與小工具「大概在做什麼」；一天結束卡片加生日與出遊。**原生部分未經實機驗證。** 紀錄：`docs/v17.1.1-report.md`。
+- **17.2（0.17.2-alpha）觀察模式**：`OC.Observe`（`ui/observe17.js`）——工具把手的「觀察」：操作按鈕與導覽列收起、只留時間／時間線／戶型／人物條；操控的角色（與手動的）改成全自動，結束時恢復操控模式、速度、操控的角色（`life.obs17.prev`）；人物條＋人物卡（現在、精力／飽腹／心情、今天、和誰）；自動鏡頭（事件＞聚會＞聊天＞情緒，自己點了 40 秒內不搶）；遊戲循環 1×–60×（30／60 只在觀察時）；戶型總覽頁 `plan17`（三間住處的 2D 俯瞰圖與圓點，點了就去看）。**沒有樓層（現在的住處都是一層）、手機上未驗證。** 驗收：`node game/tests/v17/run.js 16 17 18 19`。紀錄：`docs/v17.2-report.md`。
 - **路線圖**：MVP 17.1–17.4（`docs/v17-roadmap.md`，玩家已同意全部建議：觀察與操控並存、離開不給星幣物品、不做雲端、城市只決定時區與日出日落、最多推算 30 天）→ 階段二 18.x、階段三 19.x（`docs/v18-rebuild-plan.md`：桌寵分層狀態機與桌面物件、新設計語言逐頁替換「島日和」——仍然只有一種風格、美術方向不變）。
-- 下一步見 **`docs/v17-roadmap.md`**（17.1 背景生活〔已做，見上〕 → 17.2 觀察模式 → 17.3 每日結算的關係 → …；參考《角色觀察屋》只取玩法原則，不用它的文字、介面圖形、戶型或素材），17.0 的檢查與未完成清單在 `docs/v17-plan.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
+- 下一步見 **`docs/v17-roadmap.md`**（17.1 背景生活、17.2 觀察模式〔已做，見上〕 → 17.3 每日結算的關係 → 17.4 角色與日常的設定 → …；參考《角色觀察屋》只取玩法原則，不用它的文字、介面圖形、戶型或素材），17.0 的檢查與未完成清單在 `docs/v17-plan.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
 - 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
 
 ## 目錄
@@ -57,6 +58,7 @@ game/                 正式遊戲（離線網頁，打包進 APK assets）。�
   js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
   js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
   js/life/chronicle17.js OC.Chronicle（17.1 時間線）  js/life/away17.js OC.Away（17.1 背景生活）  js/life/forecast17.js OC.Forecast（17.1.1 背景預測）  js/ui/away17ui.js OC.AwayUI（「你不在的時候」、頁面 chron17、一天結束的卡片）
+  js/ui/observe17.js  OC.Observe（17.2 觀察模式、人物條與人物卡、自動鏡頭、戶型總覽頁 plan17）
   js/ui/guard17.js    OC.Guard（17.0 畫面安全網）  js/ui/theatre16.js OC.Theatre  js/life/health16.js OC.Health16／OC.Feud16
   js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
   css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
@@ -124,7 +126,7 @@ node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（�
 node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
 cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
 cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.1.1-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
+#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.2-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
 cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
 ```
 測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
@@ -286,3 +288,10 @@ cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + 
 - **17.1.1 離開時的系統**：要在離開時也發生的系統，在 `Sim.onAbstract` 裡檢查 `o.away` 跑抽象版（不讀 `Brain` 的畫面狀態、計數器用另一組並在 `away:begin` 歸零），跨日用 `Sim.onAwayDay`；會產生星幣／物品、需要畫面位置或要玩家回答的不跑（下廚、傳染、調解聚會、事件、來訪、告別）。`Store.emit('away:begin', { dry })`：`dry` 為真是預測，不得動到畫面上的角色。
 - **17.1.1 背景預測**（`OC.Sim.forecast(hours, fn)`）：用 `Store.exportJSON` 快照、乾跑 `awayRun`、`fn` 讀結果、`Store.restore` 原地還原（保留同一個存檔物件）。乾跑中 `Sim.dry` 為真：不送 `life:offline`、不跳任何東西。通知只排遊戲給的（原生不自己判斷大事）；預設關閉，打開時才請求通知權限；回到 App 一律 `forecastClear`。判斷規則改 `core/pet/ForecastPlan.kt` 並補單元測試。
 - **17.1.1 回放**：`OC.AwayUI.Replay` 只讀時間線；「在島上看」只用想法泡泡（`thought: true`，不出聲）和鏡頭，最快 64×；`OC.App.tab()` 會關掉所有層，切到島上前先把回放的層移出堆疊再放回。回放開著時 `Stage.card` 等待。
+- **17.2 觀察模式**（`OC.Observe`）：
+  - 進出只經 `Observe.enter()`／`leave()`；改過的操控模式記在 `life.obs17.prev.ctl`，`leave()` 只把**還是 `auto`** 的改回去（觀察中玩家自己改過的不動）；速度與操控的角色也一起恢復。
+  - 根元素的 class 是 `obs17-on`（**不要**用 `obs17`：那是觀察列本身的 class，根元素會被套上 `pointer-events: none`）。有 `display` 的元件用 `hidden` 時要另寫 `[hidden] { display: none }`。
+  - 觀察中點角色＝`Observe.pick`（`app.js` 的 `onTap`／`onLongPress` 與 `touch.js` 的放開都先問 `OC.Observe.on`）；新的「點角色就做事」的入口也要先問。
+  - 30×／60× 只在觀察時（`Sim.speed()` 檢查 `OC.Observe.on`，`setSpeed(v, { obs: true })`）；高速時的走路倍率只經 `World.setWalkMul`（只影響路徑，不影響動作與時間）。
+  - 自動鏡頭只讀狀態（`Observe.hot()`）、只看畫面上的人、`html.cinema` 時不插手；不改任何資料。看別的地點的人一律經 `Observe.visit`（`Chars.setActive`＋`refreshActors`，不移動任何人）。
+  - 戶型總覽只畫 `OC.Areas[id].room` 與 `OC.Places.room(id)`；不在畫面上的人用 `c.life.pos`（同一個地點時）或排在房間中間，畫成空心。

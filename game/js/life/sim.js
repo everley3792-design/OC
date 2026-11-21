@@ -33,7 +33,9 @@
   const realGm = (t = Date.now()) => (t - new Date(t).getTimezoneOffset() * 60000) / 60000;
   function L() { return S().life; }
   function mode() { const t = S().settings.time; return t === 'cycle' ? 'cycle' : t === 'real' ? 'real' : 'preset'; }
-  function speed() { const v = S().settings.timeSpeed; return SPEEDS.includes(v) ? v : 1; }
+  const FAST = [30, 60];   /* 17.2: only while observing (OC.Observe); leaving the mode puts the old speed back */
+  const watching = () => !!(OC.Observe && OC.Observe.on);
+  function speed() { const v = S().settings.timeSpeed; return SPEEDS.includes(v) || (FAST.includes(v) && watching()) ? v : 1; }
   /** game minutes per real second */
   function rate() { return mode() === 'cycle' ? speed() : 1 / 60; }
   function now() { const c = L().clock; if (mode() !== 'cycle' && !virtual) c.gm = Math.max(c.gm || 0, realGm()); return c.gm; }   /* 17.1: during an absence the clock is the simulated one */
@@ -49,7 +51,7 @@
     const c = L().clock; if (m === 'cycle' && mode() !== 'cycle') { c.gm = Math.max(c.gm || 0, realGm()); if (c.day0 == null) c.day0 = Math.floor(c.gm / 1440); }
     S().settings.time = m; OC.Store.touch('settings', { k: 'time', v: m });
   }
-  function setSpeed(v) { S().settings.timeSpeed = SPEEDS.includes(v) ? v : 1; OC.Store.touch('settings', { k: 'timeSpeed', v }); }
+  function setSpeed(v, o) { S().settings.timeSpeed = SPEEDS.includes(v) || (o && o.obs && FAST.includes(v)) ? v : 1; OC.Store.touch('settings', { k: 'timeSpeed', v }); }
 
   // ---------------- scheduler ----------------
   function onStep(fn) { steps.push(fn); }
