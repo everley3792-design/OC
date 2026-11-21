@@ -24,10 +24,10 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         app.zone("card:body", 0f, y, W, h)
         // ---- who
         Widgets.face(g, t, app.charImg(ws.libOf(p), 256), G + 30, y + 52, 26f)
-        g.text(Widgets.fit(g, p.name, Dim.FS_L, W - 160), G + 68, y + 48, Dim.FS_L, t.ink)
+        g.text(Widgets.fit(g, p.name, Dim.FS_L, W - 210), G + 68, y + 48, Dim.FS_L, t.ink)
         val room = sim.house.rooms.firstOrNull { it.id == p.room }?.zh ?: ""
         g.text("${sim.moodLabel(p)}・住在$room" + if (!p.adult) "・未成年" else "", G + 68, y + 72, Dim.FS_S, t.ink2)
-        Widgets.round(g, app, "card:edit", W - G - 24, y + 48, 20f, "edit"); Widgets.round(g, app, "card:rels", W - G - 74, y + 48, 20f, "people")
+        Widgets.round(g, app, "card:edit", W - G - 24, y + 48, 20f, "edit"); Widgets.round(g, app, "card:rels", W - G - 74, y + 48, 20f, "people"); Widgets.round(g, app, "card:desk", W - G - 124, y + 48, 20f, "phone")
         Widgets.sky(g, t, sim.moodSky(p), G + 50, y + 34, 9f)
         for (i in 0 until 5) Widgets.heart(g, G + 74 + i * 15f, y + 84, 4.2f, if (p.affinity >= (i + 1) * 20 - 10) 0xFFF0705A.toInt() else t.lip)
         val sp = listOfNotNull(p.spec.species.takeIf { it != "未知" }, "喜歡被摸${p.found.joinToString("、")}".takeIf { p.found.isNotEmpty() }).joinToString("・")
@@ -81,6 +81,7 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
     override fun tap(id: String) {
         if (id == "card:edit") { edit(); return }
         if (id == "card:rels") { rels(); return }
+        if (id == "card:desk") { val p = ws.sim.person(this.id) ?: return; app.closeOverlay(); app.show(DeskSheet(ws.slotId, p.id, p.name) { ws.sim.person(this.id)?.desk == true }); return }
         if (id.startsWith("feed:")) { val msg = ws.sim.feed(this.id, id.removePrefix("feed:")); app.closeOverlay(); if (msg.isNotEmpty()) app.toast(msg) }
     }
 

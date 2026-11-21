@@ -22,11 +22,13 @@ import kotlin.math.min
  * Dragging the empty floor pans, two fingers zoom. Opening the world first catches up the time you were away (plan J-05).
  */
 class WorldScreen(val slotId: String) : Screen() {
-    var world: World? = null; private set
+    private var open: WorldHost.Open? = null
+    val world: World? get() = open?.world
     lateinit var sim: LifeSim; private set
+    private val incoming = ArrayList<app.ocshimeji.sim.life.SimEvent>()
+    private val listener: (app.ocshimeji.sim.life.SimEvent) -> Unit = { incoming += it }
     private lateinit var view: HouseView
     var failed: String? = null; private set
-    private var playT = 0f; private var saveT = 0f
     private val chars = HashMap<String, LibChar?>()
     fun libOf(p: Person): LibChar? = chars.getOrPut(p.libId) { app.saves.libChar(p.libId) }
     private val looks = HashMap<String, Look>()
@@ -42,35 +44,20 @@ class WorldScreen(val slotId: String) : Screen() {
     override val animating get() = true
     override val fps get() = if (world == null) 30 else if (touch != null || pinch != null || sim.life.people.any { sim.body(it.id).flying || sim.body(it.id).held }) 60 else 30
     override fun enter() {
-        val w0 = try { app.saves.loadWorld(slotId) } catch (e: IllegalArgumentException) { failed = e.message; null }
-        if (w0 == null) { if (failed == null) failed = "找不到這個存檔"; return }
-        val w = if (w0.life == null) app.saves.upgradeM0(slotId, w0, app.platform.realMinute()) else w0
-        world = w; sim = LifeSim(w.life!!); view = HouseView(sim.house)
+        val o = try { app.host.acquire(slotId) } catch (e: IllegalArgumentException) { failed = e.message; null } ?: return
+        open = o; sim = o.sim; view = HouseView(sim.house); o.listeners += listener; o.screenActive = true
+        if (!app.platform.deskRunning(slotId) && o.users == 1) for (p in sim.onDesk) sim.fromDesk(p.id)   /* the system stopped the desktop: they come home */
         catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName.ifBlank { app.saves.slot(slotId)?.name ?: "" })) }
         if (!app.saves.flag("tip:touch")) tip = true
     }
-    override fun leave() { flush() }
-    override fun pause() { flush() }
-    /** back from the background: the time that passed is caught up like an absence */
-    override fun wake() { if (world == null) return; catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName)) } }
+    override fun leave() { val o = open ?: return; o.listeners -= listener; o.screenActive = false; app.host.release(slotId); open = null }
+    override fun pause() { open?.let { it.screenActive = false; app.host.save(it) } }
+    /** back from the background: the time that passed is caught up like an absence (the desktop may have kept it going) */
+    override fun wake() { val o = open ?: return; o.screenActive = true; catchUp()?.let { app.show(AwaySheet(it, sim.life.homeName)) } }
 
     /** how far the world is behind: real time since it was last watched (away time runs at 1×); ≥ 60 game minutes = a summary */
-    private fun catchUp(): AwaySummary? {
-        val life = sim.life; val nowMs = app.platform.now()
-        var target = life.minute + max(0.0, (nowMs - life.lastRealMs) / 60000.0)
-        if (life.clockMode == "REAL") target = max(target, app.platform.realMinute())
-        life.lastRealMs = nowMs
-        if (target - life.minute < 1) return null
-        val big = target - life.minute >= 60
-        val s = sim.catchUp(target, summarize = big); flush()
-        return if (big) s else null
-    }
-    fun flush() {
-        val w = world ?: return; val s = playT.toLong(); playT -= s
-        sim.life.lastRealMs = app.platform.now()
-        world = w.copy(life = sim.life, minute = sim.life.minute, clockMode = sim.life.clockMode)
-        app.saves.saveWorld(slotId, world!!, s); saveT = 0f
-    }
+    private fun catchUp(): AwaySummary? = open?.let { app.host.catchUp(it) }
+    fun flush() { open?.let { app.host.save(it) } }
 
     // ---------------- frame ----------------
     private class Bubble(val text: String, val born: Float)
@@ -94,16 +81,14 @@ class WorldScreen(val slotId: String) : Screen() {
             g.text("這個存檔打不開", W / 2, H / 2 - 24, Dim.FS_L, t.ink, FontKind.UI, Align.CENTER); g.text(Widgets.fit(g, failed ?: "", Dim.FS_S, W - 64), W / 2, H / 2 + 6, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER)
             Widgets.button(g, app, "back", W / 2 - 80, H / 2 + 24, 160f, 48f, "回到選單"); return }
         if (fitZoom == 1f && zoom == 1f) fit()
-        playT += dt; saveT += dt
         touchFrame(dt)
-        sim.update(dt); sim.life.lastRealMs = app.platform.now()
-        for (e in sim.events) when (e.kind) {
+        open?.let { app.host.drive(it, dt, "screen") }
+        val evs = ArrayList(incoming); incoming.clear()
+        for (e in evs) if (sim.person(e.who)?.desk != true) when (e.kind) {
             "say" -> { bubbles[e.who] = Bubble(e.text, app.time); sim.person(e.who)?.let { app.platform.voice(it.spec.voice, e.text) } }
             "heart" -> hearts += Heart(e.who, app.time, ((app.time * 977) % 1f) - 0.5f)
             "sound" -> app.platform.sound(e.text)
         }
-        sim.events.clear()
-        if (saveT > 30f) flush()
         val life = sim.life; val lt = light(sim.hour)
 
         // ---- outside: sky to grass
@@ -117,6 +102,7 @@ class WorldScreen(val slotId: String) : Screen() {
         val ds = ArrayList<HouseView.D>(); val CH = view.T * 1.62f
         val used = HashSet<Int>()
         life.people.forEachIndexed { i, p ->
+            if (p.desk) return@forEachIndexed   /* out on the phone's desktop: not at home */
             val b = sim.body(p.id); val look = lookOf(p) ?: return@forEachIndexed
             val onPiece = if (b.arrivedAct && p.act != null) p.actPiece else -1; if (onPiece >= 0) used += onPiece
             val kind = sim.house.pieces.getOrNull(onPiece)?.kind
@@ -172,6 +158,7 @@ class WorldScreen(val slotId: String) : Screen() {
             Widgets.face(g, t, app.charImg(libOf(p), 256), cx, by + 30 + sink, 21f)
             g.text(Widgets.fit(g, p.name, 11f, 60f), cx, by + 64, 11f, t.ink2, FontKind.UI, Align.CENTER)
             Widgets.sky(g, t, sim.moodSky(p), cx + 18, by + 12, 7f)
+            if (p.desk) { g.fillRound(cx - 22, by + 32, 44f, 16f, 8f, t.accent); g.text("桌面", cx, by + 44, 11f, t.onAccent, FontKind.UI, Align.CENTER) }
             app.zone(id, cx - 32, by, 64f, 76f)
         }
         if (life.people.size == 1) { val p = life.people[0]; val b = sim.body(p.id)
@@ -217,7 +204,7 @@ class WorldScreen(val slotId: String) : Screen() {
     fun timeText(): String { val m = ((sim.life.minute % 1440) + 1440) % 1440; return "%02d:%02d".format((m / 60).toInt(), (m % 60).toInt()) }
     /** 「在做什麼」 in a few words */
     fun doing(p: Person, b: LifeSim.Body = sim.body(p.id)): String = when {
-        b.held -> "被你抱著"; b.flying -> "在空中！"; b.petting -> "被摸摸中"
+        p.desk -> "在手機桌面上"; b.held -> "被你抱著"; b.flying -> "在空中！"; b.petting -> "被摸摸中"
         p.act != null && b.arrivedAct -> Acts[p.act!!]?.zh ?: "休息"
         p.act != null -> "要去" + (Acts[p.act!!]?.zh ?: "")
         b.path != null -> "走來走去"

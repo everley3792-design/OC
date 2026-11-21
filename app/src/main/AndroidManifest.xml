@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- OC Shimeji (reboot). M0: one activity drawing everything through the game's own renderer.
-     The desktop pet (overlay service, specialUse) arrives in M3. versionCode/versionName must match gradle.properties. -->
+<!-- OC Shimeji (reboot). One activity drawing everything through the game's own renderer, and (M3) the desktop pet service.
+     versionCode/versionName must match gradle.properties. android:foregroundServiceType is resolved through
+     tools/framework-extras (the offline aapt only knows API 23 attributes). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.ocshimeji"
-    android:versionCode="102"
-    android:versionName="0.3.0-reboot">
+    android:versionCode="103"
+    android:versionName="0.4.0-reboot">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+
+    <!-- Desktop pets (plan 2.4): "display over other apps" (the player grants it in Settings after our explanation card) and a
+         foreground service of type specialUse while a pet is visible. No wake lock, no boot receiver, no accessibility, no
+         reading other apps: when the system stops the service, nothing restarts it. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="@string/app_name"
@@ -25,5 +34,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".android.DeskService"
+            android:exported="false"
+            android:foregroundServiceType="0x40000000">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="On-screen companion: the player's own characters walk on the home screen while the player chooses to show them; tapping them opens the app." />
+        </service>
     </application>
 </manifest>

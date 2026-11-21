@@ -49,6 +49,11 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
     fun flag(key: String): Boolean = flags().contains(key)
     fun setFlag(key: String) { val f = flags(); if (key in f) return; store.write(FLAGS, json.encodeToString(f + key).encodeToByteArray()); flagCache = f + key }
     private var flagCache: Set<String>? = null
+    /** small app-wide settings (desktop reminder interval…) */
+    fun pref(key: String): String? = prefs()[key]
+    fun setPref(key: String, value: String?) { val m = prefs().toMutableMap(); if (value == null) m.remove(key) else m[key] = value; store.write(PREFS, json.encodeToString(m.toMap()).encodeToByteArray()); prefCache = m }
+    private var prefCache: Map<String, String>? = null
+    private fun prefs(): Map<String, String> = prefCache ?: (store.read(PREFS)?.let { runCatching { json.decodeFromString<Map<String, String>>(it.decodeToString()) }.getOrNull() } ?: emptyMap()).also { prefCache = it }
     private fun flags(): Set<String> = flagCache ?: (store.read(FLAGS)?.let { runCatching { json.decodeFromString<Set<String>>(it.decodeToString()) }.getOrNull() } ?: emptySet()).also { flagCache = it }
     fun libChar(id: String): LibChar? = library().chars.firstOrNull { it.id == id }
     fun addLibChar(c: LibChar): LibChar {
@@ -262,6 +267,6 @@ class SaveSystem(private val store: Storage, private val now: () -> Long = { Sys
 
     companion object {
         const val LIB = "library/index.json"; const val IDX = "saves/index.json"
-        const val KEEP_BACKUPS = 3; const val MAX_NAME = 20; const val FLAGS = "settings/flags.json"
+        const val KEEP_BACKUPS = 3; const val MAX_NAME = 20; const val FLAGS = "settings/flags.json"; const val PREFS = "settings/prefs.json"
     }
 }

@@ -59,6 +59,8 @@ class Person(
     var with: String? = null,
     /** the last day a birthday was celebrated */
     var birthdayDay: Long = -1,
+    /** out on the phone's desktop (plan 2.3: one simulation, the desktop is another way of watching it) */
+    var desk: Boolean = false,
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult

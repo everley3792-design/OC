@@ -27,23 +27,28 @@
   - `LifeSim`：設定接進生活（作息、技能、親近度 A-13、摸部位 E-01、口味、生日、秘密、兩人聊天、20 種專屬活動）；
   - `core:save/media`：匯入管線（單張、序列、Sprite Sheet、JSON 圖集、GIF、APNG、動態 WebP、`.ocpkg`、去背、取景）；存檔格式 v2；
   - `ui`：角色創建（9 分頁）、匯入工作室、收藏庫、關係圖、動畫播放（`Look`）。
-- 下一步：**M3 桌寵**（計畫 12.11：OverlayService、桌面動作、拎起與丟出、觸控穿透、需求同步、權限說明、耗電控制）。
+- **M3（0.4.0-reboot）桌寵——完成**（`docs/reboot/m3-report.md`；手機上的部分全部待實機驗證）：
+  - `core:sim/desk`：`DeskPet`（走跑坐睡、爬牆、倒吊、探頭、掉落、拋擲反彈、討食、充電、低電量、夜深、提醒、全螢幕躲起來）、`DeskGestures`；
+  - `LifeSim`：桌上的人（`desk`、`toDesk/fromDesk/deskLift/deskLand/deskRest/deskSay`）；存檔格式 v3；
+  - `ui`：`WorldHost`（App 與服務共用一個模擬）、`DeskStage`、`DeskMenuScreen`、`DeskSheet`、`DeskPermissionSheet`；
+  - `app`：`DeskService`（specialUse、小懸浮窗、通知、電量／螢幕、穿透模式）、`OcRuntime`、`tools/framework-extras`。
+- 下一步：**M4 自主生活與社交**（計畫 12.11＋13.9：雙人互動、煩惱氣泡、特寫、話題碰撞、衝突火花、記憶帳本、敘事描寫、操控模式）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體）；
+core/sim/      純 Kotlin：desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體）；
                chars/（Spec＝CharSpec／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
 render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
-ui/            純 Kotlin 的整個介面：Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、ListSheet、Confirm
+ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、ListSheet、Confirm
                src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
-app/           Android 外殼：MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
+app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/、m1/、m2/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/、m1/、m2/、m3/（截圖）
 ```
 
 ## 指令
@@ -66,6 +71,8 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **每一句台詞都經過 `Speech.say`**（`LifeSim.say()`）；寫台詞時用「我」「你」，由說話方式改寫。
 - **關係規則只在 `Relations.problem()`**：戀愛預設關閉、只限兩位成年角色；編輯器、開場、生活都呼叫它。
 - 匯入只經 `Importer`：用檔頭判斷格式；每個拒絕都要有原因（`MediaTest` 有壞檔集）；解碼一律經 `Codec.safe`；工作圖用 `Png.encode`（無損、各平台同位元組）。
+- **世界只經 `WorldHost` 打開**（`acquire/release/drive/save`）：家的畫面與桌寵共用同一個 `LifeSim`；`drive(o, dt, "desk")` 在家的畫面看得見時不推動時間；事件經 `listeners` 發給每個觀看者。
+- 桌寵的行為與手勢只在 `DeskPet`／`DeskGestures`（純 Kotlin、有測試）；`DeskService` 只放視窗、回報手機狀態。桌面上的觸碰一律經 `LifeSim` 的同一組函式。
 - 場景以 base dp 繪製（`HouseView` 的 T 固定 32），縮放交給 `g.scale`；高度數值都是 base dp。
 - 圖示一律用 `Widgets.icon()` 畫的形狀，**不要**用字型裡的符號（`⋯ ✓ ‹` 在 Nunito 裡沒有，會變成方框）。
 - `FontKind.NUM`（Nunito）沒有中文字：只用在純數字／英文上（「第 1 天」要用 UI 字型）。

@@ -51,6 +51,11 @@ class WorldTest {
         val tooNew = raw.decodeToString().replaceFirst("\"v\":1", "\"v\":99").encodeToByteArray()
         assertTrue(assertFailsWith<IllegalArgumentException> { sys().parseWorld(tooNew) }.message!!.contains("更新"))
     }
+    @Test fun anM2WorldFileIsUpgraded() {   /* format 2 → 3: everyone is at home (nobody on the desktop) */
+        val raw = javaClass.getResourceAsStream("/world-v2.json")!!.readBytes()
+        val w = sys().parseWorld(raw); val p = w.life!!.people.single()
+        assertEquals(WORLD_VERSION, w.v); assertEquals("可可", p.name); assertEquals(false, p.desk); assertEquals(listOf("書蟲"), p.spec.traits); assertEquals(1, w.life!!.rels.size)
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))

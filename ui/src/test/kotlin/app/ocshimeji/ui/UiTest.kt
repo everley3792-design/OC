@@ -23,6 +23,7 @@ class UiTest {
     private var now = 1_700_042_400_000L   /* 10:00 UTC: daylight in the home */
     private var promptAnswer: String? = null
     private var saved: ByteArray? = null
+    private var overlayOk = false; private var openedSettings = false; private var stage: DeskStage? = null; private var deskApp: UiApp? = null
     /** what the file picker hands over next */
     private var files: List<app.ocshimeji.save.media.Importer.Source> = emptyList()
     private fun pngOf(p: PickedImage) = p.working
@@ -33,6 +34,10 @@ class UiTest {
         override fun pickImage(done: (PickedImage?, String?) -> Unit) = done(testPicture(), null)
         override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) { saved = data; done(true) }
         override fun openFile(mime: String, done: (ByteArray?) -> Unit) = done(saved)
+        override fun canOverlay() = overlayOk
+        override fun openOverlaySettings() { openedSettings = true }
+        override fun deskStart(slotId: String, personId: String): String? { val st = stage ?: DeskStage(deskApp!!, slotId, app.ocshimeji.sim.desk.DeskScreen(360f, 780f)).also { stage = it }; return st.add(personId) }
+        override fun deskStop(slotId: String, personId: String) { stage?.remove(personId) }
         override fun pickFiles(multiple: Boolean, done: (List<app.ocshimeji.save.media.Importer.Source>?, String?) -> Unit) = done(files, null)
         override val codec = app.ocshimeji.save.media.Codec { b -> ImageIO.read(java.io.ByteArrayInputStream(b))?.let { r -> app.ocshimeji.save.media.Raster(r.width, r.height, r.getRGB(0, 0, r.width, r.height, null, 0, r.width)) } }
     }
@@ -196,6 +201,51 @@ class UiTest {
         assertTrue(a.tapZone("tab:5")); frames(a, 2); assertTrue(a.tapZone("step:wake:-")); assertTrue(a.tapZone("save")); frames(a, 5)
         assertTrue(a.screen is WorldScreen); assertEquals(6, ws.sim.person(p.id)!!.spec.wake); assertEquals(7, a.saves.libChar(c.id)!!.spec!!.wake, "the library original is unchanged")
         assertEquals(6, a.saves.loadWorld(ws.slotId)!!.life!!.people[0].spec.wake, "saved with the world")
+    }
+    /** the whole phone screen with the desktop's windows composited where the service would put them */
+    private fun desktop(st: DeskStage, scale: Float = 2f): BufferedImage = Java2dGfx.render(360, 780, scale, assets) { g ->
+        g.fillGradientV(0f, 0f, 360f, 780f, 0xFF9FB8D8.toInt(), 0xFFE8D8F0.toInt())
+        for (i in 0 until 16) { val x = 32f + (i % 4) * 84f; val y = 120f + (i / 4) * 110f; g.fillRound(x, y, 48f, 48f, 14f, 0x66FFFFFF) }   /* app icons (we never see the real ones) */
+        for (id in st.pets.keys) {
+            val b = st.windowOf(id) ?: continue; g.save(); g.translate(b[0], b[1]); g.clip(0f, 0f, b[2], b[3]); st.drawPet(g, id); g.restore()
+            st.bubbleWindow(g, id)?.let { w -> g.save(); g.translate(w[0], w[1]); st.drawBubble(FakeSize(g, w[2], w[3]), id); g.restore() }
+        }
+    }
+    @Test fun theDesktopPet() {
+        val a = app(); deskApp = a; val ws = world(a); val p = ws.sim.life.people[0]; frames(a, 200)
+        // the person card → 桌面: without the permission, an explanation first
+        var (x, y) = ws.screenOf(p.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        assertTrue(a.tapZone("card:desk")); frames(a, 15); assertTrue(a.overlay is DeskSheet); shot("desk-sheet", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("chip:remind:每 30 分")); assertEquals("30", a.saves.pref("desk:remind"))
+        assertTrue(a.tapZone("desk:go")); frames(a, 15); assertTrue(a.overlay is DeskPermissionSheet); shot("desk-permission", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("perm:go")); assertTrue(openedSettings)
+        // allowed: out on the desktop; the home no longer draws them
+        overlayOk = true; ws.screenOf(p.id)!!.let { x = it.first; y = it.second }; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        assertTrue(a.tapZone("card:desk")); frames(a, 15); assertTrue(a.tapZone("desk:go")); frames(a, 10)
+        val st = stage!!; assertTrue(p.desk); assertEquals(null, ws.screenOf(p.id)); assertTrue(st.open === a.host.get(ws.slotId), "one simulation for both")
+        shot("world-desk-badge", frames(a, 1, scale = 2f))
+        // while the home is showing, it drives the clock; in the background, the desktop does
+        val m0 = ws.sim.life.minute; repeat(60) { st.frame(1 / 30f, Phone()) }; assertEquals(m0, ws.sim.life.minute, "the desk only watches while the home is visible")
+        a.pause(); repeat(90) { st.frame(1 / 30f, Phone()) }; assertTrue(ws.sim.life.minute > m0, "the desk keeps the world going")
+        repeat(60) { st.frame(1 / 30f, Phone()) }; shot("desk-floor", desktop(st))
+        // drag and throw through the gesture recogniser
+        val d = st.pets[p.id]!!.pet; val gx = d.x; val gy = d.y - 40
+        st.touch(p.id, 0, gx, gy); var t = 0f; for (i in 1..8) { st.frame(1 / 60f, Phone()); st.touch(p.id, 1, gx + i * 26f, gy - i * 10f) }
+        assertEquals(app.ocshimeji.sim.desk.DeskState.HELD, d.state); st.touch(p.id, 2, gx + 220f, gy - 90f); assertEquals(app.ocshimeji.sim.desk.DeskState.THROWN, d.state)
+        repeat(150) { st.frame(1 / 30f, Phone()) }; assertTrue(p.moods.any { it.id == "thrown" || it.id == "thrownfun" || it.id == "lifted" })
+        // a long press opens the menu; feeding there is the same as at home
+        st.touch(p.id, 0, d.x, d.y - 40); repeat(20) { st.frame(1 / 30f, Phone()) }; assertEquals(p.id, st.menuFor); st.touch(p.id, 2, d.x, d.y - 40)
+        val menu = UiApp(a.saves, assets, platform, a.host); var act = ""; menu.push(DeskMenuScreen(st, p.id) { act = it })
+        Java2dGfx.render(260, 292, 1f, assets) { menu.frame(it, 1 / 30f) }; val food = p.need(app.ocshimeji.sim.life.Need.FOOD)
+        p.setNeed(app.ocshimeji.sim.life.Need.FOOD, 40f); assertTrue(menu.tapZone("m:feed:apple")); assertTrue(p.need(app.ocshimeji.sim.life.Need.FOOD) > 40f); assertEquals("close", act)
+        shot("desk-menu", Java2dGfx.render(260, 292, 2f, assets) { menu.frame(it, 1 / 30f) }); assertTrue(food >= 0)
+        // climbing and hanging look right too
+        var sidePic = false
+        for (i in 0 until 6000) { st.frame(1 / 15f, Phone()); if (d.side != app.ocshimeji.sim.desk.Side.FLOOR && st.time > 10f) { shot("desk-wall", desktop(st)); sidePic = true; break } }
+        assertTrue(sidePic, "climbed a wall within the time")
+        // back home: through the menu
+        assertTrue(menu.tapZone("m:home")); assertTrue(!p.desk); assertEquals("home", act)
+        a.wake(); frames(a, 10); assertNotNull(ws.screenOf(p.id))
     }
     @Test fun anM0WorldGetsAHouseWhenOpened() {
         val a = app(); val m = a.saves.create("舊世界", listOf(Presets.CINNAMON.id)); (a.screen as TitleScreen).reload(); frames(a, 2)

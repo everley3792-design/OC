@@ -26,6 +26,16 @@ interface Platform {
     fun pickFiles(multiple: Boolean, done: (List<app.ocshimeji.save.media.Importer.Source>?, String?) -> Unit) { done(null, "這個版本還不能選檔案") }
     /** decodes still pictures (PNG, JPEG, WebP…) for the importer */
     val codec: app.ocshimeji.save.media.Codec get() = app.ocshimeji.save.media.Codec { null }
+    /** "display over other apps" is allowed (the desktop pets need it) */
+    fun canOverlay(): Boolean = false
+    /** open the system page for that permission (after our explanation card) */
+    fun openOverlaySettings() {}
+    /** put a resident on the phone's desktop (the platform starts its service); null = done, otherwise why not */
+    fun deskStart(slotId: String, personId: String): String? = "這個版本還不能帶到桌面"
+    /** call a resident back home from the desktop */
+    fun deskStop(slotId: String, personId: String) {}
+    /** is the desktop service alive (otherwise a resident marked "on the desktop" comes home) */
+    fun deskRunning(slotId: String): Boolean = false
     /** the character's babble voice (plan 12.4 聲線) for a line */
     fun voice(v: app.ocshimeji.sim.chars.Voice, text: String) {}
 }
@@ -38,7 +48,7 @@ class PickedImage(val original: ByteArray, val ext: String, val working: ByteArr
  * on the same zone without moving is a tap → `Screen.tap(id)`. Overlays (sheet, confirm, toast) sit above the screen stack.
  * Pure Kotlin: the phone and the screenshot tests run exactly this.
  */
-class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
+class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, val host: WorldHost = WorldHost(saves, platform::now, platform::realMinute)) {
     /** a character's standing picture: built in (asset:) or from the library (lib:) */
     fun charImg(c: app.ocshimeji.save.LibChar?, maxSide: Int = 512): app.ocshimeji.render.Img? {
         if (c == null) return null

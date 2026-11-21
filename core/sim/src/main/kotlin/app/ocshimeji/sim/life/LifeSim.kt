@@ -49,6 +49,8 @@ class LifeSim(val life: Life) {
         var bounced = false
         /** chat: real seconds until the next line / waiting for the partner */
         var talkT = 0f; var waitT = 0f; var talkTurn = 0
+        /** asleep on the desktop (the desk pet says so) */
+        var deskSleep = false
     }
     private val bodies = HashMap<String, Body>()
     fun body(id: String) = bodies.getOrPut(id) { Body() }
@@ -105,6 +107,7 @@ class LifeSim(val life: Life) {
         val b = body(p.id); b.poseT += dt
         needs(p, dm)
         moods(p, live = true)
+        if (p.desk) { b.micro = null; b.path = null; return }   /* on the desktop: the desk pet moves them */
         if (b.held) { b.pose = Pose.HELD; return }
         if (b.flying) { fly(p, b, dt); return }
         b.micro?.let { _ -> b.microT -= dt; if (b.microT <= 0f) { b.micro = null; b.pose = restPose(p) } else return }
@@ -125,7 +128,7 @@ class LifeSim(val life: Life) {
     private fun restPose(p: Person) = if (p.act != null && body(p.id).arrivedAct) Acts[p.act!!]!!.pose else Pose.STAND
 
     // ---------------- needs and moods ----------------
-    fun asleep(p: Person) = p.act in SLEEPY && body(p.id).arrivedAct
+    fun asleep(p: Person) = (p.act in SLEEPY && body(p.id).arrivedAct) || (p.desk && body(p.id).deskSleep)
     /** how fast a need drops for them (per game hour) */
     fun decayOf(p: Person, n: Need): Float { var d = n.decay * mods(p).decay(n); if (n == Need.HYGIENE) d *= (1f - 0.25f * p.spec.hygiene); return d }
     private fun needs(p: Person, dm: Double) {
@@ -136,6 +139,7 @@ class LifeSim(val life: Life) {
             if (sl) d = when (n) { Need.FOOD -> d * 0.5f; Need.HYGIENE -> d * 0.5f; else -> 0f }
             p.setNeed(n, p.need(n) + d)
         }
+        if (p.desk && body(p.id).deskSleep) { p.setNeed(Need.ENERGY, p.need(Need.ENERGY) + 16f * h); p.setNeed(Need.COMFORT, p.need(Need.COMFORT) + 4f * h) }
         val act = p.act?.let { Acts[it] }
         if (act != null && body(p.id).arrivedAct) for ((n, v) in act.per) { val g = v * h * skillGain(p, act, n); if (n == Need.ROOM) tidyRoom(p, g) else p.setNeed(n, p.need(n) + g) }
         val r = roomOf(p); if (!sl) life.mess[r] = ((life.mess[r] ?: 10f) + 0.6f * h).coerceIn(0f, 100f)
@@ -270,7 +274,7 @@ class LifeSim(val life: Life) {
         }
     }
     private fun free(q: Person): Boolean {
-        val b = body(q.id); if (b.held || b.flying || b.petting || q.with != null || life.arriving) return false
+        val b = body(q.id); if (q.desk || b.held || b.flying || b.petting || q.with != null || life.arriving) return false
         val a = q.act ?: return true
         return b.arrivedAct && a in INTERRUPTIBLE
     }
@@ -491,7 +495,13 @@ class LifeSim(val life: Life) {
             b.flying = false; val strong = b.petAcc > 4f; b.petAcc = 0f
             if (!grid.walkable(p.x.toInt(), p.y.toInt())) { val (tx, ty) = grid.nearestWalkable(p.x, p.y); p.x = tx + 0.5f; p.y = ty + 0.5f }
             events += SimEvent("sound", p.id, "land")
-            if (strong) {
+            if (strong) landReaction(p, b) else { b.pose = Pose.STAND }
+            b.think = 1.5f
+        }
+    }
+    /** after a hard landing: fun, dizzy or angry (personality); the same at home and on the desktop */
+    private fun landReaction(p: Person, b: Body) {
+            run {
                 val how = throwReaction(p)
                 when (how) {
                     "fun" -> { addMood(p, "thrownfun"); p.affinity = (p.affinity + 1).coerceIn(0, 100) }
@@ -501,10 +511,30 @@ class LifeSim(val life: Life) {
                 val m = Micro("landed", when (how) { "fun" -> Pose.HAPPY; "angry" -> Pose.ANGRY; else -> Pose.DIZZY }, 2.2f); b.micro = m; b.microT = m.sec; b.pose = m.pose
                 say(p, when (how) { "fun" -> "再一次！"; "angry" -> rng.pick(Lines.M["angry"]!!); else -> rng.pick(Lines.M["landed"]!!) }, toPlayer = true)
                 log(p, when (how) { "fun" -> "被丟出去，覺得很好玩"; "angry" -> "被丟出去，生氣了"; else -> "被丟出去，頭暈了" })
-            } else { b.pose = Pose.STAND }
-            b.think = 1.5f
-        }
+            }
     }
+
+    // ---------------- the desktop (plan 2.3 / M3): the same person, watched on the phone's desktop ----------------
+    /** go out to the desktop: whatever they were doing stops; at home they are simply not there */
+    fun toDesk(id: String): Boolean {
+        val p = person(id) ?: return false; if (p.desk) return true
+        breakChat(p); release(p); p.act = null; p.why = listOf("在手機桌面上"); val b = body(id); b.path = null; b.micro = null; b.arrivedAct = false; b.held = false; b.flying = false
+        p.desk = true; log(p, "跑到手機桌面上了"); say(p, rng.pick(Lines.M["deskOut"]!!), toPlayer = true); return true
+    }
+    /** back home: they come in through the front door */
+    fun fromDesk(id: String) {
+        val p = person(id) ?: return; if (!p.desk) return
+        p.desk = false; val b = body(id); b.held = false; b.flying = false; b.deskSleep = false; b.petting = false; b.pose = Pose.STAND; b.think = 1f
+        p.x = house.entrance.x + 0.5f; p.y = house.entrance.y + 0.5f; p.why = emptyList(); log(p, "從桌面回家了"); say(p, rng.pick(Lines.M["deskBack"]!!))
+    }
+    /** a line on the desktop, in their own way of talking */
+    fun deskSay(id: String, key: String) { val p = person(id) ?: return; Lines.M[key]?.let { say(p, rng.pick(it), toPlayer = true) } }
+    /** picked up / landed on the desktop: the same feelings as at home */
+    fun deskLift(id: String) { val p = person(id) ?: return; if (!p.desk) return; lift(id) }
+    fun deskLand(id: String, strong: Boolean) { val p = person(id) ?: return; val b = body(id); b.held = false; b.flying = false; b.z = 0f; if (strong) landReaction(p, b) }
+    /** asleep on the desktop (energy comes back like a nap) */
+    fun deskRest(id: String, sleeping: Boolean) { val p = person(id) ?: return; body(id).deskSleep = sleeping && p.desk }
+    val onDesk: List<Person> get() = life.people.filter { it.desk }
     /** what one of your snacks tastes like to them: 1 liked, 0 fine, −1 disliked */
     fun taste(p: Person, food: String): Int {
         val (cat, _) = FOODS[food] ?: return 0; val zh = FOOD_ZH[food] ?: ""
@@ -545,7 +575,7 @@ class LifeSim(val life: Life) {
                 val r = Rng.of(life.seed, "away:${(life.minute / CHUNK).toLong()}:${p.id}")
                 val a = p.act?.let { Acts[it] }
                 if (a != null && body(p.id).arrivedAct && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }
-                if (p.act == null) {
+                if (p.act == null && !p.desk) {
                     val c = candidates(p, null, r, true); val best = pick(c, r)
                     if (best != null && best.score >= 1.2f) {
                         if (best.piece >= 0) reserved["${best.piece}:${best.slot}"] = p.id

@@ -43,9 +43,19 @@ val checkToolchain by tasks.registering {
     }
 }
 
+// Framework attributes newer than the API-23 res jar (android:foregroundServiceType for the Android 14+ FGS type).
+// Built from tools/framework-extras with `aapt package -x` (package id 0x01); used only as an extra -I, never packaged.
+val fwExtrasDir = file("tools/framework-extras")
+val fwExtras = layout.buildDirectory.file("fw-extras/framework-extras.apk")
+val buildFwExtras by tasks.registering(Exec::class) {
+    inputs.dir(fwExtrasDir); outputs.file(fwExtras)
+    doFirst { fwExtras.get().asFile.parentFile.mkdirs() }
+    commandLine("aapt", "package", "-f", "-x", "-M", File(fwExtrasDir, "AndroidManifest.xml").path, "-S", File(fwExtrasDir, "res").path, "-F", fwExtras.get().asFile.path)
+}
+
 val genRes by tasks.registering(Exec::class) {
-    dependsOn(checkToolchain)
-    inputs.dir(resDir); inputs.file(manifest); inputs.property("versionCode", vCode); inputs.property("versionName", vName); outputs.dir(gen)
+    dependsOn(checkToolchain, buildFwExtras)
+    inputs.file(fwExtras); inputs.dir(resDir); inputs.file(manifest); inputs.property("versionCode", vCode); inputs.property("versionName", vName); outputs.dir(gen)
     doFirst {
         gen.get().asFile.mkdirs()
         val m = manifest.readText()
@@ -53,7 +63,7 @@ val genRes by tasks.registering(Exec::class) {
         val bi = gen.get().file("app/ocshimeji/BuildInfo.java").asFile; bi.parentFile.mkdirs()
         bi.writeText("package app.ocshimeji;\npublic final class BuildInfo { public static final String VERSION_NAME = \"$vName\"; public static final int VERSION_CODE = $vCode; }\n")
     }
-    commandLine("aapt", "package", "-f", "-m", "-J", gen.get().asFile.path, "-M", manifest.path, "-S", resDir.path, "-I", resJar.path)
+    commandLine("aapt", "package", "-f", "-m", "-J", gen.get().asFile.path, "-M", manifest.path, "-S", resDir.path, "-I", resJar.path, "-I", fwExtras.get().asFile.path)
 }
 tasks.named("compileKotlin") { dependsOn(genRes) }
 tasks.named("compileJava") { dependsOn(genRes) }
@@ -106,12 +116,12 @@ val dex by tasks.registering(Exec::class) {
     commandLine(dxTool, "--dex", "--min-sdk-version=26", "--output=${out.get().asFile.path}", desugaredJar.get().asFile.path)
 }
 val packageRes by tasks.registering(Exec::class) {
-    dependsOn(syncAssets, checkToolchain)
+    dependsOn(syncAssets, checkToolchain, buildFwExtras)
     val out = apkDir.map { it.file("base.ap_") }
-    inputs.dir(resDir); inputs.file(manifest); inputs.dir(assetsOut); inputs.property("versionCode", vCode); inputs.property("versionName", vName); outputs.file(out)
+    inputs.file(fwExtras); inputs.dir(resDir); inputs.file(manifest); inputs.dir(assetsOut); inputs.property("versionCode", vCode); inputs.property("versionName", vName); outputs.file(out)
     doFirst { apkDir.get().asFile.mkdirs() }
     commandLine("aapt", "package", "-f", "--no-crunch", "-M", manifest.path, "-S", resDir.path, "-A", assetsOut.get().asFile.path,
-        "-I", resJar.path, "-F", out.get().asFile.path, "--version-code", vCode, "--version-name", vName, "-0", "png", "-0", "ttf")
+        "-I", resJar.path, "-I", fwExtras.get().asFile.path, "-F", out.get().asFile.path, "--version-code", vCode, "--version-name", vName, "-0", "png", "-0", "ttf")
 }
 val unsignedApk = apkDir.map { it.file("app-unsigned.apk") }
 val addDex by tasks.registering(Exec::class) {
@@ -163,8 +173,10 @@ tasks.register<Exec>("verifyDebugApk") {
         require(Regex("targetSdkVersion\\(0x01010270\\)=\\(type 0x10\\)0x23").containsMatchIn(x)) { "targetSdkVersion is not 35" }
         require(Regex("versionCode\\(0x0101021b\\)=\\(type 0x10\\)0x" + Integer.toHexString(vCode.toInt()) + "\\b").containsMatchIn(x)) { "compiled versionCode is not $vCode" }
         require(!x.contains("BIND_ACCESSIBILITY_SERVICE") && !x.contains("QUERY_ALL_PACKAGES")) { "forbidden permission/service in manifest" }
+        require(Regex("foregroundServiceType\\(0x01010599\\)=\\(type 0x1[01]\\)0x40000000").containsMatchIn(x)) { "the desktop service must be foregroundServiceType=specialUse" }
+        require(!x.contains("WAKE_LOCK") && !x.contains("RECEIVE_BOOT_COMPLETED")) { "the desktop pet never keeps itself alive (plan 2.4)" }
         val files = run("aapt", "list", apk)
         for (f in listOf("classes.dex", "assets/fonts/Huninn-Regular.ttf", "assets/chars/cinnamon/idle.png")) require(files.lines().any { it.trim() == f }) { "APK lacks $f" }
-        println("manifest OK: targetSdk 35, versionCode $vCode, no accessibility / all-packages permissions; fonts and art packaged")
+        println("manifest OK: targetSdk 35, versionCode $vCode, specialUse desktop service, no accessibility / all-packages / wake lock / boot; fonts and art packaged")
     }
 }

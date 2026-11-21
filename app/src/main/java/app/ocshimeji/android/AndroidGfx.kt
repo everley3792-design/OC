@@ -61,6 +61,8 @@ class AndroidGfx(private val assets: AndroidAssets) : Gfx {
 
     fun begin(canvas: Canvas, density: Float) { c = canvas; this.density = density; width = canvas.width / density; height = canvas.height / density; depth = 0; a = 1f; c.save(); c.scale(density, density) }
     fun end() { c.restore() }
+    /** a Gfx used only to measure text (no canvas yet) */
+    fun measureOnly(w: Float, h: Float) { width = w; height = h }
 
     private fun col(p: Paint, color: Int) { p.shader = null; p.color = color; p.alpha = (((color ushr 24) and 0xFF) * a).toInt().coerceIn(0, 255) }
     override fun save() { c.save(); alphas[depth++] = a }

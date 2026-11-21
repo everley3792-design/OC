@@ -7,6 +7,9 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.content.pm.PackageManager
+import android.provider.Settings
+import app.ocshimeji.ui.DeskStage
 import android.content.res.Configuration
 import android.graphics.Canvas
 import android.os.Build
@@ -41,7 +44,8 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val assets = AndroidAssets(assets)
+        OcRuntime.init(this)
+        val assets = OcRuntime.assets
         val platform = object : Platform {
             override fun now() = System.currentTimeMillis()
             override fun haptic(kind: String) { runCatching { view.performHapticFeedback(when (kind) { "soft" -> HapticFeedbackConstants.CONTEXT_CLICK; "heavy" -> HapticFeedbackConstants.LONG_PRESS; else -> HapticFeedbackConstants.KEYBOARD_TAP }) } }
@@ -50,12 +54,22 @@ class MainActivity : Activity() {
             override fun pickImage(done: (PickedImage?, String?) -> Unit) = pick(done)
             override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) = create(name, mime, data, done)
             override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)
-            override fun sound(name: String) { sounds.play(name) }
-            override fun voice(v: Voice, text: String) { sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
+            override fun sound(name: String) { OcRuntime.sounds.play(name) }
+            override fun voice(v: Voice, text: String) { OcRuntime.sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
             override fun pickFiles(multiple: Boolean, done: (List<Importer.Source>?, String?) -> Unit) = pickMany(multiple, done)
             override val codec: Codec = Codec { b -> decodeRaster(b) }
+            override fun canOverlay() = Settings.canDrawOverlays(this@MainActivity)
+            override fun openOverlaySettings() { runCatching { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) } }
+            override fun deskStart(slotId: String, personId: String): String? {
+                val o = OcRuntime.host.get(slotId); if (o != null && o.sim.onDesk.size >= DeskStage.MAX && o.sim.person(personId)?.desk != true) return "桌面上最多 ${DeskStage.MAX} 位"
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                    runCatching { requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 42) }
+                return try { DeskService.send(this@MainActivity, DeskService.ACTION_ADD, slotId, personId); null } catch (e: Exception) { "沒辦法開始：${e.message}" }
+            }
+            override fun deskStop(slotId: String, personId: String) { DeskService.send(this@MainActivity, DeskService.ACTION_REMOVE, slotId, personId) }
+            override fun deskRunning(slotId: String) = DeskService.running
         }
-        ui = UiApp(SaveSystem(FileStorage(filesDir)), assets, platform)
+        ui = UiApp(OcRuntime.saves, assets, platform, OcRuntime.host)
         ui.theme = themeFor(resources.configuration)
         ui.push(TitleScreen())
         view = GameView(this, ui, AndroidGfx(assets))
@@ -80,9 +94,8 @@ class MainActivity : Activity() {
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); ui.theme = themeFor(newConfig); edgeToEdge(); view.invalidate() }
     override fun onPause() { super.onPause(); ui.pause() }
     override fun onResume() { super.onResume(); if (started) ui.wake(); started = true; view.kick() }
-    override fun onDestroy() { super.onDestroy(); sounds.release() }
+    override fun onDestroy() { super.onDestroy(); if (!DeskService.running) OcRuntime.sounds.release() }
     private var started = false
-    private val sounds = Sounds()
 
     // ---------------- files the player chooses (Storage Access Framework: no storage permission) ----------------
     private var pending: ((Intent?) -> Unit)? = null

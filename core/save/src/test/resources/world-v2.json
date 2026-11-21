@@ -1,0 +1,6 @@
+{"v":2,"seed":777,"created":1700000000000,"townName":"楓糖鎮","clockMode":"REAL","minute":28800000.0,"residents":[{"id":"r_c1","libId":"c1","name":"可可"}],
+ "life":{"houseId":"studio","townName":"楓糖鎮","homeName":"小窩","minute":28800000.0,"clockMode":"REAL","speed":1.0,"seed":777,"rngState":5,
+  "people":[{"id":"r_c1","libId":"c1","spec":{"name":"可可","age":20,"traits":["書蟲"],"wake":8},"room":"main","needs":{"FOOD":60.0},"moods":[],"x":2.5,"y":3.5,"facing":1,
+    "act":null,"actPiece":-1,"actSlot":-1,"actStart":0.0,"actEnd":0.0,"next":null,"recent":{},"lastPet":-1.0E9,"why":[],"affinity":55,"found":[],"secretTold":false,"with":null,"birthdayDay":-1}],
+  "mess":{"main":5.0},"lastRealMs":1700000000000,"log":[],"away":null,"arriving":false,"startMinute":28800000.0,
+  "rels":[{"from":"r_c1","to":"r_c1x","kind":"朋友"}],"romance":false}}

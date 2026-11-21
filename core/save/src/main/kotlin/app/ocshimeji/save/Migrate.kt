@@ -31,6 +31,14 @@ object Migrate {
                 JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("people", JsonArray(people)) })) })
             }
         },
+        /* 2 → 3 (M3): residents can be out on the phone's desktop; an old world has everyone at home */
+        2 to { w ->
+            val life = w["life"] as? JsonObject
+            if (life == null) w else {
+                val people = (life["people"] as? JsonArray)?.map { p0 -> JsonObject((p0 as JsonObject).toMutableMap().apply { put("desk", JsonPrimitive(false)) }) } ?: emptyList()
+                JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("people", JsonArray(people)) })) })
+            }
+        },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {
