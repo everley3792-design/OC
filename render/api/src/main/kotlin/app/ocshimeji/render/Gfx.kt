@@ -1,0 +1,55 @@
+package app.ocshimeji.render
+
+/**
+ * Everything on screen is drawn through this (plan 2.2). Two implementations: Android Canvas (hardware accelerated) on the phone and
+ * Java2D on the JVM for screenshot tests — the screens are the same code, so a screenshot taken in a test is what the phone draws
+ * (only the font rasteriser differs). Units are density-independent "dp"; the backend scales to pixels.
+ * Colors are ARGB ints (0xAARRGGBB).
+ */
+interface Gfx {
+    val width: Float
+    val height: Float
+    fun save()
+    fun restore()
+    fun translate(x: Float, y: Float)
+    fun scale(sx: Float, sy: Float)
+    fun rotate(radians: Float)
+    /** multiplies the alpha of everything drawn until the matching restore() */
+    fun alpha(a: Float)
+    fun clip(x: Float, y: Float, w: Float, h: Float)
+
+    fun fillRect(x: Float, y: Float, w: Float, h: Float, color: Int)
+    fun fillRound(x: Float, y: Float, w: Float, h: Float, r: Float, color: Int)
+    fun strokeRound(x: Float, y: Float, w: Float, h: Float, r: Float, width: Float, color: Int)
+    fun fillCircle(cx: Float, cy: Float, r: Float, color: Int)
+    /** vertical gradient from top to bottom */
+    fun fillGradientV(x: Float, y: Float, w: Float, h: Float, top: Int, bottom: Int)
+    fun line(x1: Float, y1: Float, x2: Float, y2: Float, width: Float, color: Int)
+    /** an image into a rectangle (null = whole image) */
+    fun image(img: Img, x: Float, y: Float, w: Float, h: Float)
+
+    fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind = FontKind.UI, align: Align = Align.LEFT)
+    fun measure(s: String, size: Float, font: FontKind = FontKind.UI): Float
+}
+
+enum class FontKind { UI, NUM }
+enum class Align { LEFT, CENTER, RIGHT }
+
+/** a decoded image the backend owns */
+interface Img { val w: Int; val h: Int }
+
+/** images and fonts by path inside the app's assets ("chars/cinnamon/idle.png"); `maxSide` lets the backend decode a smaller copy */
+interface Assets {
+    fun image(path: String, maxSide: Int = 2048): Img?
+}
+
+object Colors {
+    fun argb(a: Int, r: Int, g: Int, b: Int) = (a shl 24) or (r shl 16) or (g shl 8) or b
+    fun hex(s: String): Int { val v = s.removePrefix("#").toLong(16); return if (s.length <= 7) (0xFF000000 or v).toInt() else v.toInt() }
+    fun withAlpha(c: Int, a: Float) = ((((c ushr 24) and 0xFF) * a).toInt().coerceIn(0, 255) shl 24) or (c and 0xFFFFFF)
+    fun mix(a: Int, b: Int, t: Float): Int {
+        fun ch(c: Int, s: Int) = (c ushr s) and 0xFF
+        fun m(s: Int) = (ch(a, s) + (ch(b, s) - ch(a, s)) * t).toInt().coerceIn(0, 255)
+        return (m(24) shl 24) or (m(16) shl 16) or (m(8) shl 8) or m(0)
+    }
+}

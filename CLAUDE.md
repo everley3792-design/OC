@@ -1,306 +1,87 @@
-# CLAUDE.md — OC Shimeji
+# CLAUDE.md — OC Shimeji（重構版）
 
-原創角色生活模擬 + Android 系統級懸浮桌寵。直向手機。
+原創角色（OC）的**自主生活模擬（觀察系）＋ Android 深度桌寵**。直向手機。
+玩家匯入或自己畫角色，看牠們在家與小鎮自己過日子；角色也能跳到手機桌面上陪玩家。
 
-**已選定美術方向（第三輪做法 ①，方案 G「晴日島 3D」）**：世界（地形、建築、樹木、道具、家具、光影）是 **3D**（正交、俯角 50°）；8.0 起鏡頭有模式：經典 2.5D（固定、不旋轉，預設）、跟隨、特寫、自由（可兩指旋轉 ±52°）、電影（腳本鏡頭）；**角色、UI、繪畫工坊、逐格動畫、玩家素材、懸浮桌寵一律 2D**（角色以垂直看板放進 3D 世界）。不要改成全 2D 或全 3D，也不要再提新方案。
+**唯一的計畫書**：`docs/reboot/reboot-plan.md`（玩家已確認第十節的全部決定；第十一～十三節是系統總表與修訂路線圖 12.11、13.9）。
+舊版（0.1–0.17，WebView＋three.js）已**整個捨棄**：程式只留在 git 歷史（最後一個舊版提交 `d88e849`）。不讀舊存檔、不沿用舊程式，也不要再參考舊的規則。
+
+## 已確認的方向（不要再提新方案）
+- **全部原生 Kotlin**，不依賴 AndroidX／Compose（本環境連不上 Google Maven）。
+- **畫面**：2.5D 分層插畫（2D 場景、斜俯視固定鏡頭、可平移縮放）；角色、UI、桌寵都是 2D。
+- **沒有捏臉**：外觀只來自匯入、內建繪圖工具或預設角色；外觀以外全部深度自訂（計畫第十二節）。
+- **肉桂捲**（`art/chars/cinnamon/`，玩家提供的原圖）只是開新觀察時可以選的預設角色，**不是引導員**；教學用情境提示卡。
+- **時間**：預設現實時間，另有可加速的遊戲時間（觀察時最快 60×）。
+- **戀愛**：預設關閉、只限兩個成年角色、重大改變要玩家同意；未成年絕不涉及。
+- 參考作品（角色觀察屋、Tomodachi Life、The Sims 4、inZOI、動物森友會、任天堂）只取設計原則，**不得**使用其文字、角色、介面圖形、地圖、音效或素材。所有美術與聲音都是原創；字型只用開放授權（`art/fonts/LICENSES.md`）。
 
 ## 目前階段
-- **第一階段完成**：7 個視覺方案（A–G）的影片、總覽圖、原型（`prototype/`、`deliverables/`）。保留供參考，不再修改。
-- **第二階段完成**：可操作的遊戲（`game/`）+ Android 外殼與實際建置的 Debug APK。完成紀錄：`docs/phase2-report.md`。
-- **第三階段完成（0.3.0-alpha）**：多角色、完整創角／捏角、自訂部件、個性與小怪癖、素材匯入匯出、繪畫工坊、逐格動畫工作室、`.ocpack`。完成紀錄與未驗證項目：`docs/phase3-report.md`。規格：`docs/character-format.md`、`docs/animation-system.md`、`docs/asset-io.md`。
-- **第四階段完成（0.4.0-alpha）**：深度生活模擬——9 種需求、情緒、Utility AI 活動流程、作息、後天習慣（需同意）、願望／技能、多 OC 自主社交與共同活動、有方向的關係、資料驅動對話（可匯入匯出）、回憶、事件引擎、玩家互動、自主程度、分層／離線模擬、開發者診斷。完成紀錄、測試與未完成項目：`docs/phase4-report.md`。規格：`docs/behavior-engine.md`、`docs/life-format.md`、`docs/event-rules.md`、`docs/memory-model.md`。
-- **第五階段完成（0.5.0-alpha）**：世界地圖與 7 個可進入的地點（晴日島、我的家、商店街、咖啡館、圖書館、苔光森林、星砂海灘；風車丘、遊樂園標示未開放）、跨地點 OC 自主生活與跟隨、統一互動設施、每個地點各自的佈置（復原／重做／旋轉／縮放／掛牆／收回）、釣魚／料理／採集／種田／小生物小遊戲、統一物品系統、雙模式背包與拖曳使用、每個 OC 的飲食喜好、工坊商品上架、7 間商店、星幣經濟與交易帳本、地點事件與回憶、圖鑑與探索進度。完成紀錄、測試與未完成項目：`docs/phase5-report.md`。規格：`docs/world-map.md`、`docs/items.md`、`docs/economy.md`。
-- **第六階段完成（0.6.0-alpha）**：統一進度事件、任務（每日／每週／地點／限時／隱藏／長期挑戰）、角色請求（依個性、可接受／稍後／婉拒、後續發展）、人生目標、技能解鎖（每級都有實際效果）、稱號、37 個成就（玩家領取）、統一圖鑑（物品＋地點＋活動＋事件，四種狀態）、生活日誌與回憶卡片、動畫全面提升（分段姿勢、次級動態、個性差異、新動作）、可重用的特殊演出（跳過／×2）、即時合成的原創音效與環境音、「日常」中心。完成紀錄、測試與未完成項目：`docs/phase6-report.md`。規格：`docs/quests.md`、`docs/growth.md`、`docs/animation-performance.md`。
-- **第七階段（0.7.0-alpha，程式完成、未經實機驗證）**：真正的 Android 系統懸浮桌寵——多隻（≤3）、每隻獨立小視窗、Shimeji 行為（走／跑／跳／坐／睡／爬牆／倒吊／掉落／偷看）、觸控（點、雙擊、長按選單、撫摸、拖曳丟出、觸控穿透）、玩家逐格動畫完整輸出到桌面、依個性／情緒／回憶的台詞、桌寵之間依關係互動、與遊戲的事件同步（不重複衰減、不重複獎勵）、App 情境對話（使用情況存取，只知道套件名稱）、番茄鐘／休息提醒／鬧鐘／待辦／筆記、主畫面小工具、桌寵管理中心與診斷；targetSdk 35、前景服務類型 specialUse。完成紀錄（已驗證／需實機／部分／未完成）：`docs/phase7-report.md`。規格：`docs/android-native.md`、`docs/permissions.md`、`docs/backup.md`、`docs/performance.md`、`docs/compat-test-plan.md`。
-- **8.0（0.8.0-alpha）全面重構**：居民改為選用（新遊戲只有玩家自己的 OC）、Logo＋真 3D 開場＋歡迎＋登場＋OC 帶的教學、說話系統（自稱、稱呼、句尾頻率、多口頭禪、禁用詞、專屬稱呼）、11 種新特質、匯入原圖保留與依顯示大小的角色貼圖、四種鏡頭模式與旋轉、環狀情境選單、直接撫摸／抱起／甩動角色、狀態卡、時間面板、分級觸覺、原創即時生成音樂、台詞改寫、響應式主畫面小工具。紀錄（問題→原因→修正→驗證）：`docs/v8-report.md`。
-- **0.9.0-alpha（打磨）**：15 個新的角色事件（含三段跨天小故事「秘密基地」，以旗標串接）、創角的 5 題性格問答與隨機性格、3D 環境生物（蝴蝶、鳥群、跳魚）、事件選項改寫共用定義的錯誤、重複圖鑑通知、設定的時間區塊改用時間面板。紀錄：`docs/v9-report.md`。
-- **10.0（0.10.0-alpha）美術與體驗重構**：「晴空玩具」Design System（白瓷玩具表面、長春花紫強調、珊瑚紅點、星空深色主題、計算出的彈簧動態）、原創貼紙圖示（`OC.UI.sticker`）、依參考圖重排的 HUD（頭像名牌、天氣膠囊、系統鍵、右側工具列、任務卡、互動鈕、白色大導覽列）、頁首雲邊天空、分類貼紙鈕、世界調色（暖主光／冷天光、金色午後、光暈、景深）、角色玩具光影、跳躍預備／回彈。規格：`docs/design-system.md`；紀錄：`docs/v10-report.md`。
-- **10.1（0.10.1-alpha）**：修正「互動後角色卡住」（遺失的放開手勢、被取代的對話、沒回答的事件提問，加上保留的安全網）、環狀選單改成連續動作、多面體植物、逐頁打磨。驗收：`node game/tests/v10/run.js`。紀錄：`docs/v10-report.md` 後半。
-- **11.0（0.11.0-alpha）互動與生命感重做**：真正的滑動撫摸（依手指速度／身體部位／個體喜好連續累積，不是點一下）、親近環（抱抱、擊掌、戳、牽手）、`OC.Anim11` 107 個資料驅動動作（姿勢間 0.2 秒柔和過渡、情緒小動作、觸摸層）、`OC.Mind11` 多步計畫／每日目標／對他人的認知／可解釋的「想法」、`OC.Social11` 10 種雙人互動（各有互補動畫）、創角舞台（轉盤、點部位）與誕生演出、角色聲線（每個 OC 一種、隨心情改變）／立體聲定位／動作與腳步音效／音樂強度層／分層觸覺節奏、世界觸控回饋（點地面波紋、點樹搖晃落葉、跑步揚塵）、桌寵多 10 個小動作。驗收：`node game/tests/v11/run.js`。紀錄與未驗證項目：`docs/v11-report.md`。
-- **12.0（0.12.0-alpha）修正與成熟化**：修掉純文字格的灰色圓底座與作息輸入框重疊、請求可取消、技能頁與地圖重新設計、**去除 NPC（只用玩家自己的角色）**、極簡 HUD（工具把手＋小膠囊、導覽列只有圖示、閒置淡出）、**每個角色各自的操控模式（手動／半自動（預設）／全自動），狀態卡、長按 HUD 頭像、生活設定都能切換**、成熟語氣（`lines12.js` 約 480 句、預設「沉穩」；「活潑」回到舊的）與預設「雅緻」介面風格、`OC.Arcs`（情緒感染、冷戰→解凍→和解／疏遠、三人以上的聚會）、桌寵自己的聲音（`OC.PetSound` ＋ 原生 `PetSounds` ＋ core `PetSound`）與雙人桌面動作（`PetSocial.KINDS`）、`OC.Sound.cue`（過場短句接到真實事件）、3D 的接觸陰影／房間布置（`OC.Dress`）／重新建模的家具（`models12.js`）。**3D 只做了一部分：房屋、樹木、岩石的造型沒有重新建模。** 驗收：`node game/tests/v12/run.js`。紀錄（問題→原因→修正→驗證＋未驗證項目）：`docs/v12-report.md`。
-- **13.0（0.13.0-alpha）**：操控／觀察中的角色自己換地點時畫面跟過去、圖片角色的調整（翻轉／轉向／縮放／位移／裁切，繪製時套用）與 `OC.Puppet`（單張圖片自己表演所有動作＋特效）、79 個資料驅動特質（`traits13.js`，衝突提示、隨機）、新的預設介面風格（`data-style="play"`：世界裡無框、選單依主題紙感／石板、奶油色對話框）、`OC.Fun`（猜拳、躲貓貓、搖樹掉落、角色主動來訪與約定）、四章節教學、桌寵作息（`core/pet/PetRoutine`）。**桌寵原生層與各頁面版面沒有整個重寫。** 驗收：`node game/tests/v13/run.js`。紀錄：`docs/v13-report.md`。
-- **14.0（0.14.0-alpha）統一風格與打磨**：整個 App **只有一種介面風格**「島日和」（奶油紙、暖棕字、薄荷綠＝可按、陽光黃＝已選；白天／夜晚是同一套設計的兩個調色盤；風格切換已移除）、HUD 小膠囊、彩色導覽列、背包口袋格、交易紀錄（餘額／今日／分日）、桌寵中心的「桌面」預覽、圖片角色用手指直接裁切／移動／縮放、樹／杉樹／灌木／岩石／房屋正面重新建模、**靜態模型依材質合併（`Models.fuse`，小島繪製呼叫 557 → 約 250）**、**桌寵行為全部搬進 `core/pet/PetActor`（純 Kotlin、有單元測試），原生視窗只負責顯示**、新增「去睡一下／叫醒」。**原生層仍未經實機驗證。** 驗收：`node game/tests/v14/run.js`；逐頁檢視：`node game/tests/v14/shots.js`。紀錄：`docs/v14-report.md`。
-- **14.1（0.14.1-alpha）修正卡頓**：調色從「畫布上的 CSS 濾鏡」改到著色器、光暈層不用混合模式、白天關掉路燈點光源、陰影每兩幀更新且只有「高」用柔邊、載入地點時預先編譯著色器、「平衡」會自動降解析度、HUD／泡泡只在改變時寫 DOM；`core/pet/PetStage`（多隻桌寵一起做的事）；房屋主體／攤位／橋重新建模；工坊改成工具方格。**手機上是否還卡沒有驗證。** 紀錄：`docs/v14.1-report.md`。
-- **14.2（0.14.2-alpha）**：玩家回報平均約 20 fps。角色看板改用 CPU 畫布（上傳貼圖不用從 GPU 讀回）、一幀最多重畫兩個角色、待機每秒重畫 2 次、花圃的花合成一叢（小島繪製呼叫約 250 → 約 140）、自動降級多一級（關陰影與草）、「顯示 FPS」顯示每幀時間／繪製時間／角色重畫／呼叫數／解析度／降級、拿掉 14.1 加的 WebView 硬體圖層。**手機上是否改善仍未驗證。** 紀錄：`docs/v14.1-report.md` 的「一之二」。
-- **15.0（0.15.0-alpha）互動模型與介面骨架**（計畫 15.0–15.3，保留 2D 角色）：**點選 ≠ 執行**（`OC.Pick`：點物件只出現動作卡，按了才做；卡片／環狀選單／對話選項剛出現 0.35 秒不接受按壓；設定「點一下就做」可回到舊行為）、動作清單（`OC.Queue`，左上可逐項取消）、操控標記、「日常」改成口袋手機（App 主畫面）、拍照模式與相簿（`OC.Photo`）。紀錄：`docs/v15-report.md`。
-- **15.1（0.15.1-alpha）逐頁重新設計（第一批）**：角色頁＝晴日公寓（每人一間房、空房間＝新增）、檔案＝島民護照、家裡的牆壁與地板（`S().surfaces`，佈置模式）、商店購買畫面＝試衣間（用副本試穿）、設定的區塊方格、創角第一步的大卡片；修正 15.0 防誤觸擋住「點外面關閉」。地圖、桌寵中心、設計亭、創角大舞台還沒做。紀錄：`docs/v15.1-report.md`。
-- **15.2（0.15.2-alpha）兩個新地點與島上生活**：開放**風車丘**（風車磨坊商店、薰衣草田、野餐墊、草原蚱蜢）與**彩虹遊樂園**（星光舞台演唱會小遊戲、摩天輪、旋轉木馬、套圈圈、點心攤）（`js/world/areas15.js`）；打工（`OC.Jobs`）、島報／房間評分／小島評價／生日（`OC.Island`）。夢境、宣言、連續劇、願望與恐懼、人生階段、季節活動未做。紀錄：`docs/v15.2-report.md`。
-- **15.3（0.15.3-alpha）視覺與動態打磨**：季節（`OC.Clock.season()`；色調烤進著色器、角色不套；`OC.Ambient` 的花瓣／落葉／雪與海面閃光）、雲朵轉場、遊樂園燈泡接夜晚燈光、遊樂園音樂盒與風車聲、逐頁檢查。地圖、桌寵中心、設計亭、創角大舞台、季節活動未做。紀錄：`docs/v15.3-report.md`。
-- **15.4（0.15.4-alpha）剩下的頁面**：創角大舞台＋分類列、設計亭（`OC.Design`：12×12 圖樣穿在上衣，`look.pattern = 'design:<id>'`，資料在 `S().designs`）、地圖路線與路程、桌寵中心三個分頁。紀錄：`docs/v15.4-report.md`。
-- **15.5（0.15.5-alpha）剩下的內容**：夢、宣言、恐懼、人生階段、季節活動（`OC.Life15`）、三段連續劇「說不出口的話」（`events15.js`）。紀錄：`docs/v15.5-report.md`。
-- **16.0（0.16.0-alpha）**（計畫 16.0–16.8 見 `docs/v16-plan.md`，玩家已確認）：角色畫在螢幕原本的解析度（兩段式繪製）、圖片角色寬高分開 20–400%／不被切、名牌卡（左上）、**切換操控不傳送**（鏡頭過去）、買東西／撿東西直接在介面完成、`OC.Budget` 打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。驗收：`node game/tests/v16/run.js`。紀錄：`docs/v16.0-report.md`。16.3 起（對話引擎、自主與世界、住處、職業學業、遊樂設施重做、生老病死）**尚未做**。
-- **16.1（0.16.1-alpha）開局與人生**：開局建立多位島民＋島民名冊＋關係圖（有方向、可鎖定、背景故事）＋選房子（`ui/opening16.js`：`OC.Opening`、`OC.Homes`）；`OC.People`（`life/people16.js`）：20 種物種＋自訂物種、七個人生階段（含嬰兒）、生日長大（自動／按了才長／固定）、未滿 18 歲不涉戀愛。紀錄：`docs/v16.1-report.md`。
-- **16.2（0.16.2-alpha）意願模型與互動**：`OC.Will`（`life/will16.js`）——沒有門檻表，60 種互動（12 類）都能做，對方依關係／親近程度／個性／心情／需求／旁人／歷史決定，反應是光譜（熱情…哭了）各有後果；點別的角色＝社交選單（大概的反應 😊😐🙁）；設施「邀請誰一起」；小機率不照指令（有原因）；12 個社交特質。紀錄：`docs/v16.2-report.md`。
-- **16.2.1（0.16.2.1-alpha）拖曳後凍結**：輕拋／丟出後反應動作（優先 8）被還在的 `drag`（優先 9、沒有結束時間）擋掉 → 角色停在拖曳姿勢、走路被擋；丟到海上／懸崖時落在不能走的格子 → 點地面沒反應。修正＋通用安全網（`actWatchdog`）＋每隻各自的搬運紀錄。紀錄：`docs/v16.2.1-report.md`。
-- **16.3（0.16.3-alpha）角色工作室**：編輯頁分兩區（舞台與分頁固定，只有面板捲動——修掉滑動跑版）；圖片角色有自己的分頁（取景台、去背、自動對齊、動畫來源「全部預設／混合／全部自己匯入」＋一鍵全選與批次匯入），沒有捏臉選項；角色自己的台詞（`c.lines16`）、專屬互動（`c.inter16` → `OC.Will`）、自訂事件腳本（`c.scripts16`／全島 `save.life.scripts16`，`OC.Script`，格式 `docs/oc-script.md`，不限數量、可匯入）。紀錄：`docs/v16.3-report.md`。
-- **16.4（0.16.4-alpha）互動選單＋動作清單**：角色的環保留常用動作，分類在同一個選單裡展開項目面板（不再有第二個環或表單）、項目一按就做（「復原」提示、長按＝立刻做）；`OC.Queue` 依模擬市民重寫（`life/queue16.js`：帶目標／地點／對象、8 個、排序、立刻做、循環、進度、不想做會說原因＋強迫、跨地點、等對方有空）；物件會列出能做的事；長按地面「在這裡做」；11 個新活動（`life/acts16.js`）與梳毛／打氣／蓋被子。紀錄：`docs/v16.4-report.md`。
-- **16.5（0.16.5-alpha）飲食與烹飪**：`OC.Food16`（`items/food16.js`）：食材分類、10 種新食材、80 個食譜、7 種做法、品質 ★1–★3（`_q2`／`_q3` 是各自的物品）、自由料理與發現、食譜書、自動做、冷熱與物種口味、端上桌與剩菜、角色自己下廚（一天最多兩次）、咖啡館點餐；廚房介面 `OC.Kitchen`（`ui/cook16.js`：食譜／自由料理／冰箱）。**沒有新的廚房家具模型。** 紀錄：`docs/v16.5-report.md`。
-- **16.6（0.16.6-alpha）對話引擎**（原計畫 16.3）：`OC.Topic`（`life/topic16.js`＋資料 `topics16d.js`）：話題來自角色身邊的事（剛做的事、共同興趣、一起的回憶、天氣、季節、地點、吃過的東西、朋友＝八卦、60 個日常話題），每個角色對話題有立場（口味、特質、興趣、關係）；聊天是一串互相回應的行為（提起→附和／反對／追問／分享／玩笑／換話題…→結束）；記得對方的立場、聊得來／意見不合／八卦（信任才影響、玩家固定的不動）；你沒參與的對話只顯示關鍵字泡泡，可以「偷聽」、「最近的對話」；沒話題時來問你（選或打字，離線字典；經 `OC.Budget`）。台詞約 260 句（計畫目標 1500 句**沒有達到**）。紀錄：`docs/v16.6-report.md`。
-- **16.7（0.16.7-alpha）自主與世界**（原計畫 16.4）：`OC.Aware`（`life/aware16.js`＋台詞 `aware16d.js`）：感知與注意力（看到難過的、被丟出去的、睡覺的、吃東西的、地上的東西、下雨 → 焦點）、社交維繫（好久沒說話的朋友）、情境判斷（有人睡覺不吵、圖書館安靜、下雨不在室外、不對難過的人開玩笑）、重新規劃（位子被佔走會記住並說明）、地上的東西（`save.ground16`，放下／丟掉，角色依個性吃／玩／收拾／看看）、其他地點的設施容量（`FAC`）與遇到聊天；12 樣新道具（`items/props16.js`）。紀錄：`docs/v16.7-report.md`。
-- **16.8（0.16.8-alpha）住處與家庭**（依玩家定案藍圖 `docs/v16-blueprint.md`）：`OC.House16`（`life/home16.js`）：黃屋頂小屋（`yhouse`）、紫屋頂連棟屋（`phouse`）室內、回自己的家睡、四種新床（`models16.js`：雙人床／上下舖／兒童床／嬰兒床，同床看關係）、入住管理頁 `homes16`（原住戶反應＋強制入住的後果）、同居日常與摩擦（每週一封信）、照顧寶寶與五個成長紀念、孩子與領養（預設關閉、一定先問玩家）、家族樹。紀錄：`docs/v16.8-report.md`。
-- **16.9（0.16.9-alpha）職業與學業**：`OC.Career16`（`life/career16.js`）：17 條職業線（受僱 8、自由業 9，各 8 個職稱）、兔子洞上班上學（走到告示牌旁就看不到）、薪水／升遷、自由業案件（委託人、截止日、信譽、靈感、作品集、上架成工坊商品）、學校（幼兒園／小學／中學／成人進修、15 科、在學／休學／自學、作業、期末考、畢業、校慶）、打工轉 Lv.1「兼職」；頁面 `career16`。紀錄：`docs/v16.9-report.md`。
-- **16.10（0.16.10-alpha）遊樂設施與邀約**：`OC.Fair16`（`ui/fair16.js`）：遊樂園 7 個新攤位（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮；共 11 個設施），真實觸控小遊戲、選同伴一起玩（膽小的不坐可怕的）、票與一天一次的獎品；`OC.Outing16`（`life/outing16.js`）：邀約／約會／出遊（立刻回答、到時出發、結算、放鴿子）、角色自己約、手機「行程」App（`plan16`）。紀錄：`docs/v16.10-report.md`。
-- **16.11（0.16.11-alpha）生老病死與收官**：`OC.Health16`／`OC.Feud16`（`life/health16.js`＋台詞 `health16d.js`）：有真實原因的疾病（淋雨、沒睡、過勞、地上放太久的食物、吃太多、被用力丟、傳染、長者老毛病）、生病時需求下降與 AI 想休息、朋友照顧、病假、藥（`items/meds16.js`，雜貨攤）；壽命與告別（`settings.death16` 預設關、每個角色 `h16.mode`，七天「常常說累」→ 告別小劇場、紀念相框、朋友難過；可撤銷）；冷戰的起因、背後說壞話、送禮緩和、玩家幫忙；`OC.Theatre`（`ui/theatre16.js`：重大時刻小劇場、錯過與「回放」）；「健康」App；桌寵 `status`（原生 `PetBrain.Status`）。紀錄：`docs/v16.11-report.md`。
-- **17.0（0.17.0-alpha）灰色畫面與全面檢查**：`OC.Guard`（`ui/guard17.js`）安全網＋紀錄；遮罩沒有模糊、點遮罩關掉它的視窗；視窗下滑可靠；腳本過場收起黑邊；3D 中斷的重新載入卡片；頁面開著時卡片／提示移開。**17.1–17.6 的計畫（含所有未完成項目）在 `docs/v17-plan.md`**。紀錄：`docs/v17.0-report.md`。
-- **17.1（0.17.1-alpha）背景生活**：離開時大家照常生活（`OC.Sim.awayRun`：虛擬時鐘、最多 30 天、固定的亂數、遊戲循環照現實時間前進＋「離開時暫停」、時間往回調不推算）；時間線 `OC.Chronicle`（回憶／活動／關係變化各寫一條、收藏、篩選、「正在發生」）；「你不在的時候」`OC.Away`＋`OC.AwayUI`（頁面 `chron17`）；一天結束的卡片。離開時不給星幣物品、不算缺勤、不跳通知。（離開時的生病、冷戰、回放、Android 背景通知在 17.1.1 補上；事件與來訪離開時仍不發生。） 驗收：`node game/tests/v17/run.js`。紀錄：`docs/v17.1-report.md`。
-- **17.1.1（0.17.1.1-alpha）背景生活補完**：離開時也會生病／好起來、冷戰開始到和好或疏遠、背後說壞話、角色自己約出遊（不下廚：會產生物品；不傳染、不調解、不告別）；回放一天（`OC.AwayUI.Replay`：1×–1024×、跳到時刻、「在島上看」＝泡泡＋鏡頭，不改資料）；背景預測 `OC.Sim.forecast`／`OC.Forecast`（App 進背景時乾跑 24 小時再完整還原）→ Android 通知（預設關，`tools/Forecast.kt`＋`core:pet` 的 `ForecastPlan`）與小工具「大概在做什麼」；一天結束卡片加生日與出遊。**原生部分未經實機驗證。** 紀錄：`docs/v17.1.1-report.md`。
-- **17.2（0.17.2-alpha）觀察模式**：`OC.Observe`（`ui/observe17.js`）——工具把手的「觀察」：操作按鈕與導覽列收起、只留時間／時間線／戶型／人物條；操控的角色（與手動的）改成全自動，結束時恢復操控模式、速度、操控的角色（`life.obs17.prev`）；人物條＋人物卡（現在、精力／飽腹／心情、今天、和誰）；自動鏡頭（事件＞聚會＞聊天＞情緒，自己點了 40 秒內不搶）；遊戲循環 1×–60×（30／60 只在觀察時）；戶型總覽頁 `plan17`（三間住處的 2D 俯瞰圖與圓點，點了就去看）。**沒有樓層（現在的住處都是一層）、手機上未驗證。** 驗收：`node game/tests/v17/run.js 16 17 18 19`。紀錄：`docs/v17.2-report.md`。
-- **17.3（0.17.3-alpha）關係每天結算**：`OC.Bond17`（`life/bond17.js`）——關係的名稱每個遊戲日結算一次（離開時也會），數字連續兩天都這樣說才變；陌生→認識→朋友→好友→**知己**，也會淡了／釋懷；「親密」改叫**心動**，單戀／曖昧（只在 `romanceOK`）；求婚／婚禮／分手／復合是要玩家同意的事件（`TYPES` 多了 `engaged` 未婚伴侶、`ex` 前任、`confidant` 知己，`bestfriend` 改叫好友）；紀念日（在一起／訂婚／結婚／知己的 7、30、100 天與週年）；三層設定（身分、相處標籤、合拍度、可以發展戀情、固定）；好感度頁 `bond17`（`ui/bond17ui.js`）。驗收：`node game/tests/v17/run.js 20 21 22 23 24`。紀錄：`docs/v17.3-report.md`。
-- **路線圖**：MVP 17.1–17.4（`docs/v17-roadmap.md`，玩家已同意全部建議：觀察與操控並存、離開不給星幣物品、不做雲端、城市只決定時區與日出日落、最多推算 30 天）→ 階段二 18.x、階段三 19.x（`docs/v18-rebuild-plan.md`：桌寵分層狀態機與桌面物件、新設計語言逐頁替換「島日和」——仍然只有一種風格、美術方向不變）。
-- 下一步見 **`docs/v17-roadmap.md`**（17.1 背景生活、17.2 觀察模式、17.3 每日結算的關係〔已做，見上〕 → 17.4 角色與日常的設定 → 17.5 住處與戶型 → …；參考《角色觀察屋》只取玩法原則，不用它的文字、介面圖形、戶型或素材），17.0 的檢查與未完成清單在 `docs/v17-plan.md`。「其他島嶼／旅行」仍未開放，不要做假入口（15.2 起地圖上沒有鎖住的島）。
-- 參考作品只吸收設計原則，**不得**使用其角色、Logo、介面圖形、地圖或素材。
+- **M0（0.1.0-reboot）地基——完成**：
+  - 新專案骨架與離線 APK 管線；
+  - `core:sim`（確定性亂數、時鐘）、`core:save`（收藏庫＋存檔兩層、原子寫入、每日備份、複製／分支）；
+  - `render:api` ＋ Android Canvas 後端 ＋ Java2D 後端（截圖測試）；
+  - `ui`（設計 tokens、彈簧、元件、存檔選單、開始新的觀察、M0 的世界畫面）。
+  - 紀錄：`docs/reboot/m0-report.md`。
+- 下一步：**M1 存檔與家**（計畫 12.11：開場流程與房型、需求、效用 AI、作息、觸碰、人物卡、補算）。
 
 ## 目錄
 ```
-game/                 正式遊戲（離線網頁，打包進 APK assets）。無建置步驟，直接用瀏覽器開 index.html
-  css/tokens.css      Design Tokens（淺色/深色）——唯一的顏色/字級/間距/動態來源
-  css/app.css         UI 元件
-  js/life/aware16.js OC.Aware（16.7）  js/items/props16.js（16.7 新道具）  js/life/home16.js OC.House16（16.8）  js/world/models16.js（16.8 床）  js/life/career16.js OC.Career16（16.9）  js/ui/fair16.js OC.Fair16、js/life/outing16.js OC.Outing16（16.10）
-  js/world/areas15.js 15.2 風車丘（hill）與彩虹遊樂園（fair）  js/play/island15.js OC.Island（島報、房間評分、小島評價、生日）  js/play/jobs15.js OC.Jobs（打工）
-  js/ui/design15.js   OC.Design（15.4 設計亭）  js/life/life15.js OC.Life15（15.5 夢、宣言、恐懼、人生階段、季節活動）  events15.js（15.5 連續劇，資料）
-  js/life/chronicle17.js OC.Chronicle（17.1 時間線）  js/life/away17.js OC.Away（17.1 背景生活）  js/life/forecast17.js OC.Forecast（17.1.1 背景預測）  js/ui/away17ui.js OC.AwayUI（「你不在的時候」、頁面 chron17、一天結束的卡片）
-  js/life/bond17.js   OC.Bond17（17.3 關係每天結算、心動、求婚／婚禮／分手／復合事件、紀念日、三層設定）  js/ui/bond17ui.js OC.Bond17UI（好感度頁 bond17、相處設定）
-  js/ui/observe17.js  OC.Observe（17.2 觀察模式、人物條與人物卡、自動鏡頭、戶型總覽頁 plan17）
-  js/ui/guard17.js    OC.Guard（17.0 畫面安全網）  js/ui/theatre16.js OC.Theatre  js/life/health16.js OC.Health16／OC.Feud16
-  js/ui/pick15.js     OC.Pick（15.0：點選的動作卡、guard 防誤觸）  js/life/queue15.js OC.Queue（動作清單）  js/ui/photo15.js OC.Photo（拍照模式＋相簿頁 album）
-  css/island.css      14.0「島日和」：唯一的介面風格（最後載入；HUD、導覽列、環狀選單、口袋格、帳本、桌寵桌面、裁切框）
-  lib/three.min.js    three.js r158（MIT，UMD，全域 THREE）
-  js/core/            oc.js（工具，與 prototype/shared/core.js 相同）store.js（存檔/事件）clock.js（時間/天氣）game.js（任務/成就/目標規則；12.0 起沒有居民）
-  js/life/            data.js（需求/情緒/活動/社交/習慣規則/台詞/事件資料）sim.js（固定步長排程器＋遊戲時鐘＋離線補算）mind.js（需求/情緒/回憶/紀錄/關係/願望/技能/作息/成長）
-                      talk.js（對話引擎）brain.js（Utility AI、活動狀態機、可供性/預約、社交編排、分層模擬）events.js（事件生命週期）
-  js/art/             vec.js vchar.js（第二階段 rig，NPC 圖示仍用）rig.js（擴充 rig：比例、五官、部件錨點）style.js（物品目錄、預設外觀）
-  js/char/            assets.js（IndexedDB 素材）model.js（角色資料 v2、性格→行為、成長）anim.js（動畫文件、播放、fallback）render.js（統一繪製）io.js（解碼、Sprite Sheet、ZIP、.ocpack）
-  js/world/           models.js（3D 模型庫）env.js（光照/天氣/特效）world.js（引擎：鏡頭、導航 A*、看板角色、輸入、拾取、佈置）areas.js（晴日島、苔光森林）
-  js/items/           art.js（原創程序物品圖示）items.js（OC.Items 物品目錄／搜尋／工坊商品、OC.Taste 飲食喜好）tx.js（OC.Tx 唯一交易流程＋帳本）shops.js（OC.Shops 商店、價格、收入）
-  js/world/           models2.js（室內、商店、海灘、菜園等模型）areas2.js（家、咖啡館、圖書館、商店街、海灘＋島/森林的菜園、釣魚、採集、小生物）places.js（OC.Places 地點登記、移動時間、菜園、採集、魚表、每個地點的房間）
-  js/ui/              ui.js（DOM/圖示/表單/提示）stickers.js（OC.UI.sticker 彩色貼紙圖示、stickerOr）kit.js（色環、滑桿、標籤、復原）pages.js（一般頁面）charedit.js（編輯區塊＋預覽舞台）creator.js（創角流程）
-                      charpages.js（角色列表/檔案/編輯器/工坊/桌寵）library.js（匯入與素材庫）paint.js（繪畫工坊）animstudio.js（動畫工作室）
-                      lifeui.js（OC 互動選單、通知、檔案「生活/關係/回憶」、生活設定、對話編輯、開發者診斷）
-                      p5pages.js（世界地圖、背包、商店、工坊商品、交易紀錄、OC.Use 使用物品、飲食喜好）worldui.js（OC.WorldUI 移動、抵達、設施點擊）minigames.js（OC.Mini 釣魚、料理、小生物）
-                      p6pages.js（「日常」中心、成就、統一圖鑑、角色檔案「成長」「日誌」、聲音設定、請求橫幅、遊玩系統診斷）
-  js/pet/             petsync.js（OC.PetSync：桌寵設定／快照／台詞池／影格輸出／桌面互動套用／工具）petpages.js（桌寵管理、單隻設定、App 情境、番茄鐘與提醒、診斷）
-  js/ui/intro.js      OC.Intro（Logo、開場拍攝、歡迎、登場）tutorial.js（OC.Tutorial）radial.js（OC.Radial 環狀選單）touch.js（OC.Touch 撫摸／抱起／甩動）
-  js/life/lines8.js   8.0 台詞（資料）  events9.js（0.9 事件與台詞，資料）
-  js/world/ambient.js OC.Ambient（蝴蝶、鳥群、跳魚；純視覺）
-  js/char/anim11.js   OC.Anim11（11.0 資料驅動動作庫、觸摸層、情緒小動作 fidget；render.js 的預設分支呼叫它）
-  js/life/lines12.js  12.0 成熟語氣台詞（資料，`m:true`；約 480 句／141 分類）  arcs12.js（OC.Arcs：情緒感染、冷戰、三人以上聚會）
-  js/world/models12.js 重新建模的家具（同 id、同占地；書依顏色合併）  dress12.js（OC.Dress：畫框、地毯、窗光、小燈串、商店街花圃；純視覺）
-  js/pet/petsound.js  OC.PetSound（用角色自己的聲線離線合成 14 個 WAV，交給原生）
-  js/life/mind11.js   OC.Mind11（計畫、每日目標、對他人的認知、想法說明）  social11.js（OC.Social11 雙人互動種類）  lines11.js（11.0 台詞，資料）
-  js/play/            content.js（OC.PlayData：任務、挑戰、請求、技能解鎖、人生目標、稱號、成就、紀念品、新台詞）progress.js（OC.Progress 唯一進度事件）
-                      quests.js（OC.Quests）achieve.js（OC.Achieve）growth.js（OC.Growth 技能解鎖／人生目標／稱號）requests.js（OC.Requests 角色請求）
-                      stage.js（OC.Stage 特殊演出＋回饋卡片）sound.js（OC.Sound 即時合成音效與環境音）
-  tests/life/         run.js + harness.js：第四階段情境測試 1–13（Playwright；不打包進 APK）
-  tests/world/        run.js：第五階段情境測試 1–13＋交易測試 T1–T8（小遊戲由機器人用真實指標事件遊玩；不打包進 APK）
-  tests/play/         run.js：第六階段情境測試 1–14（請求、任務、技能、目標、圖鑑、成就、檔案、演出、跳過、切換、洩漏、重開）
-  tests/v8/           run.js：8.0 驗收（首次遊玩、開場／教學、說話與特質、畫質、鏡頭、選單、觸碰、時間、狀態卡、演出、主題／小螢幕、長時間、遷移）
-  tests/v15/          run.js：15.x 驗收 1–10（點選≠執行〔真實觸控〕、動作清單、口袋手機、拍照與相簿、15.1 的頁面、15.2 新地點、島報與生日、15.3 季節與轉場、15.4 頁面、15.5 內容）
-  tests/v14/          run.js：14.x 驗收 1–8（單一風格、背包與帳本、桌寵桌面、手指裁切、合併後的世界、小修正、14.1 效能、14.2 角色貼圖與效能數字）；shots.js：逐頁截圖（淺色＋深色，檢視用）
-  tests/v13/          run.js：13.0 驗收 1–7（跟隨換地點、圖片角色、特質、小遊戲、來訪與約定、介面風格、教學）
-  tests/v12/          run.js：12.0 驗收 1–11（請求取消、版面、技能頁、地圖、無 NPC、操控模式、極簡 HUD、語氣與風格、情緒感染／冷戰／聚會、過場短句、3D）
-  tests/v11/          run.js：11.0 驗收 1–7（撫摸、親近環、動作庫、AI 計畫、雙人互動、音訊、世界觸控回饋；音訊用音訊執行緒上的錄音節點量測）
-  tests/pet/          run.js + mock-native.js：第七階段（桌寵的遊戲端：狀態、權限、影格輸出、多隻、同步、台詞、App 情境、工具、備份、重開、瀏覽器版）
-  tests/fixtures/     匯入測試素材（PNG 序列、GIF、APNG、WebP、Sprite Sheet、ZIP、損壞檔；不打包進 APK）
-  js/app.js           外殼：開機、主題、效能模式、HUD、導覽、快速背包、互動、對話、佈置、桌寵輸出、OCApp 原生掛鉤
-android/              Gradle 專案。app（WebView 外殼 + bridge + overlay/ 多隻桌寵 + tools/ 提醒 + widget/ 小工具）；core:*（純 Kotlin；core:pet = PetActor（14.0：一隻桌寵的全部行為）、PetBrain、Gestures、AnimClip、PetTalk、AppContext、PetSocial、PetSound、PetRoutine）
-  tools/framework-extras/  離線 aapt 用的框架屬性包（只有 foregroundServiceType；不打包進 APK）
-prototype/            第一階段原型（凍結）
-docs/                 phase2-report、roadmap、design-system、ui-components、art-guidelines、android-build、architecture …
-deliverables/         apk/（Debug APK + sha256）phase2/（截圖）videos/ overviews/（第一階段）
+settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
+core/sim/      純 Kotlin：Rng（SplitMix64，唯一的亂數）、GameClock（REAL／GAME）
+core/save/     純 Kotlin：Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）
+render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
+render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
+ui/            純 Kotlin 的整個介面：Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、NewObservationSheet、WorldScreen、ListSheet、Confirm
+               src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
+app/           Android 外殼：MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets；build.gradle.kts＝離線管線
+art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
+docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
+deliverables/  apk/（Debug APK＋sha256）、m0/（截圖）
 ```
 
 ## 指令
 ```bash
-cd game && python3 -m http.server 8765        # 開 http://localhost:8765/index.html（手機尺寸 393×852 檢視）
-node game/tests/life/run.js [1 2 …]           # 第四階段情境測試（先開上面的 http.server；約 15 分鐘；截圖存 deliverables/phase4/）
-node game/tests/world/run.js [1 2 …]          # 第五階段情境測試（約 15–20 分鐘；截圖存 deliverables/phase5/）
-node game/tests/play/run.js [1 2 …]           # 第六階段情境測試（約 15 分鐘；截圖存 deliverables/phase6/）
-node game/tests/v8/run.js [1 2 …]             # 8.0 驗收（約 6 分鐘；截圖存 deliverables/v8/）
-node game/tests/v10/run.js [1 2 …]            # 10.x 驗收：角色不會卡住、環狀選單（約 3 分鐘）
-node game/tests/v17/run.js [1 2 …]            # 17.x 驗收：安全網、背景生活、時間線、「你不在的時候」（約 3 分鐘）
-node game/tests/v15/run.js [1 2 …]            # 15.0 驗收（約 4 分鐘）
-node game/tests/v14/run.js [1 2 …]            # 14.0 驗收（約 3 分鐘）
-node game/tests/v14/shots.js <輸出目錄> both   # 逐頁截圖（淺色＋深色；用眼睛檢查用）
-node game/tests/v13/run.js [1 2 …]            # 13.0 驗收（約 12 分鐘；可用 OC_URL 指向別的連接埠）
-node game/tests/v12/run.js [1 2 …]            # 12.0 驗收：修正、無 NPC、操控模式、極簡 HUD、成熟語氣、冷戰與聚會、過場短句、3D（約 25 分鐘）
-node game/tests/v11/run.js [1 2 …]            # 11.0 驗收：撫摸、親近環、動作庫、AI、雙人互動、音訊、世界觸控回饋（約 15 分鐘）
-node game/tests/v10/shots.js deliverables/v10 both   # 視覺一致性圖庫（淺色＋深色）
-node game/tests/pet/run.js [1 2 …]            # 第七階段（桌寵遊戲端，模擬 OCNative；約 3 分鐘；截圖存 deliverables/phase7/）
-cd android && gradle -PcoreOnly=true test --max-workers=1          # Kotlin 核心測試（75 個，含桌寵 Shimeji／手勢／動畫時序／台詞／App 規則／多隻）
-cd android && gradle -Poc.build=offline :app:assembleDebug :app:verifyDebugApk --max-workers=1   # 含 ProGuard desugar + checkNoIndy
-#   → android/app/build/outputs/apk/debug/oc-shimeji-0.17.2-alpha-debug.apk（複製一份到 deliverables/apk/）；verifyDebugApk 也檢查編譯後的 Manifest
-cd android && ./gradlew :app:assembleDebug     # 標準 AGP（需 Android SDK + Google Maven；本環境無法使用）
+gradle -PcoreOnly=true test --max-workers=1                       # 所有純模組的測試（含 UI 截圖比對）
+gradle -PcoreOnly=true :ui:test -Precord=true --max-workers=1     # 介面改了、截圖確認沒問題後，重新記錄 golden
+gradle :app:assembleDebug :app:verifyDebugApk --max-workers=1     # Debug APK → app/build/outputs/apk/debug/oc-shimeji-<版本>-debug.apk（複製到 deliverables/apk/ 並更新 sha256）
+pkill -f GradleDaemon                                             # 建完釋放記憶體
 ```
-測試素材在 `game/tests/fixtures/`。Playwright 與 Chromium 已預裝（`require('playwright')`）；WebGL 測試加 `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`。軟體渲染很慢，效能數字不代表手機。
+截圖輸出在 `ui/build/shots/`（每次測試都會產生，用眼睛檢查）。
 
 ## 規則
-- **座標**：遊戲邏輯一律用設計座標 (x, y, 層)；3D 由 `X=x, Z=(y+層·24)/sin50°, Y=層·24/cos50°` 對應。點擊螢幕＝設計座標（不用射線），一律經 `World.screenToDesign` / `screenDelta`（含鏡頭旋轉的反算）；碰撞框是「螢幕上直立」的。看板角色 `rotation.y = yaw` 面向鏡頭。可行走/層級/地面高度寫成解析函式（`OC.Areas.*`）。
-- **角色**是 2D 看板：只在量化姿勢改變時重畫紋理；呼吸/彈跳用網格變換。轉身用連續的 `face`/`back` 平滑趨近，不可瞬間翻轉。
-- **UI 只用 tokens**；主題切換只改 `<html data-theme>`，不得重建 DOM、重載材質或重設 3D 場景。UI 主題與世界晝夜獨立。
-- **14.0 Design System「島日和」**（`docs/design-system.md`、`css/tokens.css` 開頭）：**只有一種風格**，不要再加 `data-style` 或風格選項；白天／夜晚兩個調色盤的圓角、形狀、元件必須相同。表面＝奶油紙＋下緣薄邊（`--hl` + `0 3px 0 var(--lip)` + 陰影）；`--accent`（薄荷綠）＝可按，`--sun`（陽光黃）＝已選取／星幣／獎勵，`--alert`＝紅點／新東西；字一律用 `--ink*`（暖棕／奶油，不用純黑純白）；對話、提示、教學卡用 `--balloon*`；標題前的小葉子用 `--leaf`。新的全域外觀寫在 `css/island.css`（最後載入）。按下用 `--t-press` 下沉、放開用 `--spring`；地點／工具／導覽／大清單圖示用 `OC.UI.sticker`，小的行內符號才用線條 `OC.UI.icon`。新元件不得寫死色碼（貼紙、物品圖、世界除外）。常駐在畫面上的元件**不得**用 `backdrop-filter`（每幀成本）。HUD 是有底的小膠囊（看得清楚），不蓋住畫面中間。參考作品只取原則，不得使用其素材。
-- **不得在 3D 畫布（`#world`）或蓋住整個畫面的常駐元素上用 CSS `filter`、`mix-blend-mode`、`backdrop-filter`**（每一幀一次全螢幕離屏合成，手機 WebView 上非常慢——14.1 的教訓）。世界調色寫在著色器裡（`world.js` 對 `THREE.ShaderChunk.tonemapping_fragment` 的補丁，所有模式都有）；`html.grade` 只控制光暈層（一般半透明層）；`html.dof` 的景深是唯一的例外，只在「高」。景深只模糊 3D 畫布，不可模糊 HUD 或泡泡。角色「玩具光影」只加在程式繪製的角色，**匯入／手繪的角色圖保持原樣**。
-- 頁面「建一次、就地更新」（`OC.Pages.define`）。每頁最多 1 個主要按鈕；觸控 ≥ 48dp；常駐 HUD ≤ 6 個操作元件（名牌、天氣時間、右側工具列 3 個、任務卡；通知鈴只在有通知時出現；導覽列另計），不要在 HUD 重複已有的入口（設定在「日常」、互動＝點你的 OC）。頁首貼紙在 `pages.js` 的 `PAGE_STK`。
-- **新遊戲不得自動加入玩家沒選的角色**：角色只由玩家建立、匯入或明確加入（12.0 起連居民／NPC 系統都已移除）。
-- 開場／教學：自動化測試設 `localStorage['oc.skipIntro']='1'`（harness 預設）；`OC.Intro`、`OC.Tutorial` 的進度存在 `S.intro`。教學步驟必須由真實事件完成（`St.emit('menu:open' | 'touch:pet' | 'touch:land' | 'status:open' | 'time:panel' | 'cam:*')`）。
-- 角色觸碰走 `OC.Touch`（World 的 claim 掛鉤）：手指落在角色上就屬於角色，不移動鏡頭；放開後一定落在可走地面；資料變化只經既有 API（`LifeUI.pet`、`Brain.hold`、`Mind.feel`）。
-- 說話一律經 `OC.Chars.speak(c, text, {to, emo, cat, rnd})`；不要在程式裡直接加口癖或口頭禪。
-- 匯入圖片：原圖保留（`Assets.original(id)`），工作圖 ≤ 2048；不要再把角色固定畫在小貼圖上（`World.bbRes` 依顯示大小）。
-- **不得做假功能**：未實作的功能用 `lockedRow` / `.locked` 明確標示「未開放」；任務、成就、目標只能由真實行為累積。
-- 天氣/時間變化用指數趨近（τ≈1.6s），不可閃光、不可晃鏡頭；霧永遠開著（晴天推遠），切天氣不重新編譯著色器。
-- 效能模式（高/平衡/省電/自訂）必須真的改變：像素比、陰影、特效、草、fps 上限、看板解析度、點光源。
-- 3D 模型：倒角/車床柔邊、登記碰撞（`ctx.block`）、共用幾何與材質快取；整島 ≲ 250 draw calls。
-- 存檔 schema `v:7`（`store.js` 的 `fresh()`；角色欄位由 `OC.Chars.normalize()` 補預設值）。v1–v6 存檔會自動遷移，**不可移除 `migrateV1` … `migrateV6` / `migrateLegacyAnims`**。
-- **物品只有一個登記表 `OC.Style.ITEMS`**（`OC.Items` 擴充）；庫存只有 `save.inv`。**星幣與物品數量只能經 `OC.Tx.run(key, {pay, get}, reason)` 改變**（驗證、原子、防重複 key、帳本）；不要直接呼叫 `Store.add/take/coins`。會重複發生的獎勵一定要用固定 key（例如 `forage:<地點>:<點>:<日>`）。
-- 生活模擬模式的背包**不能新增或修改物品**；工坊商品只登記並上架，**不產生庫存**。
-- 使用物品走 `OC.Use`：吃／喝要等動畫完成、沒被打斷才扣；失敗或取消不扣。家具按「放這裡」才扣。
-- 飲食喜好走 `OC.Taste`；玩家設定（`src:'player'`、`locked`）**絕不能**被品嚐改寫。
-- 地點：登記在 `OC.Places.P`、場景在 `OC.Areas`；每個地點的家具存在 `save.rooms[地點]`（`OC.Places.room(id)`）。切換地點用 `OC.WorldUI.travel()`，不重建 renderer／UI／AI。不在玩家身邊的 OC 只走 `Brain.abstractStep`（低頻），抵達經 `App.syncPresence()` → `Brain.arrived()`。
-- 未開放的地點保持 `locked` 並顯示原因；開放的地點一定要能進入、有可互動設施（測試 1b）。
-- 小遊戲（`OC.Mini`）用真實輸入；`OC.Mini.state` 是給測試機器人讀的唯讀狀態，不要讓它影響遊戲。
-- 生活設定 `life.settings.travel`（OC 可以自己去別的地方）：第四階段測試 harness 預設關閉（情境假設大家都在島上），第五階段測試傳 `travel: true`。
-- 玩家安排的活動（`Brain.command`）不會被邀請或旅行取代；被保留（hold）打斷時會在之後繼續；正在離開的 OC 不能被邀請。
-- 頁面只在顯示的資料改變時重建（`same(p, 簽章)`），否則按鈕會在手指下被替換（生活模擬事件很頻繁）。
-- 輸入：新的主要指標會清掉殘留指標；長按在下一幀確認（慢幀時避免把點擊誤判成長按）。`window.__ocInputLog` 只給測試追蹤用。
-- **玩法只有一個進度事件流**：任何遊戲行為用 `OC.Progress.emit(事件, 資料)` 回報一次；任務、請求、人生目標、挑戰、成就都只聽它。不要為某個任務另寫計時器或判斷。離線補算時不會送出（不給離線獎勵）。
-- 任務／請求／目標／成就／挑戰的獎勵一律 `OC.Quests.grant(key, reward)`（內部 `OC.Tx`），key 固定：`q:<實例>`、`chal:<id>:<階>`、`req:<id>`、`asp:<oc>:<id>`、`ach:<id>`。成就由玩家領取，不自動入帳。
-- 任務提供前一定檢查 `req`（地點開放、買得到、OC 數量），不可要求未解鎖或不存在的內容。新任務／請求／目標／成就／技能解鎖只改 `js/play/content.js` 的資料。
-- 技能升級一定要有實際效果：系統用 `OC.Growth.has(c, 解鎖id)` 判斷；有 `unlock` 的活動要經 `OC.Growth.allowed()`。
-- 特殊演出走 `OC.Stage.perform()`；**演出不改資料**（先用 Tx 等完成資料，再演），跳過／中斷不會遺失或重複獎勵。演出期間角色 `hold('stage')`。新動作同時加 `rigState` 分段姿勢與 `OC.Chars.ACTIONS` 備用鏈。
-- 音效只用 `OC.Sound`（即時合成、原創）；不要加入其他遊戲的音效或音樂。
-- **生活模擬只有一個時鐘**：所有需求、活動長度、冷卻用 `OC.Sim` 的遊戲分鐘（固定步長，app 迴圈餵現實秒數）；走路效果依距離。不要用 `setInterval`/幀數驅動生活邏輯，否則速度、fps、背景會改變結果。
-- 離線／背景只走 `OC.Sim.catchUp()`（以 `life.lastReal` 為準、不給獎勵、摘要回憶有 key）。17.1 起預設是 `awayRun`（最多 30 天，見下方 17.1 規則）；`life.settings.away17 === false` 時回到舊的 8 小時（舊測試 harness 這樣設）。
-- 新活動：加到 `LifeData.ACTS`（效果每遊戲小時、動畫要有備用鏈）並讓某個可供性提供它的 verb；新物件／地點：在區域加 `spots` 或可互動物件，`Brain.rebuild()` 會產生位子。位子一定要經過 `Brain.reserve`。
-- 事件每次播放都複製自己的步驟（`cur.steps`），選項只能改這份複本，不可改 `ev.steps`。
-- 暫停 OC 用 `Brain.hold(id, reason)` / `unhold`，不要直接改 `brain.st`。每個 hold 都要有保證會執行的 unhold（關閉回呼、計時器）；app 的 `holdWatchdog` 會放開沒有擁有者的 drag/dialogue/menu，並限制 call/pet/play/feed 的最長時間——新的互動保留要加進去。事件只能經 `OC.Events`（一次一個、間隔、冷卻、once 鍵）；重大關係變化只能產生通知、玩家同意才套用。
-- 永久改變（特質、習慣、興趣、戀人）一律 `OC.Mind.suggest` → 玩家 `resolve`（accept/reject/later/lock/mute）；拒絕有 5 天冷卻。玩家設定的關係（`fixed`）與背景故事不可被自動改寫。
-- 戀愛預設關閉，只有玩家標示為成年的角色才可能參與。
-- 對話新增內容放 `LifeData.LINES`（分類＋條件＋變數），不要在程式裡寫死台詞；不同 OC 要靠 voice/trait/情緒條件產生不同說法。
-- **角色資料只有一份**（`save.chars`）：頁面只讀它或編輯 draft 後整筆寫回；不要另存副本。需求、外觀、動作都屬於角色。
-- **圖片不可放進存檔 JSON**：一律 `OC.Assets.put()`（IndexedDB）並只存 id；畫面用 `OC.Assets.peek()`（同步、LRU）或 `image()`（非同步）。
-- 所有角色繪製走 `OC.CharRender`（世界、頭像、編輯器、桌寵輸出共用）；新動作要在 `OC.Chars.ACTIONS` 加備用鏈，並在 `rigState` 給骨架姿勢，確保沒有自訂影格也能播。
-- 圖片角色縮放只用角色的 `appearance.refH`（同一角色所有動作同一比例）；腳底用 `doc.anchor`。
-- 性格必須產生可觀察差異：新增特質／怪癖時同步更新 `OC.Chars.behavior()` 或 `speak()`；永久改變特質只能經 `suggest()` → 玩家 `resolve()`。
-- 匯入必須驗證並給出原因；損壞或不支援的檔案不可「看似成功」。`.ocpack` 格式見 `docs/asset-io.md`，版本升級要保持向下相容。
-- 可編輯工具（工作室、繪畫、編輯器）要有：復原／重做、草稿自動保存、離開未儲存提示。
-- `core:*` 模組不得依賴 Android；動畫數值以 `prototype/shared/core.js` 與 `android/core/anim/Motion.kt` 為準（有單元測試）。
-- 離線 APK 管線每個 Exec 任務都要宣告 inputs/outputs，否則會產生過期 APK。
-- **dx 不會改寫 Java 8 lambda**：APK 必須經過 `desugar`（ProGuard）且 `checkNoIndy` 通過，否則手機上會閃退（0.2.0 的教訓）。不要移除這兩步。
-- ProGuard 只能用來改寫 lambda：**必須 `-dontshrink`**（縮減曾刪掉 `EmptyMap.size()`，0.2.2 WebView 閃退）。交給 Android/WebView 的 Map/List 用 `java.util.HashMap`/`ArrayList`。
-- **不要在 `setContentView` 之前呼叫 `window.insetsController`**（Android 11+ 框架內部 NPE，0.2.0/0.2.1 實機閃退原因）；用 `window.decorView.windowInsetsController`。純外觀的視窗設定一律 `runCatching`。
-- 診斷：App 失敗時要顯示原因（`Diagnostics.kt`、`index.html` 開機防護），不可靜默失敗；改動開機流程後用 `?safe=1`、無 WebGL、舊 WebView 情境測試。
-- 改動生活系統後跑 `node game/tests/life/run.js`（至少相關的情境）；新功能要補測試。
-- **懸浮桌寵與實機行為尚未驗證**（無模擬器）。在實機跑完 `docs/compat-test-plan.md` 前不可宣稱完成。
-- **桌寵（第七階段）**：遊戲是唯一的生活模擬——原生只讀快照（`config.json`）、**絕不改需求**；桌面互動只經 `events.jsonl`（seq＋安裝 id）回到遊戲，由 `OC.PetSync.pull()` 在 `OC.Sim.catchUp()` 之後套用一次（物品走 `OC.Tx` key `pet:<事件 id>`、先存檔再 ack）。自動發生的事（桌寵碰面）不計入任務／成就。
-- 桌寵視窗只能有寵物（或泡泡／選單）那麼大，**不得**加全螢幕透明層；觸控穿透必須 `FLAG_NOT_TOUCHABLE` 且不透明度 ≤ 0.8（Android 12 規定）；所有視窗 `FLAG_NOT_FOCUSABLE`。
-- 前景服務類型只能是 `specialUse`（含 `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`）；不得改用其他類型規避限制；`START_NOT_STICKY`、不使用 wake lock、只從前景啟動。Android 15：先加 overlay 視窗再 `startForeground`。
-- 權限只在玩家使用功能時請求（`OCNative.requestPermission`）；**不得**使用無障礙服務、`QUERY_ALL_PACKAGES`、讀取其他 App 內容；App 情境只用 `UsageStatsManager` 的套件名稱，且預設關閉。
-- 桌面台詞內容只能由遊戲的對話引擎產生（`LifeData.LINES` 的 `desk_*` 等分類）；原生只決定時機。新增桌面動作：`PetBrain.ANIMS` ＋ `OC.PetSync.ANIMS` ＋ `OC.Chars.ACTIONS` 備用鏈 ＋ `rigState` 姿勢。
-- 離線 aapt 不認得的新框架屬性：加到 `android/tools/framework-extras/`（需以 javap 確認真正的公開 id），值用資源參照。
-- 金鑰：release keystore 只能經環境變數 `OC_RELEASE_*` 提供，絕不提交。
-- 所有美術為原創；字體皆為開放授權（`game/fonts/LICENSES.md`），新增前先確認授權。
+### 架構
+- **一個模擬、一個時鐘**：生活只由 `core:sim` 推進；畫面、桌寵、背景補算都只是觀看者。模擬裡的亂數**只能**用 `Rng`（存檔種子＋用途 key：`Rng.of(seed, "weather")`），不得用 `kotlin.random`、`Math.random`、目前時間；同一個存檔、同一段時間結果必須相同（測試會比對）。
+- **純 Kotlin 優先**：`core:*`、`render:api`、`ui` 不得依賴 Android；Android 只在 `app/`。新功能的邏輯寫在純模組並補 JVM 測試。
+- **所有畫面都畫在 `Gfx` 上**（同一份程式在手機上用 Canvas、在測試裡用 Java2D）；不要在 `app/` 另寫畫面。
+- UI 是即時模式：每幀畫自己並用 `app.zone(id, …)` 登記點擊區；`Screen.tap(id)` 處理。捲動區裡登記點擊區前設 `app.zoneDy`。覆蓋層（`Overlay`）出現後 `Dim.GUARD`（0.3 秒）內不接受點擊；點覆蓋層外面＝關閉；返回鍵先關覆蓋層。
+- 圖示一律用 `Widgets.icon()` 畫的形狀，**不要**用字型裡的符號（`⋯ ✓ ‹` 在 Nunito 裡沒有，會變成方框）。
 
-- **11.0 撫摸（`OC.Touch`）**：手指落在角色上＝角色的；連續撫摸以「撫摸秒數」`pend` 累積（每個事件最多算 0.2 秒、停手不給分），滿足度 `lv` 依手指速度（30–900 px/s 有效）、身體部位（耳／臉頰／肚子／尾巴／腳）、個體喜好（`c.life.touch.taste`：likes／dislikes／ticklish／shy）改變；**資料只在一次撫摸結束時改一次**（`petEffects`，好感冷卻 10 遊戲分鐘），中途只有姿勢、愛心、聲音、觸覺。拉走（沒有來回摩擦）＝抱起；撫摸變抱起時要先 `endStroke` 並清 `engaged`，否則放開會被吃掉（0.11 的教訓）。玩家設定的 `taste` 絕不被自動改寫。
-- **11.0 動作庫**：新動作只在 `anim11.js` 用 `def()` 加資料（姿勢軌道＋備用鏈），同時要在 `OC.Chars.ACTIONS` 有備用鏈；測試 3 會對全部動作檢查不出現 NaN。動作切換在 `render.js` 以 0.2 秒柔和過渡；雙人互動的「靠向對方」只用 `a.nudge`（位移），不改座標。
-- **11.0 AI**：`OC.Mind11.shape()` 只調整 Utility AI 的候選分數，不繞過 `Brain.reserve/hold`；計畫、目標、認知存在 `c.life.m11`，永久改變仍走 `Mind.suggest`。雙人互動種類登記在 `Social11.KINDS`，每種都要有雙方的動畫、資料變化、結束時全部 `unhold`（測試 5 逐一檢查）。
-- **11.0 音訊**：角色說話一律經 `app.js` 的 `bubble()` → `OC.Sound.speak(c, text, {emo, pan, vol})`（想法氣泡不發聲）；聲線由角色 id／身高／能量／說話步調決定，心情只改速度、音高走向、響度、明暗。發聲體數量以**音訊時鐘的結束時間**計算（`hold()/nv()`），不用 `onended`（慢幀會讓計數卡住）。動作音效掛在 `World.setAction`（只在動作真的開始時發一次，被高優先權擋下的不發）；腳步在 `updateActor` 的步伐交界；聲音依螢幕位置左右定位，畫面外不發聲。音樂強度用 `Sound.setIntensity(i, holdMs)`，`holdMs` 會擋住 app 自己的心情更新。新聲音：只用 `tone()/noise()`，不得加外部音檔。
-- **11.0 觸覺**：節奏用 `OC.UI.haptic('purr'|'heartbeat'|'giggle'|'melt')`（Android 上拆成連續的系統回饋常數，仍受系統觸覺設定控制；網頁版是單一 vibrate 圖案）。關閉觸覺設定＝完全不震動。
-- **11.0 世界回饋**：點樹／灌木／花叢（`ctx.sway` 登記的物件）＝搖晃＋落葉（`World.shakeAt/shake`），不會讓 OC 走過去；粒子（葉、灰塵）只用兩個池化的 InstancedMesh（多 2 個 draw call），省電模式／減少動態時不產生粒子；點地面的波紋在點下去的當下就定位（不等下一幀）。
-- **測試期間不得修改 `game/`**：測試頁面重載時會讀到半途改動的檔案，結果會被污染（0.11 的教訓）；軟體渲染約 2 fps，條件用「等到成立」而不是固定等待。
+### 存檔
+- 兩層：`library/`（收藏庫：跨存檔共用的角色原版與素材）與 `saves/<id>/`（一個世界）。只經 `SaveSystem` 讀寫；預設角色（`Presets`）永遠在收藏庫、不能刪；還住在某個存檔裡的角色不能從收藏庫刪。
+- 每次寫入都是原子的（`.new` → `.bak` → 正式檔）；讀取壞掉時退回前一版。每個存檔每天第一次儲存時做備份，保留最近 3 天。
+- 格式從 `v: 1` 開始。改格式＝在 `Migrate` 加一步（`from → from+1`）＋一份舊格式的測試檔；**不得移除舊的步驟**。比 App 新的存檔要拒絕並說原因。
+- 圖片不放進 JSON：只存路徑或 id（`asset:` 開頭＝App 內建）。
 
-- **12.0 無 NPC**：沒有居民系統；所有社交、關係、請求都只涉及玩家自己建立／匯入的角色。存檔載入／匯入時刪除 `npcs`，不要再加回來。
-- **12.0 操控模式**：每個角色一個 `c.life.control`（`manual`／`semi`（預設）／`auto`），只經 `OC.Brain.setControl(id, mode)` 改；`Brain.manualMode(b)` 為真時 AI 不挑活動、不被邀請（`Mind11.shape`、`Arcs` 的聚會也跳過）。新的互動保留要能在切換模式時被放開。測試 harness 預設把角色設成手動。
-- **12.0 語氣**：新台詞只加到 `lines12.js`（資料，短、具體、不用波浪號與疊驚嘆號；`m:true`），由 `Talk.toneW` 依 `life.settings.tone`（`mature` 預設／`playful`）加權。（介面風格切換在 14.0 移除。）
-- **12.0 OC.Arcs**：所有邏輯跑在 `Sim.onStep`（遊戲分鐘）；聚會的保留用 `'group'`，結束／被打斷／超時／看門狗（`MAX_AGE.group`）都要放開所有人；冷戰只影響 AI 分數與邀請回應，**不自動改關係類型**；玩家固定（`fixed`）的關係與 `lockRel` 不被捲入；沒有獎勵、不送進度事件。`Mind.relPair` 是唯一改關係的入口。
-- **12.0 過場短句**：只用 `OC.Sound.cue(名稱)`（`Sound.CUES` 一張表、3 秒冷卻、離線補算與音效關閉時不響）；新事件加進表，不要直接呼叫 `stinger`。
-- **12.0 桌寵聲音**：遊戲只負責「做出這個角色自己的 14 個 WAV」（`OC.PetSound.CLIPS` 必須和 `core/pet/PetSound.kt` 的 `CLIPS` 完全一致，pet 測試 16a 會讀 Kotlin 檔比對）；播哪一個、何時播由 `PetSound`（純 Kotlin、單元測試）決定；預設關閉；原生只用 `SoundPool`，靜音／通話／螢幕關閉不出聲；不得加外部音檔。
-- **12.0 雙人桌面動作**：新的種類加在 `PetSocial.KINDS`（每個動畫必須在 `PetBrain.ANIMS` 與 `OC.PetSync.ANIMS`，台詞分類在 `LINE_CATS`）；兩隻都在地板上才開始、被抓起／跳起就取消；效果只經遊戲的 `meet` 處理（每對每天一次、不計入任務）。
-- **12.0 3D**：放在地面的東西經 `OC.Areas._h.place`（自動接觸陰影，一個地點一個 InstancedMesh；不要讓房間外殼有接觸陰影：`userData.noContact`）；純視覺的布置寫在 `OC.Dress`（不得蓋住可走區域，角落物件要 `ctx.block`）；重新建模的家具在 `models12.js`，**同 id、同占地**，大量小件要合併（`boxes()`）；雲影只在室外。
+### 設計（計畫第六節）
+- 顏色、尺寸、動態只來自 `Theme` 與 `Dim`；白天／夜晚是同一套設計的兩個調色盤。字用 `ink*`（暖棕／奶油），不用純黑純白。
+- 可以按的東西有下緣厚度（lip），按下時下沉；動態用 `Spring`。觸控區 ≥ 48dp；常用操作放在下方 40%；每個畫面最多一個主要按鈕；只有刪除這類無法復原的事才確認。
+- **不得做假功能**：還沒做的就寫明「在 M? 製作」，不要放看起來能按、其實沒用的東西。
 
-- **13.0 跟隨**：操控中的角色（`b.manual`）在非手動模式可以自己換地點，但只經 `hooks.canLead()`（`App.canLead`：只有單純看著世界時）與 `hooks.lead()`（`WorldUI.travel`）；新的全螢幕互動（面板、小遊戲、演出）要加進 `canLead` 的條件。
-- **13.0 圖片角色**：取景存在 `c.appearance.frame`（flip／zoom／dx／dy／crop／faces），只在 `CharRender.draw` 套用，**不得改寫原圖或另存加工後的圖**；`OC.Puppet.active()` 決定是否由圖片表演（玩家畫了該動作就不套）；新動作不需要為圖片另外寫——沿用 `rigState` 的身體動態，必要時在 `puppet13.js` 的 `MOVES`／`OWN` 補資料。快取 key 要包含會改變畫面的時間量化。
-- **13.0 特質**：新特質只加在 `traits13.js` 的資料表（`fx.need／act／soc／emo／speed／accept` 至少一項＋台詞），鍵必須是存在的需求／活動／社交／情緒 id（v13 測試 3a 會檢查）；衝突寫一邊即可（會自動補成雙向）。
-- **13.0 OC.Fun**：小遊戲與來訪的保留用 `'game'`（`MAX_AGE.game`），每條離開路徑都要 `end()`／`leave()`；獎勵 key 固定為 `fun:<遊戲>:<oc>:<日>`、`visitgift:<oc>:<日>`、`shake:<地點>:<座標>:<日>`（結果由 key 的雜湊決定，不能靠重試改變）；台詞放 `LINES`，自訂變數經 `extra.vars`。行內註解一律用 `/* */`，不要在一行多敘述的程式後面用 `//`（已三次吃掉後半行）。
-- **13.0 桌寵作息**：新的連續動作只加在 `PetRoutine.ROUTINES`（動畫必須在 `PetBrain.ANIMS`）；導演只在寵物空閒時下指令，不改需求。
+### Android
+- 版本號在 `gradle.properties`，`AndroidManifest.xml` 必須一致（`genRes` 會檢查）；改版後確認 APK 內的 versionCode（`verifyDebugApk` 會檢查）。
+- 離線管線：**ProGuard 只用來改寫 lambda，必須 `-dontshrink`**；`checkNoIndy` 不可移除（dx 不會改寫 lambda，手機上會閃退）。每個 Exec 任務都要宣告 inputs／outputs。
+- 離線 aapt 只認得 API 23 的屬性：更新的屬性（例如 `resizeableActivity`、`configChanges` 的 `density`、`foregroundServiceType`）不能直接寫；需要時用資源參照或框架屬性包（舊版做法在 git 歷史 `android/tools/framework-extras/`）。
+- **不要在 `setContentView` 之前呼叫 insets controller**；純外觀的視窗設定一律 `runCatching`。
+- 存檔在 App 私有目錄（`filesDir`），不需要儲存權限；權限只在玩家使用功能時請求。不得使用無障礙服務、`QUERY_ALL_PACKAGES`、讀取其他 App 的內容或玩家輸入的文字。
+- 桌寵（M3）：前景服務類型只用 `specialUse`、先加懸浮視窗再 `startForeground`、`START_NOT_STICKY`、不用 wake lock、不加全螢幕透明層、觸控穿透要 `FLAG_NOT_TOUCHABLE` 且不透明度 ≤ 0.8、所有視窗 `FLAG_NOT_FOCUSABLE`。
+- 金鑰：release keystore 只能經 `OC_RELEASE_*` 環境變數提供，絕不提交；Debug APK 不可當成正式版。
+
+### 流程
+- 每個里程碑：APK → 全部測試 → 報告（`docs/reboot/m?-report.md`：做到的、沒做到的、**只能在手機上驗證的**）→ CLAUDE.md／README → 提交並推送到 `claude/oc-shimeji-visual-design-qcc3xy`。
+- 沒有模擬器或實機：觸控手感、懸浮窗、耗電、各廠牌手機一律寫成「需要玩家在手機上驗證」，不可宣稱完成。
+- 行內註解用 `/* */`（在一行多敘述的程式後面用 `//` 曾吃掉後半行）。
 
 ## 環境限制（實測）
-- 無法連線 `dl.google.com` / Google Maven → 無法用 AGP / 下載 Android SDK；改用離線管線（`docs/android-build.md`）。
-- Maven Central 偶爾 429；`--max-workers=1` 重試。GitHub raw 被封鎖；字體由 Google Fonts 取得。
-- 沒有 Android 模擬器或實機：只能驗證到「APK 建置、簽章、內容正確」與「遊戲在 Chromium 手機模擬中正常」。
-
-- **14.0 靜態模型合併**：沒有東西會在裡面動的模型（房屋、攤位、長椅、柵欄、燈柱、橋）在建好後 `return fuse(g)`（依材質＋陰影旗標合併成少數幾個 mesh）；會單獨動或單獨顯示的子物件要標 `userData.keep`（例如果實），有貼圖（`material.map`）的不合併（合併只保留位置與法線）。花是每朵各自 `fuse`（仍然一朵一朵搖）。新增大量同材質的小零件時，放進一個 Group 再 `Mo.fuse()`（例如露台欄杆）。v14 測試 5 會檢查零件數、繪製呼叫 ≤ 330、夜間窗戶材質仍接在房子上。
-- **14.0 桌寵架構**：一隻桌寵「決定做什麼」的邏輯只寫在 `core/pet/PetActor.kt`（輸入：指標樣本、每幀 tick、選單 key；輸出：`Out` 指令），並補單元測試；`overlay/PetWindow.kt` 只把設定 JSON 轉成 actor 的屬性、執行 `Out`（泡泡、音效、觸覺、事件、選單、收起、開啟遊戲），**不得**在視窗層再寫行為判斷。選單項目加在 `PetActor.mainMenu()`／`menu(key)`。原生泡泡與選單的顏色在 `PetTheme.of()`，要和 tokens 的白天／夜晚一致。
-- **14.0 圖片裁切框**（`charedit.js` 的 `cropBox`）：只改 `c.appearance.frame`（草稿），四邊上限 45%；拖曳中 `x.changed('look', null)`、放開才記入復原紀錄。
-- **14.1 效能規則**：(1) 亮度 0 的光仍然要算——不用的光設 `visible = false`（路燈：`lampsLit`，白天關）；改變「看得見的光的數量」會換著色器，所以兩種狀態都在 `loadArea` 結尾用 `R.compile` 先編好。(2) `R.debug.checkShaderErrors = false`，不要打開。(3) 陰影貼圖只有 `quality.soft`（「高」）每幀更新＋柔邊，其餘每兩幀＋硬邊。(4) 主迴圈裡每幀執行的東西不得無條件寫 DOM 或組長字串：先比對再寫（HUD 每 200 ms、泡泡位置變了才寫）。(5) 「平衡」的自動降解析度在 `app.js` 的 `adaptStep`（只降不升、最多兩級、自動化執行時關閉）；新的效能模式欄位要同時在 `perfOf` 與這裡處理。v14 測試 7 檢查這些。
-- **14.1 桌寵**：多隻一起做的事（幀率節流、雙人動作、測試雙人、App 情境、提醒播報）只寫在 `core/pet/PetStage.kt` 並補單元測試；`OverlayPetService` 只呼叫 `stage.frameCap/step/appContext/announce/testPair` 並把回傳的 `Cmd` 交給對應的 `PetWindow.carry()`。
-- **14.2 效能規則**：(1) 會被上傳成 WebGL 貼圖的 2D 畫布，第一次 `getContext('2d')` 就要帶 `{ willReadFrequently: true }`（CPU 畫布；GPU 畫布上傳時要讀回，手機上很慢）。(2) `paintActor` 一幀最多兩次（`paintsLeft`），操控中的角色與正在被摸的不受限。(3) 會各自擺動的小東西不要每個一組網格——同一叢合成一個再擺（花圃：`flowerBed` 的 `cluster`）；v14 測試 5 要求整個小島 ≤ 200 個繪製呼叫。(4) 不要對 WebView 設 `setLayerType`。(5) `World.perfStats()` 的可重設計數器只給 FPS 讀數用，測試用 `totalPaints／totalFrames`。(6) `adaptStep` 有三級，第三級關陰影、草、點光源。
-
-- **15.0 點選 ≠ 執行**：世界裡的東西被點一下時，`onTap` 只呼叫 `describe(it)` 取得名稱與動作，交給 `OC.Pick.show()` 顯示動作卡；**不得**再讓單點直接走過去執行（設定 `quickTap` 開啟時例外）。新的可互動物件類型要在 `describe()` 加一筆（名稱、說明、動詞、`run`）。任何新出現在手指下的選單（卡片、環、選項、表單）都要 `OC.Pick.guard(el)`，按鈕處理要先檢查 `OC.Pick.armed(el)`。舊的測試套件經 harness 預設 `quickTap: true`；新預設由 v15 測試（真實觸控）。
-- **15.0 → 16.4 動作清單**：玩家安排的事一律 `OC.Queue.add(id, spec, { now })`（spec＝活動 id 或 `{ kind: 'act'|'social'|'go', act, slot, pt, place, other, social }`；不要直接 `Brain.command`）；清單存在 `c.life.q16`（舊 `q15` 自動轉換），最多 8 個等候。交給引擎只在 `Sim.onStep`：活動用 `b.queuedSlot`＋`Brain.command`（那個位子有人就坐同一個東西的另一個位子，都滿了就拒絕）、別的地點用 `Brain.goPlace`、跟人用 `Will.ask`。不想做的理由寫在 `Queue.refusal`（被拒絕的不擋後面、20 秒後移除，「強迫」照做），不要在別處另寫。
-- **15.0 拍照**：照片一律 `OC.Assets.put`（kind `photo`），`S().photos` 只放 id／時間／地點／濾鏡／相框；拍照模式是唯一允許在 `#world` 上用 CSS `filter` 的地方（只在模式開著時，`close()` 一定要清掉）。
-- **15.1 牆壁與地板**：可佈置的室內地點（`interior({ decor: true })`）讀 `S().surfaces[id] = { wall, stripe, floor, tile }` 覆蓋原本的顏色；只是外觀，不經 `OC.Tx`、不是物品；改了之後用 `loadArea(id, 目前位置)` 在淡出淡入中重建（不重建 renderer）。房間材質的 `userData.key` 標出是哪一張紋理（測試用）。
-- **15.1 試衣間**：預覽服裝一律畫在角色的**淺拷貝**上（`Object.assign({}, c, { look: … })`），絕不改 `save.chars`；真正穿上仍走 `OC.Use` 的 `wear`。
-- **15.0 防誤觸的範圍**：`OC.Pick.guard` 只擋選單**裡面的按鈕**；選單外面的新手指一律立刻關閉選單（不要再加 armed 檢查）。
-- **15.2 新地點**：風車丘、彩虹遊樂園和其他地點一樣登記在 `OC.Places.P`、場景在 `OC.Areas`（`areas15.js`）。會自己動的部分（風車葉片、旋轉木馬的轉盤與木馬、摩天輪與車廂、氣球）各自是一個已合併的群組；其餘 `fuse()`。新的設施類型（`ride`／`wheel`／`stage`／`toss`）在 `describe()`、`WorldUI.tap`、`Brain.rebuild` 各有一筆。摩天輪搭乘中 `OC.Mini.wheelRiding()` 為真：`travel()` 會拒絕、`canLead` 為假。
-- **15.2 遊樂園小遊戲**（`OC.Mini.concert／toss／wheel`）：真實輸入；演唱會在按下的瞬間用 `performance.now()` 判定（不用上一幀的時間）；演出費 key `concert:<角色>:<日>`；套圈圈先付 `TOSS_COST`、獎品 key `toss:<付款 key>`。
-- **15.2 只有玩家安排才做的活動**：`ACTS.x.cmdOnly = true`（例如 `work` 打工）——`Brain.candidates` 只在 `b.queued === act` 時提供，離線抽象生活不會選。打工工資只在 `Progress` 的 `act` 事件（`min >= 20`）時入帳，key `job:<角色>:<地點>:<日>`。
-- **15.2 島報**只能寫真的資料（回憶、帳本、天氣、特價、生日、評價）；房間評分的等級獎勵由玩家在島報領取（key `room:<地點>:<級>`）；生日蛋糕 key `bday:<角色>:<年>`；小島評價只讀資料，**不得**呼叫 `Mind.rel()`（會建立新的關係紀錄）。
-- **15.3 季節**：`OC.Clock.season()`（`settings.season` 或日期；`?season=` 可預覽）只在 `World.init` 讀一次，色調寫進 `tonemapping_fragment`（`#ifndef OC_CHAR`）；**不要在遊戲中途改 ShaderChunk**（內建材質的程式快取不會跟著換）。看板角色的材質一定要有 `defines.OC_CHAR`。飄落物與海面閃光在 `OC.Ambient`（各一個 InstancedMesh，特效關閉／室內／減少動態時不顯示）。
-- **15.3 轉場**：`WorldUI.travel` 的雲朵只在轉場期間存在（不是常駐元素），結束時移除；減少動態時用原本的淡出淡入。夜晚會亮的材質一律放進 `OC.Models.night.windows`（每次載入地點都會清空，要在建場景時重新加入）。
-- **15.4 設計亭**（`js/ui/design15.js`）：圖樣是 144 個調色盤索引（不是圖片），存在 `S().designs`；草稿 `S().designDraft`；預覽用暫時的 `__draft`（離開時刪除）。**從外面關閉（`layer.close`，例如換分頁、返回鍵）不可以再跳確認視窗**——關閉的程式會一直關最上層，確認一跳出來就被關掉、又再問一次，會無限迴圈吃光記憶體（15.4 的教訓）；只有設計亭自己的返回鍵才問。新的全螢幕工具也要遵守。格子不要用全域已有的類別名稱（`.empty` 會帶進 padding）。
-- **15.5 內在生活**（`OC.Life15`，資料在 `c.life.l15`）：夢只在 `act` 進度事件（`sleep`、60 分以上）後產生；宣言的進度只從 `OC.Progress` 算，獎勵 `OC.Quests.grant('decl:<oc>:<made>')`；恐懼的克服只在恐懼正在發生時的 `pet`／`hug` 事件；**年齡（`profile.age`）是玩家的設定，只有玩家按「長大一歲」才改**（一年一次，key `age:<oc>:<年>`）。節日禮物 key `fest:<id>:<日期>`。`Life15.festival()`（今天，套用選擇的季節與 `?fest=1`）和 `festival(日期)`（只看日曆）不要混用。新的連續劇寫在事件資料（旗標串接），事件不給獎勵。
-
-- **16.0 角色畫質**：世界在 `quality.ratio` 畫進渲染目標、複製到畫面（顏色＋深度），角色（layer 1）用 `quality.cr`（螢幕原生解析度）畫在上面（`world.js` `renderWorld`／`setupTargets`，只有 WebGL 2，出錯自動退回單段）。**不要**再用 CSS 或第二個 canvas 疊角色；新的看板材質要 `m.layers.set(CHAR_LAYER)`。角色畫布大小由 `CharRender.extent(c)` 決定（`a.ext`），繪製單位是 `r / (120 * ext)`；放大圖片角色不要靠切邊。大圖縮小一律走 `CharRender.mipOf`（每段減半）。
-- **16.0 切換操控**：`Chars.setActive` 不移動任何人；只有「休息中」的角色（`Chars._joined`）才出現在玩家旁；別的地點用 `WorldUI.travel(loc, { pos, sw: true })`（`sw` 不觸發 arrive 事件）。新的全螢幕互動在 `refreshActors` 要拒絕切換（像摩天輪）。
-- **16.0 介面直接操作**：玩家做的買東西／撿／摘花／採集用 `App.direct`（設定 `walkTo` 回到走過去）；角色自己的活動仍走 `goThen`。撿到可用的東西呼叫 `App.offerUse(id)`。
-- **16.0 打擾預算**：任何會「轉向玩家」的東西（請求、來訪、要回答的事件、建議）一定先問 `OC.Budget.can(kind)`、做了就 `spend(kind)`；不需要回答的寫進 `OC.Budget.mail({kind,title,text,key})`（信箱；固定 key 只會有一封）。舊測試 harness 用 `life.settings.lively = 'legacy'`（舊節奏）與 `settings.calendar = 'real'`；新預設只由 `tests/v16` 驗收。**不要**再為某個系統另寫計時器去打擾玩家。
-- **16.0 關係**：`Mind.rel(a,b)` 讀取不再建立紀錄（回傳暫時的空紀錄，第一次寫入才存）；要知道有沒有紀錄用 `relPeek`。
-- **16.0 日曆**：`OC.Clock.cal()`（遊戲曆：一年 112 天、每季 28 天、一週 7 天、第 6–7 天週末；`life.clock.cal0` 是第 1 年春 1 日；實時曆＝手機日期）。節日、生日、日期顯示都問 `cal()`，不要直接用 `new Date()`。生日欄位可寫「春 12」或 3/14（`Island.parseBday`）。存檔 v8，`migrateV7` 不可移除。
-- **16.1 物種與人生階段**（`OC.People`）：物種與階段的效果和特質同格式，經 `People.fxList(c)` 併入 `Traits13` 的 decay／act／soc／speed／sens／accept（不要另外寫判斷）；新物種只加資料。年齡只來自玩家寫的 `profile.age`；長大只經 `People.growUp`（一年一次，key `age:<oc>:<年>`），生日由 `Island.checkBirthdays` 呼叫 `People.birthday`；`c.life.age16.grow`：新角色 `auto`、舊存檔 `manual`。做不到的事一律問 `People.canDo(c, act)`（`Brain.candidates`、`abstractStep`、`Brain.command`、`Queue.add` 都有）、旅行問 `canTravel`。**未滿 18 歲絕不涉及戀愛**：`Mind.romanceOK` 先問 `People.minor`，任何新的戀愛／親密功能都要經 `romanceOK`。
-- **16.1 開局**：只在新遊戲且不是 `skipIntro`（測試）時出現；圖層 `dismissible:false`（返回鍵不做事，不可以跳確認視窗）。起始關係只經 `Opening.setStart`（`kind16`／`label16`／`fixed`，`relLabel` 顯示 `label16`）；戀愛類只能兩人都滿 18 歲。住處 `c.life.home16`，只經 `OC.Homes.assign`（檢查容量）；黃屋、紫屋的室內在 16.5 前不存在，**不要做假入口**。
-- **16.2 意願模型**（`OC.Will`）：**不要加門檻表**——任何角色對角色的互動都經 `Brain.Social.respond` → `Will.respond`（`willing` 算機率、`react` 選反應），新互動只在 `will16.js` 的 `NEW` 加一行資料＋`lines16.js` 的 `i16_<id>` 台詞；反應的台詞分類 `r16_<反應>`。唯一的硬規則是 `tone: 'love'` 一律先問 `Mind.romanceOK`（含未成年）。玩家要求的互動經 `Will.ask(a, b, kind, { player: true })`（會先問 `defies`，有原因）；設施邀請經 `Will.invite(a, b, act, at)`（`with_<act>` 共同活動，`beginJoint` 用 `conv.at` 選那個設施）。玩家安排的對話（`conv.byPlayer`）事件不會搶走。
-- **16.2.1 身體的安全網**：沒有結束時間、優先 ≥ 5 的動作會擋住走路。新開始這種動作的地方要有擁有者（搬運、小遊戲、島上試播、`brain` 的 do／social／event 或 hold），否則 `app.js` 的 `actWatchdog` 2 秒後結束它。換到更高優先的動作前先 `setAction(a, 'idle')`。放下／落地一律經 `dragEnd`（帶 `id`），保證落在可以走的格子（找不到就回到抱起的位置）。
-- **16.3 角色工作室**（`ui/studio16.js` 覆寫 `charedit` 頁，`fixed: true`）：頁面本身不捲動，只有 `.st-panel` 捲動；不要再用 sticky 或依頁首高度的偏移。圖片角色（`appearance.mode === 'sprite'`）的分頁沒有外觀／臉／耳朵／顏色；新的圖片編輯只寫 `c.appearance.frame`（`OC.Frame16`，對應方式與 `render.js` 相同：腳底錨點、`refH`、zoom·sx／zoom·sy、位移以標準高度的 % 計）。舞台離開畫面時會停，重新顯示要 `stage.restart()`。
-- **16.3 去背**只用 `OC.Cutout`（從圖片邊緣灌水＋柔邊，不是全域顏色鍵；`detect` 看可見範圍的邊）。套用到角色經 `OC.Frame16.applyCut`（存成新圖、舊的影格 id 留在 `doc.cut16.orig`，`.ocpack` 一起匯出並重新對應 id），`revertCut` 還原。
-- **16.3 動畫來源**：`c.appearance.anim16 = { src: 'preset'｜'mixed'｜'custom', preset: { 動作: true } }`，只在 `CharRender.spriteFor`（preset／被設回預設的動作 → 用待機圖由 Puppet 表演）與 `Puppet.active`（custom → 不表演）判斷，不要在別處另寫。
-- **16.3 角色台詞**：`c.lines16 = [{ id, cat, text, c }]`、`c.lines16mode[cat] = 'only'`；由 `OC.Talk.lines()` 的 `charLines()` 併入（`char` 限定說話者）。專屬互動 `c.inter16` 由 `OC.Will.sync()` 登記成 `INTER['u16_<角色>_<id>']`（`own`＝只有擁有者能發起，分類 `own`「專屬」），台詞分類 `i16_<kind>`、`<kind>_yes`／`_no`；數值有上限（關係 ±12、需求 ±30）。
-- **16.3 事件腳本**（`OC.Script`，`life/script16.js`）：腳本是資料，**不得**加入能執行程式碼、給物品／星幣、改關係類型的指令；未成年不改親密；回憶 key 固定。由 `OC.Events.beginScript` 執行（一次一個、間隔、打擾預算、全部角色 hold、跳過時資料步驟照做），`Events.trigger`／`periodic` 在內建事件之後再試腳本。新指令要同時加 parser（`parseStep`）、執行（`step`）、驗證（`finishEvent`）、積木（`studio16.js` 的 `BLOCKS`／`toBlocks`／`toSrc`）與 `docs/oc-script.md`。
-- **16.4 選單**：角色的環由 `OC.Menu16.charRing(id)` 產生；有 `sub` 的項目在 `OC.Radial` 的面板裡展開（一層分類、一層項目，可有分頁），面板項目一律 `.radial-btn.ri`、`now: true` 才支援長按立刻做。**不要再加第二個環或表單**；只有刪除／清除類才確認。安排一律經 `OC.Menu16.request`（排進清單＋「復原」提示）。物件能做的事由可供性的 verbs 自動列出（`OC.Menu16.objectActs`），新設施只要在 `Brain.rebuild` 給 verbs。新活動放 `life/acts16.js`（`menuOnly` 的只有玩家安排才做；`night`／`day` 由 `Acts16.fits` 判斷）。HUD 清單的操作在原地展開，不跳視窗。
-- **16.6 話題對話**：聊天（`chat`／`share`）的內容由 `OC.Topic.script` 產生（`settings.topics === false` 時回到舊的兩句）；新話題種類在 `topic()`／`stance()`／`candidates()` 各加一筆，新的日常話題只加在 `topics16d.js` 的 `ABSTRACT`。台詞分類 `t16_<行為>`，條件 `tk`（話題種類）／`ts`（立場 pos／neu／neg）；含 `{topic}` 而沒寫 `tk` 的台詞自動只用在「東西」類話題，回憶、夢、人要有自己的台詞；v16 測試 31b 檢查每一種情況都有台詞。效果只在 `Topic.resolve`（經 `Mind.relPair`／`relChange`，八卦一天一次、要信任、不碰 `fixed`／`lockRel`），不給物品星幣、不送進度事件。關鍵字泡泡只在 `Topic.full(conv)` 為假時；問玩家一定經 `OC.Budget.can('ask')`、一天一次、`lively === 'legacy'` 時不問（舊測試 harness 設 `chatView = 'full'`）。
-- **16.7 自主與世界**（`OC.Aware`）：只在 `Brain.decide` 裡經 `Aware.shape` 調整候選分數（在 `Mind11`／`Arcs` 之後），手動操控與玩家安排的不動；失敗經 `Aware.failed`（`Brain.start` 位子被佔、`abort` 的路線問題），選擇後 `Aware.chosen` 寫出「改變計畫」。地上的東西只經 `Aware.put`／`take`（`OC.Tx` key `g16put:`／`g16take:`／`g16back:<uid>`），存 `save.ground16[地點]`，畫面是 `World.spawnDrop(…, { icon: true })`（`d.g16`），玩家走過去**不**自動撿。地上物品的活動（`ACTS.g16_*`，`aw16: true`）不出現在任何選單、AI 只經 `Aware.groundCands` 帶目標點（`pt.k = 'g16:<uid>'`），完成時 `Brain.finish` 呼叫 `Aware.onFinish`。其他地點的設施容量只寫在 `Aware.FAC`（`abstractStep` 經 `absFilter`／`absStart`）；遇到聊天 `Aware.talkAway` 只經 `Mind.relPair`，不給獎勵。台詞變數用 `{thing}`（`{item}` 是對話引擎內建的）。
-- **16.8 住處**（`OC.House16`）：角色住哪裡只看 `c.life.home16`（`OC.Homes.assign(c, hid)`；玩家搬家經 `House16.moveIn(id, hid, { force })`，反應在 `reaction()`，**不跳確認視窗**）；回家睡覺的地點一律問 `House16.placeOf(c)`（不要再寫死 `'home'`）；床的位子由 `House16.bedSlots`、能不能用由 `House16.slotOK`（自己的房子、年齡、同床看 `shareOK`，未成年和非家人的大人絕不同床）。新的室內用 `OC.Areas._interior()`（`areas2.js`）。照顧寶寶的活動 `babycare16`（`aw16: true`，不在選單）只由 `House16.shape` 帶目標點提供。**新角色只能因為玩家同意才建立**（孩子：`answerChild('yes')`；領養：頁面按鈕）——都經 `House16.makeChild`，關係經 `Opening.setStart('parent'／'sibling')`；`settings.family16` 預設關閉；未成年不能領養、戀愛相關一律經 `Mind.romanceOK`。
-- **16.9 職業與學業**（`OC.Career16`）：工作與學校是兔子洞（`ACTS.work16`／`school16`，`away: true` → 抵達後看不到；`aw16: true` 不在選單），在你身邊的經 `OC.Queue.add`（帶目標點）、不在身邊的直接設 `c.life.cur`；**結果只從 `OC.Progress` 的 `act` 事件算**（薪水 `c16pay:<oc>:<日>`、案件 `case16:<id>`，都經 `OC.Tx`；離線補算沒有事件＝不付錢）。新職業／科目只加 `LINES`／`SUBJ`／`LEVELS` 資料；時間用 `OC.Clock.cal()` 與 `hour()`（測試要用遊戲曆，實時曆可能剛好是週末）。字串的穩定亂數用檔案內的 `hs()`（`OC.hash` 只接受數字）。作品上架只經 `OC.Items.saveCustom`（不產生庫存）。
-- **16.10 遊樂設施與邀約**：新的遊樂園小遊戲只加在 `fair16.js` 的 `GAMES`（攤位位置、可怕／比賽旗標）與 `GAME[id]`（init／update／draw／down／move／up，座標是 600×600 畫布）；`OC.Fair16.state()` 只給測試機器人讀。票經 `OC.Tx`、獎品 key `fair16:<遊戲>:<角色>:<日>`；同伴在遊戲中 `hold('game')`，`finish()` 一定放開。邀約只經 `Outing16.invite`（回答在當下決定一次、爽約也是），結算只經 `settle`（`Mind.relPair`／`relChange`，不碰 `fixed`），約會一律 `Mind.romanceOK`；你操控的角色不會被自動移走（只提醒）。被選中的 `.chip` 用 `.on`（陽光黃，`island.css`）。
-- **16.11 健康與告別**（`OC.Health16`）：生病只經 `catchIt(c, 病, 原因, 固定 key)`（一個 key 只擲一次；`immortal` 不生病；`settings.health16 === false` 時 `sick()`／`staysHome()` 為假）；效果在 `step`（需求慢慢下降）與 `Brain.decide` 的 `Health16.shape`（在 `Fair16` 之後）；藥的效果只從 `OC.Progress` 的 eat／gift 事件（`treat`），藥只能買。病假：`Career16.goAway` 先問 `staysHome`（在「忙碌」之前），`dayStep` 把 `sick16` 記成病假不算缺勤。**離開只來自玩家打開的 `settings.death16` 與角色的 `mode: 'natural'`**，疾病不會致死；告別經 `farewell()`（存進 `save.life.passed16`、`Chars.remove`、紀念相框 key `keep16:`），`restore()` 一定能撤銷；最後一個角色不會離開。舊測試 harness 關掉 `health16` 與 `theatre16`。
-- **16.11 壞關係**（`OC.Feud16`）：冷戰本身仍在 `OC.Arcs`（不要另寫第二套）；16.11 只加起因（`r.cause16`）、背後說壞話（`backbite`：一天最多一次、不碰 `fixed`／`lockRel`）、送禮（`will:done` 事件的 gift 類）與玩家幫忙（`askApology` 經 `OC.Queue`、`askMediator` 經 `Arcs.gather`）。
-- **16.11 小劇場**（`OC.Theatre.play({ kind, title, sub, ocs, lines, key })`）：先記在 `save.life.theatre16`（同 key 只一次），在島上看才播，否則寄「錯過了」並留在回放；**不改資料**；播放中 `hold('stage')` 並一定放開；結束的元素加 `.closing`。新的重大時刻用 Store 事件接到 `Theatre.wire()`。
-- **16.11 桌寵狀態**：`PetSync.config()` 的 `data[id].status`（`stage／sick／busy／age／rel`）；原生只在 `PetBrain.Status` 改步調與休息（`paceFactor`），不改資料；petsync 裡不要再用 `status` 這個函式名（已有匯出的 `status`，同名宣告會互相覆蓋）。
-- **17.0 畫面安全網**（`OC.Guard`）：會蓋住整個畫面的東西（遮罩、黑邊、對話、小劇場、全螢幕工具）一定要有擁有者；新的這類東西要在 `guard17.js` 寫出「什麼時候可以存在」。推進堆疊的層要帶 `el`（元素），否則安全網無法判斷它是否還在畫面上。`#scrim` 不得再加 `backdrop-filter`。點遮罩關的是「要遮罩的那一層」；`OC.UI.sheet` 的頂端是滑動區（`touch-action: none`＋pointer capture）。安全網只關掉遮蓋物，不改資料；測試可設 `window.__ocNoGuard`。
-- **17.0 頁面狀態**：`html.page-open`（主迴圈在變化時設定）＝有頁面蓋住世界；只在頁面上的外觀寫在 `island.css` 的 `html.page-open` 規則。成就／任務卡片在頁面上不得接收點擊。
-- **17.0 版本號**：離線建置的版本號來自 `android/gradle.properties` 的 `oc.versionCode`／`oc.versionName`（`build.gradle.kts`、`AndroidManifest.xml` 也要一起改），打包工作已把它們宣告為輸入；改版後確認 APK 內的 versionCode。
-- **16.5 料理**：食譜只加在 `food16.js` 的 `RECIPES` 資料（材料可寫 `cat:<分類>`、`*數量`；做法必須是 `METHODS` 的鍵），會自動登記成物品與 ★★／★★★ 變體；圖鑑只算基本那一道（`ITEM_IDS` 排除變體）。做菜一律 `Food16.cook`（經 `OC.Tx`，燒焦不扣材料）；端上桌 `serve` 付一次、吃 `eatServing` 不再付；角色下廚的 key `aicook:<oc>:<日>:<n>`。冰箱只是背包的檢視，**不要另存庫存**。物種口味只經 `OC.Taste.derived` 影響還沒形成的喜好，玩家設定的不改。`OC.Shops.price()` 回傳 `{ price, base, tag }`（不是數字）。
-- **17.1 背景生活**（`OC.Sim.awayRun`）：
-  - 離開時只跑抽象生活（`onAbstract`，參數 `{ offline, away, at }`）＋跨日掛鉤 `Sim.onAwayDay`；
-  - 推算中 `Sim.catching` 與 `Sim.virtual` 為真，`Clock.hour()`／`cal()`／實時天氣讀虛擬時間；
-  - **結果必須只由存檔決定**：推算路徑上不可用 `Math.random`、`Date.now()`、畫面上的狀態（用 `Sim.rnd()`、`Sim.now()`、`c.life.cur`），測試 v17 5 會用同一個存檔跑兩次比對；
-  - 會「轉向玩家」的東西（提示、卡片、演出）在 `catching` 時不出現；
-  - 新系統要在離開時也發生：寫 `onAbstract`（檢查 `o.away`）或 `onAwayDay` 的抽象版，不給星幣物品；
-  - 少於 10 分鐘的空檔 `o.away` 為假（畫面上的角色照舊）。
-- **17.1 時間線**（`OC.Chronicle`）：只記錄、不改資料；回憶、活動、關係變化已自動寫入，不要在各系統另外記；去重要存在存檔裡（不要用模組變數），否則同一段離開兩次結果不同。
-- **17.1 「你不在的時候」**：不需要回答，不經打擾預算；層要帶 `el` 並用 `popLayer(層本身)` 關；它開著時 `Stage.card` 會等。
-- **17.1.1 離開時的系統**：要在離開時也發生的系統，在 `Sim.onAbstract` 裡檢查 `o.away` 跑抽象版（不讀 `Brain` 的畫面狀態、計數器用另一組並在 `away:begin` 歸零），跨日用 `Sim.onAwayDay`；會產生星幣／物品、需要畫面位置或要玩家回答的不跑（下廚、傳染、調解聚會、事件、來訪、告別）。`Store.emit('away:begin', { dry })`：`dry` 為真是預測，不得動到畫面上的角色。
-- **17.1.1 背景預測**（`OC.Sim.forecast(hours, fn)`）：用 `Store.exportJSON` 快照、乾跑 `awayRun`、`fn` 讀結果、`Store.restore` 原地還原（保留同一個存檔物件）。乾跑中 `Sim.dry` 為真：不送 `life:offline`、不跳任何東西。通知只排遊戲給的（原生不自己判斷大事）；預設關閉，打開時才請求通知權限；回到 App 一律 `forecastClear`。判斷規則改 `core/pet/ForecastPlan.kt` 並補單元測試。
-- **17.1.1 回放**：`OC.AwayUI.Replay` 只讀時間線；「在島上看」只用想法泡泡（`thought: true`，不出聲）和鏡頭，最快 64×；`OC.App.tab()` 會關掉所有層，切到島上前先把回放的層移出堆疊再放回。回放開著時 `Stage.card` 等待。
-- **17.2 觀察模式**（`OC.Observe`）：
-  - 進出只經 `Observe.enter()`／`leave()`；改過的操控模式記在 `life.obs17.prev.ctl`，`leave()` 只把**還是 `auto`** 的改回去（觀察中玩家自己改過的不動）；速度與操控的角色也一起恢復。
-  - 根元素的 class 是 `obs17-on`（**不要**用 `obs17`：那是觀察列本身的 class，根元素會被套上 `pointer-events: none`）。有 `display` 的元件用 `hidden` 時要另寫 `[hidden] { display: none }`。
-  - 觀察中點角色＝`Observe.pick`（`app.js` 的 `onTap`／`onLongPress` 與 `touch.js` 的放開都先問 `OC.Observe.on`）；新的「點角色就做事」的入口也要先問。
-  - 30×／60× 只在觀察時（`Sim.speed()` 檢查 `OC.Observe.on`，`setSpeed(v, { obs: true })`）；高速時的走路倍率只經 `World.setWalkMul`（只影響路徑，不影響動作與時間）。
-  - 自動鏡頭只讀狀態（`Observe.hot()`）、只看畫面上的人、`html.cinema` 時不插手；不改任何資料。看別的地點的人一律經 `Observe.visit`（`Chars.setActive`＋`refreshActors`，不移動任何人）。
-  - 戶型總覽只畫 `OC.Areas[id].room` 與 `OC.Places.room(id)`；不在畫面上的人用 `c.life.pos`（同一個地點時）或排在房間中間，畫成空心。
-- **17.3 關係每天結算**（`OC.Bond17`）：
-  - `life.settings.daily17`（預設開）時 `Mind.relChange` **不再**立刻改關係名稱；名稱只在 `Bond17.settle(day)`（`Sim.onDay`＋`onAwayDay`，`bond17.last` 保證一天一次）改，數字連續 `HOLD`（2）次指向同一個名稱才改，往下掉多 8 分的緩衝。舊測試 harness 設 `daily17 = false`。
-  - 結算只動 `AUTO` 裡的名稱（陌生、認識、朋友、好友、知己、對手）；`fixed`、`lockRel`、家人、自訂、戀人、未婚伴侶、伴侶、前任**不動**。戀愛的承諾（在一起、訂婚、結婚、分手、復合）**只能**是要玩家同意的事件（`confirm.ok.relType`），結算絕不自己改。
-  - 心動就是原本的 `intim`；單戀／曖昧（`r.lv17`）只在 `Mind.romanceOK` 為真時（未成年、戀愛關閉、「可以發展戀情」關掉都是假）。
-  - 結算路徑只讀存檔、依 key 排序（離開時兩次結果要相同，v17 5 打開了它）；改變那天的台詞與卡片只在 `!Sim.catching`，離開時只有時間線（`life:relType`）。
-  - 三層設定只經 `Bond17.setLayer(a, b, patch)`（兩個方向一起寫 `r.lay17`；「可以發展戀情」寫戀愛設定的 `forbid`）；新的身分／相處標籤只加 `IDS`／`TAGS` 資料（標籤的 `k`＝增加時的倍率、`day`＝見面那天的加成、`still`＝不會淡）。
-  - 新的關係名稱要同時加到 `Mind.TYPES`，並檢查各系統的名稱清單（`home16`、`aware16`、`arcs12`、`content.js`）；紀念日 key `anniv17:<兩人>:<名稱>:<天數>`，回憶 key 加上角色 id。
+- 連不上 `dl.google.com`／Google Maven：沒有 AGP、AndroidX、Compose、Android SDK 下載；用 Ubuntu 的 aapt／dx／zipalign／apksigner＋Robolectric android-all（`/opt/oc-android/`）＋API 23 platform jar。
+- Maven Central、Gradle Plugin Portal、PyPI 可用；GitHub raw 被封鎖。git 推送只能推到工作分支（標籤推不上去）。
+- 沒有 Android 模擬器或實機。

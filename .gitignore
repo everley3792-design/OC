@@ -1,12 +1,9 @@
-node_modules/
 .DS_Store
 *.log
-/build/
+build/
 .gradle/
+.kotlin/
 local.properties
-android/**/build/
-android/app/build/
 *.keystore
 *.jks
 keystore.properties
-android/.kotlin/

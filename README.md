@@ -1,105 +1,33 @@
 # OC Shimeji
 
-> 我的 OC，住進你的手機。—— 原創角色生活模擬 × Android 懸浮桌寵（3D 固定視角世界 × 2D 角色）
+原創角色（OC）的**自主生活模擬＋ Android 深度桌寵**。匯入或自己畫你的角色，看牠們在家與小鎮自己過日子；也可以讓牠們跳到手機桌面上陪你。
 
-## 目前版本 0.17.2-alpha（17.2：觀察模式）
+> 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.17.2-alpha-debug.apk`](deliverables/apk/oc-shimeji-0.17.2-alpha-debug.apk)
-- 17.3：關係每天結算——關係的名稱一天結算一次、連續兩天都這樣才變（陌生→認識→朋友→好友→知己，也會淡了、釋懷）；「親密」改叫心動，兩個成年人之間會有單戀、曖昧；求婚、婚禮、分手、復合都要你同意；在一起、訂婚、結婚、成為知己的紀念日；每段關係可以設定身分、相處標籤、合拍度、可不可以發展戀情；新的「好感度」頁（雙向好感、心動、最近的變化）。手機上未驗證。紀錄：[`docs/v17.3-report.md`](docs/v17.3-report.md)
-- 17.2：觀察模式——工具把手的「觀察」：操作按鈕收起，只留時間、時間線、戶型與人物條；你操控的角色改成全自動（結束時全部恢復）；點頭像＝鏡頭跟著那個人＋人物卡（現在在做什麼、精力／飽腹／心情、今天的事、和誰怎樣）；自動鏡頭去島上正在發生的事（可以關）；遊戲循環時可以 1×–60×；戶型總覽：三間住處的 2D 俯瞰圖，圓點標出每個人，點了就去看他。手機上的版面與 60× 的效能還沒驗證。紀錄：[`docs/v17.2-report.md`](docs/v17.2-report.md)
-- 17.1.1：背景生活補完——離開時也會生病又好起來、冷戰到和好或疏遠、自己約出遊；時間線的「回放這一天」（1×–1024×、跳到某時刻、在島上看）；App 關著時先預測接下來 24 小時：可以打開通知（預設關閉，選種類、一天最多幾則、晚上不吵），小工具會顯示「大概在咖啡館吃飯」；一天結束的卡片加上生日與約好的出遊。Android 的通知與小工具還沒在手機上驗證。紀錄：[`docs/v17.1.1-report.md`](docs/v17.1.1-report.md)
-- 17.1：背景生活——關掉 App 的時候（最多 30 天）大家照常生活：吃、睡、去別的地方、遇到就聊天、約好的出遊照樣去、技能與關係照常改變；回來時有「你不在的時候」（離開多久、名場面、每天的大事與每個人一句）；新的「時間線」（口袋手機）：每件事一條、正在發生、篩選、長按收藏、點一下鏡頭去找人；一天結束的卡片。同一個存檔、同一段離開，結果永遠一樣；不給星幣物品；手機時間被往回調時不推算。離開時還不會生病、冷戰、發生事件；回放與 Android 背景通知還沒做。紀錄：[`docs/v17.1-report.md`](docs/v17.1-report.md)
-- 17.0：修正「畫面突然變灰、無法操作」（灰色遮罩點不掉、下滑關視窗卡在半路、過場黑邊沒收、3D 畫面中斷），加上畫面安全網與紀錄（設定 › 關於）；卡片與提示不再蓋住頁面按鈕。全面檢查與 17.x 計畫：[`docs/v17-plan.md`](docs/v17-plan.md)。紀錄：[`docs/v17.0-report.md`](docs/v17.0-report.md)
-- 16.11：生老病死與收官——會生病（淋雨、熬夜、過勞、吃壞肚子、吃太多、摔傷、傳染、長者的老毛病），生病時想休息、朋友會來照顧、請病假，吃藥或休息會好；壽命與告別（預設關閉、每個角色可選，告別有小劇場、紀念相框，而且可以讓牠回來）；冷戰有起因、會在背後說壞話、送禮能緩和，「健康」App 裡可以幫忙和好；重大時刻的小劇場與「回放」；桌寵知道角色生病、年紀與上班上學。紀錄：[`docs/v16.11-report.md`](docs/v16.11-report.md)
-- 16.10：遊樂設施與邀約——遊樂園 7 個新的觸控小遊戲（雲霄飛車、碰碰車、鬼屋、射擊攤、投籃、旋轉茶杯、鏡子迷宮）、和同伴一起玩（膽小的不坐可怕的）；邀約、約會、出遊（立刻回答、時間到出發、放鴿子會失望）、手機「行程」App。紀錄：[`docs/v16.10-report.md`](docs/v16.10-report.md)
-- 16.9：職業與學業——17 條職業線（受僱與自由業）、平日自己去上班上學（看不到的地方）、薪水與升遷、自由業的委託、截止日、信譽、靈感與作品集（可以上架）、學校（幼兒園到成人進修、15 科、在學／休學／自學、作業、考試、畢業）、以前的打工變成「兼職」。紀錄：[`docs/v16.9-report.md`](docs/v16.9-report.md)
-- 16.8：住處與家庭——黃屋頂、紫屋頂兩棟房子可以走進去；每個人回自己的家睡；雙人床、上下舖、兒童床、嬰兒床（同床看關係）；入住管理（原住戶會表達意見，可以強制但有後果）；同居的日常與摩擦；同住的大人照顧寶寶、五個成長紀念；孩子與領養（預設關閉、一定先問你）；家族樹。定案藍圖與目前差距：[`docs/v16-blueprint.md`](docs/v16-blueprint.md)。紀錄：[`docs/v16.8-report.md`](docs/v16.8-report.md)
-- 16.7：自主與世界——角色會注意身邊的事（有人難過、被丟出去、在睡覺、地上有東西、下雨）、想念好久沒說話的朋友、看情境做事（不吵睡覺的人、圖書館安靜、下雨不在室外）、計畫失敗時換一個並說明原因；背包的東西可以放在地上或丟掉，角色依個性吃、玩、收拾或看看；其他地點的設施有容量、不在身邊的角色會在那裡遇到並聊天；12 樣新道具。紀錄：[`docs/v16.7-report.md`](docs/v16.7-report.md)
-- 16.6：對話引擎——話題來自角色身邊的事（剛做的事、共同興趣、回憶、天氣、季節、地點、吃過的東西、朋友、60 個日常話題），每個角色對話題有立場；聊天是一串互相回應的行為（附和、反對、追問、分享、玩笑、換話題…）；記得對方的看法、八卦（要信任、不動玩家固定的關係）；別人的對話只顯示關鍵字泡泡、可以偷聽、「最近的對話」；沒話題時來問你（選或打字，離線字典）。新台詞約 260 句（計畫目標 1500 句**未達到**）。紀錄：[`docs/v16.6-report.md`](docs/v16.6-report.md)
-- 16.5：飲食與烹飪全面升級——食材分類、10 種新食材、80 個食譜、七種做法、品質 ★1–★3、自由料理與發現、食譜書、自動做、冷熱與物種口味、端上桌與剩菜、角色自己下廚、咖啡館點餐；廚房介面（食譜／自由料理／冰箱）。紀錄：[`docs/v16.5-report.md`](docs/v16.5-report.md)
-- 16.4：點角色、家具、地面的選單重做——一層分類、一層項目，一按就做（可復原、長按立刻做），不跳確認；動作清單照《模擬市民》的方式重寫（帶目標、8 個、拖曳排序、循環、進度、不想做會說原因＋強迫、跨地點）；11 個新活動。紀錄：[`docs/v16.4-report.md`](docs/v16.4-report.md)
-- 16.3：角色工作室（舞台固定只捲面板、圖片模式的取景台與去背、動畫來源＋一鍵全選、角色台詞、專屬互動、可匯入的事件腳本）。紀錄：[`docs/v16.3-report.md`](docs/v16.3-report.md)
-- 16.2：沒有門檻、都能做——60 種角色之間的互動（12 類），對方依關係、親近程度、個性、心情決定怎麼反應（熱情、害羞閃躲、婉拒、推開、哭了…），太突然會降好感；點別的角色就有互動選單；設施可以邀請別人一起用。紀錄：[`docs/v16.2-report.md`](docs/v16.2-report.md)。
-- 16.1：開局可以一次建立多位島民，設定年齡、物種（20 種＋自訂）、彼此的關係（家人、伴侶、朋友、仇人…，有方向、可鎖定）、住哪一棟房子；七個人生階段（含嬰兒），生日會長大；未滿 18 歲不會有戀愛。紀錄：[`docs/v16.1-report.md`](docs/v16.1-report.md)。
-- 16.0：角色用螢幕原本的解析度畫（匯入圖片不再糊）、圖片角色寬高分開調整且不會被切、左上角名牌卡、切換操控不再傳送、買東西／撿東西直接在介面完成、打擾預算＋熱鬧程度＋信箱、遊戲曆（四季各 28 天）／實時曆、存檔 v8。計畫與後續版本：[`docs/v16-plan.md`](docs/v16-plan.md)；紀錄：[`docs/v16.0-report.md`](docs/v16.0-report.md)。**手機實機尚未驗證。**
-- 15.5：夢、宣言、怕的東西（陪牠就能克服）、人生階段、季節節日（禮物、夏夜煙火、豐收加成）、三段連續劇「說不出口的話」。紀錄：[`docs/v15.5-report.md`](docs/v15.5-report.md)
-- 15.4：創角大舞台、設計亭（畫圖樣穿在衣服上）、地圖路線與路程、桌寵中心三分頁。紀錄：[`docs/v15.4-report.md`](docs/v15.4-report.md)
-- 15.3：季節（依日期或自選；樹葉草地的顏色、花瓣／落葉／雪）、海面閃光、雲朵轉場、遊樂園夜晚燈光、遊樂園與風車丘的聲音、逐頁檢查。紀錄：[`docs/v15.3-report.md`](docs/v15.3-report.md)
-- 15.2：開放**風車丘**與**彩虹遊樂園**（磨坊、薰衣草田、演唱會、摩天輪、旋轉木馬、套圈圈、點心攤）、打工、島報、房間評分、小島評價、生日。紀錄：[`docs/v15.2-report.md`](docs/v15.2-report.md)
-- 15.1：晴日公寓（角色頁）、島民護照、家裡的牆壁與地板、商店試衣間、設定區塊方格、創角大卡片。紀錄：[`docs/v15.1-report.md`](docs/v15.1-report.md)
-- 15.0：點選不再等於執行（點東西先出現動作卡，按了才做；修正誤觸）、動作清單、口袋手機、拍照模式與相簿。紀錄：[`docs/v15-report.md`](docs/v15-report.md)
-- 14.2：針對「平均約 20 fps」的回報再修一輪——角色貼圖改用 CPU 畫布、限制每幀重畫數、花圃合併（小島繪製呼叫約 140）、自動降級多一級、「顯示 FPS」會顯示每幀時間等數字方便回報。**手機上是否改善仍未驗證。**
-- 14.1：修正卡頓（拿掉每幀的全螢幕合成效果、白天關掉點光源、陰影減半、預先編譯著色器、自動降解析度；**手機上的效果尚未驗證**）、桌寵的群體行為搬進可測試的核心、房屋主體／攤位／橋重新建模、工坊改成工具方格。紀錄：[`docs/v14.1-report.md`](docs/v14.1-report.md)
-- 14.0：整個 App 統一成一種風格「島日和」（白天／夜晚兩個調色盤）、HUD／導覽列／環狀選單重做、背包口袋格、交易紀錄、桌寵中心的桌面預覽、圖片角色用手指裁切、樹木與房屋正面重新建模、小島繪製呼叫減半、桌寵行為搬進可測試的核心（原生仍未經實機驗證）。紀錄：[`docs/v14-report.md`](docs/v14-report.md)
-- 13.0：畫面跟著角色換地點、圖片角色的調整與自動表演、79 個特質（衝突提示、隨機）、新的預設介面風格、猜拳／躲貓貓／搖樹、角色主動來訪與約定、四章節教學、桌寵作息。**桌寵原生層與各頁面版面沒有整個重寫。**
-- 紀錄（含未驗證與沒做的部分）：[`docs/v13-report.md`](docs/v13-report.md)；測試：`node game/tests/v13/run.js`
-- ⚠️ 原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+## 目前版本 0.1.0-reboot（M0：地基）
 
-## 0.12.0-alpha（12.0 修正與成熟化）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-0.1.0-reboot-debug.apk`](deliverables/apk/oc-shimeji-0.1.0-reboot-debug.apk)
+- 這一版能做的：
+  - 存檔選單（觀察日誌）：開始新的觀察、繼續、改名、複製、分支、刪除；每天自動備份；
+  - 開始新的觀察：選住民（目前只有預設角色肉桂捲）；
+  - 進到世界：住民站在房間裡呼吸，點牠會跳一下；
+  - 白天／夜晚兩種配色跟隨手機。
+- **還沒有**：家與房型、需求與生活（M1）、匯入與角色創建（M2）、桌寵（M3）…依計畫進行。
+- 手機上的實際表現（觸控手感、版面、效能）**還沒在實機驗證**。
+- 紀錄：[`docs/reboot/m0-report.md`](docs/reboot/m0-report.md)
 
-- **12.0 新增／修正**：修掉純文字格的灰色圓底座與作息輸入框重疊；請求可取消；技能頁與地圖重新設計；**去除 NPC**；極簡 HUD；**每個角色各自的操控模式（手動／半自動（預設）／全自動），隨時可切**；成熟語氣的新台詞與「雅緻」介面風格；情緒感染、冷戰與和解、三人以上的聚會；桌寵自己的聲音與雙人桌面動作；過場短句接到真實事件；3D 接觸陰影、房間布置與重新建模的家具（**房屋／樹木／岩石的造型沒有重新建模**）。
-- 12.0 紀錄（問題→原因→修正→驗證、**未驗證與未完成項目**）：[`docs/v12-report.md`](docs/v12-report.md)；畫面：`deliverables/v12/`
-- 測試：`node game/tests/v12/run.js`（12.0 驗收）；Kotlin：`cd android && gradle -PcoreOnly=true test`
-- ⚠️ 桌寵（含新的聲音與雙人動作）、小工具、觸覺等原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
+## 計畫
+完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)
+- 第一～九節：核心循環、技術架構、匯入與動畫、AI 與事件、場景、UI、路線圖、風險；
+- 第十節：已確認的決定；
+- 第十一～十三節：完整遊戲系統總表與修訂後的路線圖（M0–M6＝MVP，之後 1.0）。
 
-## 0.11.0-alpha（11.0 互動與生命感重做）
+## 建置
+```bash
+gradle -PcoreOnly=true test --max-workers=1
+gradle :app:assembleDebug :app:verifyDebugApk --max-workers=1
+```
+需要 JDK 17、Gradle 8、Ubuntu 的 `aapt`、`dalvik-exchange`、`zipalign`、`apksigner`、`android-sdk-platform-23`，以及 Robolectric android-all（API 35）放在 `/opt/oc-android/`。詳見 `CLAUDE.md`。
 
-- **11.0 新增**：滑動撫摸（依手指速度、身體部位與每個角色的喜好連續累積）、親近環（抱抱／擊掌／戳／牽手）、107 個資料驅動動作與柔和過渡、會計畫與設目標的 AI（可看「想法」）、10 種雙人互動、創角舞台（轉盤、點部位）、角色聲線／立體聲／動作與腳步音效／音樂強度層／觸覺節奏、世界觸控回饋（波紋、搖樹落葉、揚塵）、桌寵多 10 個小動作。
-- 11.0 紀錄（做了什麼、發現並修掉的問題、測試、**未驗證與未完成項目**）：[`docs/v11-report.md`](docs/v11-report.md)；畫面：`deliverables/v11/`
-- 10.0／10.1 紀錄：[`docs/v10-report.md`](docs/v10-report.md)；規格：[`docs/design-system.md`](docs/design-system.md)；更早：[`docs/v9-report.md`](docs/v9-report.md)、[`docs/v8-report.md`](docs/v8-report.md)
-- 測試：`node game/tests/v11/run.js`（11.0 驗收）、`node game/tests/v8/run.js`、`node game/tests/v10/run.js` ＋第四～七階段回歸；Kotlin：`cd android && gradle -PcoreOnly=true test`
-- ⚠️ 桌寵、小工具、觸覺等原生功能仍需實機驗證：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
-
-## 0.7.0-alpha（第七階段：Android 系統懸浮桌寵）
-
-- ⚠️ 桌寵、通知、提醒、小工具等原生功能**尚未在實機上驗證**（開發環境沒有 Android 裝置）——測試計畫：[`docs/compat-test-plan.md`](docs/compat-test-plan.md)
-- 第七階段完成紀錄（已驗證／需實機／部分完成／未完成）：[`docs/phase7-report.md`](docs/phase7-report.md)；截圖：`deliverables/phase7/`
-- 第七階段規格：[Android 原生層與同步](docs/android-native.md) · [權限與隱私](docs/permissions.md) · [備份](docs/backup.md) · [效能](docs/performance.md) · [Android 建置](docs/android-build.md)
-- 自動化測試：`cd game && python3 -m http.server 8765` 後執行 `node game/tests/pet/run.js`（第七階段）、`node game/tests/play/run.js`（第六）、`node game/tests/world/run.js`（第五）、`node game/tests/life/run.js`（第四）；Kotlin：`cd android && gradle -PcoreOnly=true test`
-- 第六階段：[`docs/phase6-report.md`](docs/phase6-report.md) · [任務與請求](docs/quests.md) · [技能／目標／成就／圖鑑／日誌](docs/growth.md) · [動畫、演出與音效](docs/animation-performance.md)
-- 第五階段：[`docs/phase5-report.md`](docs/phase5-report.md) · [世界地圖與地點](docs/world-map.md) · [物品系統](docs/items.md) · [商店與經濟](docs/economy.md)
-- 第四階段：[`docs/phase4-report.md`](docs/phase4-report.md) · [行為引擎](docs/behavior-engine.md) · [生活資料格式](docs/life-format.md) · [事件規則](docs/event-rules.md) · [情緒與回憶](docs/memory-model.md)
-- **瀏覽器試玩**：`cd game && python3 -m http.server 8765` → 開 `http://localhost:8765/index.html`（手機尺寸）
-- 截圖：[`deliverables/phase2/screens-contact-sheet.jpg`](deliverables/phase2/screens-contact-sheet.jpg)
-- 第三階段完成紀錄與測試：[`docs/phase3-report.md`](docs/phase3-report.md)（第二階段：[`docs/phase2-report.md`](docs/phase2-report.md)）
-- 規格：[角色資料格式](docs/character-format.md) · [動畫系統](docs/animation-system.md) · [素材匯入匯出](docs/asset-io.md)
-- 文件：[Design System](docs/design-system.md) · [UI 元件](docs/ui-components.md) · [美術素材規範](docs/art-guidelines.md) · [Android 建置](docs/android-build.md) · [架構](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [CLAUDE.md](CLAUDE.md)
-
----
-
-## 第一階段交付物（視覺方向比較，已凍結）
-
-### 第一輪
-
-| 方案 | 影片（45s · 1080×1920 · 30fps） | 視覺總覽 | 原型 |
-|---|---|---|---|
-| A · 棉霧島 Mallow Mist | [`deliverables/videos/A_mallow-mist.mp4`](deliverables/videos/A_mallow-mist.mp4) | [`A_mallow-mist.png`](deliverables/overviews/A_mallow-mist.png) | `prototype/index.html?theme=mallow` |
-| B · 像素森語 Pixel Grove | [`deliverables/videos/B_pixel-grove.mp4`](deliverables/videos/B_pixel-grove.mp4) | [`B_pixel-grove.png`](deliverables/overviews/B_pixel-grove.png) | `prototype/index.html?theme=pixel` |
-| C · 手帳繪本 Inkpot Tales | [`deliverables/videos/C_inkpot-tales.mp4`](deliverables/videos/C_inkpot-tales.mp4) | [`C_inkpot-tales.png`](deliverables/overviews/C_inkpot-tales.png) | `prototype/index.html?theme=sketch` |
-
-### 第二輪：Switch 風格參考（同視角）
-
-| 方案 | 影片 | 視覺總覽 | 原型 |
-|---|---|---|---|
-| D · 風語原野 Windsong Fields | [`D_windsong-fields.mp4`](deliverables/videos/D_windsong-fields.mp4) | [`D_windsong-fields.png`](deliverables/overviews/D_windsong-fields.png) | `prototype/index.html?theme=wild` |
-| E · 晴日島嶼 Sunny Isle | [`E_sunny-isle.mp4`](deliverables/videos/E_sunny-isle.mp4) | [`E_sunny-isle.png`](deliverables/overviews/E_sunny-isle.png) | `prototype/index.html?theme=isle` |
-| F · 奇趣鎮 Quirkville | [`F_quirkville.mp4`](deliverables/videos/F_quirkville.mp4) | [`F_quirkville.png`](deliverables/overviews/F_quirkville.png) | `prototype/index.html?theme=quirk` |
-
-### 第三輪：3D 固定視角世界 ＋ 2D 角色（混合）
-
-| 方案 | 影片 | 視覺總覽 | 原型 |
-|---|---|---|---|
-| G · 晴日島嶼 3D | [`G_sunny-isle-3d.mp4`](deliverables/videos/G_sunny-isle-3d.mp4) | [`G_sunny-isle-3d.png`](deliverables/overviews/G_sunny-isle-3d.png) | `prototype/index.html?theme=isle3d` |
-
-說明：[`docs/phase1-round3-hybrid3d.md`](docs/phase1-round3-hybrid3d.md)
-
-**先讀：** [`docs/phase1-round2-comparison.md`](docs/phase1-round2-comparison.md)（第二輪 D/E/F）與 [`docs/phase1-comparison.md`](docs/phase1-comparison.md)（第一輪 A/B/C）。
-
-文件：
-- [全系統視覺規劃](docs/visual-plan.md) · [技術架構](docs/architecture.md) · [UI 元件規格](docs/ui-components.md)
-- [角色與場景美術規範](docs/art-guidelines.md) · [動畫規範](docs/animation-guidelines.md) · [素材格式規範](docs/asset-format.md)
-- [CLAUDE.md](CLAUDE.md)（開發規範與指令）
-
-## 第一階段狀態（已結束）
-- ✅ 三輪共 7 支 MP4、7 張總覽圖、7 套動態原型；使用者選定 G（3D 固定視角 + 2D 角色）
-- 第二階段的狀態見上方與 `docs/phase2-report.md`
+## 授權與素材
+所有美術與聲音為原創；預設角色「肉桂捲」的圖由玩家提供。字型為 SIL Open Font License（`art/fonts/LICENSES.md`）。
