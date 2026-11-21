@@ -1,5 +1,6 @@
 package app.ocshimeji.save
 
+import app.ocshimeji.sim.life.Life
 import kotlinx.serialization.Serializable
 
 /*
@@ -27,6 +28,12 @@ data class LibChar(
     val traits: List<String> = emptyList(),
     val likes: List<String> = emptyList(),
     val created: Long = 0,
+    /** adult or not (house rules; romance never involves minors) */
+    val adult: Boolean = true,
+    /** which way the drawing faces: -1 left, 1 right (the renderer mirrors it when walking the other way) */
+    val facing: Int = 1,
+    /** the drawing had no transparent background when imported (background removal comes in M2) */
+    val opaque: Boolean = false,
 )
 
 @Serializable
@@ -63,4 +70,6 @@ data class World(
     val clockMode: String = "REAL",
     val minute: Double = 0.0,
     val residents: List<Resident> = emptyList(),
+    /** the life of this world (M1+); null only for worlds made by M0 — they get a house when opened */
+    val life: Life? = null,
 )

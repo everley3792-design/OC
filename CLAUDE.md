@@ -16,27 +16,27 @@
 - 參考作品（角色觀察屋、Tomodachi Life、The Sims 4、inZOI、動物森友會、任天堂）只取設計原則，**不得**使用其文字、角色、介面圖形、地圖、音效或素材。所有美術與聲音都是原創；字型只用開放授權（`art/fonts/LICENSES.md`）。
 
 ## 目前階段
-- **M0（0.1.0-reboot）地基——完成**：
-  - 新專案骨架與離線 APK 管線；
-  - `core:sim`（確定性亂數、時鐘）、`core:save`（收藏庫＋存檔兩層、原子寫入、每日備份、複製／分支）；
-  - `render:api` ＋ Android Canvas 後端 ＋ Java2D 後端（截圖測試）；
-  - `ui`（設計 tokens、彈簧、元件、存檔選單、開始新的觀察、M0 的世界畫面）。
-  - 紀錄：`docs/reboot/m0-report.md`。
-- 下一步：**M1 存檔與家**（計畫 12.11：開場流程與房型、需求、效用 AI、作息、觸碰、人物卡、補算）。
+- **M0（0.1.0-reboot）地基——完成**（`docs/reboot/m0-report.md`）。
+- **M1（0.2.0-reboot）存檔與家——完成**（`docs/reboot/m1-report.md`）：
+  - `core:sim`：房型（3 種、房客規則）、家具、需求、心情小卡、效用 AI（附理由）、作息、30 種小動作、格子尋路、觸碰（摸／抱／丟／餵）、搬家日、補算（確定性、最多 30 天）；
+  - `core:save`：`createWorld`、M0 世界升級、單張圖匯入角色、`.ocsave` 匯出匯入、旗標；
+  - `ui`：開場四步、家的 2.5D 場景（`HouseView`）、程序姿勢動畫（`Actors`）、人物卡、你不在的時候、時間切換；
+  - `app`：系統檔案選擇器（選圖／匯出／匯入）、合成音效、兩指縮放、降幀。
+- 下一步：**M2 創角與匯入**（計畫 12.11：完整創角、去背／取景／標記頭腳、繪圖工具第一版、關係設定；以及 M1 順延的 A-13、E-01 部位、B-02 作息設定）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：Rng（SplitMix64，唯一的亂數）、GameClock（REAL／GAME）
-core/save/     純 Kotlin：Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）
+core/sim/      純 Kotlin：Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體）
+core/save/     純 Kotlin：Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
 render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
-ui/            純 Kotlin 的整個介面：Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、NewObservationSheet、WorldScreen、ListSheet、Confirm
+ui/            純 Kotlin 的整個介面：Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、ListSheet、Confirm
                src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
-app/           Android 外殼：MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets；build.gradle.kts＝離線管線
+app/           Android 外殼：MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/、m1/（截圖）
 ```
 
 ## 指令
@@ -54,7 +54,10 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **純 Kotlin 優先**：`core:*`、`render:api`、`ui` 不得依賴 Android；Android 只在 `app/`。新功能的邏輯寫在純模組並補 JVM 測試。
 - **所有畫面都畫在 `Gfx` 上**（同一份程式在手機上用 Canvas、在測試裡用 Java2D）；不要在 `app/` 另寫畫面。
 - UI 是即時模式：每幀畫自己並用 `app.zone(id, …)` 登記點擊區；`Screen.tap(id)` 處理。捲動區裡登記點擊區前設 `app.zoneDy`。覆蓋層（`Overlay`）出現後 `Dim.GUARD`（0.3 秒）內不接受點擊；點覆蓋層外面＝關閉；返回鍵先關覆蓋層。
+- 生活畫面只看不改：觸碰經 `LifeSim` 的 `pet/petEnd/lift/hold/drop/feed`；畫面效果（泡泡、愛心、聲音）來自 `sim.events`。畫面自己的裝飾亂數不得影響模擬。
+- 場景以 base dp 繪製（`HouseView` 的 T 固定 32），縮放交給 `g.scale`；高度數值都是 base dp。
 - 圖示一律用 `Widgets.icon()` 畫的形狀，**不要**用字型裡的符號（`⋯ ✓ ‹` 在 Nunito 裡沒有，會變成方框）。
+- `FontKind.NUM`（Nunito）沒有中文字：只用在純數字／英文上（「第 1 天」要用 UI 字型）。
 
 ### 存檔
 - 兩層：`library/`（收藏庫：跨存檔共用的角色原版與素材）與 `saves/<id>/`（一個世界）。只經 `SaveSystem` 讀寫；預設角色（`Presets`）永遠在收藏庫、不能刪；還住在某個存檔裡的角色不能從收藏庫刪。

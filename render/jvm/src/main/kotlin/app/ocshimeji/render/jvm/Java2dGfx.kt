@@ -28,6 +28,7 @@ class JvmAssets(private val artDir: File) : Assets {
     override fun image(path: String, maxSide: Int): Img? = cache.getOrPut("$path@$maxSide") {
         val f = File(artDir, path); if (!f.isFile) null else ImageIO.read(f)?.let { JImg(downscale(it, maxSide)) }
     }
+    override fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img? = cache.getOrPut(key) { bytes()?.let { b -> ImageIO.read(java.io.ByteArrayInputStream(b))?.let { JImg(downscale(it, maxSide)) } } }
     val ui: Font by lazy { Font.createFont(Font.TRUETYPE_FONT, File(artDir, "fonts/Huninn-Regular.ttf")) }
     val num: Font by lazy { Font.createFont(Font.TRUETYPE_FONT, File(artDir, "fonts/Nunito-ExtraBold.ttf")) }
     private fun downscale(src: BufferedImage, max: Int): BufferedImage {

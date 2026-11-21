@@ -3,6 +3,10 @@ package app.ocshimeji.android
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.content.res.Configuration
 import android.graphics.Canvas
 import android.os.Build
@@ -17,6 +21,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import app.ocshimeji.save.FileStorage
 import app.ocshimeji.save.SaveSystem
+import app.ocshimeji.ui.PickedImage
 import app.ocshimeji.ui.Platform
 import app.ocshimeji.ui.Theme
 import app.ocshimeji.ui.TitleScreen
@@ -35,9 +40,13 @@ class MainActivity : Activity() {
         val assets = AndroidAssets(assets)
         val platform = object : Platform {
             override fun now() = System.currentTimeMillis()
-            override fun haptic(kind: String) { runCatching { view.performHapticFeedback(if (kind == "soft") HapticFeedbackConstants.CONTEXT_CLICK else HapticFeedbackConstants.KEYBOARD_TAP) } }
+            override fun haptic(kind: String) { runCatching { view.performHapticFeedback(when (kind) { "soft" -> HapticFeedbackConstants.CONTEXT_CLICK; "heavy" -> HapticFeedbackConstants.LONG_PRESS; else -> HapticFeedbackConstants.KEYBOARD_TAP }) } }
             override fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) = askText(title, initial, maxLength, done)
             override fun exit() { finish() }
+            override fun pickImage(done: (PickedImage?, String?) -> Unit) = pick(done)
+            override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) = create(name, mime, data, done)
+            override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)
+            override fun sound(name: String) { sounds.play(name) }
         }
         ui = UiApp(SaveSystem(FileStorage(filesDir)), assets, platform)
         ui.theme = themeFor(resources.configuration)
@@ -63,7 +72,62 @@ class MainActivity : Activity() {
     private fun themeFor(c: Configuration) = if ((c.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) Theme.DARK else Theme.LIGHT
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); ui.theme = themeFor(newConfig); edgeToEdge(); view.invalidate() }
     override fun onPause() { super.onPause(); ui.pause() }
-    override fun onResume() { super.onResume(); view.kick() }
+    override fun onResume() { super.onResume(); if (started) ui.wake(); started = true; view.kick() }
+    override fun onDestroy() { super.onDestroy(); sounds.release() }
+    private var started = false
+    private val sounds = Sounds()
+
+    // ---------------- files the player chooses (Storage Access Framework: no storage permission) ----------------
+    private var pending: ((Intent?) -> Unit)? = null
+    private fun ask(i: Intent, then: (Intent?) -> Unit) {
+        pending = then
+        try { @Suppress("DEPRECATION") startActivityForResult(i, 41) } catch (e: Exception) { pending = null; then(null); ui.toast("這支手機沒有可以選檔案的 App") }
+    }
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION") super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 41) return; val p = pending; pending = null
+        p?.invoke(if (resultCode == RESULT_OK) data else null); view.kick()
+    }
+    private fun readAll(uri: Uri, limit: Long): ByteArray? = contentResolver.openInputStream(uri)?.use { ins ->
+        val out = java.io.ByteArrayOutputStream(); val buf = ByteArray(64 * 1024); var total = 0L
+        while (true) { val n = ins.read(buf); if (n < 0) break; total += n; if (total > limit) return null; out.write(buf, 0, n) }
+        out.toByteArray()
+    }
+    /** work off the UI thread, answer on it */
+    private fun background(work: () -> Unit) { Thread { work() }.apply { isDaemon = true }.start() }
+    private fun pick(done: (PickedImage?, String?) -> Unit) {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "image/*" }
+        ask(i) { data -> val uri = data?.data ?: run { done(null, null); return@ask }
+            background {
+                val r = runCatching {
+                    val bytes = readAll(uri, 30L * 1024 * 1024) ?: return@runCatching null to "圖片太大（上限 30 MB）"
+                    val mime = contentResolver.getType(uri) ?: ""
+                    val ext = when { mime.contains("png") -> "png"; mime.contains("webp") -> "webp"; mime.contains("gif") -> "gif"; mime.contains("jpeg") || mime.contains("jpg") -> "jpg"; else -> "img" }
+                    val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeByteArray(bytes, 0, bytes.size, o)
+                    if (o.outWidth <= 0) return@runCatching null to "看不懂這張圖片"
+                    var s = 1; while (maxOf(o.outWidth, o.outHeight) / s > 2048) s *= 2
+                    val big = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = s; inPreferredConfig = Bitmap.Config.ARGB_8888 }) ?: return@runCatching null to "看不懂這張圖片"
+                    val k = minOf(1f, 1024f / maxOf(big.width, big.height))
+                    val bmp = if (k < 1f) Bitmap.createScaledBitmap(big, maxOf(1, (big.width * k).toInt()), maxOf(1, (big.height * k).toInt()), true) else big
+                    val png = java.io.ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+                    val px = IntArray(bmp.width * bmp.height).also { bmp.getPixels(it, 0, bmp.width, 0, 0, bmp.width, bmp.height) }
+                    PickedImage(bytes, ext, png, bmp.width, bmp.height, px) to null
+                }.getOrElse { null to "讀不到這張圖片" }
+                view.post { done(r.first, r.second); view.kick() }
+            }
+        }
+    }
+    private fun create(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) {
+        val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = mime; putExtra(Intent.EXTRA_TITLE, name) }
+        ask(i) { d -> val uri = d?.data ?: run { done(false); return@ask }
+            background { val ok = runCatching { contentResolver.openOutputStream(uri, "w")?.use { it.write(data) } != null }.getOrDefault(false); view.post { done(ok); view.kick() } } }
+    }
+    private fun open(done: (ByteArray?) -> Unit) {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }
+        ask(i) { d -> val uri = d?.data ?: run { done(null); return@ask }
+            background { val b = runCatching { readAll(uri, 200L * 1024 * 1024) }.getOrNull(); view.post { if (b == null) ui.toast("檔案太大或讀不到"); done(b); view.kick() } } }
+    }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() { if (!ui.back()) @Suppress("DEPRECATION") super.onBackPressed() else view.kick() }
 
@@ -94,15 +158,29 @@ class GameView(ctx: Context, private val ui: UiApp, private val gfx: AndroidGfx)
     override fun onDraw(canvas: Canvas) {
         val now = System.nanoTime(); val dt = if (last == 0L) 1f / 60 else ((now - last) / 1e9f).coerceIn(0f, 0.1f); last = now
         gfx.begin(canvas, density); try { ui.frame(gfx, dt) } finally { gfx.end() }
-        if (ui.animating) postInvalidateOnAnimation() else postDelayed({ invalidate() }, 250)
+        when {
+            !ui.animating -> postDelayed({ invalidate() }, 250)
+            ui.fps < 60 -> postDelayed({ invalidate() }, (1000L / ui.fps) - 4)
+            else -> postInvalidateOnAnimation()
+        }
     }
+    /* fingers: the first one is "the" finger (taps, drags, touching characters); a second one only pinches */
+    private var first = -1; private var second = -1
     override fun onTouchEvent(e: MotionEvent): Boolean {
-        val x = e.x / density; val y = e.y / density
+        fun px(i: Int): Float = e.getX(i) / density
+        fun py(i: Int): Float = e.getY(i) / density
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> ui.down(x, y)
-            MotionEvent.ACTION_MOVE -> if (e.getPointerId(e.actionIndex) == e.getPointerId(0)) ui.move(x, y)
-            MotionEvent.ACTION_UP -> ui.up(x, y)
-            MotionEvent.ACTION_CANCEL -> ui.cancel()
+            MotionEvent.ACTION_DOWN -> { first = e.getPointerId(0); second = -1; ui.down(px(0), py(0)) }
+            MotionEvent.ACTION_POINTER_DOWN -> if (second < 0) { second = e.getPointerId(e.actionIndex); ui.second(0, px(e.actionIndex), py(e.actionIndex)) }
+            MotionEvent.ACTION_MOVE -> {
+                val a = e.findPointerIndex(first); if (a >= 0) ui.move(px(a), py(a))
+                val b = if (second >= 0) e.findPointerIndex(second) else -1; if (b >= 0) ui.second(1, px(b), py(b))
+            }
+            MotionEvent.ACTION_POINTER_UP -> { val id = e.getPointerId(e.actionIndex)
+                if (id == second) { ui.second(2, px(e.actionIndex), py(e.actionIndex)); second = -1 }
+                else if (id == first && second >= 0) { val b = e.findPointerIndex(second); ui.second(2, px(b), py(b)); first = second; second = -1 } }
+            MotionEvent.ACTION_UP -> { val a = e.findPointerIndex(first).coerceAtLeast(0); ui.up(px(a), py(a)); first = -1; second = -1 }
+            MotionEvent.ACTION_CANCEL -> { ui.cancel(); first = -1; second = -1 }
         }
         kick(); return true
     }

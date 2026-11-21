@@ -12,7 +12,20 @@ interface Platform {
     fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit)
     /** leave the app (back on the first screen) */
     fun exit() {}
+    /** the phone's local time as minutes (time zone included) — the default world clock */
+    fun realMinute(): Double = (now() + java.util.TimeZone.getDefault().getOffset(now())) / 60000.0
+    /** let the player pick a picture; the platform decodes it (working copy ≤ 1024 px as PNG + its pixels); null = cancelled; a String = why it failed */
+    fun pickImage(done: (PickedImage?, String?) -> Unit) { done(null, "這個版本還不能選圖片") }
+    /** write a file the player chooses where to keep (export) */
+    fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) { done(false) }
+    /** read a file the player picks (import) */
+    fun openFile(mime: String, done: (ByteArray?) -> Unit) { done(null) }
+    /** a short original sound (tick, pop, lift, whoosh, land, bounce, munch, chime) */
+    fun sound(name: String) {}
 }
+
+/** a picture the player picked: the original file, a working PNG (≤ 1024 px) and that working copy's pixels for checking */
+class PickedImage(val original: ByteArray, val ext: String, val working: ByteArray, val w: Int, val h: Int, val px: IntArray)
 
 /**
  * The whole UI. Immediate mode: every frame each screen draws itself and registers tap areas (`zone`). A finger that goes down and up
@@ -20,6 +33,12 @@ interface Platform {
  * Pure Kotlin: the phone and the screenshot tests run exactly this.
  */
 class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
+    /** a character's standing picture: built in (asset:) or from the library (lib:) */
+    fun charImg(c: app.ocshimeji.save.LibChar?, maxSide: Int = 512): app.ocshimeji.render.Img? {
+        if (c == null) return null
+        return if (c.image.startsWith("asset:")) assets.image(c.image.removePrefix("asset:"), maxSide)
+        else { val path = c.image.removePrefix("lib:"); assets.decode("lib:$path@$maxSide", maxSide) { saves.readFile(path) } }
+    }
     var theme: Theme = Theme.LIGHT
     /** safe area (status bar, cutout, gesture bar) in dp */
     var insetTop = 0f; var insetBottom = 0f
@@ -56,20 +75,29 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
     }
     /** something is moving: the platform should keep drawing at full rate (otherwise it may idle) */
     val animating: Boolean get() = screen.animating || overlay != null || toast != null || pressed != null
+    /** frames per second worth drawing now: a living scene nobody touches is smooth enough at 30 (battery) */
+    val fps: Int get() = if (overlay != null || pressed != null) 60 else screen.fps
 
     // ---------------- input (dp) ----------------
     var pressed: String? = null; private set
     private var downX = 0f; private var downY = 0f; private var moved = false
+    /** the screen took this finger for itself (a world: touching characters, panning) — zones and drags are skipped */
+    private var raw = false
     fun down(x: Float, y: Float) {
         downX = x; downY = y; moved = false
-        val z = hit(x, y); pressed = z?.id
+        val z = hit(x, y); pressed = z?.id; raw = false
+        if (overlay == null && z == null && screen.pointer(0, x, y)) { raw = true; return }
         if (overlay == null) screen.drag(0f, 0f, x, y, start = true)
     }
     fun move(x: Float, y: Float) {
+        if (raw) { screen.pointer(1, x, y); return }
         if (!moved && Math.hypot((x - downX).toDouble(), (y - downY).toDouble()) > 10) { moved = true; pressed = null }
         if (moved && overlay == null) screen.drag(x - downX, y - downY, x, y, start = false)
     }
+    /** a second finger (pinch): kind 0 down, 1 move, 2 up — only screens that want it */
+    fun second(kind: Int, x: Float, y: Float) { if (overlay == null) screen.pointer(10 + kind, x, y) }
     fun up(x: Float, y: Float) {
+        if (raw) { raw = false; screen.pointer(2, x, y); return }
         val id = pressed; pressed = null
         if (moved) { if (overlay == null) screen.release(); return }
         val z = hit(x, y)
@@ -82,7 +110,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
         }
         if (z != null && z.id == id) { platform.haptic("tick"); screen.tap(z.id) }
     }
-    fun cancel() { pressed = null; if (moved && overlay == null) screen.release() }
+    fun cancel() { pressed = null; if (raw) { raw = false; screen.pointer(3, downX, downY); return }; if (moved && overlay == null) screen.release() }
     private fun hit(x: Float, y: Float): Zone? {
         val top = if (overlay != null) 1 else 0
         return zones.lastOrNull { it.layer == top && x >= it.x && x <= it.x + it.w && y >= it.y && y <= it.y + it.h }
@@ -102,20 +130,26 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform) {
     }
     /** the app goes to the background / is about to be closed */
     fun pause() { for (s in stack) s.pause() }
+    /** back in front after being in the background */
+    fun wake() { for (s in stack) s.wake() }
 }
 
 abstract class Screen {
     lateinit var app: UiApp
     open val animating: Boolean get() = false
+    open val fps: Int get() = 60
     open fun enter() {}
     open fun resume() {}
     open fun leave() {}
     open fun pause() {}
+    open fun wake() {}
     abstract fun frame(g: Gfx, dt: Float)
     open fun tap(id: String) {}
     /** a finger moving (dx, dy from where it went down) — scrolling */
     open fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) {}
     open fun release() {}
+    /** raw fingers for screens that handle touch themselves (kind 0 down, 1 move, 2 up, 3 cancel; 10–12 a second finger). Return true on down to take the finger. */
+    open fun pointer(kind: Int, x: Float, y: Float): Boolean = false
     /** true = handled */
     open fun back(): Boolean = false
 }

@@ -1,0 +1,49 @@
+package app.ocshimeji.save
+
+import app.ocshimeji.sim.house.Houses
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class WorldTest {
+    private var t = 1_700_000_000_000L
+    private fun sys() = SaveSystem(MemStorage()) { t }
+    private fun pic(w: Int, h: Int, f: (Int, Int) -> Int) = IntArray(w * h) { f(it % w, it / w) }
+    private fun importOne(s: SaveSystem, name: String, adult: Boolean = true): LibChar {
+        val px = pic(40, 60) { x, y -> if (x in 10..29 && y in 5..54) 0xFF884422.toInt() else 0 }
+        return s.importChar(name, adult, 1, ImageCheck.analyze(40, 60, px), byteArrayOf(1, 2, 3), byteArrayOf(9, 9), "png")
+    }
+
+    @Test fun imageCheckFindsTheFeetAndTransparency() {
+        val i = ImageCheck.analyze(40, 60, pic(40, 60) { x, y -> if (x in 10..29 && y in 5..54) 0xFF000000.toInt() else 0 })
+        assertTrue(i.transparent); assertEquals(10, i.left); assertEquals(54, i.bottom); assertEquals(0.5f, i.footX, 0.05f)
+        assertTrue(!ImageCheck.analyze(10, 10, IntArray(100) { 0xFFFFFFFF.toInt() }).transparent, "a photo with a background")
+        assertFailsWith<IllegalArgumentException> { ImageCheck.analyze(10, 10, IntArray(100)) }
+    }
+    @Test fun createAWorldWithHouseRules() {
+        val s = sys(); val a = importOne(s, "小空"); val kid = importOne(s, "小葉", adult = false)
+        assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.STUDIO, listOf(Presets.CINNAMON.id, a.id), mapOf(), 0.0) }.message!!.contains("最多住 1 位"))
+        assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(kid.id), mapOf(kid.id to "bedB"), 0.0) }.message!!.contains("成年"))
+        val m = s.createWorld("我的小鎮", "晴光鎮", "肉桂捲之家", Houses.COTTAGE, listOf(Presets.CINNAMON.id, a.id), mapOf(Presets.CINNAMON.id to "bedA", a.id to "bedB"), 1000.0)
+        val w = s.loadWorld(m.id)!!; val life = assertNotNull(w.life)
+        assertEquals("cottage", life.houseId); assertEquals(listOf("bedA", "bedB"), life.people.map { it.room }); assertTrue(life.arriving)
+        assertEquals(listOf("肉桂捲", "小空"), life.people.map { it.name })
+    }
+    @Test fun exportImportRoundTripBringsTheCharacters() {
+        val s = sys(); val a = importOne(s, "小空")
+        val m = s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id), mapOf(a.id to "bedA"), 0.0)
+        val file = s.exportSave(m.id)
+        val other = sys(); val m2 = other.importSave(file)
+        assertTrue(m2.name.endsWith("（匯入）")); assertEquals(1, other.loadWorld(m2.id)!!.life!!.people.size)
+        val js = kotlinx.serialization.json.Json { encodeDefaults = true }
+        assertEquals(js.encodeToString(World.serializer(), s.loadWorld(m.id)!!), js.encodeToString(World.serializer(), other.loadWorld(m2.id)!!), "the imported world is exactly the exported one")
+        assertNotNull(other.libChar(a.id)); assertTrue(other.readFile(a.image.removePrefix("lib:"))!!.contentEquals(byteArrayOf(1, 2, 3)))
+        assertTrue(assertFailsWith<IllegalArgumentException> { other.importSave(byteArrayOf(1, 2, 3, 4)) }.message!!.contains("不是"))
+    }
+    @Test fun anM0WorldGetsAHouse() {
+        val s = sys(); val m = s.create("舊的", listOf(Presets.CINNAMON.id)); val w = s.loadWorld(m.id)!!
+        val up = s.upgradeM0(m.id, w, 500.0); assertEquals("studio", up.life!!.houseId); assertNotNull(s.loadWorld(m.id)!!.life)
+    }
+}

@@ -44,10 +44,11 @@ class TitleScreen : Screen() {
         Widgets.card(g, t, Dim.GUTTER, y, nw, 84f, Dim.RADIUS_L, t.accent, t.accentLip, sink)
         g.fillCircle(Dim.GUTTER + 42, y + 42 + sink, 22f, t.surface); Widgets.icon(g, "plus", Dim.GUTTER + 42, y + 42 + sink, 22f, t.accentLip)
         g.text("開始新的觀察", Dim.GUTTER + 78, y + 38 + sink, Dim.FS_L, t.onAccent)
-        g.text("選住民，看牠們自己過日子", Dim.GUTTER + 78, y + 62 + sink, Dim.FS_S, t.onAccent)
+        g.text("選房子和住民，看牠們自己過日子", Dim.GUTTER + 78, y + 62 + sink, Dim.FS_S, t.onAccent)
         app.zone("new", Dim.GUTTER, y, nw, 88f)
         y += 116
         g.text(if (slots.isEmpty()) "你的觀察" else "你的觀察（${slots.size}）", Dim.GUTTER + 4, y, Dim.FS_M, t.ink2)
+        val iw = g.measure("匯入存檔", Dim.FS_S + 1) + 28; Widgets.chip(g, app, "importSave", W - Dim.GUTTER - iw, y - 28, "匯入存檔", false, 36f)
         y += 14
         if (slots.isEmpty()) {
             Widgets.card(g, t, Dim.GUTTER, y, nw, 84f, Dim.RADIUS_L, t.surface2, t.surface2)
@@ -56,7 +57,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("0.1.0-reboot（M0）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("0.2.0-reboot（M1）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }
@@ -67,7 +68,7 @@ class TitleScreen : Screen() {
         app.zone(id, x, y, w - 56, h + Dim.LIP)
         // faces
         val faces = s.residents.take(3)
-        faces.forEachIndexed { i, lid -> val c = app.saves.libChar(lid); val img = c?.image?.removePrefix("asset:")?.let { app.assets.image(it, 256) }; Widgets.face(g, t, img, x + 36 + i * 22f, y + 48 + sink, 22f) }
+        faces.forEachIndexed { i, lid -> Widgets.face(g, t, app.charImg(app.saves.libChar(lid), 256), x + 36 + i * 22f, y + 48 + sink, 22f) }
         if (faces.isEmpty()) Widgets.face(g, t, null, x + 36, y + 48 + sink, 22f)
         val tx = x + 36 + (maxOf(1, faces.size) - 1) * 22f + 36
         g.text(Widgets.fit(g, s.name, Dim.FS_L, w - (tx - x) - 64), tx, y + 42 + sink, Dim.FS_L, t.ink)
@@ -83,7 +84,9 @@ class TitleScreen : Screen() {
 
     override fun tap(id: String) {
         when {
-            id == "new" -> app.show(NewObservationSheet { reload() })
+            id == "new" -> app.push(OpeningScreen())
+            id == "importSave" -> app.platform.openFile("application/octet-stream") { bytes -> if (bytes != null) {
+                try { val m = app.saves.importSave(bytes); reload(); app.toast("匯入了「${m.name}」") } catch (e: IllegalArgumentException) { app.toast(e.message ?: "匯入失敗") } } }
             id.startsWith("slot:") -> open(id.removePrefix("slot:"))
             id.startsWith("more:") -> actions(id.removePrefix("more:"))
         }
@@ -91,13 +94,15 @@ class TitleScreen : Screen() {
     fun open(id: String) { val m = app.saves.slot(id) ?: return; app.saves.touch(id); app.push(WorldScreen(m.id)) }
     private fun actions(id: String) {
         val s = app.saves.slot(id) ?: return
-        app.show(ListSheet(s.name, listOf("open" to "繼續", "rename" to "改名", "copy" to "複製", "branch" to "分支（從今天開出另一個「如果」）", "delete" to "刪除"),
+        app.show(ListSheet(s.name, listOf("open" to "繼續", "rename" to "改名", "copy" to "複製", "branch" to "分支（從今天開出另一個「如果」）", "export" to "匯出成檔案（.ocsave）", "delete" to "刪除"),
             subtitle = "第 ${s.day} 天・玩了 ${Format.played(s.playSeconds)}", danger = setOf("delete")) { act ->
             when (act) {
                 "open" -> open(id)
                 "rename" -> app.platform.prompt("改名", s.name, 20) { n -> if (!n.isNullOrBlank()) { app.saves.rename(id, n); reload(); app.toast("改好了") } }
                 "copy" -> { app.saves.copy(id); reload(); app.toast("複製了一份") }
                 "branch" -> { app.saves.branch(id); reload(); app.toast("開出了一個「如果」") }
+                "export" -> { val data = try { app.saves.exportSave(id) } catch (e: Exception) { app.toast("匯出失敗：${e.message}"); return@ListSheet }
+                    app.platform.saveFile(s.name + ".ocsave", "application/octet-stream", data) { ok -> app.toast(if (ok) "匯出了「${s.name}」" else "沒有匯出") } }
                 "delete" -> app.show(Confirm("刪除「${s.name}」？", "這個存檔會消失，無法復原。", "刪除") { app.saves.delete(id); reload(); app.toast("刪除了") })
             }
         })

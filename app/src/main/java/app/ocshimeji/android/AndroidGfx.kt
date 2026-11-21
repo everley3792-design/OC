@@ -30,6 +30,14 @@ class AndroidAssets(private val am: AssetManager) : Assets {
             am.open(path).use { BitmapFactory.decodeStream(it, null, opt) }?.let { AImg(it) }
         }.getOrNull()
     }
+    override fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img? = cache.getOrPut(key) {
+        runCatching {
+            val b = bytes() ?: return@runCatching null
+            val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeByteArray(b, 0, b.size, o)
+            var s = 1; while (maxOf(o.outWidth, o.outHeight) / (s * 2) >= maxSide) s *= 2
+            BitmapFactory.decodeByteArray(b, 0, b.size, BitmapFactory.Options().apply { inSampleSize = s; inPreferredConfig = Bitmap.Config.ARGB_8888 })?.let { AImg(it) }
+        }.getOrNull()
+    }
 }
 
 /** render:api on a (hardware-accelerated) Android Canvas; everything in dp, scaled by the display density */

@@ -41,6 +41,8 @@ interface Img { val w: Int; val h: Int }
 /** images and fonts by path inside the app's assets ("chars/cinnamon/idle.png"); `maxSide` lets the backend decode a smaller copy */
 interface Assets {
     fun image(path: String, maxSide: Int = 2048): Img?
+    /** decode bytes that live elsewhere (the player's library), cached by key; `bytes` is only called on a cache miss */
+    fun decode(key: String, maxSide: Int, bytes: () -> ByteArray?): Img?
 }
 
 object Colors {

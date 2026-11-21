@@ -44,11 +44,16 @@ object Widgets {
             "check" -> { g.line(cx - 3.6f * u, cy + 0.2f * u, cx - 1f * u, cy + 2.8f * u, 1.6f * u, color); g.line(cx - 1f * u, cy + 2.8f * u, cx + 4f * u, cy - 3f * u, 1.6f * u, color) }
             "back" -> { g.line(cx + 1.2f * u, cy - 3.6f * u, cx - 2.4f * u, cy, 1.6f * u, color); g.line(cx - 2.4f * u, cy, cx + 1.2f * u, cy + 3.6f * u, 1.6f * u, color) }
             "plus" -> { g.line(cx - 4f * u, cy, cx + 4f * u, cy, 1.7f * u, color); g.line(cx, cy - 4f * u, cx, cy + 4f * u, 1.7f * u, color) }
+            "close" -> { g.line(cx - 3.4f * u, cy - 3.4f * u, cx + 3.4f * u, cy + 3.4f * u, 1.6f * u, color); g.line(cx + 3.4f * u, cy - 3.4f * u, cx - 3.4f * u, cy + 3.4f * u, 1.6f * u, color) }
+            "next" -> { g.line(cx - 1.2f * u, cy - 3.6f * u, cx + 2.4f * u, cy, 1.6f * u, color); g.line(cx + 2.4f * u, cy, cx - 1.2f * u, cy + 3.6f * u, 1.6f * u, color) }
+            "clock" -> { g.fillCircle(cx, cy, 4.6f * u, color); g.fillCircle(cx, cy, 3.4f * u, 0xFFFFFDF7.toInt()); g.line(cx, cy, cx, cy - 2.4f * u, 1f * u, color); g.line(cx, cy, cx + 1.8f * u, cy, 1f * u, color) }
+            "image" -> { g.strokeRound(cx - 4.4f * u, cy - 3.6f * u, 8.8f * u, 7.2f * u, 1.4f * u, 1.3f * u, color); g.fillCircle(cx + 1.8f * u, cy - 1.2f * u, 1f * u, color); g.line(cx - 3.4f * u, cy + 2.4f * u, cx - 0.8f * u, cy - 0.2f * u, 1.2f * u, color); g.line(cx - 0.8f * u, cy - 0.2f * u, cx + 3.4f * u, cy + 2.6f * u, 1.2f * u, color) }
+            "share" -> { g.line(cx, cy + 2.6f * u, cx, cy - 3.6f * u, 1.5f * u, color); g.line(cx - 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx + 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx - 4f * u, cy + 4f * u, cx + 4f * u, cy + 4f * u, 1.5f * u, color) }
         }
     }
     fun toast(g: Gfx, app: UiApp, text: String, age: Float) {
         val t = app.theme; val inA = Ease.outBack(minOf(1f, age / 0.3f)); val out = if (age > 2.2f) 1 - (age - 2.2f) / 0.4f else 1f
-        val w = minOf(app.w - 48, g.measure(text, Dim.FS_M) + 44); val x = (app.w - w) / 2; val y = app.h - app.insetBottom - 96 + (1 - inA) * 30
+        val w = minOf(app.w - 48, g.measure(text, Dim.FS_M) + 44); val x = (app.w - w) / 2; val y = app.h - app.insetBottom - 156 + (1 - inA) * 30
         g.save(); g.alpha(out.coerceIn(0f, 1f)); card(g, t, x, y, w, 48f, 24f, t.ink, Colors.mix(t.ink, 0xFF000000.toInt(), 0.3f)); g.text(text, app.w / 2, y + 30, Dim.FS_M, t.bg, FontKind.UI, Align.CENTER); g.restore()
     }
     /** a character standing on its feet at (x, y), `height` dp tall, breathing (the procedural idle every character has) */
@@ -67,6 +72,47 @@ object Widgets {
         val s = r * 1.7f / maxOf(img.w, img.h); val w = img.w * s; val h = img.h * s
         g.image(img, cx - w / 2, cy - h / 2 + r * 0.05f, w, h)
     }
+    /** a pill that can be on (mint) or off; one tap toggles / picks */
+    fun chip(g: Gfx, app: UiApp, id: String, x: Float, y: Float, label: String, on: Boolean, h: Float = 40f, minW: Float = 0f, enabled: Boolean = true): Float {
+        val t = app.theme; val w = maxOf(minW, g.measure(label, Dim.FS_S + 1) + 28); val sink = if (app.pressed == id) Dim.LIP - 1 else 0f
+        if (!enabled) { g.fillRound(x, y, w, h, h / 2, t.surface2); g.text(label, x + w / 2, y + h / 2 + 5, Dim.FS_S + 1, t.ink3, FontKind.UI, Align.CENTER); return w }
+        card(g, t, x, y, w, h, h / 2, if (on) t.select else t.surface, if (on) Colors.mix(t.select, 0xFF000000.toInt(), 0.18f) else t.lip, sink)
+        g.text(label, x + w / 2, y + sink + h / 2 + 5, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER)
+        app.zone(id, x, y - maxOf(0f, (Dim.TOUCH - h) / 2), w, maxOf(h + Dim.LIP, Dim.TOUCH)); return w
+    }
+    /** a heart (two circles and a turned square) */
+    fun heart(g: Gfx, cx: Float, cy: Float, s: Float, color: Int) {
+        g.fillCircle(cx - s * 0.5f, cy - s * 0.2f, s * 0.55f, color); g.fillCircle(cx + s * 0.5f, cy - s * 0.2f, s * 0.55f, color)
+        g.save(); g.translate(cx, cy + s * 0.25f); g.rotate((Math.PI / 4).toFloat()); g.fillRect(-s * 0.68f, -s * 0.68f, s * 1.36f, s * 1.36f, color); g.restore()
+    }
+    /** the little weather of a mood (plan A-04): sun, cloud, drizzle, rain, rainbow, moon — drawn, never a glyph */
+    fun sky(g: Gfx, t: Theme, kind: String, cx: Float, cy: Float, s: Float) {
+        val sun = 0xFFFFC857.toInt(); val cloud = if (t.dark) 0xFFD9D4E8.toInt() else 0xFFFFFFFF.toInt(); val cloudLip = 0xFFB8C4D6.toInt(); val drop = 0xFF7AAAD6.toInt()
+        fun cl(x: Float, y: Float, k: Float, c: Int = cloud) { g.fillCircle(x - s * 0.42f * k, y + s * 0.08f * k, s * 0.34f * k, c); g.fillCircle(x, y - s * 0.12f * k, s * 0.44f * k, c); g.fillCircle(x + s * 0.44f * k, y + s * 0.08f * k, s * 0.32f * k, c); g.fillRound(x - s * 0.72f * k, y + s * 0.05f * k, s * 1.44f * k, s * 0.38f * k, s * 0.19f * k, c) }
+        when (kind) {
+            "sun" -> { for (i in 0 until 8) { val a = i * Math.PI.toFloat() / 4; g.line(cx + kotlin.math.cos(a) * s * 0.55f, cy + kotlin.math.sin(a) * s * 0.55f, cx + kotlin.math.cos(a) * s * 0.8f, cy + kotlin.math.sin(a) * s * 0.8f, s * 0.14f, sun) }; g.fillCircle(cx, cy, s * 0.42f, sun) }
+            "rainbow" -> { val cs = intArrayOf(0xFFF0705A.toInt(), 0xFFF4A259.toInt(), 0xFFFFD166.toInt(), 0xFF8ED1B4.toInt(), 0xFF7AAAD6.toInt())
+                g.save(); g.clip(cx - s, cy - s, s * 2, s * 1.05f); cs.forEachIndexed { i, c -> g.fillCircle(cx, cy + s * 0.2f, s * (0.9f - i * 0.12f), c) }; g.fillCircle(cx, cy + s * 0.2f, s * 0.3f, t.surface); g.restore(); cl(cx - s * 0.62f, cy + s * 0.12f, 0.45f); cl(cx + s * 0.62f, cy + s * 0.12f, 0.45f) }
+            "cloud" -> { cl(cx, cy + s * 0.04f, 1f, cloudLip); cl(cx, cy - s * 0.02f, 1f) }
+            "drizzle" -> { cl(cx, cy - s * 0.12f, 0.95f, cloudLip); cl(cx, cy - s * 0.17f, 0.95f); g.line(cx, cy + s * 0.38f, cx - s * 0.06f, cy + s * 0.62f, s * 0.12f, drop) }
+            "rain" -> { cl(cx, cy - s * 0.15f, 0.95f, 0xFF9AA6B8.toInt()); cl(cx, cy - s * 0.2f, 0.95f, 0xFFC9D1DD.toInt()); for (i in -1..1) g.line(cx + i * s * 0.32f, cy + s * 0.32f, cx + i * s * 0.32f - s * 0.07f, cy + s * 0.6f, s * 0.12f, drop) }
+            "moon" -> { g.fillCircle(cx, cy, s * 0.5f, 0xFFFFE29A.toInt()); g.fillCircle(cx + s * 0.24f, cy - s * 0.16f, s * 0.42f, t.surface) }
+        }
+    }
+    /** break text into lines that fit a width (Chinese breaks anywhere; a word with spaces stays whole when it can) */
+    fun wrap(g: Gfx, s: String, size: Float, maxW: Float, maxLines: Int = 99): List<String> {
+        val out = ArrayList<String>(); var line = StringBuilder()
+        for (ch in s) { if (ch == '\n') { out += line.toString(); line = StringBuilder(); continue }
+            if (g.measure(line.toString() + ch, size) > maxW && line.isNotEmpty()) {
+                /* keep a run of latin letters / digits (1024, px, M2) together on the next line */
+                var cut = line.length; if (ch.isLetterOrDigit() && ch.code < 128) while (cut > 0 && line[cut - 1].isLetterOrDigit() && line[cut - 1].code < 128) cut--
+                if (cut == 0 || cut == line.length) { out += line.toString(); line = StringBuilder() } else { out += line.substring(0, cut); line = StringBuilder(line.substring(cut)) }
+                if (ch == ' ' && line.isEmpty()) continue }
+            line.append(ch) }
+        if (line.isNotEmpty()) out += line.toString()
+        if (out.size > maxLines) { val keep = out.take(maxLines).toMutableList(); keep[maxLines - 1] = fit(g, keep[maxLines - 1] + "…", size, maxW); return keep }
+        return out
+    }
     /** text cut to a width with an ellipsis */
     fun fit(g: Gfx, s: String, size: Float, maxW: Float, font: FontKind = FontKind.UI): String {
         if (g.measure(s, size, font) <= maxW) return s
@@ -74,3 +120,6 @@ object Widgets {
         return s.take(n) + "…"
     }
 }
+
+internal fun UiApp.render0(c: Int, a: Float) = app.ocshimeji.render.Colors.withAlpha(c, a.coerceIn(0f, 1f))
+internal fun UiApp.mix(c: Int) = app.ocshimeji.render.Colors.mix(c, 0xFF000000.toInt(), 0.18f)
