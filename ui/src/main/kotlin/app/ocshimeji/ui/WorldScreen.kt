@@ -102,6 +102,8 @@ class WorldScreen(val slotId: String) : Screen() {
     private var tip = false
     /** where each character is on screen this frame (for touch), nearest last */
     private val hits = ArrayList<Pair<String, FloatArray>>()
+    /** tests: where a resident is on screen (x, y, w, h) */
+    fun rectOf(pid: String): FloatArray? = hits.lastOrNull { it.first == pid }?.second
 
     fun sx(bx: Float) = (bx - camX) * zoom + app.w / 2
     fun sy(by: Float) = (by - camY) * zoom + viewCy

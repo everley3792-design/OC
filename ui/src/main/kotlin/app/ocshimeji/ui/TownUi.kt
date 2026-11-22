@@ -15,6 +15,8 @@ import app.ocshimeji.sim.town.Goods
 import app.ocshimeji.sim.town.Town
 import app.ocshimeji.sim.town.TownState
 import app.ocshimeji.sim.town.Weather
+import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -66,57 +68,92 @@ class TownScreen(val ws: WorldScreen) : Screen() {
     private class Said(val text: String, val born: Float)
     private val said = HashMap<String, Said>()
     private val sim get() = ws.sim
-    /** where a place is on screen */
-    private fun px(x: Float) = Dim.GUTTER + x * (app.w - Dim.GUTTER * 2)
-    private fun py(y: Float) = mapTop + y * mapH
-    private val mapTop get() = app.insetTop + 112f
-    private val mapH get() = app.h * 0.6f - mapTop + 20
-    private val home get() = 0.5f to 1.02f
+    // ---- 1.5.1: the town is a 2.5D scene you can pan and pinch (world units are base dp; MW × MH)
+    private val MW = 400f; private val MH = 560f
+    private val home = 0.5f to 1.0f
+    private fun wx(x: Float) = 20f + x * (MW - 40f)
+    private fun wy(y: Float) = 40f + y * (MH - 90f)
+    var zoom = 0f; private set
+    var camX = MW / 2; var camY = MH / 2
+    private val viewTop get() = app.insetTop + 80f
+    private val viewBot get() = app.h - Nav.height(app) - 146
+    private val viewCy get() = (viewTop + viewBot) / 2
+    private val fit get() = min(app.w / MW, (viewBot - viewTop + 120) / MH)
+    /** world → screen */
+    fun sx(x: Float) = app.w / 2 + (x - camX) * zoom
+    fun sy(y: Float) = viewCy + (y - camY) * zoom
+    private fun clampCam() { zoom = zoom.coerceIn(fit, fit * 2.6f)
+        val hw = app.w / 2 / zoom; val hh = (viewBot - viewTop) / 2 / zoom + 40
+        camX = if (hw * 2 >= MW) MW / 2 else camX.coerceIn(hw, MW - hw); camY = if (hh * 2 >= MH) MH / 2 else camY.coerceIn(hh, MH - hh) }
+    /** tests and the pinch: zoom around a screen point */
+    fun zoomBy(f: Float, ax: Float = app.w / 2, ay: Float = viewCy) {
+        val wx0 = camX + (ax - app.w / 2) / zoom; val wy0 = camY + (ay - viewCy) / zoom; zoom *= f; clampCam()
+        camX = wx0 - (ax - app.w / 2) / zoom; camY = wy0 - (ay - viewCy) / zoom; clampCam() }
+    fun panBy(dx: Float, dy: Float) { camX -= dx / zoom; camY -= dy / zoom; clampCam() }
+    private var last: Pair<Float, Float>? = null; private var pinch: FloatArray? = null; private var p1 = 0f to 0f; private var p2: Pair<Float, Float>? = null
+    override fun pointer(kind: Int, x: Float, y: Float): Boolean {
+        when (kind) {
+            0 -> { last = x to y; p1 = x to y }
+            1 -> { val l = last ?: return true; p1 = x to y; if (pinch == null) panBy(x - l.first, y - l.second) else pinchMove(); last = x to y }
+            2, 3 -> { last = null; pinch = null }
+            10 -> { p2 = x to y; pinch = floatArrayOf(max(20f, hypot(x - p1.first, y - p1.second)), zoom) }
+            11 -> { p2 = x to y; pinchMove() }
+            12 -> { p2 = null; pinch = null; last = null }
+        }
+        return true
+    }
+    private fun pinchMove() { val pc = pinch ?: return; val q = p2 ?: return; val d = max(20f, hypot(q.first - p1.first, q.second - p1.second))
+        zoomBy(pc[1] * d / pc[0] / zoom, (q.first + p1.first) / 2, (q.second + p1.second) / 2) }
+    private var dragLast: Pair<Float, Float>? = null
+    override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) { val l = dragLast; if (!start && l != null) panBy(x - l.first, y - l.second); dragLast = x to y }
+    override fun release() { dragLast = null }
 
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
+        if (zoom == 0f) { zoom = fit; camY = MH / 2 + 20; clampCam() }
         for (e in ws.driveElsewhere(dt)) when (e.kind) {
             "say" -> if (sim.person(e.who)?.out != null) said[e.who] = Said(e.text, app.time)
             "goal" -> app.toast("完成小目標：${e.text}")
         }
-        val w = sim.sky(); val season = sim.season(); val lt = ws.light(sim.hour)
-        g.fillRect(0f, 0f, W, H, Wx.grass(t, season))
-        g.fillGradientV(0f, 0f, W, mapTop + 30, Wx.sky(t, w, lt), Wx.grass(t, season))
-        // ---- roads: home → plaza → every place
-        val road = Colors.mix(Wx.grass(t, season), if (t.dark) 0xFF8A8296.toInt() else 0xFFF2E2C8.toInt(), 0.7f)
-        val plaza = Town.place("plaza")
-        g.line(px(home.first), py(home.second), px(plaza.x), py(plaza.y), 22f, road)
-        for (p in Town.PLACES) if (p.id != "plaza") g.line(px(plaza.x), py(plaza.y), px(p.x), py(p.y), 18f, road)
-        // ---- places
-        for (p in Town.PLACES) place(g, t, p.id, px(p.x), py(p.y), season)
-        // home at the bottom of the road
-        val hx = px(home.first); val hy = py(home.second)
-        g.fillRound(hx - 22, hy - 18, 44f, 30f, 6f, t.surface); g.fillRound(hx - 26, hy - 30, 52f, 14f, 6f, t.accent); Widgets.icon(g, "home", hx, hy - 3, 12f, t.ink2)
-        g.text(sim.life.homeName.ifBlank { "家" }, hx, hy + 30, Dim.FS_S, t.ink, FontKind.UI, Align.CENTER)
-        // ---- who is out
+        val w = sim.sky(); val season = sim.season(); val lt = ws.light(sim.hour); val night = lt < 0.5f; val calm = app.saves.flag("a11y:calm")
+        val p = HouseView.Pal(t)
+        g.fillGradientV(0f, 0f, W, H, Wx.sky(t, w, lt), Wx.grass(t, season))
+        g.save(); g.translate(W / 2, viewCy); g.scale(zoom, zoom); g.translate(-camX, -camY)
+        // ---- ground: the hills behind, grass, the river, roads
+        val grass = Wx.grass(t, season)
+        g.fillCircle(MW * 0.2f, -30f, 150f, Colors.mix(grass, Wx.sky(t, w, lt), 0.45f)); g.fillCircle(MW * 0.8f, -10f, 130f, Colors.mix(grass, Wx.sky(t, w, lt), 0.35f))
+        g.fillRound(-200f, 10f, MW + 400, MH + 400, 40f, grass)
+        for (k in 0 until 26) { val gx = (k * 97 % 37) / 37f * MW; val gy = 30 + (k * 61 % 43) / 43f * (MH - 30); g.line(gx, gy, gx + 2, gy - 5, 1.4f, Colors.mix(grass, 0xFF2E5A2E.toInt(), 0.25f)) }
+        val water = p.water; g.fillRound(-200f, MH - 20, MW + 400, 34f, 17f, Colors.mix(water, grass, 0.15f))
+        if (!calm) for (k in 0 until 6) g.fillRound(((k * 71 + app.time * 12) % (MW + 40)) - 20, MH - 8 + (k % 2) * 6, 18f, 2f, 1f, Colors.withAlpha(p.white, 0.6f))
+        val road = Colors.mix(grass, if (t.dark) 0xFF8A8296.toInt() else 0xFFF2E2C8.toInt(), 0.75f); val edge = Colors.mix(road, 0xFF000000.toInt(), 0.08f)
+        val plaza = Town.place("plaza"); val hx = wx(home.first); val hy = wy(home.second)
+        fun roadTo(ax: Float, ay: Float, bx: Float, by: Float, wd: Float) { g.line(ax, ay + 2, bx, by + 2, wd + 3, edge); g.line(ax, ay, bx, by, wd, road) }
+        roadTo(hx, hy, wx(plaza.x), wy(plaza.y), 26f)
+        for (pl in Town.PLACES) if (pl.id != "plaza") roadTo(wx(plaza.x), wy(plaza.y), wx(pl.x), wy(pl.y), 20f)
+        // ---- depth-sorted: trees, lamps, places, people (bigger y = nearer)
+        val ds = ArrayList<Pair<Float, () -> Unit>>()
+        for ((tx, ty) in TREES) ds += ty to { tree(g, p, tx, ty, season) }
+        for (pl in Town.PLACES) if (pl.id != "plaza") { val mx = (wx(plaza.x) + wx(pl.x)) / 2 + 16; val my = (wy(plaza.y) + wy(pl.y)) / 2; ds += my to { lamp(g, p, mx, my, night) } }
+        ds += (hy - 30) to { lamp(g, p, hx + 30, hy - 30, night) }
+        for (pl in Town.PLACES) { val cx = wx(pl.x); val cy = wy(pl.y); ds += cy to { place(g, t, p, pl.id, cx, cy, season, night) } }
+        ds += hy to { homeHut(g, t, p, hx, hy) }
         val out = sim.townLife.inTown()
-        out.forEachIndexed { i, (p, o) ->
+        out.forEachIndexed { i, (person, o) ->
             val pl = Town.place(o.place); val k = ((o.until - sim.life.minute) / Town.TRAVEL).toFloat().coerceIn(0f, 1f)
-            val (fx, fy) = when (o.stage) {
-                "go" -> lerp(pl.x, pl.y, home.first, home.second, k)
-                "back" -> lerp(home.first, home.second, pl.x, pl.y, k)
-                else -> (pl.x + ((i % 3) - 1) * 0.1f) to pl.y
-            }
-            /* the whole person, walking on the road or doing their thing at the place (feet at cy + 18) */
-            val cx = px(fx); val feet = py(fy) + (if (o.stage == "at") 96f else 18f); val CH = 52f; val look = ws.lookOf(p)
-            val pose = if (o.stage == "at") Town.act(o.act)?.pose ?: Pose.STAND else Pose.WALK
-            val face = if (o.stage == "back") (if (home.first < pl.x) -1 else 1) else if (o.stage == "go") (if (pl.x < home.first) -1 else 1) else 1
-            Widgets.footShadow(g, t, cx, feet, CH * 0.5f)
-            if (look != null) Actors.draw(g, look, cx, feet, CH, pose, app.time, i * 1.37f, face, 0f, null, false, sim.moodSky(p)) else Widgets.face(g, t, app.charImg(ws.libOf(p), 256), cx, feet - 20, 17f)
-            val cy = feet - CH * 0.55f
-            g.text(Widgets.fit(g, p.name, 11f, 70f), cx, feet + 14, 11f, t.ink, FontKind.UI, Align.CENTER)
-            if (w == "rain") { g.fillRound(cx - 22, feet - CH - 16, 44f, 12f, 6f, 0xFF7AAAD6.toInt()); g.line(cx, feet - CH - 6, cx, feet - CH + 10, 2f, t.ink2) }
-            said[p.id]?.let { s -> if (app.time - s.born < 3f) { val tw = min(g.measure(s.text, Dim.FS_S) + 20, W - 40); val bx = (cx - tw / 2).coerceIn(8f, W - tw - 8)
-                g.fillRound(bx, cy - 66, tw, 28f, 14f, t.surface); g.text(Widgets.fit(g, s.text, Dim.FS_S, tw - 16), bx + tw / 2, cy - 47, Dim.FS_S, t.ink, FontKind.UI, Align.CENTER) } }
+            val (fx, fy) = when (o.stage) { "go" -> lerp(pl.x, pl.y, home.first, home.second, k); "back" -> lerp(home.first, home.second, pl.x, pl.y, k); else -> (pl.x + ((i % 3) - 1) * 0.09f) to pl.y }
+            val cx = wx(fx); val feet = wy(fy) + (if (o.stage == "at") 44f else 6f)
+            ds += feet to { person(g, t, w, person, o, pl, cx, feet, i) }
         }
+        ds.sortBy { it.first }; for ((_, d) in ds) d()
+        g.restore()
         Wx.draw(g, W, H, w, app.time)
         if (lt < 1f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF1E2550.toInt(), (1 - lt) * 0.2f))
+        // ---- the places and people are tapped where they are on screen
+        for (pl in Town.PLACES) { val cx = sx(wx(pl.x)); val cy = sy(wy(pl.y)); val r = 56f * zoom / fit
+            if (cy > viewTop - 20 && cy < viewBot + 20) app.zone("place:${pl.id}", cx - r, cy - r, r * 2, r * 2) }
         // ---- top: back, the name, the weather, the wallet
+        g.fillGradientV(0f, 0f, W, top + 84, Colors.withAlpha(Wx.sky(t, w, lt), 0.9f), Colors.withAlpha(Wx.sky(t, w, lt), 0f))
         Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back")
         g.text("${sim.life.townName.ifBlank { "小鎮" }}", G + 60, top + 34, Dim.FS_L, t.ink)
         g.text("${Weather.SEASON_ZH[season]}天・${EnvZh.zh(w)}・${ws.timeText()}", G + 60, top + 56, Dim.FS_S, t.ink2)
@@ -126,35 +163,87 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         // ---- bottom: who is out, the four town things
         val by = H - Nav.height(app) - 146
         Widgets.card(g, t, G, by, W - G * 2, 138f, Dim.RADIUS_L)
-        val names = out.map { (p, o) -> p.name + "（" + when (o.stage) { "go" -> "路上"; "back" -> "回家路上"; else -> Town.act(o.act)?.zh ?: "" } + "）" }
+        val names = out.map { (pp, o) -> pp.name + "（" + when (o.stage) { "go" -> "路上"; "back" -> "回家路上"; else -> Town.act(o.act)?.zh ?: "" } + "）" }
         g.text(Widgets.fit(g, if (names.isEmpty()) "現在大家都在家裡" else "在小鎮：" + names.joinToString("、"), Dim.FS_S + 1, W - G * 2 - 32), G + 16, by + 30, Dim.FS_S + 1, t.ink)
-        val jobs = sim.life.town.jobs; g.text(Widgets.fit(g, if (jobs.isEmpty()) "點地點：買東西、看布告欄、擺東西" else "工坊：" + jobs.joinToString("、") { j -> "${sim.person(j.maker)?.name ?: ""}在做${sim.life.items.firstOrNull { it.id == j.item }?.name ?: "作品"} ${(j.worked * 100 / j.need).toInt().coerceAtMost(99)}%" }, Dim.FS_S, W - G * 2 - 32), G + 16, by + 52, Dim.FS_S, t.ink2)
+        val jobs = sim.life.town.jobs; g.text(Widgets.fit(g, if (jobs.isEmpty()) "點地點：買東西、看布告欄、擺東西；兩指縮放、拖曳移動" else "工坊：" + jobs.joinToString("、") { j -> "${sim.person(j.maker)?.name ?: ""}在做${sim.life.items.firstOrNull { it.id == j.item }?.name ?: "作品"} ${(j.worked * 100 / j.need).toInt().coerceAtMost(99)}%" }, Dim.FS_S, W - G * 2 - 32), G + 16, by + 52, Dim.FS_S, t.ink2)
         val bw = (W - G * 2 - 24 - 24) / 4
         listOf("stall" to "市集攤位", "work" to "工坊委託", "board" to "布告欄", "move" to "搬家").forEachIndexed { i, (id, s) -> Widgets.button(g, app, id, G + 12 + i * (bw + 8), by + 70, bw, 52f, s, size = Dim.FS_S + 1) }
         Nav.draw(g, app, "town", Nav.badges(ws))
     }
     private fun lerp(ax: Float, ay: Float, bx: Float, by: Float, k: Float) = (ax + (bx - ax) * (1 - k)) to (ay + (by - ay) * (1 - k))
-    /** one place, drawn from simple shapes (original) */
-    private fun place(g: Gfx, t: Theme, id: String, cx: Float, cy: Float, season: String) {
-        val p = HouseView.Pal(t); val down = app.pressed == "place:$id"; val s = if (down) 2f else 0f
-        when (id) {
-            "plaza" -> { g.fillCircle(cx, cy + s, 46f, Colors.mix(p.base, p.white, 0.4f)); g.fillCircle(cx, cy + s, 22f, p.whiteLip); g.fillCircle(cx, cy - 2 + s, 18f, p.water)
-                g.fillCircle(cx, cy - 10 + s - (app.time * 20) % 8, 3f, Colors.withAlpha(p.white, 0.9f))
-                for (k in TownState.CORNERS.keys.filter { it.startsWith("plaza") }) sim.life.town.corners[k]?.let { item -> val ox = if (k == "plaza1") 38f else -38f; g.fillRound(cx + ox - 9, cy + 16, 18f, 14f, 4f, p.wood); Widgets.icon(g, "gift", cx + ox, cy + 22, 10f, p.white) } }
-            "park" -> { val leaf = when (season) { "autumn" -> 0xFFE09A50.toInt(); "winter" -> p.white; "spring" -> 0xFFF6B2C8.toInt(); else -> p.leaf }
-                g.fillRound(cx - 64, cy - 20 + s, 128f, 60f, 30f, Colors.mix(p.leaf, p.leafLip, 0.3f))
-                for ((dx, dy) in listOf(-44f to -14f, 40f to -18f, -10f to -30f, 22f to 10f)) { g.fillRect(cx + dx - 2, cy + dy + s, 4f, 14f, p.woodLip); g.fillCircle(cx + dx, cy + dy - 4 + s, 13f, leaf) }
-                for (k in listOf("park1", "park2")) sim.life.town.corners[k]?.let { item -> val ox = if (k == "park1") -26f else 50f; g.fillRound(cx + ox - 9, cy + 18, 18f, 14f, 4f, p.wood); Widgets.icon(g, "gift", cx + ox, cy + 24, 10f, p.white) } }
-            else -> { val (wall, roof) = when (id) { "grocery" -> p.sun to p.coralLip; "furniture" -> p.white to p.mintLip; else -> p.coral to p.woodLip }
-                g.fillRound(cx - 40, cy - 30 + s, 80f, 52f, 6f, Colors.mix(wall, 0xFF000000.toInt(), 0.08f)); g.fillRound(cx - 40, cy - 30 + s, 80f, 48f, 6f, wall)
-                g.fillRound(cx - 46, cy - 46 + s, 92f, 20f, 8f, roof)
-                for (k in 0 until 4) g.fillRect(cx - 40 + k * 22f, cy - 26 + s, 11f, 6f, if (k % 2 == 0) Colors.withAlpha(p.white, 0.8f) else roof)   /* awning stripes */
-                g.fillRound(cx - 10, cy - 4 + s, 20f, 26f, 4f, p.woodLip); g.fillRound(cx - 34, cy - 10 + s, 18f, 14f, 3f, p.glass); g.fillRound(cx + 16, cy - 10 + s, 18f, 14f, 3f, p.glass) }
-        }
-        val name = Town.place(id).zh; val nw = g.measure(name, Dim.FS_S + 1) + 20
-        g.fillRound(cx - nw / 2, cy + 30 + s, nw, 26f, 13f, Colors.withAlpha(t.surface, 0.95f)); g.text(name, cx, cy + 48 + s, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER)
-        app.zone("place:$id", cx - 60, cy - 50, 120f, 110f)
+    private fun person(g: Gfx, t: Theme, w: String, p: app.ocshimeji.sim.life.Person, o: app.ocshimeji.sim.town.Outing, pl: app.ocshimeji.sim.town.Place, cx: Float, feet: Float, i: Int) {
+        val CH = 40f; val look = ws.lookOf(p)
+        val pose = if (o.stage == "at") Town.act(o.act)?.pose ?: Pose.STAND else Pose.WALK
+        val face = if (o.stage == "back") (if (home.first < pl.x) -1 else 1) else if (o.stage == "go") (if (pl.x < home.first) -1 else 1) else 1
+        Widgets.footShadow(g, t, cx, feet, CH * 0.5f)
+        if (look != null) Actors.draw(g, look, cx, feet, CH, pose, app.time, i * 1.37f, face, 0f, null, false, sim.moodSky(p)) else Widgets.face(g, t, app.charImg(ws.libOf(p), 256), cx, feet - 16, 13f)
+        g.fillRound(cx - g.measure(p.name, 9f) / 2 - 5, feet + 3, g.measure(p.name, 9f) + 10, 13f, 6.5f, Colors.withAlpha(t.surface, 0.9f))
+        g.text(p.name, cx, feet + 13, 9f, t.ink, FontKind.UI, Align.CENTER)
+        if (w == "rain") { g.fillRound(cx - 17, feet - CH - 12, 34f, 9f, 4.5f, 0xFF7AAAD6.toInt()); g.line(cx, feet - CH - 4, cx, feet - CH + 8, 1.5f, t.ink2) }
+        said[p.id]?.let { s -> if (app.time - s.born < 3f) { val fs = 10f; val tw = min(g.measure(s.text, fs) + 14, 170f)
+            g.fillRound(cx - tw / 2, feet - CH - 34, tw, 20f, 10f, t.surface); g.text(Widgets.fit(g, s.text, fs, tw - 10), cx, feet - CH - 20, fs, t.ink, FontKind.UI, Align.CENTER) } }
     }
+    /** a tree of the season (spring blossom, summer green, autumn red, bare and snowy in winter) */
+    private fun tree(g: Gfx, p: HouseView.Pal, x: Float, y: Float, season: String) {
+        g.fillRound(x - 14, y - 3, 28f, 7f, 3.5f, Colors.withAlpha(0xFF000000.toInt(), 0.12f)); g.fillRound(x - 2.5f, y - 22, 5f, 22f, 2f, p.woodLip)
+        when (season) {
+            "winter" -> { g.line(x, y - 18, x - 9, y - 30, 2f, p.woodLip); g.line(x, y - 20, x + 8, y - 32, 2f, p.woodLip); g.line(x, y - 22, x, y - 36, 2f, p.woodLip)
+                g.fillRound(x - 11, y - 33, 6f, 2.5f, 1f, p.white); g.fillRound(x + 6, y - 35, 6f, 2.5f, 1f, p.white) }
+            else -> { val (c, l) = when (season) { "spring" -> 0xFFF6B2C8.toInt() to 0xFFE48AA8.toInt(); "autumn" -> 0xFFE8955A.toInt() to 0xFFC9683A.toInt(); else -> p.leaf to p.leafLip }
+                g.fillCircle(x, y - 26, 15f, l); g.fillCircle(x - 6, y - 31, 11f, c); g.fillCircle(x + 6, y - 29, 10f, c); g.fillCircle(x - 3, y - 36, 4f, Colors.withAlpha(p.white, 0.25f)) }
+        }
+    }
+    /** a street lamp; lit at night with a pool of light */
+    private fun lamp(g: Gfx, p: HouseView.Pal, x: Float, y: Float, night: Boolean) {
+        if (night) { g.fillCircle(x, y, 22f, Colors.withAlpha(0xFFFFE7A0.toInt(), 0.22f)); g.fillCircle(x, y - 34, 12f, Colors.withAlpha(0xFFFFE7A0.toInt(), 0.35f)) }
+        g.fillRound(x - 1.5f, y - 32, 3f, 32f, 1.5f, p.dk); g.fillRound(x - 5, y - 40, 10f, 9f, 3f, p.dk)
+        g.fillRound(x - 3.5f, y - 38, 7f, 6f, 2f, if (night) 0xFFFFE7A0.toInt() else Colors.mix(p.glass, p.white, 0.4f))
+    }
+    private fun homeHut(g: Gfx, t: Theme, p: HouseView.Pal, x: Float, y: Float) {
+        g.fillRound(x - 26, y - 2, 52f, 8f, 4f, Colors.withAlpha(0xFF000000.toInt(), 0.12f))
+        g.fillRound(x - 22, y - 24, 44f, 26f, 4f, p.white); g.fillRound(x + 18, y - 24, 6f, 26f, 2f, p.whiteLip)
+        g.fillRound(x - 27, y - 38, 54f, 16f, 6f, t.accent); g.fillRound(x - 27, y - 26, 54f, 4f, 2f, t.accentLip)
+        g.fillRound(x - 6, y - 16, 12f, 18f, 3f, p.woodLip); g.fillRound(x - 18, y - 17, 9f, 8f, 2f, p.glass)
+        val n = sim.life.homeName.ifBlank { "家" }; val nw = g.measure(n, 11f) + 14
+        g.fillRound(x - nw / 2, y + 6, nw, 18f, 9f, Colors.withAlpha(t.surface, 0.95f)); g.text(n, x, y + 19, 11f, t.ink, FontKind.UI, Align.CENTER)
+    }
+    /** one place in 2.5D: a facade with its side, a roof with depth, a sign, lit windows at night, someone behind the counter (original shapes) */
+    private fun place(g: Gfx, t: Theme, p: HouseView.Pal, id: String, cx: Float, cy: Float, season: String, night: Boolean) {
+        val down = app.pressed == "place:$id"; val s = if (down) 2f else 0f
+        when (id) {
+            "plaza" -> { g.fillCircle(cx, cy + 4, 52f, Colors.mix(p.base, 0xFF000000.toInt(), 0.06f)); g.fillCircle(cx, cy + s, 50f, Colors.mix(p.base, p.white, 0.4f))
+                for (k in 0 until 12) { val a = k * Math.PI.toFloat() / 6; g.fillCircle(cx + kotlin.math.cos(a) * 38, cy + kotlin.math.sin(a) * 30 + s, 3f, Colors.withAlpha(p.whiteLip, 0.7f)) }
+                g.fillCircle(cx, cy + 4 + s, 23f, p.whiteLip); g.fillCircle(cx, cy + s, 22f, p.white); g.fillCircle(cx, cy - 1 + s, 17f, p.water)
+                g.fillRound(cx - 3, cy - 20 + s, 6f, 18f, 3f, p.whiteLip)
+                if (!app.saves.flag("a11y:calm")) for (k in 0 until 3) g.fillCircle(cx + (k - 1) * 5f, cy - 22 + s - (app.time * 20 + k * 3) % 9, 2.2f, Colors.withAlpha(p.white, 0.9f))
+                for (k in TownState.CORNERS.keys.filter { it.startsWith("plaza") }) sim.life.town.corners[k]?.let { _ -> val ox = if (k == "plaza1") 36f else -36f; g.fillRound(cx + ox - 9, cy + 12, 18f, 14f, 4f, p.wood); Widgets.icon(g, "gift", cx + ox, cy + 18, 9f, p.white) } }
+            "park" -> { g.fillRound(cx - 70, cy - 26 + s, 140f, 66f, 30f, Colors.mix(p.leaf, p.leafLip, 0.3f)); g.fillRound(cx - 66, cy - 22 + s, 132f, 58f, 28f, Colors.mix(p.leaf, p.white, 0.2f))
+                g.fillRound(cx - 14, cy + 2 + s, 28f, 6f, 3f, p.wood); g.fillRect(cx - 12, cy + 8 + s, 2f, 5f, p.woodLip); g.fillRect(cx + 10, cy + 8 + s, 2f, 5f, p.woodLip)   /* a bench */
+                for ((dx, dy) in listOf(-46f to -2f, 44f to -6f, 4f to -16f)) tree(g, p, cx + dx, cy + dy + s, season)
+                for (k in listOf("park1", "park2")) sim.life.town.corners[k]?.let { _ -> val ox = if (k == "park1") -30f else 30f; g.fillRound(cx + ox - 9, cy + 18, 18f, 14f, 4f, p.wood); Widgets.icon(g, "gift", cx + ox, cy + 24, 9f, p.white) } }
+            else -> {
+                val (wall, roof, sign) = when (id) { "grocery" -> Triple(p.sun, p.coralLip, "cake"); "furniture" -> Triple(p.white, p.mintLip, "sofa"); else -> Triple(p.coral, p.woodLip, "cup") }
+                val X = cx - 42; val Y = cy - 40 + s; val Wd = 84f; val Hh = 52f
+                g.fillRound(X - 2, cy + 8, Wd + 16, 9f, 4f, Colors.withAlpha(0xFF000000.toInt(), 0.14f))                                  /* shadow */
+                g.fillRect(X + Wd, Y + 6, 10f, Hh - 6, Colors.mix(wall, 0xFF000000.toInt(), 0.18f))                                          /* the side, in depth */
+                g.fillRect(X, Y, Wd, Hh, wall); g.fillRect(X, Y + Hh - 5, Wd, 5f, Colors.mix(wall, 0xFF000000.toInt(), 0.1f))
+                g.fillRound(X - 6, Y - 18, Wd + 22, 14f, 4f, Colors.mix(roof, 0xFF000000.toInt(), 0.15f)); g.fillRound(X - 6, Y - 22, Wd + 12, 16f, 5f, roof)   /* roof with depth */
+                for (k in 0 until 6) g.fillRect(X + k * 14f, Y, 14f, 7f, if (k % 2 == 0) Colors.withAlpha(p.white, 0.85f) else roof)            /* awning */
+                for (k in 0 until 6) g.fillCircle(X + 7 + k * 14f, Y + 7, 7f, if (k % 2 == 0) Colors.withAlpha(p.white, 0.85f) else roof)
+                val glow = if (night) 0xFFFFE3A0.toInt() else p.glass
+                for (wxp in listOf(X + 8, X + Wd - 28)) { g.fillRound(wxp, Y + 18, 20f, 17f, 3f, glow); g.fillRect(wxp + 9.5f, Y + 18, 1f, 17f, Colors.withAlpha(p.white, 0.6f))
+                    if (night) g.fillRound(wxp - 4, Y + Hh + 1, 28f, 8f, 4f, Colors.withAlpha(0xFFFFE3A0.toInt(), 0.3f)) }
+                val sil = Colors.withAlpha(if (night) 0xFF6A4A3A.toInt() else 0xFF5A6A80.toInt(), 0.55f)   /* the clerk behind the window */
+                val bob = if (app.saves.flag("a11y:calm")) 0f else sin(app.time * 1.3f + cx) * 0.8f
+                g.fillCircle(X + 18, Y + 25 + bob, 3.6f, sil); g.fillRound(X + 13, Y + 29 + bob, 10f, 6f, 3f, sil)
+                g.fillRound(cx - 7, Y + Hh - 22, 14f, 22f, 3f, p.woodLip); g.fillCircle(cx + 4, Y + Hh - 11, 1.2f, p.sun)
+                g.fillRound(cx - 13, Y - 36, 26f, 18f, 5f, p.wood); g.fillRound(cx - 11, Y - 34, 22f, 14f, 4f, p.woodTop); Widgets.icon(g, sign, cx, Y - 27, 6f, p.woodLip)   /* the sign */
+            }
+        }
+        val name = Town.place(id).zh; val nw = g.measure(name, 11f) + 16
+        g.fillRound(cx - nw / 2, cy + 16 + s, nw, 20f, 10f, Colors.withAlpha(t.surface, 0.95f)); g.text(name, cx, cy + 30 + s, 11f, t.ink, FontKind.UI, Align.CENTER)
+    }
+    private val TREES = listOf(30f to 120f, 370f to 110f, 48f to 300f, 356f to 330f, 300f to 470f, 210f to 60f, 380f to 520f, 22f to 520f, 260f to 380f, 120f to 515f)
 
     override fun tap(id: String) {
         val tl = sim.townLife

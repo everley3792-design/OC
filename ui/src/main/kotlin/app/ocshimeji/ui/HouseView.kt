@@ -40,6 +40,13 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     var litter: List<Triple<String, Int, Int>> = emptyList()
     /** reduce motion: no drifting dust, no swaying curtains */
     var calm = false
+    /** 1.5.1: furniture that isn't moving is drawn once per zoom bucket into a picture (PieceCache) */
+    var cacheOn = true
+    private fun cached(g: Gfx, key: String, pc: app.ocshimeji.sim.house.Piece, draw: (Gfx) -> Unit) {
+        val k = Furniture.kind(pc.kind); val x0 = bx(pc.x.toFloat()) - 10; val y0 = by(pc.y.toFloat()) - T * 2.2f; val w = k.w * T + 20; val h = by(pc.y + k.h.toFloat()) + 10 - y0
+        if (!cacheOn || !PieceCache.draw(g, "$key|${pc.kind}|$T|${pal?.dark}", x0, y0, w, h, draw)) draw(g)
+    }
+    private var pal: Pal? = null
     private fun tile(g: Gfx, img: Img, x: Float, y: Float, w: Float, h: Float, tw: Float, th: Float) {
         g.save(); g.clip(x, y, w, h); var yy = y; while (yy < y + h) { var xx = x; while (xx < x + w) { g.image(img, xx, yy, tw, th); xx += tw }; yy += th }; g.restore()
     }
@@ -49,7 +56,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
      * that piece (a TV shows a picture, a bed's blanket covers its sleeper). `extra` = characters and effects to sort in.
      */
     fun draw(g: Gfx, t: Theme, time: Float, light: Float, extra: List<D> = emptyList(), occupied: (Int) -> Boolean = { false }) {
-        val p = Pal(t)
+        val p = Pal(t); pal = p
         // ---- shadow and outer wall
         g.fillRound(-6f, -4f, width + 12, height + 14, 10f, Colors.withAlpha(p.cap, 0.35f))
         g.fillRect(-4f, 0f, width + 8, height + 6, p.cap)
@@ -82,10 +89,13 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
             fun m(draw: () -> Unit): () -> Unit = if (!pc.flip) draw else { { val cx = bx(pc.x + k.w / 2f); g.save(); g.translate(cx, 0f); g.scale(-1f, 1f); g.translate(-cx, 0f); draw(); g.restore() } }
             when {
                 pc.kind == "rug" || pc.kind == "window" || pc.kind == "mirror" || k.wall -> {}
-                pc.kind == "bed" || pc.kind == "bed2" -> { val st = state(i); list += D(key - 0.02f, m { bed(g, p, pc.x, pc.y, k.w, i, st) }); list += D(key + 0.02f, m { blanket(g, p, pc.x, pc.y, k.w, i, st) }) }
-                pc.kind == "tub" -> { val st = state(i); list += D(key - 0.02f) { tub(g, p, pc.x, pc.y, st, time) }; list += D(key + 0.02f) { tubFront(g, p, pc.x, pc.y) } }
-                pc.kind == "sofa" -> list += D(key - 0.02f, m { sofa(g, p, pc.x, pc.y) })
-                else -> { val st = state(i); list += D(key, m { piece(g, p, pc.kind, pc.x, pc.y, time, light, occupied(i) || st == "on" || st == "cooking", st) }) }
+                pc.kind == "bed" || pc.kind == "bed2" -> { val st = state(i); list += D(key - 0.02f, m { cached(g, "bed$st", pc) { gg -> bed(gg, p, pc.x, pc.y, k.w, i, st) } })
+                    list += D(key + 0.02f, m { cached(g, "blanket$st${i % 2}", pc) { gg -> blanket(gg, p, pc.x, pc.y, k.w, i, st) } }) }
+                pc.kind == "tub" -> { val st = state(i); list += D(key - 0.02f) { tub(g, p, pc.x, pc.y, st, time) }; list += D(key + 0.02f) { cached(g, "tubfront", pc) { gg -> tubFront(gg, p, pc.x, pc.y) } } }
+                pc.kind == "sofa" -> list += D(key - 0.02f, m { cached(g, "sofa", pc) { gg -> sofa(gg, p, pc.x, pc.y) } })
+                else -> { val st = state(i); val used = occupied(i) || st == "on" || st == "cooking"
+                    val still = !used && when (pc.kind) { "fridge", "shelf", "bench" -> true; "table" -> st != "food"; "tv", "stove" -> true; else -> false }
+                    list += D(key, m { if (still) cached(g, "p$st", pc) { gg -> piece(gg, p, pc.kind, pc.x, pc.y, 0f, light, false, st) } else piece(g, p, pc.kind, pc.x, pc.y, time, light, used, st) }) }
             }
         }
         list.sortBy { it.key }
@@ -97,7 +107,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
 
     // ---------------- palette ----------------
     class Pal(t: Theme) {
-        private val dark = t.dark
+        val dark = t.dark
         fun s(c: String): Int { val v = hex(c); return if (dark) Colors.mix(v, hex("#2A2240"), 0.42f) else v }
         val cap = s("#B98B66"); val base = s("#D9B48C"); val mat = s("#D98F6A")
         val wood = s("#C98F5E"); val woodLip = s("#A8703F"); val woodTop = s("#D9A472")
@@ -338,4 +348,32 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         /** seat heights in dp at T = 32 (scaled with T): how high someone sits on each piece */
         fun seat(kind: String?): Float = when (kind) { "sofa" -> 9f; "table" -> 8f; "bed", "bed2" -> 10f; "tub" -> 2f; else -> 0f }
     }
+}
+
+/**
+ * 1.5.1 (plan R5 V1): pictures of still furniture, one per look and per zoom bucket (half-pixel steps of the screen's pixels per dp),
+ * so zooming in redraws once at the sharper size instead of blurring. Least recently used pictures go first above 64 MB.
+ */
+object PieceCache {
+    const val MAX_BYTES = 64L shl 20
+    private class E(val img: Img, val bytes: Long)
+    private val map = LinkedHashMap<String, E>(64, 0.75f, true)
+    var bytes = 0L; private set
+    var hits = 0; private set
+    var misses = 0; private set
+    val size get() = map.size
+    fun bucket(px: Float) = (kotlin.math.ceil(px * 2.0) / 2.0).coerceIn(0.5, 10.0).toFloat()
+    /** false = this backend can't draw off screen (draw it directly) */
+    fun draw(g: Gfx, key: String, x0: Float, y0: Float, w: Float, h: Float, paint: (Gfx) -> Unit): Boolean {
+        val ppd = g.pxPerDp(); if (ppd <= 0f) return false
+        val b = bucket(ppd); val k = "$key@$b"
+        val e = map[k]?.also { hits++ } ?: run {
+            val wp = kotlin.math.ceil(w * b).toInt(); val hp = kotlin.math.ceil(h * b).toInt()
+            val img = g.offscreen(wp, hp) { og -> og.scale(b, b); og.translate(-x0, -y0); paint(og) } ?: return false
+            misses++; E(img, wp * hp * 4L).also { map[k] = it; bytes += it.bytes; trim() }
+        }
+        g.image(e.img, x0, y0, w, h); return true
+    }
+    private fun trim() { val it = map.entries.iterator(); while (bytes > MAX_BYTES && it.hasNext()) { val n = it.next(); bytes -= n.value.bytes; it.remove() } }
+    fun clear() { map.clear(); bytes = 0; hits = 0; misses = 0 }
 }

@@ -50,4 +50,15 @@ class BacklogTest {
         assertTrue(so.moveOrder("a", 2, -1)); assertEquals(listOf("act:music", "act:dance", "act:hum"), so.pending(s.person("a")!!))
         assertTrue(!so.moveOrder("a", 0, -1))
     }
+    /** 1.5.1: moving in and out without entering the world: the house rules hold */
+    @Test fun movingInAndOut() {
+        val sim = world(listOf(Rel("a", "b", "friend")))
+        assertTrue(sim.decorate.addResident("c", "lib_c", CharSpec(name = "丙"))!!.contains("最多"))      /* the cottage is full */
+        assertNull(sim.decorate.removeResident("b")); assertTrue(sim.life.rels.none { it.from == "b" || it.to == "b" }); assertEquals(null, sim.person("b"))
+        assertTrue(sim.decorate.removeResident("a")!!.isNotEmpty())                                         /* never the last one */
+        assertNull(sim.decorate.addResident("c", "lib_c", CharSpec(name = "丙")))
+        assertEquals(2, sim.life.people.size); assertTrue(sim.life.log.any { "丙搬進來了" in it.text })
+        assertTrue(sim.decorate.addResident("c", "lib_c", CharSpec(name = "丙"))!!.isNotEmpty())
+        sim.catchUp(sim.life.minute + 600, summarize = false); assertTrue(sim.person("c")!!.room.isNotEmpty())
+    }
 }

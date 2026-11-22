@@ -4,17 +4,20 @@
 
 > 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-## 目前版本 1.5.0（R5：美術與細節）
+## 目前版本 1.5.1（R1～R5 補完）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.5.0-debug.apk`](deliverables/apk/oc-shimeji-1.5.0-debug.apk)
-- 這一版（[全面重構計畫](docs/reboot/overhaul-plan.md)的第 5 步）：
-  - **物件狀態**：床會凌亂、餐桌有飯菜或碗盤、燈有人才開、浴缸有泡泡、書架的書被抽出來、窗簾晚上拉上；
-  - **地上的東西**：包裝紙、杯子、書，整理房間才收掉；
-  - **四層光**：清晨與黃昏的天色、隨時間移動的窗光（有灰塵在飄）、落地燈的光暈、夜色；
-  - **室外**：會飄的雲、遠山、四季的樹、路燈、雨天的水窪、地上的花瓣落葉積雪；
-  - 牆上會走的時鐘、木紋與布紋、熱飲冒熱氣、看書翻頁。
-- **全部都還沒在實機驗證**（尤其是效能）：請照 [R5 報告](docs/reboot/r5-report.md) 的「請你在手機上試」。
-- 紀錄：[R5](docs/reboot/r5-report.md)（之前：[R4](docs/reboot/r4-report.md)、[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.5.1-debug.apk`](deliverables/apk/oc-shimeji-1.5.1-debug.apk)
+- 這一版把 R1～R5 報告裡「沒做」的都補上：
+  - **小鎮**：可以拖曳、兩指縮放的 2.5D 場景（商店有厚度、招牌、店員剪影、晚上亮燈、路燈、四季的樹）；
+  - **家具快取**：不會動的家具依縮放畫成圖重複使用（上限 64 MB），放大不會糊；
+  - **開始畫面**：搬家、有人搬進來、有人搬出去，不用進世界；
+  - **操作**：拖食物給住民、佇列提前延後、滑桿用手指拖、吐司在上方可以點掉、星幣數字滾動、東西飛進收納、操控時鏡頭跟著；
+  - **你的手**：開關燈、拉窗簾、鋪床、放書、撿東西；
+  - **生活**：6 種新的日常活動、口頭禪會互相傳染、每一行回憶都有擬聲或旁白、換時區不會亂；
+  - **創角**：8 種配件、職業分現代／古風／奇幻／自訂；
+  - 30 個新圖示、空列表插圖、UI 測試 30 個情境。
+- **全部都還沒在實機驗證**（尤其是效能）：請照 [1.5.1 報告](docs/reboot/r5-1-report.md) 的「請你在手機上試」。
+- 紀錄：[1.5.1 補完](docs/reboot/r5-1-report.md)（之前：[R5](docs/reboot/r5-report.md)、[R4](docs/reboot/r4-report.md)、[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
 
 ## 計畫
 完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)

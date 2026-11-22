@@ -106,6 +106,32 @@ class Decorate(private val sim: LifeSim) {
         Opinion(p.id, stance, Speechless.line(stance, h.zh))
     }
     private object Speechless { fun line(stance: String, zh: String) = when (stance) { "想搬" -> "搬去${zh}？好啊，聽起來很棒！"; "捨不得" -> "這裡住久了，有點捨不得……"; "要自己的房間" -> "新家的話，我可以有自己的房間嗎？"; else -> "去哪裡我都可以。" } }
+    /** 1.5.1: someone moves in (from the title screen or the residents page): the house rules first, a free bed, arrives at the door */
+    fun addResident(id: String, libId: String, spec: app.ocshimeji.sim.chars.CharSpec): String? {
+        if (life.people.any { it.id == id || it.libId == libId }) return "${spec.name}已經住在這裡了"
+        val h = Houses.get(life.houseId); val ts = life.people.map { Tenant(it.id, it.name, it.adult) } + Tenant(id, spec.name, spec.adult)
+        Houses.check(h, ts)?.let { return it }
+        val rooms = life.people.associate { it.id to it.room }.toMutableMap()
+        val free = h.bedrooms.firstOrNull { r -> rooms.values.count { it == r.id } < r.sleeps && Houses.checkRooms(h, ts, rooms + (id to r.id)) { a, b -> app.ocshimeji.sim.chars.Relations.family(life.rels, a, b) } == null }
+            ?: return "沒有適合${spec.name}的房間（床不夠，或未成年要和成年的家人同房）"
+        val p = Person(id, libId, spec, free.id, affinity = LifeSim.affinityFrom(spec.attitude))
+        for (n in Need.values()) p.setNeed(n, 70f)
+        p.x = h.entrance.x + 0.5f; p.y = h.entrance.y + 0.5f; p.moods += MoodState("newhome", life.minute + 24 * 60)
+        life.people += p; sim.relayout()
+        sim.log(p, "${spec.name}搬進來了，住在${free.zh}", kind = "event", weight = 3)
+        return null
+    }
+    /** 1.5.1: someone moves out: not the last one, and no minor left without an adult; their relationships and orders go with them */
+    fun removeResident(id: String): String? {
+        val p = life.people.firstOrNull { it.id == id } ?: return "找不到這位住民"
+        if (life.people.size <= 1) return "至少要留一位住民"
+        val rest = life.people.filter { it.id != id }
+        if (rest.any { !it.adult } && rest.none { it.adult }) return "未成年的住民要有至少一位成年住民同住"
+        life.people.remove(p); life.rels.removeAll { it.from == id || it.to == id }
+        for (q in rest) { if (q.with == id) { q.with = null; q.act = null }; q.queue.removeAll { it.contains(id) } }
+        sim.relayout(); sim.log(rest.first(), "${p.name}搬出去了", kind = "event", weight = 3)
+        return null
+    }
     /** move: rooms are given out again, your furniture goes into the bag, everyone arrives at the new door (null = done) */
     fun moveTo(h: HouseType, rooms: Map<String, String>? = null, allowLocked: Boolean = false): String? {
         if (h.id == life.houseId) return "已經住在這裡了"

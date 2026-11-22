@@ -66,6 +66,13 @@ class AndroidGfx(private val assets: AndroidAssets) : Gfx {
 
     fun begin(canvas: Canvas, density: Float) { c = canvas; this.density = density; width = canvas.width / density; height = canvas.height / density; depth = 0; a = 1f; c.save(); c.scale(density, density) }
     fun end() { c.restore() }
+    private val mtx = android.graphics.Matrix(); private val mv = FloatArray(9)
+    @Suppress("DEPRECATION")
+    override fun pxPerDp(): Float = runCatching { c.getMatrix(mtx); mtx.getValues(mv); Math.hypot(mv[android.graphics.Matrix.MSCALE_X].toDouble(), mv[android.graphics.Matrix.MSKEW_Y].toDouble()).toFloat() }.getOrDefault(0f)
+    override fun offscreen(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): Img? = runCatching {
+        val bmp = Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888); val og = AndroidGfx(assets)
+        og.begin(Canvas(bmp), 1f); try { draw(og) } finally { og.end() }; AImg(bmp) as Img
+    }.getOrNull()
     /** a Gfx used only to measure text (no canvas yet) */
     fun measureOnly(w: Float, h: Float) { width = w; height = h }
 

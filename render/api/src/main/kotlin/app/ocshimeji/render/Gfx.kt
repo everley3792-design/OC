@@ -37,6 +37,11 @@ interface Gfx {
         image(img, x0, y0, x1 - x0, y1 - y0)
     }
 
+    /** 1.5.1: device pixels per dp under the current transform (a bitmap cache sizes itself from it); 0 = this backend can't say */
+    fun pxPerDp(): Float = 0f
+    /** 1.5.1: draw into a new transparent picture of wPx × hPx pixels (`draw` gets a Gfx whose units are those pixels); null = can't */
+    fun offscreen(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): Img? = null
+
     fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind = FontKind.UI, align: Align = Align.LEFT)
     fun measure(s: String, size: Float, font: FontKind = FontKind.UI): Float
 }

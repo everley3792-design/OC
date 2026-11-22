@@ -4,6 +4,7 @@ import app.ocshimeji.render.Align
 import app.ocshimeji.render.FontKind
 import app.ocshimeji.render.Gfx
 import app.ocshimeji.save.Presets
+import app.ocshimeji.sim.house.Houses
 import app.ocshimeji.save.SlotMeta
 
 /**
@@ -59,7 +60,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("1.5.0（R5）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("1.5.1（R5 補完）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }
@@ -105,7 +106,7 @@ class TitleScreen : Screen() {
         val s = app.saves.slot(id) ?: return; val w = app.saves.loadWorld(id) ?: run { app.toast("找不到這個存檔"); return }; val life = w.life ?: run { app.toast("這個存檔要先打開一次"); return }
         app.show(ListSheet("編輯世界：${s.name}", listOf("name" to "名字：${s.name}", "rels" to "關係與戀愛（${life.people.size} 位住民）",
             "clock" to "時間：" + if (life.clockMode == "REAL") "現實時間（點一下改成遊戲時間）" else "遊戲時間（點一下改成現實時間）",
-            "house" to "房子與住民：在世界裡改"), subtitle = "不用進去也能改；改之前會先備份") { k ->
+            "house" to "房子：${Houses.get(life.houseId).zh}（搬家）", "in" to "有人搬進來", "out" to "有人搬出去"), subtitle = "不用進去也能改；改之前會先備份") { k ->
             when (k) {
                 "name" -> app.platform.prompt("改名", s.name, 20) { n -> if (!n.isNullOrBlank()) { app.saves.rename(id, n); reload(); app.toast("改好了") } }
                 "rels" -> { if (life.people.size < 2) { app.toast("這裡只住了一位"); return@ListSheet }
@@ -113,8 +114,25 @@ class TitleScreen : Screen() {
                     app.push(RelationsScreen(people, life.rels, life.romance) { r, rom -> app.host.edit(id) { sim -> applyRels(sim, r, rom) } }) }
                 "clock" -> { val r = app.host.edit(id) { sim -> sim.life.clockMode = if (sim.life.clockMode == "REAL") "GAME" else "REAL"; sim.life.speed = 1.0; null }
                     app.toast(r ?: "改好了（之後打開時會先補上你不在的時間）") }
-                "house" -> app.toast("搬家在「小鎮」、住民在「住民」頁改")
+                "house" -> houseFor(id, life.houseId)
+                "in" -> { val here = life.people.map { it.libId }.toSet(); val can = app.saves.library().chars.filter { it.id !in here }
+                    if (can.isEmpty()) { app.toast("收藏庫裡的角色都住在這裡了"); return@ListSheet }
+                    app.show(ListSheet("誰搬進來？", can.map { it.id to it.name }, subtitle = "房客規則照舊：床位、未成年要和成年的人同住") { cid ->
+                        val c = app.saves.libChar(cid) ?: return@ListSheet
+                        val r = app.host.edit(id) { sim -> sim.decorate.addResident("r_" + c.id, c.id, c.specOf()) }; reload(); app.toast(r ?: "${c.name}搬進來了") }) }
+                "out" -> app.show(ListSheet("誰搬出去？", life.people.map { it.id to it.name }, subtitle = "牠和大家的關係會一起移除；收藏庫的原版還在") { pid ->
+                    val n = life.people.firstOrNull { it.id == pid }?.name ?: return@ListSheet
+                    app.show(Confirm("讓${n}搬出去？", "牠在這個世界的關係和排程會移除，無法復原（改之前有備份）。", "搬出去") {
+                        val r = app.host.edit(id) { sim -> sim.decorate.removeResident(pid) }; reload(); app.toast(r ?: "${n}搬出去了") }) })
             }
+        })
+    }
+    /** 1.5.1: move house without going in — the same rules as moving from the town (rooms, minors, the mansion opens at 5 residents) */
+    private fun houseFor(id: String, current: String) {
+        val all = Houses.ALL.filter { it.id != current }
+        app.show(ListSheet("搬去哪裡？", all.map { h -> h.id to "${h.zh}（最多 ${h.capacity} 位）" }, subtitle = "家具會收進背包；改之前會先備份") { hid ->
+            val h = Houses.get(hid); val open = app.saves.slots().any { it.residents.size >= 5 }
+            val r = app.host.edit(id) { sim -> sim.decorate.moveTo(h, allowLocked = open) }; reload(); app.toast(r ?: "搬到${h.zh}了")
         })
     }
     /** R4: 編輯角色 — straight into a resident's own settings in that world */

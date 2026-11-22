@@ -228,7 +228,9 @@ class SaveSystem(private val store: Storage, internal val now: () -> Long = { Sy
         return json.decodeFromJsonElement(World.serializer(), up)
     }
     /** save the world; the first save of each calendar day also keeps a backup (the newest three days are kept) */
-    fun saveWorld(id: String, w: World, playedSeconds: Long = 0) {
+    fun saveWorld(id: String, w0: World, playedSeconds: Long = 0) {
+        /* 1.5.1: the residents follow the life (someone moved in or out from the title screen) */
+        val w = w0.life?.let { l -> w0.copy(residents = l.people.map { p -> w0.residents.firstOrNull { it.id == p.id } ?: Resident(p.id, p.libId, p.name) }) } ?: w0
         val day = dayKey(now()); val bdir = "saves/$id/backup"
         if (store.read("$bdir/$day.json") == null) store.read(worldPath(id))?.let { old ->
             store.write("$bdir/$day.json", old)

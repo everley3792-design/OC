@@ -318,6 +318,9 @@ class UiTest {
         // the town: someone goes out, the grocery, the board
         sim.townLife.leave(sim.life.people[1]); assertTrue(a.tapZone("nav:town")); frames(a, 30); assertTrue(a.screen is TownScreen)
         shot("town", frames(a, 1, scale = 2f))
+        // 1.5.1: the town is a scene you pinch and pan; the places stay tappable where they are drawn
+        val ts = a.screen as TownScreen; val z0 = ts.zoom; ts.zoomBy(2f); assertTrue(ts.zoom > z0 * 1.5f); val cx0 = ts.camX; a.down(200f, 400f); a.move(260f, 420f); a.move(300f, 440f); a.up(300f, 440f); assertTrue(ts.camX < cx0)
+        frames(a, 3); shot("town-zoom", frames(a, 1, scale = 2f)); ts.zoomBy(0.1f); assertEquals(z0, ts.zoom, 0.01f)
         assertTrue(a.tapZone("place:grocery")); frames(a, 15); shot("town-shop", frames(a, 1, scale = 2f))
         val food = sim.townLife.stock("grocery").first(); assertTrue(a.tapZone("row:${food.id}")); frames(a, 2); assertEquals(1, sim.economy.count(food.id)); assertEquals(300 - food.price, sim.economy.wallet)
         assertTrue(a.tapZone("place:furniture")); frames(a, 15); val f = sim.townLife.stock("furniture").first { it.furniture in setOf("plant", "lamp", "rug", "bench", "shelf") || true }
@@ -527,6 +530,7 @@ class UiTest {
         val spots = (0 until sim.house.w).flatMap { x -> (0 until sim.house.h).map { x to it } }.filter { (x, y) -> sim.grid.walkable(x, y) && sim.house.roomAt(x, y)?.id == sim.roomOf(p) }
         for ((i, k) in listOf("wrapper", "book", "cup").withIndex()) spots.getOrNull(i * 2 + 1)?.let { (x, y) -> sim.life.litter += app.ocshimeji.sim.life.Litter(k, x, y) }
         assertEquals("messy", sim.stateOf(bed)); assertTrue(sim.stateOf(piece("table")) in setOf("dishes", "food")); frames(a, 5)   /* food while someone is still eating breakfast */; shot("r5-states", frames(a, 1, scale = 2f))
+        assertTrue(PieceCache.size > 0 && PieceCache.hits > 0 && PieceCache.bytes <= PieceCache.MAX_BYTES)   /* 1.5.1: still furniture is drawn from pictures */
         // night: curtains drawn, a lamp on where someone is awake, the street lamp
         sim.env.setPaused(false); at(21.5); assertEquals("closed", sim.stateOf(piece("window"))); shot("r5-night", frames(a, 1, scale = 2f))
         // the seasons and the rain outside
@@ -617,6 +621,100 @@ class UiTest {
         val before = a.zoneIds.size; a.down(180f, 700f); for (i in 1..20) { a.move(180f, 700f - i * 25); frames(a, 1) }; a.up(180f, 200f); frames(a, 30)
         assertTrue(a.hasZone("slot:" + a.saves.slots().last().id)); assertTrue(before > 0)
         shot("title-many-scrolled", frames(a, 1, scale = 2f))
+    }
+
+    // ---------------- 1.5.1: the backlog of R1–R5, one scenario each ----------------
+    private fun blueChar(a: UiApp): app.ocshimeji.save.LibChar {
+        val bos = java.io.ByteArrayOutputStream(); val b = BufferedImage(120, 160, BufferedImage.TYPE_INT_ARGB)
+        val g = b.createGraphics(); g.color = java.awt.Color(0x7A, 0xAA, 0xD6); g.fillOval(20, 20, 80, 130); g.color = java.awt.Color.WHITE; g.fillOval(42, 50, 12, 12); g.fillOval(66, 50, 12, 12); g.dispose(); ImageIO.write(b, "png", bos)
+        return a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", bos.toByteArray())), platform.codec)), app.ocshimeji.sim.chars.CharSpec(name = "小雨"), 1, true, emptyMap(), emptyList())
+    }
+    /** an apartment with 肉桂捲 and 小雨, opened; everyone stays home */
+    private fun home2(a: UiApp): WorldScreen {
+        val b = blueChar(a); val ids = listOf(Presets.CINNAMON.id, b.id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen
+        ws.sim.life.people.forEach { it.recent["outing"] = ws.sim.life.minute + 24 * 60.0 }; frames(a, 200)
+        var k = 0; while (a.overlay != null && k++ < 5) { if (!a.tapZone("dc:ok")) a.back(); frames(a, 15) }
+        return ws
+    }
+    private fun center(a: UiApp, id: String): Pair<Float, Float> { val z = a.zoneRect(id)!!; return (z.x + z.w / 2) to (z.y + z.h / 2) }
+
+    @Test fun toastsSitAtTheTopAndTapAway() {
+        val a = app(); val ws = home2(a)
+        a.toast("這是一則比較長的提示，會換成兩行，點一下就收起來，不會擋住下面的按鈕"); frames(a, 5); assertNotNull(a.toastText)
+        shot("toast-top", frames(a, 1, scale = 2f))
+        assertTrue(a.tapToast()); assertNull(a.toastText, "a tap puts it away")
+        a.toast("提示"); frames(a, 3); assertTrue(a.tapZone("ctl")); assertTrue(ws.control, "a button under the toast still works")
+    }
+    @Test fun givingFoodByDragging() {
+        val a = app(); val ws = home2(a); val sim = ws.sim; val p = sim.life.people[0]
+        val food = app.ocshimeji.sim.town.Goods.ALL.values.first { it.kind == "food" }.id; assertTrue(sim.economy.move(food, 1, "測試")); p.setNeed(app.ocshimeji.sim.life.Need.FOOD, 20f)
+        assertTrue(a.tapZone("nav:storage")); frames(a, 20); assertTrue(a.tapZone("it:$food")); frames(a, 15); assertTrue(a.tapZone("ia:drag")); frames(a, 20)
+        assertTrue(a.screen === ws); assertEquals(food, ws.giving); shot("give-drag", frames(a, 1, scale = 2f))
+        val (cx, cy) = center(a, "give:chip"); val r = ws.rectOf(p.id)!!; val tx = r[0] + r[2] / 2; val ty = r[1] + r[3] / 2 + 34
+        a.down(cx, cy); for (i in 1..12) { a.move(cx + (tx - cx) * i / 12, cy + (ty - cy) * i / 12); frames(a, 1) }; a.up(tx, ty); frames(a, 3)
+        assertEquals(0, sim.economy.count(food), "given"); assertTrue(sim.economy.consistent()); assertTrue(p.need(app.ocshimeji.sim.life.Need.FOOD) > 20f)
+    }
+    @Test fun theQueueCanBeReordered() {
+        val a = app(); val ws = home2(a); val sim = ws.sim; val p = sim.life.people[0]
+        assertTrue(a.tapZone("ctl")); assertTrue(a.tapZone("who:${p.id}")); sim.society.setControl(p.id, "command")
+        for (op in listOf("hum", "daydream", "music", "stretch")) sim.society.suggest(p.id, op, queue = true)
+        frames(a, 5); val before = sim.society.pending(p); assertTrue(before.size >= 3, "$before")
+        assertTrue(a.tapZone("q:2")); frames(a, 15); shot("queue-order", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("row:up")); frames(a, 3)
+        val after = sim.society.pending(p); assertEquals(before[2], after[1]); assertEquals(before[1], after[2])
+    }
+    @Test fun slidersDragAndAccessories() {
+        val a = app(); val b = blueChar(a); var saved: app.ocshimeji.save.LibChar? = null
+        a.push(CharacterEditor(b, b.specOf(), title = "小雨") { s, ch -> saved = ch.copy(spec = s); a.saves.updateLibChar(ch.copy(spec = s)) }); frames(a, 20); val ed = a.screen as CharacterEditor
+        assertTrue(a.tapZone("tab:3")); frames(a, 5); ed.slide("axis0", 0.95f); assertTrue(ed.spec.axis(0) > 0.7f, "${ed.spec.axis(0)}")
+        ed.slide("axis0", 0.05f); assertTrue(ed.spec.axis(0) < -0.7f); assertNotNull(ed.said)
+        assertTrue(a.tapZone("tab:0")); frames(a, 5)
+        assertTrue(a.tapZone("chip:sticker:${app.ocshimeji.save.Sticker.KINDS["ribbon"]}")); frames(a, 3); assertTrue(a.tapZone("step:stsize:+")); assertTrue(a.tapZone("step:sty:-"))
+        assertTrue(a.tapZone("chip:sticker:${app.ocshimeji.save.Sticker.KINDS["glasses"]}")); frames(a, 10); shot("editor-stickers", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("save")); frames(a, 5); val c = a.saves.libChar(b.id)!!
+        assertEquals(listOf("ribbon", "glasses"), c.stickers.map { it.kind }); assertTrue(c.stickers[0].size > 1f); assertTrue(c.specOf().axis(0) < -0.7f)
+    }
+    @Test fun jobsBySetting() {
+        val a = app(); val b = blueChar(a)
+        a.push(CharacterEditor(b, b.specOf(), title = "小雨") { s, ch -> a.saves.updateLibChar(ch.copy(spec = s)) }); frames(a, 20)
+        assertTrue(a.tapZone("tab:4")); frames(a, 5); (a.screen as CharacterEditor).tap("btn:tagpick"); frames(a, 15); val ts = a.overlay as TagSheet   /* the button is further down the page */
+        assertTrue(a.tapZone("cat:JOB")); frames(a, 3); assertTrue(a.hasZone("era:古風")); assertTrue(a.tapZone("era:奇幻")); frames(a, 5); assertEquals("奇幻", ts.era)
+        val fantasy = app.ocshimeji.sim.chars.Catalog.TAGS.values.filter { it.cat == app.ocshimeji.sim.chars.TagCat.JOB && app.ocshimeji.sim.chars.Catalog.JOB_ERA[it.id] == "奇幻" }.map { it.id }
+        assertTrue(fantasy.isNotEmpty()); assertTrue(fantasy.all { a.hasZone("chip:tag:$it") || a.zoneIds.any { z -> z.endsWith(":$it") } }, "only that setting's jobs")
+        shot("tags-era", frames(a, 1, scale = 2f))
+    }
+    @Test fun theTitleMovesHouseAndResidents() {
+        val a = app(); val b = blueChar(a); val c3 = a.saves.saveCharacter(a.saves.libChar(b.id)!!.let { app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", pngOf(testPicture()))), platform.codec)) }, app.ocshimeji.sim.chars.CharSpec(name = "小麥"), 1, true, emptyMap(), emptyList())
+        val ids = listOf(Presets.CINNAMON.id, b.id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2"), platform.realMinute())
+        (a.screen as TitleScreen).reload(); frames(a, 10)
+        assertTrue(a.tapZone("eww:${m.id}")); frames(a, 15); assertTrue(a.tapZone("row:in")); frames(a, 15); assertTrue(a.tapZone("row:${c3.id}")); frames(a, 5)
+        assertEquals(3, a.saves.loadWorld(m.id)!!.life!!.people.size); assertTrue(c3.id in a.saves.slot(m.id)!!.residents, "the save list knows")
+        assertTrue(a.tapZone("eww:${m.id}")); frames(a, 15); assertTrue(a.tapZone("row:out")); frames(a, 15); shot("title-move-out", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("row:r_${c3.id}")); frames(a, 15); assertTrue(a.overlay is Confirm); assertTrue(a.tapZone("confirm:ok")); frames(a, 5)
+        assertEquals(2, a.saves.loadWorld(m.id)!!.life!!.people.size)
+        assertTrue(a.tapZone("eww:${m.id}")); frames(a, 15); assertTrue(a.tapZone("row:house")); frames(a, 15); assertTrue(a.tapZone("row:${app.ocshimeji.sim.house.Houses.BUNGALOW.id}")); frames(a, 5)
+        assertEquals(app.ocshimeji.sim.house.Houses.BUNGALOW.id, a.saves.loadWorld(m.id)!!.life!!.houseId); assertTrue(a.saves.backups(m.id).any { it.endsWith("-edit") })
+        (a.screen as TitleScreen).open(m.id); frames(a, 20); assertEquals(2, (a.screen as WorldScreen).sim.life.people.size)
+    }
+    @Test fun theTownAtNight() {
+        val a = app(); val ws = home2(a); val sim = ws.sim; sim.life.clockMode = "GAME"
+        assertNull(sim.env.jumpTo(21.0)); sim.env.setPaused(true); assertNull(sim.env.setSeason("winter")); frames(a, 10); var k = 0; while (a.overlay != null && k++ < 5) { if (!a.tapZone("dc:ok")) a.back(); frames(a, 15) }
+        assertTrue(a.tapZone("nav:town")); frames(a, 30); val ts = a.screen as TownScreen; shot("town-night", frames(a, 1, scale = 2f))
+        a.second(0, 200f, 300f); a.down(150f, 400f); a.second(1, 260f, 260f); a.second(2, 260f, 260f); a.up(150f, 400f); frames(a, 3)
+        assertTrue(a.hasZone("place:plaza"))
+    }
+    @Test fun emptyListsHaveAPicture() {
+        val a = app(); a.push(ItemsPage()); frames(a, 20); assertTrue(a.screen is ItemsPage); shot("empty-items", frames(a, 1, scale = 2f))
+        for (n in listOf("bed", "sofa", "lamp", "cup", "broom", "crane", "umbrella", "cake", "paw", "zzz")) { val img = Java2dGfx.render(24, 24, 1f, assets) { g -> Widgets.icon(g, n, 12f, 12f, 18f, 0xFF5A3A29.toInt()) }
+            assertTrue((0 until 24).any { x -> (0 until 24).any { y -> (img.getRGB(x, y) ushr 24) > 0 } }, "icon $n is drawn") }
+    }
+    @Test fun coinsRollAndFlyToTheBag() {
+        val a = app(); val ws = home2(a); val sim = ws.sim; val w0 = sim.economy.wallet; frames(a, 5)
+        sim.economy.earn(50, "測試的獎勵"); frames(a, 2); assertTrue(ws.shownCoins() < w0 + 50, "the number rolls up")
+        val food = app.ocshimeji.sim.town.Goods.ALL.values.first { it.kind == "food" }.id; assertTrue(sim.economy.move(food, 2, "撿到的")); frames(a, 4); assertTrue(ws.flying > 0, "new things fly to storage")
+        shot("coins-fly", frames(a, 1, scale = 2f)); frames(a, 90); assertEquals(w0 + 50, ws.shownCoins()); assertEquals(0, ws.flying)
     }
 }
 
