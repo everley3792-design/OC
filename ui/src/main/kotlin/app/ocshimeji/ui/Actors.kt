@@ -107,6 +107,7 @@ object Actors {
         if (!look.layer("bounce") && pose != Pose.BATHE && pose != Pose.HELD) dy = 0f       /* the player turned these layers off (plan 12.6) */
         if (!look.layer("sway") && pose != Pose.HELD && pose != Pose.FLY && pose != Pose.DIZZY) rot = 0f
         var floatY = 0f; if ("float" in look.render && pose != Pose.LIE && pose != Pose.BATHE) floatY = 6f + 2.5f * sin(tt * 2f)
+        if (pose == Pose.SIT && frames == null) { val k = sin(tt * 0.21f); rot += 0.045f * k * k * k; dy += 1.2f * kotlin.math.abs(k) }   /* 1.5.1: sitting a long time, they shift their weight now and then */
         if ("wobble" in look.render) { val k = sin(tt * 4f) * 0.05f; sx *= 1f + k; sy *= 1f - k }
         if ("sway" in look.render) rot += sin(tt * 0.9f) * 0.04f
         g.save(); g.translate(x, y - lift + dy - floatY)
@@ -115,12 +116,13 @@ object Actors {
         if (pose == Pose.LIE && frames == null) {
             if (where == "bed" || where == "bed2") { g.translate(0f, h * 0.2f); g.scale(flip * 0.92f, 0.92f * breath) }   /* in bed: upright, the blanket covers the body */
             else { g.translate(0f, -h * 0.16f); g.rotate((-PI / 2).toFloat() * flip); g.scale(flip * 0.9f, 0.9f * breath); g.translate(0f, h * 0.45f) }   /* on a sofa or the floor: on its side */
-            g.image(img, -w * footX, -h * footY, w, h); g.restore(); return
+            g.image(img, -w * footX, -h * footY, w, h); Stickers.draw(g, look, w, h, footX, footY); g.restore(); return
         }
         if (clipBottom > 0f) g.clip(-w, -h * 1.2f - dy, w * 2, h * 1.2f - clipBottom)
         if (pivotTop) { g.translate(0f, -h * 0.9f); g.rotate(rot); g.translate(0f, h * 0.9f) } else g.rotate(rot)
         g.scale(flip * sx / sqrt(breath), sy * breath)
         if (warp) g.imageMesh(img, MESH, MESH, Warp.verts(look, -w * footX, -h * footY, w, h, tt, pose)) else g.image(img, -w * footX, -h * footY, w, h)
+        Stickers.draw(g, look, w, h, footX, footY)
         g.restore()
         if ("sparkle" in look.render) for (i in 0 until 3) { val a = time * 1.5f + i * 2.1f; val k = (sin(a * 1.7f) + 1) / 2
             g.save(); g.alpha(k); star(g, x + cos(a) * h * 0.35f, y - lift - h * (0.4f + 0.3f * sin(a)), 2.5f + k * 1.5f, 0xFFFFF1B8.toInt()); g.restore() }
@@ -217,5 +219,40 @@ object Warp {
             v[(j * (n + 1) + i) * 2] = x0 + px * w; v[(j * (n + 1) + i) * 2 + 1] = y0 + py * h
         }
         return v
+    }
+}
+
+/**
+ * D1 (1.5.1): accessories over the picture — not face building, a sticker layer. Each sits on a mark (頭 for most, 臉 for glasses,
+ * just under the face for a scarf), drawn in the picture's own space so it mirrors, bobs and breathes with the character.
+ */
+object Stickers {
+    fun draw(g: Gfx, look: Look, w: Float, h: Float, footX: Float, footY: Float) {
+        val list = look.c.stickers; if (list.isEmpty()) return
+        val head = look.mark("頭"); val face = look.mark("臉")
+        fun at(m: app.ocshimeji.save.Mark?, fx: Float, fy: Float) = ((m?.x ?: fx) - footX) * w to ((m?.y ?: fy) - footY) * h
+        for (st in list) {
+            val (bx, by) = when (st.kind) { "glasses" -> at(face, 0.5f, 0.38f); "scarf" -> at(face, 0.5f, 0.5f).let { it.first to it.second + h * 0.16f }; else -> at(head, 0.5f, 0.16f) }
+            val x = bx + st.dx * h; val y = by + st.dy * h; val u = h * 0.1f * st.size.coerceIn(0.4f, 2.5f)
+            one(g, st.kind, x, y, u)
+        }
+    }
+    fun one(g: Gfx, kind: String, x: Float, y: Float, u: Float) {
+        val ink = 0xFF5B4A52.toInt()
+        when (kind) {
+            "ribbon" -> { val c = 0xFFF0705A.toInt(); g.save(); g.translate(x + u * 0.9f, y - u * 0.9f); g.rotate(-0.3f)
+                g.fillRound(-u * 1.1f, -u * 0.55f, u * 1.0f, u * 1.1f, u * 0.5f, c); g.fillRound(u * 0.1f, -u * 0.55f, u * 1.0f, u * 1.1f, u * 0.5f, c); g.fillCircle(0f, 0f, u * 0.32f, 0xFFD9544A.toInt()); g.restore() }
+            "hat" -> { val c = 0xFF7AAAD6.toInt(); g.fillRound(x - u * 1.6f, y - u * 0.9f, u * 3.2f, u * 0.5f, u * 0.25f, 0xFF5E8FBE.toInt()); g.fillRound(x - u * 1.0f, y - u * 2.0f, u * 2.0f, u * 1.3f, u * 0.5f, c)
+                g.fillRect(x - u * 1.0f, y - u * 1.05f, u * 2.0f, u * 0.25f, 0xFFF4A259.toInt()) }
+            "crown" -> { val c = 0xFFFFC857.toInt(); g.fillRect(x - u * 1.1f, y - u * 1.4f, u * 2.2f, u * 0.6f, c)
+                for (k in -1..1) g.fillCircle(x + k * u * 0.9f, y - u * 1.6f, u * 0.38f, c); g.fillCircle(x, y - u * 1.1f, u * 0.2f, 0xFFF0705A.toInt()) }
+            "flower" -> { for (k in 0 until 5) { val a = k * 1.2566f; g.fillCircle(x + u * 0.9f + kotlin.math.cos(a) * u * 0.45f, y - u * 0.8f + kotlin.math.sin(a) * u * 0.45f, u * 0.38f, 0xFFF7C6D6.toInt()) }
+                g.fillCircle(x + u * 0.9f, y - u * 0.8f, u * 0.3f, 0xFFFFC857.toInt()) }
+            "star" -> { val cx = x - u * 0.9f; val cy = y - u * 0.7f; for (k in 0 until 5) { val a = -1.5708f + k * 1.2566f; g.line(cx, cy, cx + kotlin.math.cos(a) * u * 0.7f, cy + kotlin.math.sin(a) * u * 0.7f, u * 0.4f, 0xFFFFC857.toInt()) }; g.fillCircle(cx, cy, u * 0.3f, 0xFFFFE29A.toInt()) }
+            "headphones" -> { g.strokeRound(x - u * 1.5f, y - u * 1.4f, u * 3.0f, u * 2.4f, u * 1.2f, u * 0.3f, ink); g.fillRound(x - u * 1.8f, y - u * 0.3f, u * 0.7f, u * 1.0f, u * 0.3f, 0xFFF0705A.toInt()); g.fillRound(x + u * 1.1f, y - u * 0.3f, u * 0.7f, u * 1.0f, u * 0.3f, 0xFFF0705A.toInt()) }
+            "glasses" -> { g.strokeRound(x - u * 1.25f, y - u * 0.4f, u * 1.0f, u * 0.8f, u * 0.35f, u * 0.16f, ink); g.strokeRound(x + u * 0.25f, y - u * 0.4f, u * 1.0f, u * 0.8f, u * 0.35f, u * 0.16f, ink); g.line(x - u * 0.25f, y - u * 0.05f, x + u * 0.25f, y - u * 0.05f, u * 0.14f, ink) }
+            "scarf" -> { val c = 0xFFF0705A.toInt(); g.fillRound(x - u * 1.5f, y - u * 0.4f, u * 3.0f, u * 0.8f, u * 0.4f, c); g.fillRound(x + u * 0.5f, y, u * 0.6f, u * 1.4f, u * 0.3f, 0xFFD9544A.toInt())
+                for (k in 0 until 3) g.fillRect(x - u * 1.2f + k * u * 0.9f, y - u * 0.35f, u * 0.2f, u * 0.7f, 0xFFFFE29A.toInt()) }
+        }
     }
 }

@@ -156,7 +156,7 @@ class TownLife(private val sim: LifeSim) {
     private fun comeHome(p: Person) {
         p.out = null; sim.journal.did(p.id, "town"); val e = sim.house.entrance; p.x = e.x + 0.5f; p.y = e.y + 0.5f; p.why = emptyList()
         val b = sim.body(p.id); b.think = 1f; b.pose = Pose.STAND
-        sim.addMood(p, "town"); sim.say(p, "我回來了！"); sim.log(p, "從小鎮回家了", kind = "life", weight = 1)
+        sim.addMood(p, "town"); sim.say(p, "我回來了！"); sim.log(p, "從小鎮回家了", kind = "life", weight = 1); p.recent["home"] = life.minute
     }
     /** who is in town now, and where (the town screen) */
     fun inTown(): List<Pair<Person, Outing>> = life.people.mapNotNull { p -> p.out?.let { p to it } }

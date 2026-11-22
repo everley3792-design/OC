@@ -13,7 +13,9 @@ interface Platform {
     /** leave the app (back on the first screen) */
     fun exit() {}
     /** the phone's local time as minutes (time zone included) — the default world clock */
-    fun realMinute(): Double = (now() + java.util.TimeZone.getDefault().getOffset(now())) / 60000.0
+    fun realMinute(): Double = now() / 60000.0 + tzOffsetMinutes()
+    /** the phone's offset from UTC now, in minutes (1.5.1 T2: a change is noticed by the world) */
+    fun tzOffsetMinutes(): Int = java.util.TimeZone.getDefault().getOffset(now()) / 60000
     /** let the player pick a picture; the platform decodes it (working copy ≤ 1024 px as PNG + its pixels); null = cancelled; a String = why it failed */
     fun pickImage(done: (PickedImage?, String?) -> Unit) { done(null, "這個版本還不能選圖片") }
     /** write a file the player chooses where to keep (export) */
@@ -53,7 +55,7 @@ class PickedImage(val original: ByteArray, val ext: String, val working: ByteArr
  * on the same zone without moving is a tap → `Screen.tap(id)`. Overlays (sheet, confirm, toast) sit above the screen stack.
  * Pure Kotlin: the phone and the screenshot tests run exactly this.
  */
-class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, val host: WorldHost = WorldHost(saves, platform::now, platform::realMinute)) {
+class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, val host: WorldHost = WorldHost(saves, platform::now, platform::realMinute, platform::tzOffsetMinutes)) {
     /** a character's standing picture: built in (asset:) or from the library (lib:) */
     fun charImg(c: app.ocshimeji.save.LibChar?, maxSide: Int = 512): app.ocshimeji.render.Img? {
         if (c == null) return null
@@ -71,6 +73,9 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     val screens: List<Screen> get() = stack
     var overlay: Overlay? = null; private set
     private var toast: Pair<String, Float>? = null
+    private var toastRect: FloatArray? = null; private var swallow = false
+    /** tests: tap the toast away */
+    fun tapToast(): Boolean { val r = toastRect ?: return false; down(r[0] + r[2] / 2, r[1] + r[3] / 2); up(r[0] + r[2] / 2, r[1] + r[3] / 2); return toast == null }
     val toastText: String? get() = toast?.first
 
     fun push(s: Screen) { stack += s; s.app = this; s.enter(); transition("in") }
@@ -99,7 +104,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
             if (!saves.flag("a11y:calm") && transKind != "fade") g.translate((if (transKind == "back") -24f else 24f) * (1 - e), 0f)
             screen.frame(g, dt); g.restore() } else screen.frame(g, dt)
         overlay?.let { layer = 1; it.frame(g, dt) }
-        toast?.let { (t, at) -> val age = time - at; if (age > 2.6f) toast = null else Widgets.toast(g, this, t, age) }
+        toast?.let { (t, at) -> val age = time - at; if (age > 3.4f) { toast = null; toastRect = null } else toastRect = Widgets.toast(g, this, t, age) }
     }
     /** something is moving: the platform should keep drawing at full rate (otherwise it may idle) */
     val animating: Boolean get() = screen.animating || overlay != null || toast != null || pressed != null
@@ -114,12 +119,15 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** the screen took this finger for itself (a world: touching characters, panning) — zones and drags are skipped */
     private var raw = false
     fun down(x: Float, y: Float) {
+        toastRect?.let { r -> if (toast != null && x in r[0]..(r[0] + r[2]) && y in r[1]..(r[1] + r[3])) { toast = null; toastRect = null; if (hit(x, y) == null) { swallow = true; return } } }   /* 1.5.1: tap the toast away (a button under it still gets the tap) */
+        swallow = false
         downX = x; downY = y; moved = false
         val z = hit(x, y); pressed = z?.id; raw = false
         if (overlay == null && z == null && screen.pointer(0, x, y)) { raw = true; return }
         if (overlay == null) screen.drag(0f, 0f, x, y, start = true) else overlay!!.drag(0f, 0f, x, y, start = true)
     }
     fun move(x: Float, y: Float) {
+        if (swallow) return
         if (raw) { screen.pointer(1, x, y); return }
         if (!moved && Math.hypot((x - downX).toDouble(), (y - downY).toDouble()) > 10) { moved = true; pressed = null }
         if (moved) { if (overlay == null) screen.drag(x - downX, y - downY, x, y, start = false) else overlay!!.drag(x - downX, y - downY, x, y, start = false) }
@@ -129,6 +137,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** where the last finger went up (for taps that need a position: placing a mark, a foot point) */
     var tapX = 0f; var tapY = 0f; private set
     fun up(x: Float, y: Float) {
+        if (swallow) { swallow = false; return }
         tapX = x; tapY = y
         if (raw) { raw = false; screen.pointer(2, x, y); return }
         val id = pressed; pressed = null

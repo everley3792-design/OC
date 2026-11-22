@@ -1,6 +1,7 @@
 package app.ocshimeji.ui
 
 import app.ocshimeji.sim.life.Decor
+import app.ocshimeji.sim.life.Economy
 import app.ocshimeji.sim.act.Choice
 import app.ocshimeji.sim.act.Interactions
 import app.ocshimeji.save.Studio
@@ -135,15 +136,70 @@ class WorldScreen(val slotId: String) : Screen() {
         placeSel = if (hit == placeSel) -1 else hit
         if (hit >= 0 && pcs[hit].kind in d.FIXED) { app.toast("${Furniture.kind(pcs[hit].kind).zh}是固定的"); placeSel = -1 }
     }
+    /** 1.5.1: a ball of fluff in the corner that rolls away when someone walks into it (screen-side only: the life never sees it) */
+    private var fluffX = Float.NaN; private var fluffY = 0f; private var fluffVX = 0f; private var fluffVY = 0f; private var fluffSpin = 0f
+    private fun fluff(ds: ArrayList<HouseView.D>, dt: Float) {
+        if (fluffX.isNaN()) { val r = sim.house.rooms.firstOrNull { it.kind.name == "LIVING" } ?: sim.house.rooms.first()
+            val tile = (r.y + 1 until r.y + r.h).flatMap { y -> (r.x until r.x + r.w).map { it to y } }.lastOrNull { (x, y) -> sim.grid.walkable(x, y) } ?: return
+            fluffX = tile.first + 0.7f; fluffY = tile.second + 0.6f }
+        for (p in sim.life.people) { if (p.out != null || p.desk) continue; val dx = fluffX - p.x; val dy = fluffY - p.y; val d = hypot(dx, dy)
+            if (d < 0.7f && d > 0.01f) { fluffVX += dx / d * 3f * dt * 10; fluffVY += dy / d * 3f * dt * 10 } }
+        val nx = fluffX + fluffVX * dt; val ny = fluffY + fluffVY * dt
+        if (sim.grid.walkable(nx.toInt(), ny.toInt())) { fluffX = nx; fluffY = ny } else { fluffVX = -fluffVX * 0.5f; fluffVY = -fluffVY * 0.5f }
+        fluffVX *= 0.92f; fluffVY *= 0.92f; fluffSpin += hypot(fluffVX, fluffVY) * dt * 3
+        val bx = view.bx(fluffX); val by = view.by(fluffY); val col = 0xFFD8D0C8.toInt(); val spin = fluffSpin
+        ds += HouseView.D(fluffY) { g0.fillRound(bx - 5, by - 1, 10f, 3f, 1.5f, Colors.withAlpha(0xFF000000.toInt(), 0.1f))
+            for (k in 0 until 6) { val a = spin + k * 1.05f; g0.fillCircle(bx + kotlin.math.cos(a) * 2.6f, by - 4 + kotlin.math.sin(a) * 2.2f, 2.4f, col) }; g0.fillCircle(bx, by - 4, 2.6f, 0xFFE8E2DA.toInt()) }
+    }
+    private lateinit var g0: Gfx
+    // ---------------- 1.5.1: giving by dragging, coins that roll, things that fly into storage, the camera on the one you direct ----------------
+    var giving: String? = null; private set
+    fun setGiving(item: String?) { giving = item; if (item != null) { if (placing) setPlacing(false); if (observing) setObserving(false); app.toast("把${Economy.nameOf(sim.life, item)}拖到誰身上") } }
+    private var dragGive = false
+    private var coinShown = Float.NaN
+    fun shownCoins(): Int = if (coinShown.isNaN()) sim.economy.wallet else kotlin.math.round(coinShown).toInt()
+    private class Flyer(val item: String, val x0: Float, val y0: Float, val x1: Float, val y1: Float, val born: Float)
+    private val flyers = ArrayList<Flyer>(); private var lastBag: Map<String, Int>? = null
+    /** tests: things flying into storage right now */
+    val flying: Int get() = flyers.size
+    private fun gains(g: Gfx, t: Theme, dt: Float) {
+        val w = sim.economy.wallet.toFloat(); coinShown = if (coinShown.isNaN()) w else coinShown + (w - coinShown) * min(1f, dt * 5f); if (kotlin.math.abs(w - coinShown) < 0.5f) coinShown = w
+        val bag = sim.life.bag; val calm = app.saves.flag("a11y:calm")
+        lastBag?.let { old -> for ((k, n) in bag) if (n > (old[k] ?: 0) && !calm && flyers.size < 6) flyers += Flyer(k, app.w / 2, app.h * 0.42f, app.w * 3.5f / 5f, app.h - Nav.height(app) * 0.55f, app.time) }
+        lastBag = HashMap(bag)
+        flyers.removeAll { app.time - it.born > 0.9f }
+        for (f in flyers) { val k = (app.time - f.born) / 0.9f; val e = Ease.outCubic(k); val x = f.x0 + (f.x1 - f.x0) * e; val y = f.y0 + (f.y1 - f.y0) * e - kotlin.math.sin(k * Math.PI.toFloat()) * 90
+            g.save(); g.alpha(if (k > 0.8f) (1 - k) * 5 else 1f); g.fillCircle(x, y, 22f, Colors.withAlpha(t.surface, 0.9f)); ItemArt.draw(g, t, sim.life, f.item, x, y, 30f * (1 - 0.4f * k), app); g.restore() }
+    }
+    private fun giveBar(g: Gfx, t: Theme) {
+        val k = giving ?: return; val W = app.w; val G = Dim.GUTTER; val y = app.h - app.insetBottom - 120
+        Widgets.card(g, t, G, y, W - G * 2, 108f, Dim.RADIUS_L)
+        g.text("把它拖到誰身上，就給誰吃", G + 16, y + 28, Dim.FS_S + 1, t.ink)
+        val n = sim.economy.count(k); val cx = G + 52; val cy = y + 70
+        if (!dragGive) { g.fillCircle(cx, cy, 26f, t.surface2); ItemArt.draw(g, t, sim.life, k, cx, cy, 40f, app) }
+        g.text("${Economy.nameOf(sim.life, k)} ×$n", cx + 38, cy + 6, Dim.FS_S, t.ink2)
+        app.zone("give:chip", cx - 30, cy - 30, 60f, 60f)
+        Widgets.button(g, app, "give:done", W - G - 108, y + 48, 92f, 48f, "好了", Kind.SECONDARY, Dim.FS_S + 1)
+        if (dragGive) { g.fillCircle(dragX, dragY - 34, 28f, Colors.withAlpha(t.surface, 0.9f)); ItemArt.draw(g, t, sim.life, k, dragX, dragY - 34, 42f, app) }
+    }
+    private fun followPicked(dt: Float) {
+        val p = picked?.let { sim.person(it) } ?: return; if (!control || observing || touch != null || pinch != null || p.out != null || p.desk) return
+        val x = sx(view.bx(p.x)); val y = sy(view.by(p.y)); val m = 70f
+        if (x < m || x > app.w - m || y < app.insetTop + 150 || y > app.h - Nav.height(app) - 200) { camX += (view.bx(p.x) - camX) * min(1f, dt * 2f); camY += (view.by(p.y) - 20 - camY) * min(1f, dt * 2f); clampCam() }
+    }
     // R3: drag a piece from the bag onto the floor
     private var dragBag: String? = null; private var dragX = 0f; private var dragY = 0f
     /** tests: a piece is being dragged */
     val draggingBag: String? get() = dragBag
     override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) {
-        if (start) { dragBag = app.pressed?.takeIf { placing && it.startsWith("pl:") }?.removePrefix("pl:")?.takeIf { it !in setOf("done", "undo", "flip", "remove") }; dragX = x; dragY = y; return }
-        if (dragBag != null) { dragX = x; dragY = y }
+        if (start) { dragBag = app.pressed?.takeIf { placing && it.startsWith("pl:") }?.removePrefix("pl:")?.takeIf { it !in setOf("done", "undo", "flip", "remove") }; dragGive = giving != null && app.pressed == "give:chip"; dragX = x; dragY = y; return }
+        if (dragBag != null || dragGive) { dragX = x; dragY = y }
     }
     override fun release() {
+        if (dragGive) { dragGive = false; val k = giving ?: return
+            val who = hits.lastOrNull { (_, r) -> dragX >= r[0] - 10 && dragX <= r[0] + r[2] + 10 && dragY - 34 >= r[1] - 10 && dragY - 34 <= r[1] + r[3] + 10 }?.first
+            if (who == null) { app.toast("拖到住民身上才會給"); return }
+            val r = sim.feed(who, k); app.toast(if (r.isNotEmpty()) r else "${sim.person(who)?.name ?: ""}吃了"); if (sim.economy.count(k) <= 0) giving = null; flush(); return }
         val k = dragBag ?: return; dragBag = null
         if (dragY < app.h - app.insetBottom - 184) { placeBag = k; placeSel = -1; val (tx, ty) = tileAt(dragX, dragY - 34); placeAt(tx, ty) }
     }
@@ -152,6 +208,7 @@ class WorldScreen(val slotId: String) : Screen() {
     fun light(h: Double): Float = when { h < 5 -> 0f; h < 7 -> ((h - 5) / 2).toFloat(); h < 17 -> 1f; h < 19.5 -> (1 - (h - 17) / 2.5).toFloat(); else -> 0f }
 
     override fun frame(g: Gfx, dt: Float) {
+        g0 = g
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop
         if (world == null) { g.fillRect(0f, 0f, W, H, t.bg); Widgets.card(g, t, Dim.GUTTER, H / 2 - 70, W - Dim.GUTTER * 2, 140f)
             g.text("這個存檔打不開", W / 2, H / 2 - 24, Dim.FS_L, t.ink, FontKind.UI, Align.CENTER); g.text(Widgets.fit(g, failed ?: "", Dim.FS_S, W - 64), W / 2, H / 2 + 6, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER)
@@ -177,6 +234,7 @@ class WorldScreen(val slotId: String) : Screen() {
             "goal" -> { app.platform.sound("chime"); app.toast("完成小目標：${e.text}") }
         }
         if (closeup?.let { app.time - it.third > 30f } == true) closeup = null
+        followPicked(dt)
         if (observing && follow != null && touch == null && pinch == null) sim.person(follow!!)?.let { f -> if (!f.desk) { camX += (view.bx(f.x) - camX) * min(1f, dt * 2.5f); camY += (view.by(f.y) - 20 - camY) * min(1f, dt * 2.5f); clampCam() } }
         if (ff == null && app.overlay == null) sim.society.let { so -> sim.life.soc.cards.lastOrNull { !it.seen }?.let { c -> c.seen = true; app.show(DayCardSheet(c, sim.life.homeName)) } }
         val life = sim.life; val lt = light(sim.hour)
@@ -216,6 +274,7 @@ class WorldScreen(val slotId: String) : Screen() {
             val top0 = y - lift - ch * (if (b.pose == Pose.LIE) 0.75f else 1f)
             hits += p.id to floatArrayOf(sx(x - ch * 0.36f), sy(top0), ch * 0.72f * zoom, (y - top0 + 6) * zoom)
         }
+        fluff(ds, dt)
         view.draw(g, t, app.time, lt, ds) { it in used }
         if (placing) placingMarks(g, t)
         g.restore()
@@ -291,6 +350,8 @@ class WorldScreen(val slotId: String) : Screen() {
         if (ff != null) { val s0 = "快轉中……"; val w0 = g.measure(s0, Dim.FS_S) + 40
             g.fillRound((W - w0) / 2, y0, w0, 32f, 16f, Colors.withAlpha(t.ink, 0.85f)); Widgets.icon(g, "ff", (W - w0) / 2 + 18, y0 + 16, 12f, t.bg); g.text(s0, W / 2 + 8, y0 + 21, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER); y0 += 40 }
         if (observing) { observeBar(g, t); return }
+        gains(g, t, dt)
+        if (giving != null && !observing && !placing) { giveBar(g, t); return }
         if (placing) { Placing.bar(g, app, this, placeSel, placeBag)
             dragBag?.let { k -> g.fillCircle(dragX, dragY - 34, 30f, Colors.withAlpha(t.surface, 0.9f)); ItemArt.draw(g, t, life, k, dragX, dragY - 34, 44f, app) }   /* R3: the piece under your finger */
             return }
@@ -348,6 +409,7 @@ class WorldScreen(val slotId: String) : Screen() {
         if (wxNow == "rain") for (k in 0 until 5) { val px = ((k * 131) % 97) / 97f * (view.width + 60) - 30; val py = view.height + 24 + ((k * 61) % 43) / 43f * 90
             if (kotlin.math.abs(px - ex) < 30) continue
             g.fillRound(px - 16, py - 4, 32f, 9f, 4.5f, Colors.mix(t.grass, 0xFF9DC8EE.toInt(), 0.65f)); g.fillRect(px - 9, py - 1, 10f, 1.2f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.7f))
+            g.fillRound(px - 12, py - 2, 24f, 3f, 1.5f, Colors.withAlpha(Wx.sky(t, sim.sky(), light(sim.hour)), 0.55f)); g.fillRect(px + 4, py - 3, 1.5f, 5f, Colors.withAlpha(0xFF5B4A52.toInt(), 0.25f))   /* 1.5.1: the sky and a lamp post upside down in it */
             if (!app.saves.flag("a11y:calm")) { val rr = (app.time * 9 + k * 3) % 8f; g.strokeRound(px - rr, py - rr * 0.3f, rr * 2, rr * 0.6f + 0.5f, rr * 0.3f, 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), (1 - rr / 8f) * 0.8f)) } }
         val drift = when (season) { "spring" -> 0xFFF6B2C8.toInt(); "autumn" -> 0xFFE08A3C.toInt(); "winter" -> 0xFFFAFCFF.toInt(); else -> 0 }
         if (drift != 0) for (i in 0 until 26) { val x = ((i * 89) % 101) / 101f * (view.width + 120) - 60; val y = -18f + ((i * 37) % 53) / 53f * (view.height + 150)
@@ -567,7 +629,11 @@ class WorldScreen(val slotId: String) : Screen() {
             id.startsWith("who:") && control -> { val pid = id.removePrefix("who:"); pick(if (picked == pid) null else pid); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() } }
             id.startsWith("who:") -> { val pid = id.removePrefix("who:"); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() }; openCard(pid) }
             id == "ctl" -> setControl(!control)
-            id.startsWith("q:") -> picked?.let { pid -> if (sim.society.cancelOrder(pid, id.removePrefix("q:").toInt())) { app.platform.sound("tick"); flush() } }
+            id.startsWith("q:") -> picked?.let { pid -> val i = id.removePrefix("q:").toInt(); val p = sim.person(pid) ?: return@let; val o = sim.society.pending(p).getOrNull(i) ?: return@let
+                app.show(ListSheet("第 ${i + 1} 件：${sim.society.orderLabel(o)}", listOf("up" to "提前", "down" to "延後", "cancel" to "取消"), danger = setOf("cancel")) { k ->   /* 1.5.1: reorder, not only cancel */
+                    val ok = when (k) { "up" -> sim.society.moveOrder(pid, i, -1); "down" -> sim.society.moveOrder(pid, i, 1); else -> sim.society.cancelOrder(pid, i) }
+                    if (!ok) app.toast(if (k == "up") "已經是第一件了" else "已經是最後一件了") else { app.platform.sound("tick"); flush() } }) }
+            id == "give:done" -> setGiving(null)
             id == "observe" -> setObserving(!observing)
             id == "mail" -> app.push(TimelineScreen(this))
             id == "decor" -> app.show(DecorSheet(this))
@@ -655,7 +721,7 @@ class WorldScreen(val slotId: String) : Screen() {
         val cs = Interactions.forFloor(sim, actor, tx, ty)
         if (actor != null) { open("${actor.name}：這裡", x, y, grouped(cs) { doId(actor.id, it) }); return }
         open("地板", x, y, cs.map { c -> if (c.ia.op == "call") PieItem("cat:call", c.ia.zh, c.ia.icon, if (home().isEmpty()) "大家都不在家" else null,
-            home().map { p -> PieItem("do|${p.id}|act:daydream@t$tx,$ty|", p.name, "people", Interactions.forFloor(sim, p, tx, ty).firstOrNull { it.ia.op == "act:daydream" }?.why) }) else item(c, "you|${c.ia.op}|") })
+            home().map { p -> PieItem("do|${p.id}|act:daydream@t$tx,$ty|", p.name, "people", Interactions.forFloor(sim, p, tx, ty).firstOrNull { it.ia.op == "act:daydream" }?.why) }) else item(c, "you|${c.ia.op}|" + if (c.ia.op == "pickup") "$tx,$ty" else "") })
     }
     private fun skyItems() = PieMenu.grouped(Interactions.forSky(sim).map { it.ia.cat to item(it, "sky|${it.ia.op}") }) { when (it) { "天象" -> "star"; "季節" -> "sun"; "時間" -> "clock"; else -> "cloud" } }
     fun menuSky(x: Float, y: Float) = open("天空", x, y, skyItems())
@@ -709,6 +775,8 @@ class WorldScreen(val slotId: String) : Screen() {
                 app.toast(Furniture.kind(pc.kind).zh + "・" + (sim.house.rooms.firstOrNull { it.id == pc.room }?.zh ?: "") + if (users.isNotEmpty()) "・${users}在用" else "") }
             "move" -> arg.toIntOrNull()?.let { pi -> setPlacing(true); placeSel = sim.decorate.pieces().indexOfFirst { it.x == sim.house.pieces[pi].x && it.y == sim.house.pieces[pi].y && it.kind == sim.house.pieces[pi].kind }; app.toast("點地板上的新位置") }
             "seek" -> arg.toIntOrNull()?.let { pi -> tap("hide:$pi") }
+            "lamp", "curtain", "makebed", "book" -> arg.toIntOrNull()?.let { pi -> sim.youSet(pi, op)?.let { app.toast(it) } ?: run { app.platform.sound("pop"); flush() } }
+            "pickup" -> { val (x, y) = arg.split(",").map { it.toInt() }; sim.youPickUp(x, y)?.let { app.toast(it) } ?: run { app.platform.sound("pop"); flush() } }
             "place" -> app.push(StoragePage(this))
             "decor" -> app.show(DecorSheet(this))
         }
@@ -767,7 +835,7 @@ class WorldScreen(val slotId: String) : Screen() {
             flush()
         })
     }
-    override fun back(): Boolean { if (placing) { setPlacing(false); return true }; if (observing) { setObserving(false); return true }; if (control) { setControl(false); return true }; return false }
+    override fun back(): Boolean { if (giving != null) { setGiving(null); return true }; if (placing) { setPlacing(false); return true }; if (observing) { setObserving(false); return true }; if (control) { setControl(false); return true }; return false }
     /** a break after an hour (plan O-05): someone at home says so (screen-side words; the life is not touched) */
     private var played = 0f
     private fun restReminder(g: Gfx, t: Theme, dt: Float) {

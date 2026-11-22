@@ -249,7 +249,7 @@ class MoveSheet(val ws: WorldScreen, val h: HouseType) : Overlay() {
 
 /** the wallet chip (top right): coins, tap = goals and the ledger */
 fun wallet(g: Gfx, app: UiApp, ws: WorldScreen, x: Float, y: Float) {
-    val t = app.theme; val s = "${ws.sim.economy.wallet}"; val w = g.measure(s, Dim.FS_M, FontKind.NUM) + 50; val sink = if (app.pressed == "wallet") Dim.LIP - 1 else 0f
+    val t = app.theme; val s = "${ws.shownCoins()}"; val w = g.measure(s, Dim.FS_M, FontKind.NUM) + 50; val sink = if (app.pressed == "wallet") Dim.LIP - 1 else 0f   /* 1.5.1: the number rolls */
     Widgets.card(g, t, x + 104 - w, y, w, 40f, 20f, t.surface, t.lip, sink)
     Widgets.icon(g, "coin", x + 104 - w + 20, y + 20 + sink, 14f, 0xFFE0A030.toInt())
     g.text(s, x + 104 - w + 34, y + 27 + sink, Dim.FS_M, t.ink, FontKind.NUM)

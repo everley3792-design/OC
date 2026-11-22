@@ -90,6 +90,16 @@ class Society(private val sim: LifeSim) {
     // ================= choosing a social act (plan C-01) =================
     class Pick(val act: SocialAct, val w: Float, val why: String)
     private fun nick(p: Person) = p.spec.nickname.ifBlank { p.name }
+    /** Q-07 (1.5.1): good friends who talk a lot start saying each other's catchphrases */
+    private fun contagion(run: Run) {
+        val a = sim.person(run.a) ?: return; val b = sim.person(run.b) ?: return; if (!run.re.good) return
+        for ((from, to) in listOf(a to b, b to a)) {
+            val r = sim.rel(to.id, from.id) ?: continue; if (r.like < 65 || r.familiar < 55 || from.spec.catchphrases.isEmpty() || to.borrowed.size >= 3) continue
+            val rr = Rng.of(life.seed, "contagion:${to.id}:${from.id}:${life.minute.toLong()}"); if (!rr.chance(0.06)) continue
+            val c = rr.pick(from.spec.catchphrases); if (c in to.spec.catchphrases || c in to.borrowed) continue
+            to.borrowed += c; sim.log(to, "不知不覺學會了${nickBy(to, from)}的口頭禪「$c」", kind = "social", weight = 2, with = from.id)
+        }
+    }
     /** how `by` calls `q` (R4): what you set, or — once they are close — a nickname of their own (C-07), or the plain name */
     fun nickBy(by: Person?, q: Person): String {
         if (by == null) return nick(q)
@@ -210,7 +220,7 @@ class Society(private val sim: LifeSim) {
     internal fun finishScene(id: String, done: Boolean) {
         val run = scene(id) ?: return; scenes.remove(run.a)
         if (run.closeup) sim.events += SimEvent("closeupEnd", run.a, run.b)
-        if (done) { run.apply(); ideaResult(run) } else run.idea?.let { ideas[run.a] = it }
+        if (done) { run.apply(); ideaResult(run); contagion(run) } else run.idea?.let { ideas[run.a] = it }
     }
     private fun fill(t: String, other: Person, run: Run, by: Person? = null) = t.replace("{對方}", nickBy(by, other)).replace("{物}", run.thing.ifBlank { "那個" }).replace("{第三人}", sim.person(run.third)?.let { nickBy(by, it) } ?: "大家")
 
@@ -737,6 +747,14 @@ class Society(private val sim: LifeSim) {
         if (p.order != null && i == 0) { p.order = null; ideas.remove(p.id); orderTries.remove(p.id) } else p.queue.removeAt(i - (if (p.order != null) 1 else 0))
         sim.log(p, "取消了你排的「${orderLabel(o)}」", kind = "you", weight = 1); return true
     }
+    /** move the `i`-th waiting order earlier (d < 0) or later (d > 0) (1.5.1) */
+    fun moveOrder(id: String, i: Int, d: Int): Boolean {
+        val p = sim.person(id) ?: return false; val all = pending(p).toMutableList(); val j = i + d
+        if (i !in all.indices || j !in all.indices) return false
+        val x = all.removeAt(i); all.add(j, x)
+        if (p.order != null) { p.order = all[0]; p.queue.clear(); p.queue += all.drop(1) } else { p.queue.clear(); p.queue += all }
+        return true
+    }
     /** stop what they are doing now (R3: "停下來") */
     fun stopNow(id: String): Boolean { val p = sim.person(id) ?: return false; if (p.act == null || p.with != null || sim.asleep(p)) return false; sim.nudge(p); return true }
     /** an order in words: "act:sleep@3" → 睡覺（雙人床） */
@@ -855,6 +873,7 @@ class Society(private val sim: LifeSim) {
         p.plan += steps.distinct().filter { Acts[it]?.let { a -> sim.canDo(p, a) } == true }.take(3)
     }
     private fun newDay() {
+        life.things.keys.removeAll { it.startsWith("lamp@") || it.startsWith("window@") }   /* 1.5.1: your lamp and curtain settings last until the morning */
         for (p in life.people) {
             p.today.clear()
             val r = Rng.of(life.seed, "day:${life.day}:${p.id}")

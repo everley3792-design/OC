@@ -199,7 +199,7 @@ class StoragePage(val ws: WorldScreen) : Screen() {
 class ItemSheet(val ws: WorldScreen, val item: String) : Overlay() {
     private val slide = Spring(0f, 1f)
     private fun actions(): List<Pair<String, String>> { val g = Goods.ALL[item]; val furn = item.startsWith("f:") || ws.sim.decorate.placeable().any { it.first == item }
-        return buildList { if (g?.kind == "food" || ws.sim.foodOf(item) != null) add("feed" to "給誰吃"); if (furn) add("place" to "擺到家裡")
+        return buildList { if (g?.kind == "food" || ws.sim.foodOf(item) != null) { add("feed" to "給誰吃"); add("drag" to "拿到家裡，拖給誰") }; if (furn) add("place" to "擺到家裡")
             if (item.startsWith("item:") || item.startsWith("f:") || item.startsWith("w:")) { add("stall" to "放上市集攤位"); add("corner" to "放到公共角落") } } }
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w; val life = ws.sim.life
@@ -222,6 +222,7 @@ class ItemSheet(val ws: WorldScreen, val item: String) : Overlay() {
             "ia:feed" -> { val who = sim.life.people.filter { !it.desk && it.out == null }
                 app.show(ListSheet("給誰吃？", who.map { it.id to it.name + "（飽足 ${it.need(Need.FOOD).toInt()}）" }) { pid -> val r = sim.feed(pid, item); if (r.isNotEmpty()) app.toast(r) else app.toast("${sim.person(pid)?.name}吃了"); ws.flush() }) }
             "ia:place" -> { app.closeOverlay(); while (app.screen !== ws && app.screens.size > 1) app.pop(); ws.setPlacing(true, item) }
+            "ia:drag" -> { app.closeOverlay(); while (app.screen !== ws && app.screens.size > 1) app.pop(); ws.setGiving(item) }
             "ia:stall" -> { val base = sim.townLife.basePrice(item)
                 app.show(ListSheet("標價", listOf(base * 2 / 3, base, base * 3 / 2, base * 2).map { "${it.coerceAtLeast(1)}" to "${it.coerceAtLeast(1)} 星幣" + if (it == base) "（建議）" else "" }) { pr -> sim.townLife.list(item, pr.toInt())?.let { app.toast(it) } ?: run { app.toast("擺上攤位了"); ws.flush() } }) }
             "ia:corner" -> app.show(ListSheet("放到哪裡？", TownState.CORNERS.filterKeys { !sim.life.town.corners.containsKey(it) }.map { it.key to it.value }) { k -> sim.townLife.putCorner(k, item)?.let { app.toast(it) } ?: run { app.toast("放好了"); ws.flush() } })

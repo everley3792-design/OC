@@ -6,6 +6,8 @@ import app.ocshimeji.render.FontKind
 import app.ocshimeji.render.Gfx
 import app.ocshimeji.save.LibChar
 import app.ocshimeji.save.Mark
+import app.ocshimeji.save.Studio
+import app.ocshimeji.save.Sticker
 import app.ocshimeji.save.media.Actions
 import app.ocshimeji.save.media.Raster
 import app.ocshimeji.sim.Rng
@@ -103,7 +105,7 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         val pTop = ty + 52; val btnY = H - app.insetBottom - 74
         val sc = scroll.step(dt)
         g.save(); g.clip(0f, pTop, W, btnY - 8 - pTop); g.translate(0f, -sc); app.zoneDy = -sc
-        val f = Form(app, g, G, W - G * 2, pTop + 2)
+        val f = Form(app, g, G, W - G * 2, pTop + 2); f.bars = bars
         when (tab) { 0 -> looks(f); 1 -> basic(f); 2 -> voice(f); 3 -> axes(f); 4 -> traits(f); 5 -> likes(f); 6 -> speech(f); 7 -> life(f); 8 -> story(f); else -> skills(f) }
         if (tab < 6) f.button("next", "下一步：${tabs[tab + 1].substringAfter(" ")}")
         g.restore(); app.zoneDy = 0f
@@ -131,6 +133,12 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
             if (!preset) f.button("marks", "部位標記（頭、臉、手、耳朵、尾巴）") }
         f.stepper("height", "大小", "${spec.height}", "比其他角色高或矮")
         f.chips("motion", CharSpec.MOTIONS, setOf(spec.motion), label = "動作風格（所有動作的節奏與幅度）")
+        /* D1 (1.5.1): accessories as a sticker layer over the picture */
+        f.header("配件", if (world) "配件屬於收藏庫的角色：在收藏庫加，所有世界一起改變" else if (c.source == "preset") "內建角色要先在收藏庫「複製一份」才能加配件" else "點一下戴上或拿下；下面可以調位置和大小")
+        val canDeck = !world && c.source != "preset"
+        f.chips("sticker", Sticker.KINDS.values.toList(), c.stickers.mapNotNull { Sticker.KINDS[it.kind] }.toSet(), if (canDeck) emptySet() else Sticker.KINDS.values.toSet())
+        if (canDeck && c.stickers.isNotEmpty()) { val st = c.stickers.last(); f.note("調整「${Sticker.KINDS[st.kind]}」")
+            f.stepper("stx", "左右", "%.2f".format(st.dx)); f.stepper("sty", "上下", "%.2f".format(st.dy)); f.stepper("stsize", "大小", "%.1f".format(st.size)) }
         if (!world) {
             f.chips("source", listOf("系統預設", "混合", "我的"), setOf(c.animSource), if (preset) setOf("系統預設", "混合", "我的") else emptySet(), "動畫來源")
             f.note(when (c.animSource) { "系統預設" -> "全部用系統的程序動畫。"; "我的" -> "全部用你的動畫；沒有的動作退回待機。"; else -> "有你畫的就用你的，沒有的用系統的。" })
@@ -329,6 +337,8 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
             k == "roomPref" -> edit { it.copy(roomPref = v) }; k == "attitude" -> edit { it.copy(attitude = v) }; k == "motion" -> edit { it.copy(motion = v) }
             k == "tint" -> edit { it.copy(tint = v) }
             k == "facing" -> editChar { it.copy(facing = if (v == "朝左") -1 else 1) }
+            k == "sticker" -> { val kind = Sticker.KINDS.entries.first { it.value == v }.key
+                editChar { ch -> if (ch.stickers.any { it.kind == kind }) ch.copy(stickers = ch.stickers.filter { it.kind != kind }) else ch.copy(stickers = ch.stickers + Sticker(kind)) } }
             k == "source" -> editChar { it.copy(animSource = v) }
             k == "use" -> { val a = Actions.ZH.entries.firstOrNull { it.value == v }?.key ?: v; editChar { it.copy(animUse = it.animUse + (a to (it.animUse[a] == false))) } }
             k == "face" -> pickFace(EMOTIONS[v] ?: return)
@@ -339,6 +349,9 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         when {
             k.startsWith("axis") -> ax(k.removePrefix("axis").toInt())
             k == "height" -> edit { it.copy(height = (it.height + 5 * d).coerceIn(60, 200)) }
+            k == "stx" || k == "sty" || k == "stsize" -> editChar { ch -> val st = ch.stickers.lastOrNull() ?: return@editChar ch
+                val n = when (k) { "stx" -> st.copy(dx = (st.dx + 0.02f * d).coerceIn(-0.6f, 0.6f)); "sty" -> st.copy(dy = (st.dy + 0.02f * d).coerceIn(-0.6f, 0.6f)); else -> st.copy(size = (st.size + 0.1f * d).coerceIn(0.4f, 2.5f)) }
+                ch.copy(stickers = ch.stickers.dropLast(1) + n) }
             k == "age" -> edit { it.copy(age = (it.age + d).coerceIn(0, 999)) }
             k == "wake" -> edit { it.copy(wake = Math.floorMod(it.wake + d, 24)) }; k == "sleep" -> edit { it.copy(sleep = Math.floorMod(it.sleep + d, 24)) }
             k == "oversleep" -> edit { it.copy(oversleep = (it.oversleep + 0.2f * d).coerceIn(0f, 1f)) }; k == "nightOwl" -> edit { it.copy(nightOwl = (it.nightOwl + 0.2f * d).coerceIn(0f, 1f)) }
@@ -373,8 +386,20 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
     /** back from the import studio: the pictures may have changed */
     override fun resume() { app.saves.libChar(c.id)?.let { if (it != c) { c = it; saved = saved.first to it; hist.replaceAll { (s, _) -> s to it }; look = null } } }
     override fun back(): Boolean { if (dirty) { app.show(Confirm("還沒儲存", "要放棄這些修改嗎？", "放棄") { app.pop() }); return true }; return false }
-    override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) = scroll.drag(dy, y, start)
-    override fun release() = scroll.release()
+    // 1.5.1: drag a slider with the finger (the − ＋ buttons stay)
+    private val bars = HashMap<String, FloatArray>(); private var sliding: String? = null
+    override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) {
+        if (start) sliding = app.pressed?.takeIf { it.startsWith("meter:") }?.removePrefix("meter:")
+        val k = sliding ?: return scroll.drag(dy, y, start)
+        val b = bars[k] ?: return; val f = ((x - b[0]) / b[1]).coerceIn(0f, 1f); setMeter(k, Math.round((if (b[2] > 0) f * 2 - 1 else f) * 10) / 10f)
+    }
+    override fun release() { if (sliding != null) sliding = null else scroll.release() }
+    /** tests: drag a slider to a fraction of its bar */
+    fun slide(key: String, frac: Float) { val b = bars[key] ?: return; sliding = key; drag(0f, 0f, b[0] + b[1] * frac, 0f, false); sliding = null }
+    private fun setMeter(k: String, v: Float) = edit { s -> when {
+        k.startsWith("axis") -> s.copy(axes = s.axes.toMutableList().also { while (it.size < 5) it += 0f; it[k.removePrefix("axis").toInt()] = v.coerceIn(-1f, 1f) })
+        k == "cry" -> s.copy(cry = v); k == "temper" -> s.copy(temper = v); k == "shy" -> s.copy(shy = v); k == "hygiene" -> s.copy(hygiene = v)
+        k == "oversleep" -> s.copy(oversleep = v.coerceIn(0f, 1f)); k == "nightOwl" -> s.copy(nightOwl = v.coerceIn(0f, 1f)); else -> s } }
 
     companion object {
         val AXES = listOf("外向" to "內向", "活潑" to "沉穩", "認真" to "隨性", "坦率" to "含蓄", "溫柔" to "好勝")
@@ -400,6 +425,9 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
 /** the tag library (plan 13.2): six groups, each tag says what it does */
 class TagSheet(initial: List<String>, val done: (List<String>) -> Unit) : Overlay() {
     private val slide = Spring(0f, 1f); private var cat = TagCat.WORLD; private val chosen = LinkedHashSet(initial); private var lastTapped: String? = null
+    /** 1.5.1: jobs by era; 自訂 = the tags you made in the creator suite */
+    var era = "現代"; private set
+    private val custom: List<String> by lazy { Studio(app.saves).tags().map { it.id } }
     private val scroll = Scroller()
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val W = app.w; val G = Dim.GUTTER
@@ -409,9 +437,11 @@ class TagSheet(initial: List<String>, val done: (List<String>) -> Unit) : Overla
         g.text("標籤庫", G + 4, y + 44, Dim.FS_L, t.ink); g.text("已選 ${chosen.size}", W - G - 4, y + 44, Dim.FS_S, t.ink2, FontKind.UI, Align.RIGHT)
         var cx = G; var cy = y + 60
         for (c in TagCat.values()) { val cw = g.measure(c.zh, Dim.FS_S + 1) + 28; if (cx + cw > W - G) { cx = G; cy += 44 }; Widgets.chip(g, app, "cat:${c.name}", cx, cy, c.zh, c == cat, 36f); cx += cw + 6 }
+        if (cat == TagCat.JOB) { cy += 46; cx = G; for (e in Catalog.ERAS) { cx += Widgets.chip(g, app, "era:$e", cx, cy, e, e == era, 34f) + 6 } }
         val top = cy + 50; val bottom = y + h - app.insetBottom - 130
         val sc = scroll.step(dt); g.save(); g.clip(0f, top, W, bottom - top); g.translate(0f, -sc); app.zoneDy = -sc
-        val f = Form(app, g, G, W - G * 2, top); f.chips("tag", Catalog.TAGS.values.filter { it.cat == cat }.map { it.id }, chosen); g.restore(); app.zoneDy = 0f
+        val ids = if (cat != TagCat.JOB) Catalog.TAGS.values.filter { it.cat == cat }.map { it.id } else if (era == "自訂") custom else Catalog.TAGS.values.filter { it.cat == cat && (Catalog.JOB_ERA[it.id] ?: "現代") == era }.map { it.id }
+        val f = Form(app, g, G, W - G * 2, top); if (ids.isEmpty()) f.note("還沒有自訂的標籤：到「創作中心 → 標籤」做一個") else f.chips("tag", ids, chosen); g.restore(); app.zoneDy = 0f
         scroll.max = maxOf(0f, f.y - bottom)
         val info = lastTapped?.let { Catalog.TAGS[it] }?.let { "「${it.id}」${it.note}" } ?: "點標籤看它做什麼；可以選很多個"
         for ((i, l) in Widgets.wrap(g, info, Dim.FS_S, W - G * 2, 2).withIndex()) g.text(l, G + 4, bottom + 22 + i * 20f, Dim.FS_S, t.ink2)
@@ -420,6 +450,7 @@ class TagSheet(initial: List<String>, val done: (List<String>) -> Unit) : Overla
     override fun tap(id: String) {
         when {
             id.startsWith("cat:") -> { cat = TagCat.valueOf(id.removePrefix("cat:")); scroll.reset() }
+            id.startsWith("era:") -> { era = id.removePrefix("era:"); scroll.reset() }
             id.startsWith("chip:tag:") -> { val v = id.removePrefix("chip:tag:"); lastTapped = v; if (!chosen.remove(v)) chosen += v }
             id == "tags:done" -> { app.closeOverlay(); done(chosen.toList()) }
         }

@@ -83,7 +83,7 @@ class LifeTest {
         assertTrue(q.why.contains("到了睡覺的時間"))
     }
     @Test fun petLiftThrowFeed() {
-        val s = world("cottage", 2); s.life.arriving = false; run(s, 3f)
+        val s = world("cottage", 2); s.life.arriving = false; s.life.people.forEach { it.recent["outing"] = s.life.minute }; run(s, 3f)   /* stay home for this one */
         val p = s.life.people[0]; p.setNeed(Need.ATTENTION, 10f)
         s.pet(p.id, 2f); s.petEnd(p.id); assertTrue(p.need(Need.ATTENTION) > 30f); assertTrue(p.moods.any { it.id == "petted" })
         s.lift(p.id); assertTrue(s.body(p.id).held); assertNull(p.act)

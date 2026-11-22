@@ -46,7 +46,7 @@ class InteractTest {
         so.suggest("a", choice.what.removePrefix("act:"), queue = true); assertTrue(so.lastOk); assertEquals(choice.what, a.order)
         var used = false; repeat(600) { s.update(0.1f); if (a.actPiece == pi && a.act == choice.ia.op.removePrefix("act:")) used = true }
         assertTrue(used, "went to that very piece (${choice.ia.zh} @ $pi)")
-        val (tx, ty) = (0 until s.house.w).flatMap { x -> (0 until s.house.h).map { x to it } }.first { (x, y) -> s.house.roomAt(x, y)?.id == s.roomOf(a) && s.grid.walkable(x, y) && s.grid.distances(a.x.toInt(), a.y.toInt())[y * s.grid.w + x] > 1 }
+        val (tx, ty) = (0 until s.house.w).flatMap { x -> (0 until s.house.h).map { x to it } }.first { (x, y) -> s.house.roomAt(x, y)?.id == s.roomOf(a) && s.grid.walkable(x, y) && s.grid.distances(s.house.entrance.x, s.house.entrance.y)[y * s.grid.w + x] >= 0 && (x != a.x.toInt() || y != a.y.toInt()) }
         so.stopNow("a"); so.suggest("a", "daydream@t$tx,$ty", queue = true); assertTrue(so.lastOk)
         var there = false; repeat(600) { s.update(0.1f); if (a.act == "daydream" && a.x.toInt() == tx && a.y.toInt() == ty) there = true }
         assertTrue(there, "walked to the spot you pointed at")

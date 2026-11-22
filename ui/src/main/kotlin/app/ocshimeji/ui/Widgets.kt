@@ -40,6 +40,37 @@ object Widgets {
     fun icon(g: Gfx, name: String, cx: Float, cy: Float, size: Float, color: Int) {
         val u = size / 10f
         when (name) {
+            /* ---- 1.5.1: 30 more drawn icons (furniture, things, feelings) ---- */
+            "bed" -> { g.fillRound(cx - 4.5f * u, cy - 1f * u, 9f * u, 3.6f * u, 1f * u, color); g.fillRect(cx - 4.5f * u, cy - 3.6f * u, 1.4f * u, 7f * u, color); g.fillRound(cx - 2.8f * u, cy - 2.6f * u, 2.6f * u, 1.6f * u, 0.8f * u, color) }
+            "sofa" -> { g.fillRound(cx - 4f * u, cy - 2.6f * u, 8f * u, 3f * u, 1.2f * u, color); g.fillRound(cx - 4.8f * u, cy - 0.6f * u, 9.6f * u, 3f * u, 1.2f * u, color); g.fillRect(cx - 4f * u, cy + 2.4f * u, 1f * u, 1.4f * u, color); g.fillRect(cx + 3f * u, cy + 2.4f * u, 1f * u, 1.4f * u, color) }
+            "lamp" -> { g.fillRound(cx - 2.6f * u, cy - 4.4f * u, 5.2f * u, 3.2f * u, 1f * u, color); g.fillRect(cx - 0.5f * u, cy - 1.2f * u, 1f * u, 4.6f * u, color); g.fillRound(cx - 2.4f * u, cy + 3.2f * u, 4.8f * u, 1.2f * u, 0.6f * u, color) }
+            "window" -> { g.strokeRound(cx - 4f * u, cy - 4f * u, 8f * u, 8f * u, 1f * u, 1.2f * u, color); g.line(cx, cy - 4f * u, cx, cy + 4f * u, 1.1f * u, color); g.line(cx - 4f * u, cy, cx + 4f * u, cy, 1.1f * u, color) }
+            "tv" -> { g.strokeRound(cx - 4.4f * u, cy - 3.2f * u, 8.8f * u, 6f * u, 1f * u, 1.3f * u, color); g.line(cx - 2f * u, cy + 4f * u, cx + 2f * u, cy + 4f * u, 1.2f * u, color) }
+            "bath" -> { g.fillRound(cx - 4.6f * u, cy - 0.6f * u, 9.2f * u, 4f * u, 1.8f * u, color); g.fillCircle(cx - 1.6f * u, cy - 2.4f * u, 1f * u, color); g.fillCircle(cx + 1f * u, cy - 3.4f * u, 0.8f * u, color) }
+            "stove" -> { g.strokeRound(cx - 4f * u, cy - 4f * u, 8f * u, 8f * u, 1f * u, 1.2f * u, color); g.fillCircle(cx - 1.8f * u, cy - 1.4f * u, 1.2f * u, color); g.fillCircle(cx + 1.8f * u, cy - 1.4f * u, 1.2f * u, color); g.fillRect(cx - 2.4f * u, cy + 1.6f * u, 4.8f * u, 1f * u, color) }
+            "fridge" -> { g.strokeRound(cx - 3f * u, cy - 4.6f * u, 6f * u, 9.2f * u, 1f * u, 1.2f * u, color); g.line(cx - 3f * u, cy - 1f * u, cx + 3f * u, cy - 1f * u, 1f * u, color); g.line(cx + 1.6f * u, cy - 3.4f * u, cx + 1.6f * u, cy - 2f * u, 1f * u, color) }
+            "plant" -> { g.fillRound(cx - 2.2f * u, cy + 0.8f * u, 4.4f * u, 3.4f * u, 0.8f * u, color); g.fillCircle(cx - 1.6f * u, cy - 1.4f * u, 1.8f * u, color); g.fillCircle(cx + 1.6f * u, cy - 1.8f * u, 1.8f * u, color); g.fillCircle(cx, cy - 3.2f * u, 1.8f * u, color) }
+            "book" -> { g.fillRound(cx - 4f * u, cy - 3f * u, 3.8f * u, 6.4f * u, 0.8f * u, color); g.fillRound(cx + 0.2f * u, cy - 3f * u, 3.8f * u, 6.4f * u, 0.8f * u, color) }
+            "cup" -> { g.fillRound(cx - 3f * u, cy - 2.4f * u, 5f * u, 5.6f * u, 1.2f * u, color); g.strokeRound(cx + 1.6f * u, cy - 1.4f * u, 2.4f * u, 2.6f * u, 1.2f * u, 1f * u, color); g.line(cx - 1f * u, cy - 4.6f * u, cx - 0.4f * u, cy - 3.2f * u, 0.8f * u, color) }
+            "broom" -> { g.line(cx + 3.4f * u, cy - 4.4f * u, cx - 1f * u, cy + 1f * u, 1.1f * u, color); g.fillRound(cx - 4.6f * u, cy + 0.2f * u, 5f * u, 3.6f * u, 1f * u, color) }
+            "note" -> { g.fillCircle(cx - 2f * u, cy + 2.6f * u, 1.7f * u, color); g.line(cx - 0.4f * u, cy + 2.6f * u, cx - 0.4f * u, cy - 4f * u, 1f * u, color); g.line(cx - 0.4f * u, cy - 4f * u, cx + 3f * u, cy - 2.6f * u, 1.2f * u, color) }
+            "brush" -> { g.line(cx + 3.6f * u, cy - 3.6f * u, cx - 1f * u, cy + 1f * u, 1.2f * u, color); g.fillCircle(cx - 2f * u, cy + 2.2f * u, 2f * u, color) }
+            "camera" -> { g.fillRound(cx - 4.4f * u, cy - 2.4f * u, 8.8f * u, 6f * u, 1.2f * u, color); g.fillRound(cx - 1.6f * u, cy - 3.8f * u, 3.2f * u, 1.8f * u, 0.6f * u, color); g.fillCircle(cx, cy + 0.6f * u, 1.6f * u, 0x66FFFFFF) }
+            "bell" -> { g.fillRound(cx - 3f * u, cy - 3f * u, 6f * u, 5.6f * u, 3f * u, color); g.fillRect(cx - 4f * u, cy + 2f * u, 8f * u, 1.2f * u, color); g.fillCircle(cx, cy + 3.8f * u, 1f * u, color) }
+            "leaf" -> { g.save(); g.translate(cx, cy); g.rotate(-0.7f); g.fillRound(-2f * u, -4.2f * u, 4f * u, 8.4f * u, 2f * u, color); g.restore(); g.line(cx - 3f * u, cy + 3f * u, cx + 1.8f * u, cy - 1.8f * u, 0.8f * u, 0x66FFFFFF) }
+            "flower" -> { for (k in 0 until 5) { val a = k * 1.2566f; g.fillCircle(cx + kotlin.math.cos(a) * 2.2f * u, cy + kotlin.math.sin(a) * 2.2f * u, 1.7f * u, color) }; g.fillCircle(cx, cy, 1.2f * u, 0x88FFFFFF.toInt()) }
+            "crane" -> { g.line(cx - 4.4f * u, cy + 1.6f * u, cx, cy - 1f * u, 1.3f * u, color); g.line(cx, cy - 1f * u, cx + 4.4f * u, cy + 1.6f * u, 1.3f * u, color); g.line(cx, cy - 1f * u, cx + 1.6f * u, cy - 4.2f * u, 1.1f * u, color); g.line(cx - 2f * u, cy + 0.4f * u, cx + 2f * u, cy + 3f * u, 1f * u, color) }
+            "shoe" -> { g.fillRound(cx - 4.2f * u, cy - 0.2f * u, 8.4f * u, 3.2f * u, 1.4f * u, color); g.fillRound(cx - 4.2f * u, cy - 3f * u, 3.8f * u, 4f * u, 1.2f * u, color) }
+            "wallclock" -> { g.strokeRound(cx - 4f * u, cy - 4f * u, 8f * u, 8f * u, 4f * u, 1.2f * u, color); g.line(cx, cy, cx, cy - 2.6f * u, 1f * u, color); g.line(cx, cy, cx + 2f * u, cy + 0.6f * u, 1f * u, color) }
+            "umbrella" -> { g.fillRound(cx - 4.6f * u, cy - 3.6f * u, 9.2f * u, 4f * u, 2f * u, color); g.line(cx, cy, cx, cy + 3.4f * u, 1f * u, color); g.line(cx, cy + 3.4f * u, cx - 1.4f * u, cy + 3.4f * u, 1f * u, color) }
+            "ticket" -> { g.fillRound(cx - 4.4f * u, cy - 2.6f * u, 8.8f * u, 5.2f * u, 1f * u, color); g.fillCircle(cx - 4.4f * u, cy, 1f * u, 0xFFFFFFFF.toInt()); g.fillCircle(cx + 4.4f * u, cy, 1f * u, 0xFFFFFFFF.toInt()) }
+            "key" -> { g.strokeRound(cx - 4.2f * u, cy - 2f * u, 4f * u, 4f * u, 2f * u, 1.2f * u, color); g.line(cx - 0.2f * u, cy, cx + 4.4f * u, cy, 1.2f * u, color); g.line(cx + 3f * u, cy, cx + 3f * u, cy + 1.8f * u, 1f * u, color) }
+            "letter" -> { g.strokeRound(cx - 4.4f * u, cy - 3f * u, 8.8f * u, 6f * u, 0.8f * u, 1.1f * u, color); g.line(cx - 4.2f * u, cy - 2.6f * u, cx, cy + 0.6f * u, 1f * u, color); g.line(cx + 4.2f * u, cy - 2.6f * u, cx, cy + 0.6f * u, 1f * u, color) }
+            "cake" -> { g.fillRound(cx - 4f * u, cy - 0.6f * u, 8f * u, 4.4f * u, 1f * u, color); g.fillRect(cx - 0.4f * u, cy - 3.8f * u, 0.8f * u, 3f * u, color); g.fillCircle(cx, cy - 4.4f * u, 0.8f * u, 0xFFF4A259.toInt()) }
+            "smile" -> { g.strokeRound(cx - 4f * u, cy - 4f * u, 8f * u, 8f * u, 4f * u, 1.1f * u, color); g.fillCircle(cx - 1.5f * u, cy - 1f * u, 0.7f * u, color); g.fillCircle(cx + 1.5f * u, cy - 1f * u, 0.7f * u, color); g.line(cx - 1.6f * u, cy + 1.6f * u, cx + 1.6f * u, cy + 1.6f * u, 1f * u, color) }
+            "zzz" -> { for ((k, s) in listOf(0f to 1f, 3f to 0.7f)) { val x = cx - 3f * u + k * u; val y = cy - k * u; val w = 3.6f * u * s
+                g.line(x, y - w, x + w, y - w, 1f * u, color); g.line(x + w, y - w, x, y, 1f * u, color); g.line(x, y, x + w, y, 1f * u, color) } }
+            "paw" -> { g.fillCircle(cx, cy + 1.4f * u, 2.4f * u, color); for (k in 0 until 3) g.fillCircle(cx - 2.6f * u + k * 2.6f * u, cy - 2.4f * u + (if (k == 1) -0.8f else 0f) * u, 1.1f * u, color) }
             "more" -> for (i in -1..1) g.fillCircle(cx + i * 3.2f * u, cy, 1.25f * u, color)
             "check" -> { g.line(cx - 3.6f * u, cy + 0.2f * u, cx - 1f * u, cy + 2.8f * u, 1.6f * u, color); g.line(cx - 1f * u, cy + 2.8f * u, cx + 4f * u, cy - 3f * u, 1.6f * u, color) }
             "back" -> { g.line(cx + 1.2f * u, cy - 3.6f * u, cx - 2.4f * u, cy, 1.6f * u, color); g.line(cx - 2.4f * u, cy, cx + 1.2f * u, cy + 3.6f * u, 1.6f * u, color) }
@@ -83,10 +114,14 @@ object Widgets {
             "share" -> { g.line(cx, cy + 2.6f * u, cx, cy - 3.6f * u, 1.5f * u, color); g.line(cx - 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx + 2.6f * u, cy - 1.2f * u, cx, cy - 3.8f * u, 1.5f * u, color); g.line(cx - 4f * u, cy + 4f * u, cx + 4f * u, cy + 4f * u, 1.5f * u, color) }
         }
     }
-    fun toast(g: Gfx, app: UiApp, text: String, age: Float) {
-        val t = app.theme; val inA = Ease.outBack(minOf(1f, age / 0.3f)); val out = if (age > 2.2f) 1 - (age - 2.2f) / 0.4f else 1f
-        val w = minOf(app.w - 48, g.measure(text, Dim.FS_M) + 44); val x = (app.w - w) / 2; val y = app.h - app.insetBottom - 156 + (1 - inA) * 30
-        g.save(); g.alpha(out.coerceIn(0f, 1f)); card(g, t, x, y, w, 48f, 24f, t.ink, Colors.mix(t.ink, 0xFF000000.toInt(), 0.3f)); g.text(text, app.w / 2, y + 30, Dim.FS_M, t.bg, FontKind.UI, Align.CENTER); g.restore()
+    /** 1.5.1: at the top (under the time capsule), up to two lines, tap to dismiss; returns where it is */
+    fun toast(g: Gfx, app: UiApp, text: String, age: Float): FloatArray {
+        val t = app.theme; val inA = Ease.outBack(minOf(1f, age / 0.3f)); val out = if (age > 3.0f) 1 - (age - 3.0f) / 0.4f else 1f
+        val lines = wrap(g, text, Dim.FS_S + 1, app.w - 96, 2); val w = minOf(app.w - 48, lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 48); val h = 26f + lines.size * 20f
+        val x = (app.w - w) / 2; val y = app.insetTop + 114 - (1 - inA) * 24
+        g.save(); g.alpha(out.coerceIn(0f, 1f)); card(g, t, x, y, w, h, 22f, t.ink, Colors.mix(t.ink, 0xFF000000.toInt(), 0.3f))
+        lines.forEachIndexed { i, l -> g.text(l, app.w / 2, y + 28 + i * 20f, Dim.FS_S + 1, t.bg, FontKind.UI, Align.CENTER) }; g.restore()
+        return floatArrayOf(x, y, w, h)
     }
     /** a character standing on its feet at (x, y), `height` dp tall, breathing (the procedural idle every character has) */
     fun character(g: Gfx, img: Img?, c: LibChar, x: Float, y: Float, height: Float, time: Float, phase: Float = 0f) {
@@ -111,6 +146,12 @@ object Widgets {
         card(g, t, x, y, w, h, h / 2, if (on) t.select else t.surface, if (on) Colors.mix(t.select, 0xFF000000.toInt(), 0.18f) else t.lip, sink)
         g.text(label, x + w / 2, y + sink + h / 2 + 5, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER)
         app.zone(id, x, y - maxOf(0f, (Dim.TOUCH - h) / 2), w, maxOf(h + Dim.LIP, Dim.TOUCH)); return w
+    }
+    /** 1.5.1: the little picture over an empty list — a cloud asleep */
+    fun emptyArt(g: Gfx, t: Theme, cx: Float, cy: Float) {
+        val c = Colors.mix(t.surface2, t.ink3, 0.18f)
+        g.fillCircle(cx - 16, cy + 2, 14f, c); g.fillCircle(cx + 2, cy - 8, 18f, c); g.fillCircle(cx + 20, cy + 2, 13f, c); g.fillRound(cx - 28, cy + 2, 58f, 14f, 7f, c)
+        g.line(cx - 8, cy - 2, cx - 3, cy - 2, 1.6f, t.ink3); g.line(cx + 6, cy - 2, cx + 11, cy - 2, 1.6f, t.ink3); icon(g, "zzz", cx + 30, cy - 22, 12f, t.ink3)
     }
     /** a heart (two circles and a turned square) */
     fun heart(g: Gfx, cx: Float, cy: Float, s: Float, color: Int) {

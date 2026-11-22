@@ -51,13 +51,13 @@ class LifeSim(val life: Life) {
         val h = hour
         return when (pc.kind) {
             "bed", "bed2" -> if (users.any { it.act in SLEEPY }) "sleeping" else life.things[key] ?: "tidy"
-            "table" -> when { users.any { it.act == "meal" } || life.soc.pot?.let { it.servings > 0 && life.minute - it.minute < 300 } == true -> "food"; life.soc.dishes > 0 -> "dishes"; else -> "empty" }
-            "lamp" -> if ((h >= 18.5 || h < 6.5) && life.people.any { it.out == null && !it.desk && roomOf(it) == pc.room && !asleep(it) }) "on" else "off"
+            "table" -> when { users.any { it.act == "meal" } || life.soc.pot?.let { it.servings > 0 && life.minute - it.minute < 300 } == true -> "food"; life.soc.dishes > 0 -> "dishes"; life.things[key] == "cup" -> "cup"; else -> "empty" }
+            "lamp" -> life.things[key] ?: if ((h >= 18.5 || h < 6.5) && life.people.any { it.out == null && !it.desk && roomOf(it) == pc.room && !asleep(it) }) "on" else "off"
             "tv" -> if (users.isNotEmpty()) "on" else "off"
             "tub" -> if (users.isNotEmpty()) "full" else "dry"
             "stove" -> if (users.isNotEmpty()) "cooking" else "cold"
             "shelf" -> life.things[key] ?: "tidy"
-            "window" -> if (h >= 6.5 && h < 20.0) "open" else "closed"
+            "window" -> life.things[key] ?: if (h >= 6.5 && h < 20.0) "open" else "closed"
             else -> ""
         }
     }
@@ -67,14 +67,42 @@ class LifeSim(val life: Life) {
         fun drop(kind: String) { val x = p.x.toInt(); val y = p.y.toInt(); if (!grid.walkable(x, y) || house.doors.any { it.x == x && it.y == y }) return
             life.litter += Litter(kind, x, y, p.id, life.minute); while (life.litter.size > MAX_LITTER) life.litter.removeAt(0) }
         when (a.id) {
-            "sleep", "nap" -> if (pc != null && (pc.kind == "bed" || pc.kind == "bed2")) life.things[key] = "messy"
+            "sleep", "nap" -> if (pc != null && (pc.kind == "bed" || pc.kind == "bed2")) { life.things[key] = "messy"; if (a.id == "sleep" && r.chance(0.5)) drop("slippers") }
             "makebed" -> house.pieces.forEachIndexed { i, q -> if ((q.kind == "bed" || q.kind == "bed2") && q.room == p.room) life.things.remove(pieceKey(i)) }
             "read", "album" -> if (pc?.kind == "shelf" && r.chance(0.6)) { life.things[key] = "out"; drop("book") }
             "snack" -> if (r.chance(0.45)) drop("wrapper")
-            "tea", "coffee" -> if (r.chance(0.35)) drop("cup")
+            "tea", "coffee" -> { val t = house.pieces.indexOfFirst { it.kind == "table" }; if (t >= 0 && r.chance(0.6)) life.things[pieceKey(t)] = "cup" else if (r.chance(0.35)) drop("cup") }   /* the cup goes back on the table — or stays on the floor */
+            "dishes" -> house.pieces.forEachIndexed { i, q -> if (q.kind == "table") life.things.remove(pieceKey(i)) }
             "tidy" -> { val room = roomOf(p); life.litter.removeAll { house.roomAt(it.x, it.y)?.id == room }
-                house.pieces.forEachIndexed { i, q -> if (q.kind == "shelf" && q.room == room) life.things.remove(pieceKey(i)) } }
+                house.pieces.forEachIndexed { i, q -> if ((q.kind == "shelf" || q.kind == "table") && q.room == room) life.things.remove(pieceKey(i)) } }
+            "sweep" -> { val room = roomOf(p); life.litter.removeAll { house.roomAt(it.x, it.y)?.id == room } }
         }
+    }
+    /**
+     * 1.5.1: your own hand on things: switch a lamp, draw the curtains (until the next morning), make a bed, put a book back,
+     * pick something up off the floor. Returns why not, or null.
+     */
+    fun youSet(pi: Int, what: String): String? {
+        val pc = house.pieces.getOrNull(pi) ?: return "那件家具不見了"; val key = pieceKey(pi); val k = Furniture.kind(pc.kind).zh
+        val who = life.people.firstOrNull { roomOf(it) == pc.room } ?: life.people.firstOrNull() ?: return null
+        when (what) {
+            "lamp" -> { if (pc.kind != "lamp") return "這不是燈"; val on = stateOf(pi) != "on"; life.things[key] = if (on) "on" else "off"; log(who, if (on) "你把燈打開了" else "你把燈關了", kind = "you") }
+            "curtain" -> { if (pc.kind != "window") return "這不是窗戶"; val open = stateOf(pi) != "open"; life.things[key] = if (open) "open" else "closed"; log(who, if (open) "你拉開了窗簾" else "你拉上了窗簾", kind = "you") }
+            "makebed" -> { if (stateOf(pi) != "messy") return "${k}已經很整齊了"; life.things.remove(key); log(who, "你幫忙鋪好了$k", kind = "you") }
+            "book" -> { if (stateOf(pi) != "out") return "書都在架上"; life.things.remove(key); log(who, "你把書放回了書架", kind = "you") }
+            else -> return "不知道要做什麼"
+        }
+        return null
+    }
+    fun youPickUp(x: Int, y: Int): String? {
+        val l = life.litter.lastOrNull { it.x == x && it.y == y } ?: return "這裡沒有東西"; life.litter.remove(l)
+        life.people.firstOrNull { roomOf(it) == house.roomAt(x, y)?.id }?.let { log(it, "你撿起了地上的${LITTER_ZH[l.kind] ?: "東西"}", kind = "you") }; return null
+    }
+    /** 1.5.1 (T2): the phone's time zone moved by `delta` minutes (travel, daylight saving): forward = the clock jumps (no hours lived that nobody lived); back = the world waits */
+    fun zoneShift(delta: Int) {
+        if (delta == 0 || life.clockMode != "REAL") return
+        if (delta > 0) { life.minute += delta; for (p in life.people) { val b = body(p.id); p.actEnd += delta; b.path = null } }
+        life.people.firstOrNull()?.let { log(it, "手機的時區變了（${if (delta > 0) "快" else "慢"}了 ${fmtSpan(kotlin.math.abs(delta).toDouble())}）：" + if (delta > 0) "時鐘直接對齊" else "世界先等手機追上", kind = "you") }
     }
     /** a new arrangement: nobody keeps using furniture that moved; everyone stands on the floor */
     internal fun relayout() {
@@ -452,6 +480,8 @@ class LifeSim(val life: Life) {
         if (p.affinity < 40) pool.removeAll { it.needs == Need.ATTENTION }                                                                           /* not close: does not seek you */
         else if (p.affinity >= 70) repeat(3) { pool += Micros.ALL.first { it.id == "wave" } }
         if (p.affinity >= 65 && rng.chance(p.affinity / 400.0) && comeToYou(p, b)) return
+        p.recent["home"]?.let { back -> if (life.minute - back < 40 && weather() == "rain") { p.recent.remove("home")   /* 1.5.1: in from the rain — a shake */
+            b.micro = Micro("shake", Pose.DIZZY, 1.4f, "呼，淋濕了……"); b.microT = 1.4f; b.pose = Pose.DIZZY; b.poseT = 0f; say(p, "呼，淋濕了……"); return } }
         if (p.spec.habits.isNotEmpty() && rng.chance(0.06 + 0.07 * p.spec.habits.maxOf { it.freq.coerceIn(0, 2) })) {   /* R4: their own little events */
             val h = rng.pick(p.spec.habits.flatMap { x -> List(x.freq.coerceIn(0, 2) + 1) { x } })
             say(p, h.text); events += SimEvent("fx", p.id, h.icon); log(p, h.text.trim().trimEnd('。', '！'), kind = "habit", weight = 1)
@@ -541,14 +571,17 @@ class LifeSim(val life: Life) {
     internal fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
     /** the timeline (plan K-03); favourites are never dropped */
     internal fun log(p: Person, text: String, away: Boolean = false, kind: String = "life", weight: Int = 1, cause: Int = -1, with: String = "", sound: String = "", aside: String = "", dur: Double = 0.0, at: Double = life.minute) {
-        life.log += LogLine(at, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with, sound = sound, aside = aside, dur = dur)
+        var (snd, asd) = sound to aside
+        if (snd.isEmpty() && asd.isEmpty() && kind != "you" && kind != "habit" && kind != "worry") Flavor.forLine(text, kind, Rng.of(life.seed, "flav:${at.toLong()}:${text.length}")).let { snd = it.first; asd = it.second }   /* 1.5.1: every memory gets its sound and line */
+        life.log += LogLine(at, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with, sound = snd, aside = asd, dur = dur)
         trimLog()
     }
     private var catching = false
     /** a line in this character's own way of talking; quietly when someone sleeps in the same room (plan B-08) */
     internal fun say(p: Person, base: String, toPlayer: Boolean = false, to: Person? = null) {
         if (catching) return
-        var t = Speech.say(p.spec, base, rng, p.affinity, toPlayer, to?.let { society.callTo(p, it) }, moodOf(p))
+        val spec = if (p.borrowed.isEmpty()) p.spec else p.spec.copy(catchphrases = (p.spec.catchphrases + p.borrowed).distinct())
+        var t = Speech.say(spec, base, rng, p.affinity, toPlayer, to?.let { society.callTo(p, it) }, moodOf(p))
         if (!t.startsWith("（") && life.people.any { it !== p && asleep(it) && roomOf(it) == roomOf(p) }) t = "（小聲）$t"
         events += SimEvent("say", p.id, t)
     }
@@ -734,7 +767,10 @@ class LifeSim(val life: Life) {
         val from = life.minute; val to = min(toMinute, from + MAX_AWAY_MIN)
         if (to - from < 1) return null
         val counts = HashMap<String, HashMap<String, Int>>()
-        for (p in life.people) { breakChat(p); body(p.id).path = null; body(p.id).micro = null; body(p.id).held = false; body(p.id).flying = false }
+        for (p in life.people) { breakChat(p); body(p.id).path = null; body(p.id).micro = null; body(p.id).held = false; body(p.id).flying = false
+            /* 1.5.1 fix: someone still walking to what they chose was never "there", so it never ended and they idled the whole absence */
+            val a = p.act?.let { Acts[it] }
+            if (a != null && !body(p.id).arrivedAct) { body(p.id).arrivedAct = true; p.actStart = life.minute; p.actEnd = life.minute + if (a.id == "sleep") minutesUntil(wakeOf(p).toDouble()) else durationOf(p, a) } }
         catching = true
         while (life.minute < to - 1e-6) {
             val dm = min(CHUNK, to - life.minute)
@@ -804,6 +840,7 @@ class LifeSim(val life: Life) {
         val SLEEPY = setOf("sleep", "nap", "sofanap")
         val ANGRY = setOf("angry", "annoyed", "feud")
         const val MAX_LITTER = 10
+        val LITTER_ZH = mapOf("wrapper" to "包裝紙", "book" to "書", "cup" to "杯子", "slippers" to "拖鞋")
         /** what people do every day anyway (no boredom from doing them again) */
         val ROUTINE = setOf("sleep", "meal", "snack", "bathe", "chat", "queue", "outing", "dishes")
         val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy", "sticker")

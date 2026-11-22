@@ -33,6 +33,8 @@ object Interactions {
         Need.FOOD -> "吃"; Need.ENERGY -> "休息"; Need.HYGIENE -> "清潔"; Need.SOCIAL -> "陪伴"; Need.COMFORT -> "放鬆"; Need.ROOM -> "家事"; else -> "玩" }
     val CAT_ICON = mapOf("吃" to "food", "休息" to "moon", "清潔" to "drop", "陪伴" to "people", "放鬆" to "sun", "家事" to "check", "玩" to "game",
         "打招呼" to "chat", "聊天" to "chat", "分享" to "gift", "玩笑" to "star", "稱讚" to "star", "抱怨" to "cloud", "衝突" to "anger", "和好" to "pinky", "送禮" to "gift", "邀請" to "people", "肢體" to "heart", "照顧" to "heart", "戀愛" to "heart")
+    /** 1.5.1: the furniture an activity uses, as its icon */
+    val KIND_ICON = mapOf("bed" to "bed", "sofa" to "sofa", "tv" to "tv", "tub" to "bath", "stove" to "stove", "fridge" to "fridge", "plant" to "plant", "shelf" to "book", "window" to "window", "table" to "cup", "rug" to "smile", "mirror" to "eye", "garden" to "leaf", "line" to "umbrella")
     /** activities that are not ordered from a menu (they happen by themselves or are reached another way) */
     private val NOT = setOf("chat", "queue", "outing", "meal", "dishes", "craft")
 
@@ -48,7 +50,9 @@ object Interactions {
         add(you("unselect", "不操控了", On.SELF, "你", "back")); add(you("clear", "清空排程", On.SELF, "你", "undo"))
         // ---- you → furniture, the floor, the sky
         add(you("info", "這是什麼", On.PIECE, "你", "eye")); add(you("move", "移動它", On.PIECE, "你", "move")); add(you("seek", "找找看", On.PIECE, "你", "eye"))
-        add(you("place", "擺家具", On.FLOOR, "你", "plus")); add(you("decor", "壁紙地板", On.FLOOR, "你", "image")); add(you("call", "叫誰過來", On.FLOOR, "你", "people"))
+        /* 1.5.1: your own hand on things (R5 looks) */
+        add(you("lamp", "開燈／關燈", On.PIECE, "你", "lamp")); add(you("curtain", "拉窗簾", On.PIECE, "你", "window")); add(you("makebed", "幫忙鋪床", On.PIECE, "你", "bed")); add(you("book", "把書放回去", On.PIECE, "你", "book"))
+        add(you("place", "擺家具", On.FLOOR, "你", "plus")); add(you("decor", "壁紙地板", On.FLOOR, "你", "image")); add(you("call", "叫誰過來", On.FLOOR, "你", "people")); add(you("pickup", "撿起來", On.FLOOR, "你", "broom"))
         add(you("w:", "天氣自然", On.SKY, "天氣", "sun"))
         for (w in Env.ALL) add(Interaction("you:w:$w", Env.zh(w), On.SKY, "you", if (w in Env.SPECIAL) "天象" else "天氣", when (w) { "rain", "storm" -> "rain"; "snow" -> "snow"; "fog" -> "fog"; "cloudy", "aurora" -> "cloud"; "stars" -> "star"; else -> "sun" }, "w:$w"))
         add(you("s:", "季節跟著日期", On.SKY, "季節", "clock"))
@@ -59,7 +63,7 @@ object Interactions {
         // ---- the resident you picked → a piece of furniture / a spot on the floor
         for (a in Acts.ALL.values) { if (a.id in NOT) continue
             val kinds = if (a.kind == null) emptySet() else Furniture.KINDS.values.filter { LifeSim.fits(a.kind, it.id) }.map { it.id }.toSet()
-            add(Interaction("act:${a.id}", a.zh, if (a.kind == null) On.FLOOR else On.PIECE, "them", catOf(a), CAT_ICON[catOf(a)] ?: "dots", "act:${a.id}", kinds)) }
+            add(Interaction("act:${a.id}", a.zh, if (a.kind == null) On.FLOOR else On.PIECE, "them", catOf(a), KIND_ICON[a.kind] ?: CAT_ICON[catOf(a)] ?: "dots", "act:${a.id}", kinds)) }
     }
     val BY_ID = ALL.associateBy { it.id }
     operator fun get(id: String) = BY_ID[id]
@@ -100,7 +104,11 @@ object Interactions {
         val piece = sim.house.pieces.getOrNull(pi) ?: return emptyList()
         val acts = ALL.filter { it.on == On.PIECE && it.by == "them" && piece.kind in it.kinds }
         if (actor == null) return ALL.filter { it.on == On.PIECE && it.by == "you" }.mapNotNull { ia ->
-            when (ia.op) { "seek" -> if (sim.life.people.none { sim.society.hiding(it.id) != null }) null else Choice(ia, null); "move" -> Choice(ia, if (piece.kind in sim.decorate.FIXED) "${Furniture.kind(piece.kind).zh}是固定的" else null); else -> Choice(ia, null) } } +
+            when (ia.op) { "seek" -> if (sim.life.people.none { sim.society.hiding(it.id) != null }) null else Choice(ia, null); "move" -> Choice(ia, if (piece.kind in sim.decorate.FIXED) "${Furniture.kind(piece.kind).zh}是固定的" else null)
+                "lamp" -> if (piece.kind == "lamp") Choice(ia, null) else null; "curtain" -> if (piece.kind == "window") Choice(ia, null) else null
+                "makebed" -> if (piece.kind == "bed" || piece.kind == "bed2") Choice(ia, if (sim.stateOf(pi) != "messy") "已經很整齊了" else null) else null
+                "book" -> if (piece.kind == "shelf") Choice(ia, if (sim.stateOf(pi) != "out") "書都在架上" else null) else null
+                else -> Choice(ia, null) } } +
             acts.map { Choice(it, null, "${it.op}@$pi") }   /* "叫誰來…": the screen asks who */
         val busy = actorProblem(sim, actor)
         return acts.map { ia -> val a = Acts[ia.op.removePrefix("act:")]!!
@@ -109,8 +117,9 @@ object Interactions {
     /** a spot on the floor */
     fun forFloor(sim: LifeSim, actor: Person?, tx: Int, ty: Int): List<Choice> {
         val acts = ALL.filter { it.on == On.FLOOR && it.by == "them" }
-        if (actor == null) return ALL.filter { it.on == On.FLOOR && it.by == "you" }.map { Choice(it, null) }
-        val g = sim.grid; val reach = g.walkable(tx, ty) && g.distances(actor.x.toInt(), actor.y.toInt()).let { d -> tx in 0 until g.w && ty in 0 until g.hh && d[ty * g.w + tx] >= 0 }
+        if (actor == null) return ALL.filter { it.on == On.FLOOR && it.by == "you" }.mapNotNull { if (it.op == "pickup") { if (sim.life.litter.any { l -> l.x == tx && l.y == ty }) Choice(it, null) else null } else Choice(it, null) }
+        val g = sim.grid; val (sx, sy) = if (g.walkable(actor.x.toInt(), actor.y.toInt())) actor.x.toInt() to actor.y.toInt() else g.nearestWalkable(actor.x, actor.y)
+        val reach = g.walkable(tx, ty) && g.distances(sx, sy).let { d -> tx in 0 until g.w && ty in 0 until g.hh && d[ty * g.w + tx] >= 0 }
         val busy = actorProblem(sim, actor) ?: if (!reach) "走不到那裡" else null
         return acts.mapNotNull { ia -> val a = Acts[ia.op.removePrefix("act:")]!!
             if (!sim.canDo(actor, a)) null else Choice(ia, busy, "${ia.op}@t$tx,$ty") }   /* only what this one does at all (their own activities) */

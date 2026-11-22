@@ -17,6 +17,12 @@ object Flavor {
         "meal" to listOf("" to "吃得很專心", "嗯！" to "好吃得瞇起眼睛", "" to "最後一口留給最喜歡的"),
         "bathe" to listOf("嘩啦——" to "浴室裡都是水蒸氣", "噗嚕噗嚕" to "在浴缸裡吹泡泡"),
         "primp" to listOf("" to "對著鏡子做了個鬼臉", "嗯……" to "撥了撥瀏海"),
+        "doodle" to listOf("沙沙" to "畫了一隻歪歪的貓", "" to "紙的角落多了一朵小花"),
+        "cloudwatch" to listOf("" to "那朵雲像一隻兔子", "咦" to "雲慢慢變形了"),
+        "stargaze" to listOf("" to "數到第十二顆就忘了", "哇……" to "有一顆特別亮"),
+        "sweep" to listOf("唰唰" to "灰塵被掃成一小堆", "唰——" to "角落也掃到了"),
+        "dance" to listOf("噠噠" to "轉了一圈差點跌倒", "♪" to "跳得滿頭大汗"),
+        "origami" to listOf("" to "摺出一隻紙鶴", "啪" to "折線壓得很整齊"),
         "tv" to listOf("哈哈" to "節目演到好笑的地方", "" to "看著看著發起呆"),
         "tvrug" to listOf("" to "盤腿坐在電視前", "哇" to "跟著節目一起驚呼"),
         "read" to listOf("沙沙" to "翻頁的聲音", "" to "看到入迷忘了時間"),
@@ -48,4 +54,19 @@ object Flavor {
     )
     fun pick(act: String, r: Rng): Pair<String, String> = ACT[act]?.let { r.pick(it) } ?: ("" to "")
     fun has(act: String) = ACT.containsKey(act)
+    /** 1.5.1: a sound and a line for the other kinds of memory (social, events, town), chosen by what the line is about */
+    private val WORDS: List<Pair<List<String>, List<Pair<String, String>>>> = listOf(
+        listOf("吵", "生氣", "冷戰") to listOf("哼！" to "空氣有點僵", "" to "誰也不先開口"),
+        listOf("和好") to listOf("" to "兩個人都笑了", "嘿嘿" to "像什麼事都沒發生過"),
+        listOf("送", "禮物") to listOf("沙沙" to "包裝紙沙沙響", "哇" to "眼睛亮了起來"),
+        listOf("抱", "靠") to listOf("呼" to "暖暖的", "" to "安靜了一會兒"),
+        listOf("聊", "說", "八卦", "問") to listOf("嘰嘰喳喳" to "聊到忘了時間", "" to "你一言我一語", "哈哈" to "笑聲傳到隔壁房間"),
+        listOf("小鎮", "市集", "咖啡", "商店", "布告欄") to listOf("叮鈴" to "門上的鈴鐺響了", "" to "街上有麵包的香味"),
+        listOf("回家") to listOf("喀嚓" to "門開了", "" to "鞋子在門口排好"),
+    )
+    fun forLine(text: String, kind: String, r: Rng): Pair<String, String> {
+        val hit = WORDS.firstOrNull { (ws, _) -> ws.any { text.contains(it) } }?.second
+        val pool = hit ?: when (kind) { "social" -> listOf("" to "你一言我一語"); "event" -> listOf("咦？" to "家裡發生了一件小事", "哈哈" to "大家都笑了"); else -> return "" to "" }
+        return r.pick(pool)
+    }
 }

@@ -81,6 +81,10 @@ object Catalog {
     val CONFLICTS: List<Pair<String, String>> = listOf("愛乾淨" to "邋遢", "早起" to "夜貓子", "貪吃" to "小鳥胃", "懶散" to "勤快", "黏人" to "獨立", "有點黏人" to "獨立",
         "健談" to "害羞", "樂天" to "愛哭", "情緒化" to "冷靜", "急性子" to "慢吞吞", "愛乾淨" to "邋遢")
     const val MAX_TRAITS = 10
+    /** 1.5.1: jobs by era (現代、古風、奇幻; the player's own tags are 自訂) */
+    val JOB_ERA: Map<String, String> = (listOf("郵差", "圖書館員", "店員", "偶像", "駭客", "學生", "甜點師", "無業遊民", "社畜", "醫生", "畫家", "作家", "廚師", "偵探", "園丁", "音樂家", "運動員", "研究員", "老師").map { it to "現代" } +
+        listOf("宗門長老", "劍修", "傭兵").map { it to "古風" } + listOf("占卜師", "魔王", "鍊金術師", "騎士", "魔法師", "王族").map { it to "奇幻" }).toMap()
+    val ERAS = listOf("現代", "古風", "奇幻", "自訂")
     /** R4: the four colours traits are sorted by (社交綠、脾氣紅、起居橘、做事藍) */
     fun groupOf(cat: TraitCat): String = when (cat) { TraitCat.SOCIAL -> "社交"; TraitCat.FEEL -> "脾氣"; TraitCat.LIFE -> "起居"; else -> "做事" }
     val GROUPS = listOf("社交", "脾氣", "起居", "做事")

@@ -449,7 +449,7 @@ class UiTest {
         assertEquals(before + 1, sim.society.pending(p1).size); assertTrue(sim.society.pending(p1).last().contains("@t${spot.first},${spot.second}"))
         frames(a, 10); shot("world-queue", frames(a, 1, scale = 2f))
         // the queue: ✕ cancels one; tapping the one you direct = their own menu (clear, stop, go out…)
-        val n0 = sim.society.pending(p1).size; assertTrue(a.tapZone("q:${n0 - 1}")); assertEquals(n0 - 1, sim.society.pending(p1).size)
+        val n0 = sim.society.pending(p1).size; assertTrue(a.tapZone("q:${n0 - 1}")); frames(a, 20); assertTrue(a.tapZone("row:cancel")); assertEquals(n0 - 1, sim.society.pending(p1).size)
         ws.menuPerson(p1, p1, 180f, 400f); frames(a, 15); assertTrue(pie().ring.any { it.zh == "停下來" }); assertTrue(pie().pick("清空排程")); frames(a, 2); assertTrue(sim.society.pending(p1).isEmpty())
         // the sky above the house: the environment, recorded
         ws.tapScene(180f, a.insetTop + 90f); frames(a, 15); assertTrue(a.overlay is PieMenu); assertEquals("天空", pie().title)
@@ -523,10 +523,10 @@ class UiTest {
         // what life leaves behind
         val bed = sim.house.pieces.indices.first { sim.house.pieces[it].kind.startsWith("bed") }; sim.life.things[sim.pieceKey(bed)] = "messy"
         sim.house.pieces.indices.firstOrNull { sim.house.pieces[it].kind == "shelf" }?.let { sim.life.things[sim.pieceKey(it)] = "out" }
-        sim.life.soc.dishes = 2; val p = sim.life.people[0]
+        sim.life.soc.dishes = 2; sim.life.soc.pot = null; val p = sim.life.people[0]
         val spots = (0 until sim.house.w).flatMap { x -> (0 until sim.house.h).map { x to it } }.filter { (x, y) -> sim.grid.walkable(x, y) && sim.house.roomAt(x, y)?.id == sim.roomOf(p) }
         for ((i, k) in listOf("wrapper", "book", "cup").withIndex()) spots.getOrNull(i * 2 + 1)?.let { (x, y) -> sim.life.litter += app.ocshimeji.sim.life.Litter(k, x, y) }
-        assertEquals("messy", sim.stateOf(bed)); assertEquals("dishes", sim.stateOf(piece("table"))); frames(a, 5); shot("r5-states", frames(a, 1, scale = 2f))
+        assertEquals("messy", sim.stateOf(bed)); assertTrue(sim.stateOf(piece("table")) in setOf("dishes", "food")); frames(a, 5)   /* food while someone is still eating breakfast */; shot("r5-states", frames(a, 1, scale = 2f))
         // night: curtains drawn, a lamp on where someone is awake, the street lamp
         sim.env.setPaused(false); at(21.5); assertEquals("closed", sim.stateOf(piece("window"))); shot("r5-night", frames(a, 1, scale = 2f))
         // the seasons and the rain outside

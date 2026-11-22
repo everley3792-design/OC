@@ -37,7 +37,7 @@ abstract class Page(val title: String) : Screen() {
         g.save(); g.clip(0f, listTop, W, bottom - listTop); g.translate(0f, -sc); app.zoneDy = -sc
         var y = listTop + 6 + header(g, G, listTop + 6, W - G * 2)
         val rs = rows()
-        if (rs.isEmpty()) g.text(empty, W / 2, y + 60, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER)
+        if (rs.isEmpty() && empty.isNotEmpty()) { Widgets.emptyArt(g, t, W / 2, y + 40); for ((i, l) in Widgets.wrap(g, empty, Dim.FS_M, W - 64, 3).withIndex()) g.text(l, W / 2, y + 100 + i * 24f, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER) }
         for (r in rs) {
             val sink = if (app.pressed == r.id) Dim.LIP - 1 else 0f
             Widgets.card(g, t, G, y, W - G * 2, 64f, 18f, t.surface, t.lip, sink)

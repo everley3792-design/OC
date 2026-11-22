@@ -70,6 +70,8 @@ class Life(
     // ---- R5: how things look — states that stay (a messy bed, a book left out; key "kind@x,y") and things left on the floor
     val things: MutableMap<String, String> = mutableMapOf(),
     val litter: MutableList<Litter> = mutableListOf(),
+    // ---- 1.5.1: the phone's time-zone offset when the world was last watched (minutes; real time follows the phone's wall clock)
+    var tzOffset: Int = Int.MIN_VALUE,
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -128,6 +130,8 @@ class Person(
     val today: MutableMap<String, Int> = mutableMapOf(),
     /** R3: your next orders, after `order` (at most 5 in all, each can be cancelled) */
     val queue: MutableList<String> = mutableListOf(),
+    /** 1.5.1 (Q-07): catchphrases picked up from someone they spend a lot of time with (at most 3) */
+    val borrowed: MutableList<String> = mutableListOf(),
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult

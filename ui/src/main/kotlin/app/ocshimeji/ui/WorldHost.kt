@@ -12,7 +12,7 @@ import kotlin.math.max
  * viewers). The home screen and the desktop service in the same process share an `Open` world: whoever shows it drives the clock
  * (the screen while it is visible, otherwise the desktop), events go to every listener, and the world is saved by one owner.
  */
-class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -> Double) {
+class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -> Double, val tzOffset: () -> Int = { java.util.TimeZone.getDefault().getOffset(now()) / 60000 }) {
     class Open(val slotId: String, var world: World, val sim: LifeSim) {
         var users = 0
         /** the home screen is visible: it drives the clock, the desktop only watches */
@@ -61,6 +61,8 @@ class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -
     fun drive(o: Open, dt: Float, who: String) {
         if (who == "desk" && o.screenActive) return
         o.playT += dt; o.saveT += dt
+        val tz = tzOffset(); val life = o.sim.life   /* 1.5.1 T2: the phone changed time zone (travel, daylight saving) */
+        if (life.tzOffset == Int.MIN_VALUE) life.tzOffset = tz else if (life.tzOffset != tz) { o.sim.zoneShift(tz - life.tzOffset); life.tzOffset = tz }
         o.sim.hold = o.sim.life.clockMode == "REAL" && o.sim.life.minute > realMinute() + 1   /* R1 T1: ahead of the phone → wait for it */
         o.sim.update(dt); o.sim.life.lastRealMs = now()
         if (o.sim.events.isNotEmpty()) { val ev = ArrayList(o.sim.events); o.sim.events.clear(); for (e in ev) for (l in o.listeners.toList()) l(e) }

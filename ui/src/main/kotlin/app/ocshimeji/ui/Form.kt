@@ -38,6 +38,8 @@ class Form(val app: UiApp, val g: Gfx, val x: Float, val w: Float, var y: Float)
         Widgets.round(g, app, "step:$key:+", x + w - 22, y + 28, 18f, "plus"); y += 64
     }
     /** a bar from −1 to 1 (or 0..1) with − / + — for personality axes and tendencies */
+    /** 1.5.1: where each slider's bar is (x, width, signed) so the screen can drag it */
+    var bars: MutableMap<String, FloatArray>? = null
     fun meter(key: String, left: String, right: String, v: Float, signed: Boolean = true) {
         Widgets.card(g, t, x, y, w, 56f, 18f, t.surface2, t.surface2)
         g.text(left, x + 14, y + 22, Dim.FS_S - 1, t.ink2); g.text(right, x + w - 132, y + 22, Dim.FS_S - 1, t.ink2, FontKind.UI, Align.RIGHT)
@@ -45,6 +47,7 @@ class Form(val app: UiApp, val g: Gfx, val x: Float, val w: Float, var y: Float)
         g.fillRound(bx, by, bw, 10f, 5f, t.lip); val k = if (signed) (v + 1) / 2 else v
         g.fillCircle(bx + bw * k.coerceIn(0f, 1f), by + 5, 8f, t.accent)
         if (signed) g.fillRect(bx + bw / 2 - 1, by - 2, 2f, 14f, t.ink3)
+        bars?.let { it[key] = floatArrayOf(bx, bw, if (signed) 1f else 0f); app.zone("meter:$key", bx - 12, y + 8, bw + 24, 48f) }
         Widgets.round(g, app, "step:$key:-", x + w - 104, y + 28, 18f, "minus"); Widgets.round(g, app, "step:$key:+", x + w - 22, y + 28, 18f, "plus"); y += 64
     }
     fun toggle(key: String, label: String, on: Boolean, sub: String? = null) {

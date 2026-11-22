@@ -88,6 +88,8 @@ object Migrate {
                     if (call == "你" || call.isBlank()) p else JsonObject(p.toMutableMap().apply { put("spec", JsonObject(spec.toMutableMap().apply { put("address", buildJsonObject { put("close", JsonPrimitive(call)) }) })) }) })) })) }) },
         /* 11 → 12 (R5): how things look — kept states (a messy bed, a book left out) and things on the floor; an old home starts neat */
         11 to { w -> w },
+        /* 12 → 13 (1.5.1): picked-up catchphrases (none yet) and the phone's time-zone offset (unknown until the next look) */
+        12 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

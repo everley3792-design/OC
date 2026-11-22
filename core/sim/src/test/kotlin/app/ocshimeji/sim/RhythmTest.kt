@@ -23,7 +23,7 @@ class RhythmTest {
         val cooks = starts.count { it.first == "cook" }; val lateNaps = starts.count { (it.first == "nap" || it.first == "sofanap") && it.second >= 20.0 }
         val nightCook = starts.count { it.first == "cook" && (it.second < 6.0 || it.second >= 22.0) }
         val msg = "kinds=${kinds.size} $kinds cooks=$cooks lateNaps=$lateNaps nightCook=$nightCook"
-        assertTrue(kinds.size >= 18, msg); assertTrue(cooks <= 7 * 4, msg)   /* about three meals a day for the household (was ~7.7) */; assertTrue(lateNaps == 0, msg); assertTrue(nightCook == 0, msg)
+        assertTrue(kinds.size >= 25, msg); assertTrue(cooks <= 7 * 4, msg)   /* about three meals a day for the household (was ~7.7) */; assertTrue(lateNaps == 0, msg); assertTrue(nightCook == 0, msg)
         assertTrue(life.people.map { s.wakeOf(it) }.toSet().size >= 2, "own hours: ${life.people.map { s.wakeOf(it) }}")
     }
 }

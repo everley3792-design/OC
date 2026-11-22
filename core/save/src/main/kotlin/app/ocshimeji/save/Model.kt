@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
  */
 
 const val LIBRARY_VERSION = 1
-const val WORLD_VERSION = 12
+const val WORLD_VERSION = 13
 
 /** a character as it sits in the library (its original) */
 @Serializable
@@ -53,8 +53,16 @@ data class LibChar(
     val voices: List<String> = emptyList(),
     /** the procedural motion layered on top (plan 12.6 程序動作層): breath, bounce, sway */
     val procedural: List<String> = listOf("breath", "bounce", "sway"),
+    /** D1 (1.5.1): accessories drawn over the picture — a ribbon, a hat… (no face building; a layer on top) */
+    val stickers: List<Sticker> = emptyList(),
 ) {
     fun specOf(): CharSpec = spec ?: CharSpec.fromWords(name, adult, traits, likes).copy(species = species)
+}
+
+/** one accessory on a character: which, nudged by (dx, dy) in heights from where it sits, and how big */
+@kotlinx.serialization.Serializable
+data class Sticker(val kind: String, val dx: Float = 0f, val dy: Float = 0f, val size: Float = 1f) {
+    companion object { val KINDS = linkedMapOf("ribbon" to "蝴蝶結", "hat" to "小帽子", "crown" to "皇冠", "flower" to "小花", "star" to "星星髮夾", "headphones" to "耳機", "glasses" to "眼鏡", "scarf" to "圍巾") }
 }
 
 /** an animation: frames (library-relative image paths), each frame's time, looping or once */
