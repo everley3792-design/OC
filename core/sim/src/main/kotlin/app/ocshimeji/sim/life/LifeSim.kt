@@ -154,6 +154,7 @@ class LifeSim(val life: Life) {
     val drama by lazy { Drama(this) }
     /** 1.8.0: messages, photos, notes, time capsules, house rules, room requests, little games, their own lines */
     val you by lazy { WithYou(this) }
+    val days by lazy { Days(this) }
 
     init {
         for (p in life.people) if (p.act != null && p.actPiece >= 0) { reserved["${p.actPiece}:${p.actSlot}"] = p.id; body(p.id).arrivedAct = true; body(p.id).pose = Acts[p.act!!]?.pose ?: Pose.STAND }
@@ -205,7 +206,7 @@ class LifeSim(val life: Life) {
         for (p in life.people) tick(p, dm, dt)
         society.step(true, dt)
         townLife.step(true)
-        drama.step(true); you.step(true)
+        drama.step(true); you.step(true); days.step(true)
         if (life.arriving && arrived.size >= life.people.size && life.people.all { body(it.id).path == null }) life.arriving = false
     }
 
@@ -568,6 +569,7 @@ class LifeSim(val life: Life) {
     private fun hooks(p: Person, a: Activity, r: Rng) {
         if (a.id == "cook" || a.id == "bake") society.cooked(p, a, r)
         if (a.id == "meal") society.ate(p)
+        if (a.id == "framelook") days.frameLook(p)
         if (a.id == "dishes" || a.id == "tidy") society.chore(p, a.id)
         if (a.id == "sleep") { society.woke(p); if (!catching) journal.woke(p) }
         things(p, a)
@@ -844,7 +846,7 @@ class LifeSim(val life: Life) {
             life.minute += dm
             for (p in life.people) { needs(p, dm); moods(p, live = false) }
             society.step(false, 0f)
-            drama.step(false); you.step(false)
+            drama.step(false); you.step(false); days.step(false)
         }
         catching = false
         for (p in life.people) { val a = p.act?.let { Acts[it] }; if (a != null && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }

@@ -45,7 +45,8 @@ object Goods {
         Good("f:sofa", "沙發", "furniture", 150, furniture = "sofa"), Good("f:table", "餐桌", "furniture", 100, furniture = "table"), Good("f:shelf", "書架", "furniture", 80, furniture = "shelf"),
         Good("f:plant", "盆栽", "furniture", 30, furniture = "plant"), Good("f:lamp", "落地燈", "furniture", 45, furniture = "lamp"), Good("f:rug", "地毯", "furniture", 60, furniture = "rug"),
         Good("f:tv", "電視", "furniture", 180, furniture = "tv"), Good("f:mirror", "鏡子", "furniture", 50, furniture = "mirror"), Good("f:bench", "長椅", "furniture", 70, furniture = "bench"),
-        Good("f:garden", "小菜園", "furniture", 90, furniture = "garden"), Good("f:line", "曬衣架", "furniture", 40, furniture = "line"))
+        Good("f:garden", "小菜園", "furniture", 90, furniture = "garden"), Good("f:line", "曬衣架", "furniture", 40, furniture = "line"),
+        Good("f:frame", "回憶相框", "furniture", 35, furniture = "frame"))
     /** what the garden gives (plan G-10): not sold in shops, only grown */
     val FARM = listOf(Good("v:tomato", "小番茄", "food", 6, "酸", 12f), Good("v:carrot", "紅蘿蔔", "food", 5, "甜", 14f), Good("v:pea", "豌豆", "food", 5, "鹹", 12f), Good("v:pumpkin", "南瓜", "food", 9, "甜", 30f))
     /** what the park gives (plan I-04): found, never bought */
@@ -70,7 +71,9 @@ object Goods {
 /** places in town (plan H-01): the plaza, the grocery, the furniture shop, the café, the park */
 data class Place(val id: String, val zh: String, val x: Float, val y: Float)
 data class TownAct(val id: String, val zh: String, val place: String, val min: Int, val per: Map<Need, Float>, val cost: Int = 0, val outdoor: Boolean = false, val pose: Pose = Pose.STAND,
-                   val weather: Set<String> = emptySet(), val season: Set<String> = emptySet(), val tags: Set<String> = emptySet(), val line: String = "")
+                   val weather: Set<String> = emptySet(), val season: Set<String> = emptySet(), val tags: Set<String> = emptySet(), val line: String = "",
+                   /** 1.9.0 H-07: only in the evening (from 18:30) */
+                   val night: Boolean = false)
 object Town {
     /** positions on the town picture (0..1 of its width / height) */
     val PLACES = listOf(Place("plaza", "廣場", 0.5f, 0.55f), Place("grocery", "雜貨店", 0.18f, 0.3f), Place("furniture", "家具店", 0.5f, 0.22f), Place("cafe", "咖啡館", 0.82f, 0.3f), Place("park", "公園", 0.25f, 0.8f))
@@ -87,6 +90,10 @@ object Town {
         TownAct("snowman", "堆雪人", "park", 30, mapOf(Need.FUN to 26f), outdoor = true, pose = Pose.TIDY, weather = setOf("snow"), tags = setOf("active"), line = "雪人要有紅蘿蔔鼻子！"),
         TownAct("puddle", "踩水坑", "park", 15, mapOf(Need.FUN to 20f, Need.HYGIENE to -15f), outdoor = true, pose = Pose.HAPPY, weather = setOf("rain"), tags = setOf("active"), line = "啪嗒！啪嗒！"),
         TownAct("leaves", "撿落葉", "park", 20, mapOf(Need.FUN to 16f), outdoor = true, pose = Pose.TIDY, season = setOf("autumn"), tags = setOf("dreamy")),
+        /* 1.9.0 H-07: the town at night */
+        TownAct("stars", "看星星", "plaza", 30, mapOf(Need.FUN to 20f, Need.COMFORT to 8f), outdoor = true, pose = Pose.LOOK, weather = setOf("sunny", "cloudy"), tags = setOf("dreamy"), line = "今天的星星好多。", night = true),
+        TownAct("latecafe", "吃宵夜", "cafe", 30, mapOf(Need.FOOD to 30f, Need.FUN to 10f, Need.SOCIAL to 10f), cost = 10, pose = Pose.EAT, tags = setOf("food"), line = "這麼晚了，來一碗熱湯吧。", night = true),
+        TownAct("nightwalk", "夜裡散步", "park", 25, mapOf(Need.FUN to 14f, Need.COMFORT to 10f), outdoor = true, pose = Pose.WALK, tags = setOf("dreamy"), line = "路燈把影子拉得好長。", night = true),
         TownAct("blossom", "看花", "park", 25, mapOf(Need.FUN to 18f, Need.COMFORT to 8f), outdoor = true, pose = Pose.LOOK, season = setOf("spring"), tags = setOf("dreamy")),
     ).associateBy { it.id }
     /** a gathering walk in the park (plan I-04) and the festival at the plaza (plan H-04) */
@@ -102,7 +109,12 @@ object Town {
     const val TRAVEL = 15.0          /* game minutes from the door to town */
     fun place(id: String) = PLACES.first { it.id == id }
     fun act(id: String): TownAct? = ACTS[id] ?: when (id) { "gather" -> GATHER; "festival" -> FEST; else -> null }
-    fun acts(weather: String, season: String, day: Long = -1) = (ACTS.values + (if (weather != "rain") listOf(GATHER) else emptyList()) + (if (day >= 0 && festival(day) != null) listOf(FEST) else emptyList())).filter { (it.weather.isEmpty() || weather in it.weather) && (it.season.isEmpty() || season in it.season) && !(it.outdoor && weather == "rain" && it.id != "puddle") }
+    /** what can be done now; `hour` ≥ 18.5 = the evening acts only, otherwise none of them (−1 = daytime) */
+    fun acts(weather: String, season: String, day: Long = -1, hour: Double = -1.0): List<TownAct> {
+        val evening = hour >= 18.5
+        val all = ACTS.values.filter { it.night == evening } + (if (weather != "rain" && !evening) listOf(GATHER) else emptyList()) + (if (day >= 0 && festival(day) != null) listOf(FEST) else emptyList())
+        return all.filter { (it.weather.isEmpty() || weather in it.weather) && (it.season.isEmpty() || season in it.season) && !(it.outdoor && weather == "rain" && it.id != "puddle") }
+    }
 
     /** town events (plan 13.9, first 25): two residents at the same place */
     data class TownEvent(val id: String, val zh: String, val place: String, val script: String, val like: Int = 2, val weather: Set<String> = emptySet(), val season: Set<String> = emptySet())

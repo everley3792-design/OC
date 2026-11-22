@@ -988,9 +988,11 @@ class Society(private val sim: LifeSim) {
         val n = life.people.count { !it.desk }
         if (n < 2 || (a.id == "cook" && !mealTime())) return false
         val sweet = a.id == "bake"
-        val pool = Dishes.ALL.values.filter { it.sweet == sweet && it.skill <= p.spec.skill("料理") + 1 }
-        val dish = pool.maxByOrNull { (p.spec.tastes[it.taste] ?: 0) * 2 + r.nextFloat() } ?: return false
-        st.pot = Pot(dish.id, p.id, n, (1 + p.spec.skill("料理") / 2 + r.nextInt(2)).coerceIn(1, 4), life.minute)
+        val rec = sim.days.recipeFor(sweet)   /* 1.9.0 I-03: what is in storage makes a recipe (no dice drawn) */
+        val pool = Dishes.ALL.values.filter { it.sweet == sweet && it.skill <= p.spec.skill("料理") + 1 && !it.recipe }
+        val dish = (rec?.let { Dishes.ALL[it.dish] } ?: pool.maxByOrNull { (p.spec.tastes[it.taste] ?: 0) * 2 + r.nextFloat() }) ?: return false
+        if (rec != null) sim.days.useRecipe(p, rec)
+        st.pot = Pot(dish.id, p.id, n, (1 + p.spec.skill("料理") / 2 + (if (rec != null) 1 else r.nextInt(2))).coerceIn(1, 4), life.minute)
         sim.say(p, if (sweet) "${dish.zh}做好了，大家來吃！" else "飯煮好了，大家來吃${dish.zh}！")
         sim.log(p, "煮了一大鍋${dish.zh}給大家", kind = "life", weight = 2)
         return true

@@ -37,23 +37,25 @@ class TownLife(private val sim: LifeSim) {
     internal fun outingCand(p: Person, a: Activity, dist: IntArray?, r: Rng, abstract: Boolean, isNight: Boolean, out: ArrayList<LifeSim.Cand>) {
         val h = sim.hour
         val fest = Town.festival(Weather.dayOf(life.minute)) != null
-        if ((isNight && !fest) || h < 8 || h > (if (fest) 20.0 else 18.5) || life.arriving) return
+        if ((isNight && !fest) || h < 8 || h > 20.0 || life.arriving) return   /* 1.9.0 H-07: the evening town until 20:00 */
         val festEve = fest && h >= 15.5
         if (life.minute - (p.recent["outing"] ?: -1e9) < (if (festEve) 90.0 else 8 * 60.0)) return   /* a festival evening: out again, even after a morning trip */
         var (g, why) = sim.gain(p, a); val (k, pw) = sim.appeal(p, a)
         if (fest && h >= 15.5) { g *= 3f; why = listOf("今天是${Town.festival(Weather.dayOf(life.minute))!!.zh}") + why }
         g *= k * 0.8f * (1f + 0.3f * p.spec.axis(Axis.OUTGOING))
+        val evening = !fest && h > 18.5
+        if (evening) g *= 0.5f * (1f + 0.5f * p.spec.axis(Axis.OUTGOING))   /* 1.9.0 H-07: an evening walk, the outgoing ones more often */
         if (sim.house.id == "studio") g *= 1.5f                      /* plan 12.3: studio residents go out more */
         if (sim.weather() == "rain" && !p.spec.weather.contains("雨")) g *= if (festEve) 0.8f else 0.35f
         if (p.wish?.let { !it.done && it.kind == "eat" } == true) g *= 1.2f
         val e = sim.house.entrance; val d = if (dist != null) dist[e.y * sim.grid.w + e.x] else 0
         if (d < 0) return
-        out += LifeSim.Cand(a, -1, -1, e.x + 0.5f, e.y + 0.5f, g / (1f + (if (abstract) 0 else d) / 14f) * (0.85f + 0.3f * r.nextFloat()), listOf("想出門去小鎮走走") + why + listOfNotNull(pw))
+        out += LifeSim.Cand(a, -1, -1, e.x + 0.5f, e.y + 0.5f, g / (1f + (if (abstract) 0 else d) / 14f) * (0.85f + 0.3f * (if (evening) Rng.of(life.seed, "evening:${p.id}:${(life.minute / 10).toLong()}") else r).nextFloat()), listOf("想出門去小鎮走走") + why + listOfNotNull(pw))
     }
     private fun rngFor(live: Boolean, p: Person) = if (live) sim.rng else Rng.of(life.seed, "town:${(life.minute / 10).toLong()}:${p.id}")
     /** what to do in town: needs, personality, money, the weather and the season */
     private fun pickAct(p: Person, r: Rng, exclude: String = ""): TownAct {
-        val acts = Town.acts(sim.weather(), sim.season(), Weather.dayOf(life.minute)).filter { it.place != exclude }
+        val acts = Town.acts(sim.weather(), sim.season(), Weather.dayOf(life.minute), if (sim.hour >= 18.5) sim.hour else -1.0).filter { it.place != exclude }.ifEmpty { listOf(Town.act("bench")!!) }
         return r.weighted(acts) { a ->
             var w = 1.0
             for ((n, v) in a.per) if (v > 0) w += (100 - p.need(n)) / 50.0 * (v / 20.0)
@@ -81,7 +83,7 @@ class TownLife(private val sim: LifeSim) {
     /** everyone in town moves on (called every step live, every chunk away) */
     internal fun step(live: Boolean) {
         val dm = if (lastMinute.isNaN()) 0.0 else max(0.0, life.minute - lastMinute); lastMinute = life.minute
-        for (p in life.people) { val o = p.out ?: continue; outing(p, o, live) }
+        for (p in life.people) { val o = p.out ?: continue; if (o.stage == "trip") continue; outing(p, o, live) }   /* a day trip is `Days`' */
         crafting(dm)
         weatherEvents(live)
         if (live) festivalCall()
@@ -97,7 +99,7 @@ class TownLife(private val sim: LifeSim) {
     }
     private fun outing(p: Person, o: Outing, live: Boolean) {
         val r = rngFor(live, p); val now = life.minute
-        val curfew = if (Town.festival(Weather.dayOf(now)) != null) 21.5 else 20.5
+        val curfew = if (Town.festival(Weather.dayOf(now)) != null) 21.5 else if (Town.act(o.act)?.night == true) 22.0 else 20.5
         if (sim.hour >= curfew && o.stage != "back") { o.stage = "back"; o.until = now + Town.TRAVEL }   /* home before it is late */
         when (o.stage) {
             "go" -> if (now >= o.until) { val a = Town.act(o.act)!!
@@ -122,7 +124,7 @@ class TownLife(private val sim: LifeSim) {
             "browse" -> if (p.ask == null && r.chance(0.3)) { val want = Goods.FURNITURE.filter { it.furniture in setOf("plant", "lamp", "rug", "shelf", "bench") }.let { r.pick(it) }
                 p.ask = Ask("furniture", want.furniture, "家具店有一個${want.zh}好可愛……可以放在我的房間嗎？", life.minute) }
             "board" -> town.news.firstOrNull()?.let { sim.log(p, "在布告欄看到：$it", kind = "life", weight = 1) }
-            "gather" -> { val g = r.pick(Goods.wildFor(sim.season())); eco.move(g.id, 1, "${p.name}在公園撿到${g.zh}", p.id); sim.journal.did(p.id, "gather"); sim.say(p, "撿到${g.zh}了！"); sim.log(p, "在公園撿到${g.zh}", kind = "life", weight = 1) }
+            "gather" -> { val g = r.pick(Goods.wildFor(sim.season())); eco.move(g.id, 1, "${p.name}在公園撿到${g.zh}", p.id); sim.journal.did(p.id, "gather"); sim.say(p, "撿到${g.zh}了！"); sim.log(p, "在公園撿到${g.zh}", kind = "life", weight = 1); sim.days.found(p, g.id) }
             "festival" -> { val f = Town.festival(Weather.dayOf(life.minute)); sim.addMood(p, "festival"); sim.journal.did(p.id, "festival"); f?.let { sim.journal.see("fe:" + it.id, 2) }
                 val good = f?.let { Goods.ALL[it.good] }; if (good != null && eco.buy(good.id, 1, good.price, "${p.name}在${f.zh}買了${good.zh}", p.id)) sim.log(p, "在${f.zh}買了${good.zh}", kind = "life", weight = 1)
                 sim.log(p, "逛了${f?.zh ?: "祭典"}：${f?.desc ?: ""}", kind = "event", weight = 2) }
@@ -159,7 +161,7 @@ class TownLife(private val sim: LifeSim) {
         sim.addMood(p, "town"); sim.say(p, "我回來了！"); sim.log(p, "從小鎮回家了", kind = "life", weight = 1); p.recent["home"] = life.minute
     }
     /** who is in town now, and where (the town screen) */
-    fun inTown(): List<Pair<Person, Outing>> = life.people.mapNotNull { p -> p.out?.let { p to it } }
+    fun inTown(): List<Pair<Person, Outing>> = life.people.mapNotNull { p -> p.out?.takeIf { it.stage != "trip" }?.let { p to it } }
 
     // ================= weather events (plan D-06) =================
     private fun weatherEvents(live: Boolean) {

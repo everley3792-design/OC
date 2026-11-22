@@ -140,12 +140,16 @@ object Gifts {
 }
 
 /** a dish cooked for everyone (plan B-06); `taste` is matched against each eater's tastes */
-data class Dish(val id: String, val zh: String, val taste: String, val sweet: Boolean = false, val skill: Int = 0)
+data class Dish(val id: String, val zh: String, val taste: String, val sweet: Boolean = false, val skill: Int = 0, val recipe: Boolean = false)
 object Dishes {
     val ALL = listOf(
         Dish("curry", "咖哩飯", "辣"), Dish("omelet", "蛋包飯", "鹹"), Dish("soup", "蔬菜湯", "鹹"), Dish("noodle", "炒麵", "鹹"), Dish("hotpot", "小火鍋", "辣", skill = 2),
         Dish("salad", "水果沙拉", "酸"), Dish("bitter", "苦瓜炒蛋", "苦", skill = 1), Dish("pancake", "鬆餅", "甜", sweet = true), Dish("cake", "草莓蛋糕", "甜", sweet = true, skill = 3),
         Dish("pudding", "焦糖布丁", "甜", sweet = true, skill = 1),
+        /* 1.9.0 I-03: made only from a recipe, with what is in storage */
+        Dish("r:pumpkinsoup", "南瓜濃湯", "甜", recipe = true), Dish("r:tomatoegg", "番茄炒蛋", "酸", recipe = true), Dish("r:carrotcake", "紅蘿蔔蛋糕", "甜", sweet = true, recipe = true),
+        Dish("r:peasoup", "豌豆濃湯", "鹹", recipe = true), Dish("r:gardenstew", "菜園燉菜", "鹹", recipe = true), Dish("r:berryjam", "野莓果醬吐司", "酸", sweet = true, recipe = true),
+        Dish("r:acorncookie", "橡實餅乾", "甜", sweet = true, recipe = true), Dish("r:honeytoast", "蜂蜜厚片", "甜", sweet = true, recipe = true),
     ).associateBy { it.id }
 }
 

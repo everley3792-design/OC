@@ -33,6 +33,8 @@ object Furniture {
         FurnitureKind("lamp", "落地燈", 1, 1, true, listOf()),
         FurnitureKind("garden", "菜園", 2, 1, true, listOf(Slot(1f, 1.45f, Spot.STAND))),
         FurnitureKind("line", "曬衣架", 2, 1, true, listOf(Slot(1f, 1.45f, Spot.STAND))),
+        /* 1.9.0 G-08: a frame on the wall showing your latest photo; they stop to look at it */
+        FurnitureKind("frame", "回憶相框", 1, 1, false, listOf(Slot(0.5f, 1.3f, Spot.STAND)), againstWall = true),
         FurnitureKind("bench", "長椅", 2, 1, true, listOf(Slot(0.5f, 0.9f, Spot.SIT), Slot(1.5f, 0.9f, Spot.SIT)), actsAs = setOf("sofa")),
     ).associateBy { it.id }
     /** the player's furniture of the open world ("item:<id>"), registered when the world opens (content data, like the built-in table) */
