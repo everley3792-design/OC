@@ -41,19 +41,17 @@ object Interactions {
     val ALL: List<Interaction> = buildList {
         // ---- you → a resident
         add(you("card", "看看", On.PERSON, "你", "eye")); add(you("pet", "摸摸", On.PERSON, "你", "heart")); add(you("feed", "給點心", On.PERSON, "你", "food"))
-        add(you("talk", "聊天", On.PERSON, "你", "chat")); add(you("rps", "猜拳", On.PERSON, "你", "game")); add(you("hide", "躲貓貓", On.PERSON, "你", "eye"))
-        add(you("control", "操控", On.PERSON, "你", "move")); add(you("worry", "處理煩惱", On.PERSON, "你", "drop")); add(you("ask", "回應請求", On.PERSON, "你", "mail"))
+        add(you("talk", "聊天", On.PERSON, "你", "chat")); add(you("control", "操控", On.PERSON, "你", "move")); add(you("worry", "處理煩惱", On.PERSON, "你", "drop")); add(you("ask", "回應請求", On.PERSON, "你", "mail"))
         add(you("mem", "記憶", On.PERSON, "你", "list")); add(you("desk", "到手機桌面", On.PERSON, "你", "phone")); add(you("edit", "編輯設定", On.PERSON, "你", "edit"))
         add(you("follow", "鏡頭跟著", On.PERSON, "你", "eye")); add(you("rels", "關係", On.PERSON, "你", "people"))
         /* 1.8.0 「和你」: a photo, two little games, your note, their name card */
-        add(you("photo", "拍照", On.PERSON, "和你", "image")); add(you("catch", "接點心", On.PERSON, "和你", "food")); add(you("flip", "翻牌", On.PERSON, "和你", "game"))
+        add(you("photo", "拍照", On.PERSON, "和你", "image")); 
         add(you("note", "寫筆記", On.PERSON, "和你", "edit")); add(you("namecard", "名片", On.PERSON, "和你", "star"))
         // ---- the resident you picked, tapped again
         add(you("stop", "停下來", On.SELF, "你", "close")); add(you("out", "出門去小鎮", On.SELF, "你", "town")); add(you("selfcard", "人物卡", On.SELF, "你", "eye", "card"))
         add(you("unselect", "不操控了", On.SELF, "你", "back")); add(you("clear", "清空排程", On.SELF, "你", "undo"))
         // ---- you → furniture, the floor, the sky
-        add(you("info", "這是什麼", On.PIECE, "你", "eye")); add(you("move", "移動它", On.PIECE, "你", "move")); add(you("seek", "找找看", On.PIECE, "你", "eye"))
-        /* 1.5.1: your own hand on things (R5 looks) */
+        add(you("info", "這是什麼", On.PIECE, "你", "eye")); add(you("move", "移動它", On.PIECE, "你", "move")); /* 1.5.1: your own hand on things (R5 looks) */
         add(you("lamp", "開燈／關燈", On.PIECE, "你", "lamp")); add(you("curtain", "拉窗簾", On.PIECE, "你", "window")); add(you("makebed", "幫忙鋪床", On.PIECE, "你", "bed")); add(you("book", "把書放回去", On.PIECE, "你", "book"))
         add(you("place", "擺家具", On.FLOOR, "你", "plus")); add(you("decor", "壁紙地板", On.FLOOR, "你", "image")); add(you("call", "叫誰過來", On.FLOOR, "你", "people")); add(you("pickup", "撿起來", On.FLOOR, "你", "broom")); add(you("group", "拍全家福", On.FLOOR, "你", "image", "photo"))
         add(you("w:", "天氣自然", On.SKY, "天氣", "sun"))
@@ -79,7 +77,7 @@ object Interactions {
                 "worry" -> if (target.worry == null) null else Choice(ia, gone)
                 "ask" -> if (target.ask == null) null else Choice(ia, gone)
                 "desk" -> Choice(ia, if (target.out != null) gone else null)
-                "rps", "hide", "pet", "feed", "talk", "catch", "flip", "photo" -> Choice(ia, gone ?: if (sim.asleep(target) && ia.op != "pet") "${target.name}在睡覺" else null)
+                "pet", "feed", "talk", "photo" -> Choice(ia, gone ?: if (sim.asleep(target) && ia.op != "pet") "${target.name}在睡覺" else null)
                 else -> Choice(ia, null)
             } }
         if (actor === target) return ALL.filter { it.on == On.SELF }.map { ia ->
@@ -107,7 +105,7 @@ object Interactions {
         val piece = sim.house.pieces.getOrNull(pi) ?: return emptyList()
         val acts = ALL.filter { it.on == On.PIECE && it.by == "them" && piece.kind in it.kinds }
         if (actor == null) return ALL.filter { it.on == On.PIECE && it.by == "you" }.mapNotNull { ia ->
-            when (ia.op) { "seek" -> if (sim.life.people.none { sim.society.hiding(it.id) != null }) null else Choice(ia, null); "move" -> Choice(ia, if (piece.kind in sim.decorate.FIXED) "${Furniture.kind(piece.kind).zh}是固定的" else null)
+            when (ia.op) { "move" -> Choice(ia, if (piece.kind in sim.decorate.FIXED) "${Furniture.kind(piece.kind).zh}是固定的" else null)
                 "lamp" -> if (piece.kind == "lamp") Choice(ia, null) else null; "curtain" -> if (piece.kind == "window") Choice(ia, null) else null
                 "makebed" -> if (piece.kind == "bed" || piece.kind == "bed2") Choice(ia, if (sim.stateOf(pi) != "messy") "已經很整齊了" else null) else null
                 "book" -> if (piece.kind == "shelf") Choice(ia, if (sim.stateOf(pi) != "out") "書都在架上" else null) else null

@@ -96,7 +96,7 @@ class ScriptEditor(var s: ScriptDef) : Screen() {
         }
         title("新增積木"); chips(listOf("+say" to "＋台詞", "+pose" to "＋動作", "+fx" to "＋特效", "+res" to "＋結果") + (if (s.choice == null) listOf("+q" to "＋問你一個問題") else listOf("+opt" to "＋選項")))
         val probs = Scripts.problems(s)
-        if (probs.isNotEmpty()) probs.forEach { p -> Widgets.wrap(g, "還不能存：$p", Dim.FS_S, W - G * 2, 2).forEach { l -> g.text(l, G + 4, y + 14, Dim.FS_S, t.alert); y += 20 } }
+        if (probs.isNotEmpty()) probs.forEach { p -> Widgets.wrap(g, "還不能存：$p", Dim.FS_S, W - G * 2).forEach { l -> g.text(l, G + 4, y + 14, Dim.FS_S, t.alert); y += 20 } }
         if (s.romantic) { Widgets.wrap(g, "這個劇本和戀愛有關：只會發生在兩位成年角色之間，而且那個世界要打開「戀愛」。", Dim.FS_S, W - G * 2, 2).forEach { l -> g.text(l, G + 4, y + 14, Dim.FS_S, t.accentLip); y += 20 } }
         y += 10; if (s.id.isNotBlank()) { Widgets.button(g, app, "delete", G, y, W - G * 2, 48f, "刪除這個劇本", Kind.DANGER); y += 60 }
         g.restore(); app.zoneDy = 0f; scroll.max = maxOf(0f, y + 20 - (btnY - 12))

@@ -9,8 +9,6 @@ import app.ocshimeji.sim.house.Tenant
 import app.ocshimeji.sim.life.Acts
 import app.ocshimeji.sim.life.LifeSim
 import app.ocshimeji.sim.life.Need
-import app.ocshimeji.sim.social.CatchGame
-import app.ocshimeji.sim.social.FlipGame
 import app.ocshimeji.sim.social.HouseRules
 import app.ocshimeji.sim.social.Scenarios
 import kotlin.test.Test
@@ -48,20 +46,6 @@ class YouTest {
         val ph = s.you.takePhoto(ids, listOf("HAPPY", "SHY"), "warm", "polaroid", listOf("heart"), "第一張合照")!!
         assertEquals(ids, ph.who); assertEquals(listOf("HAPPY", "SHY"), ph.poses); assertTrue(log(s, "拍了一張照片")); assertTrue(s.person(ids[0])!!.moods.any { it.id == "photo" })
         assertNull(s.you.takePhoto(emptyList(), emptyList(), "none", "none", emptyList())); assertTrue(s.you.deletePhoto(ph.id)); assertTrue(s.life.you.photos.isEmpty())
-    }
-    @Test fun l03CatchTheSnacks() {
-        val g = CatchGame(7); var t = 0f
-        while (!g.over) { g.drops.filter { it.kind != 2 }.maxByOrNull { it.y }?.let { g.x += (it.x - g.x).coerceIn(-0.03f, 0.03f) }; g.step(1 / 30f); t += 1 / 30f }
-        assertTrue(g.score >= 10, "a good player catches plenty: ${g.score}"); val lazy = CatchGame(7); while (!lazy.over) lazy.step(1 / 30f); assertTrue(lazy.score < g.score, "standing still catches less")
-        val a = CatchGame(3); val b = CatchGame(3); repeat(300) { a.step(0.05f); b.step(0.05f) }; assertEquals(a.score, b.score, "the same seed, the same game")
-        val s = world(); val w0 = s.economy.wallet; val coins = s.you.reward("catch", "p1", g.score); assertEquals(w0 + coins, s.economy.wallet); assertTrue(s.economy.consistent()); assertTrue(log(s, "接點心"))
-    }
-    @Test fun l04CardFlipWithTheirFaces() {
-        val g = FlipGame(4, listOf("HAPPY", "SAD", "ANGRY", "SHY", "SLEEP", "LOOK")); assertEquals(12, g.cards.size)
-        val pos = g.cards.withIndex().groupBy({ it.value }, { it.index })
-        for ((_, ix) in pos) { assertEquals("", g.flip(ix[0])); assertEquals("pair", g.flip(ix[1])) }
-        assertTrue(g.over); assertEquals(3, g.stars(), "perfect memory: three stars")
-        val h = FlipGame(4, listOf("HAPPY", "SAD")); h.flip(0); val other = (1 until h.cards.size).first { h.cards[it] != h.cards[0] }; assertEquals("miss", h.flip(other))
     }
     @Test fun m04TheirOwnLines() {
         val s = world(listOf(A.copy(lines = listOf(CustomLine("早安，今天也要加油！", "morning"), CustomLine("嘿嘿，好舒服。", "petted"), CustomLine("隨便說說。", "any"))), C), hour = 8.0)
@@ -105,4 +89,12 @@ class YouTest {
         assertTrue(s.drama.decide(d.id, 0).contains("搬到")); assertNotEquals(before, a.room); assertTrue(log(s, "搬到了"))
     }
     private fun assertNotEquals(a: Any?, b: Any?) = assertTrue(a != b, "$a should differ from $b")
+    @Test fun r21TopicsFollowTheMoment() {   /* 2.1.0 (#07): what you can talk about comes from now, not a fixed list */
+        val s = world(hour = 10.0); val p = s.person("p1")!!
+        val day = s.society.topicsFor("p1").map { it.id }; assertTrue("how" in day && day.size in 2..6, "$day")
+        s.env.setWeather("rain"); p.affinity = 80; s.env.jumpTo(21.0)
+        val night = s.society.topicsFor("p1").map { it.id }; assertTrue("weather" in night && "night" in night, "$night"); assertTrue(night != day, "a different moment, different topics")
+        assertTrue(s.society.youChat("p1", "weather").isNotEmpty()); assertTrue(s.society.youChat("p1", night.first { it.startsWith("friend:") }).isNotEmpty())
+    }
+
 }

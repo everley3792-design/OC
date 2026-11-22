@@ -328,20 +328,17 @@ class UiTest {
         assertTrue(seen, "no close-up for the gift"); frames(a, 400)
         // the person card with today's status, wish, plan, narrative and what you can do
         tapCard(a, ws, p2.id); assertTrue(a.overlay is PersonCard); shot("person-card-m4", frames(a, 1, scale = 2f))
-        assertTrue(a.tapZone("card:talk")); frames(a, 15); assertTrue(a.tapZone("topic:最近怎麼樣")); frames(a, 5); shot("talk-sheet", frames(a, 1, scale = 2f)); a.back()
+        assertTrue(a.tapZone("card:talk")); frames(a, 15); assertTrue(a.tapZone("topic:how")); frames(a, 5); shot("talk-sheet", frames(a, 1, scale = 2f)); a.back()
         a.show(PersonCard(ws, p2.id)); frames(a, 15); assertTrue(a.tapZone("card:suggest")); frames(a, 15); assertTrue(a.tapZone("mode:suggest")); frames(a, 5); shot("suggest-sheet", frames(a, 1, scale = 2f)); a.back()
-        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:rps")); frames(a, 15); assertTrue(a.tapZone("rps:0")); frames(a, 15); shot("rps-sheet", frames(a, 1, scale = 2f))
-        var n = 0; while (a.hasZone("rps:1") && n++ < 10) { a.tapZone("rps:1"); frames(a, 12) }; assertTrue(a.tapZone("rps:done")); frames(a, 2)
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(!a.hasZone("card:rps") && !a.hasZone("card:hide"), "no minigames with you (2.1.0)"); a.back(); frames(a, 5)
         a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:log")); frames(a, 2); assertTrue(a.tapZone("card:more")); frames(a, 15); assertTrue(a.tapZone("row:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
         // hide-and-seek: search the furniture
-        assertTrue(sim.society.hideStart(p1.id)); frames(a, 5); shot("world-hide", frames(a, 1, scale = 2f))
-        val spot = sim.society.hiding(p1.id)!!; assertTrue(a.tapZone("hide:$spot")); frames(a, 5); assertNull(sim.society.hiding(p1.id))
         // observation mode: the strip, the speeds, fast-forward to the next notable thing
         sim.life.clockMode = "GAME"; sim.life.speed = 1.0
         assertTrue(a.tapZone("observe")); frames(a, 30); assertTrue(ws.observing); shot("world-observe", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("spd:60")); assertEquals(60.0, sim.life.speed)
         val logBefore = sim.life.log.size; assertTrue(a.tapZone("ff")); frames(a, 1); assertTrue(ws.fastForwarding)
-        n = 0; while (ws.fastForwarding && n++ < 200) frames(a, 1); assertTrue(!ws.fastForwarding && sim.life.log.size > logBefore)
+        var n = 0; while (ws.fastForwarding && n++ < 200) frames(a, 1); assertTrue(!ws.fastForwarding && sim.life.log.size > logBefore)
         while (a.overlay != null) { a.back(); frames(a, 1) }
         assertTrue(a.tapZone("observe")); frames(a, 5); assertTrue(!ws.observing); assertTrue(sim.life.speed <= 10.0, "30× / 60× end with observation")
         // the day-end card, the mailbox and the timeline
@@ -406,11 +403,11 @@ class UiTest {
         assertTrue(a.tapZone("diary")); frames(a, 10); assertTrue(a.screen is DiaryPage); shot("diary", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
         assertTrue(a.tapZone("ach")); frames(a, 10); val w0 = sim.economy.wallet; assertTrue(a.tapZone("a:town1")); assertTrue(sim.economy.wallet > w0); shot("achievements", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
         assertTrue(a.tapZone("book")); frames(a, 10); shot("book", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
-        assertTrue(a.tapZone("titles")); frames(a, 10); a.back(); frames(a, 2); assertTrue(a.tapZone("stats")); frames(a, 10); a.back(); frames(a, 2); a.back(); frames(a, 2)
+        assertTrue(a.tapZone("titles")); frames(a, 10); a.back(); frames(a, 2); a.push(StatsPage(ws)); frames(a, 10); a.back(); frames(a, 2); a.back(); frames(a, 2)   /* 2.1.0: rows wrap and grow; the statistics row is below the fold */
         // the town as a scene: the resident in full at the café, treat them
         sim.townLife.leave(p); p.out!!.act = "coffee"; p.out!!.place = "cafe"; p.out!!.stage = "at"; p.out!!.until = sim.life.minute + 30
         assertTrue(a.tapZone("nav:town")); frames(a, 20); shot("town-scene", frames(a, 1, scale = 2f))
-        assertTrue(a.tapZone("place:cafe")); frames(a, 15); assertTrue(a.tapZone("row:treat")); frames(a, 2); assertTrue(p.moods.any { it.id == "treated" })
+        assertTrue(a.tapZone("place:cafe"), "cafe"); frames(a, 15); assertTrue(a.tapZone("row:treat"), "treat row: ${a.overlay}"); frames(a, 2); assertTrue(p.moods.any { it.id == "treated" }, "treated")
         a.back(); frames(a, 2); p.out = null
         // decorating shows the room's line and scores; flip a piece
         assertTrue(a.tapZone("nav:storage")); frames(a, 10); assertTrue(a.tapZone("place")); frames(a, 3); val i = sim.decorate.pieces().indexOfFirst { it.kind == "sofa" }; val pc = sim.decorate.pieces()[i]
@@ -474,7 +471,7 @@ class UiTest {
             if (!pie().pick("更多")) return false; frames(a, 8) }; return false }
         // watching: a tap on a resident = what you can do with them
         var (x, y) = ws.screenOf(p1.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 20)
-        assertTrue(a.overlay is PieMenu); val ring = pie().ring.map { it.zh }; assertTrue(ring.containsAll(listOf("看看", "摸摸", "給點心", "聊天", "猜拳", "躲貓貓")), "$ring"); assertTrue(ring.size <= 8)
+        assertTrue(a.overlay is PieMenu); val ring = pie().ring.map { it.zh }; assertTrue(ring.containsAll(listOf("看看", "摸摸", "給點心", "聊天")) && "猜拳" !in ring && "躲貓貓" !in ring, "$ring"); assertTrue(ring.size <= 8)
         shot("pie-person", frames(a, 1, scale = 2f))
         assertTrue(pie().pick("摸摸")); frames(a, 5); assertNull(a.overlay)
         // a piece of furniture: ask someone to use it (a second ring of who), it becomes their order for that very piece
@@ -773,8 +770,6 @@ class UiTest {
         val n0 = sim.life.you.photos.size; assertTrue(a.tapZone("shoot")); frames(a, 30); assertEquals(n0 + 1, sim.life.you.photos.size, "before: $n0"); shot("you-photo", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("album")); frames(a, 20); shot("you-album", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("ph:${sim.life.you.photos[0].id}")); frames(a, 20); shot("you-photo-big", frames(a, 1, scale = 2f))
         a.back(); frames(a, 10); a.back(); frames(a, 10); a.back(); frames(a, 20); assertTrue(ps !== a.screen)
-        a.push(CatchScreen(ws, p.id)); frames(a, 60); shot("you-catch", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); if (a.screen is CatchScreen) a.pop()
-        a.push(FlipScreen(ws, p.id)); frames(a, 10); assertTrue(a.tapZone("c:0")); frames(a, 5); assertTrue(a.tapZone("c:1")); frames(a, 5); shot("you-flip", frames(a, 1, scale = 2f)); a.pop(); frames(a, 10)
         a.push(CardsPage(ws)); frames(a, 20); shot("you-cards", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("card:${p.id}")); frames(a, 20); shot("you-namecard", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); a.pop()
         a.push(RulesPage(ws)); frames(a, 20); assertTrue(a.tapZone("rule:quiet")); frames(a, 5); assertTrue("quiet" in sim.life.you.rules); shot("you-rules", frames(a, 1, scale = 2f)); a.pop()
         assertNull(sim.you.bury("給未來的我們")); a.push(CapsulePage(ws)); frames(a, 20); shot("you-capsule", frames(a, 1, scale = 2f)); a.pop()
@@ -797,6 +792,19 @@ class UiTest {
         sim.days.keep(p, app.ocshimeji.sim.social.Keepsake("trip:beach", "海邊的貝殼", "drop", 3, "旅行")); a.show(CabinetSheet(ws, p.id)); frames(a, 20); shot("days-cabinet", frames(a, 1, scale = 2f)); a.back(); frames(a, 10)
         val (title, body) = WidgetLines.of(sim); assertTrue(title.contains("第 ") && body.contains(p.name), "$title / $body")
         a.saves.setFlag("a11y:cb"); frames(a, 2); assertEquals(a.theme.select, Theme.LIGHT.colorSafe().select); a.saves.clearFlag("a11y:cb"); frames(a, 2); assertEquals(Theme.LIGHT.select, a.theme.select)
+    }
+    @Test fun longTextIsNeverCut() {   /* 2.1.0 (#05): long sentences wrap and their boxes grow — nothing important ends in an ellipsis */
+        val a = app(); val ws = home2(a); val sim = ws.sim; val p = sim.life.people[0]; Widgets.cuts.clear()
+        val long = "這是一段很長很長的說明文字，用來確認介面會把整句話完整地顯示出來，而不是在中間加上省略號，就算螢幕很窄、句子很長也一樣。"
+        a.toast(long); frames(a, 10); shot("long-toast", frames(a, 1, scale = 2f))
+        sim.events += app.ocshimeji.sim.life.SimEvent("say", p.id, long); frames(a, 10); shot("long-bubble", frames(a, 1, scale = 2f))
+        a.show(ListSheet("很長的選項", listOf("a" to long, "b" to "短的"), subtitle = long) {}); frames(a, 20); shot("long-sheet", frames(a, 1, scale = 2f)); a.back(); frames(a, 10)
+        a.show(Confirm("確定嗎？", long, "刪除") {}); frames(a, 20); shot("long-confirm", frames(a, 1, scale = 2f)); a.back(); frames(a, 10)
+        a.show(TalkSheet(ws, p.id)); frames(a, 20); assertTrue(a.tapZone("topic:how")); frames(a, 10); shot("long-talk", frames(a, 1, scale = 2f)); a.back(); frames(a, 10)
+        sim.days.useTool("luck"); sim.life.days.feed += app.ocshimeji.sim.social.Post(sim.life.days.nextId++, p.id, sim.life.minute, long.take(60), "smile")
+        a.push(FeedPage(ws)); frames(a, 20); a.pop(); frames(a, 5)
+        val cut = Widgets.cuts.filter { it.length > 20 }
+        assertTrue(cut.none { it.contains("很長很長的說明") }, "long text was cut: $cut")
     }
     @Test fun coinsRollAndFlyToTheBag() {
         val a = app(); val ws = home2(a); val sim = ws.sim; val w0 = sim.economy.wallet; frames(a, 5)

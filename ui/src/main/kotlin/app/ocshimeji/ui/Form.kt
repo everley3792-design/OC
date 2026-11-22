@@ -12,7 +12,7 @@ import app.ocshimeji.render.Gfx
 class Form(val app: UiApp, val g: Gfx, val x: Float, val w: Float, var y: Float) {
     private val t get() = app.theme
     fun header(text: String, sub: String? = null) { y += 14; g.text(text, x + 2, y + 16, Dim.FS_M, t.ink); if (sub != null) g.text(Widgets.fit(g, sub, Dim.FS_S - 1, w - 4), x + 2, y + 36, Dim.FS_S - 1, t.ink3); y += if (sub != null) 46f else 28f }
-    fun note(text: String, color: Int = t.ink3) { for (l in Widgets.wrap(g, text, Dim.FS_S, w - 8, 4)) { g.text(l, x + 4, y + 16, Dim.FS_S, color); y += 20 }; y += 4 }
+    fun note(text: String, color: Int = t.ink3) { for (l in Widgets.wrap(g, text, Dim.FS_S, w - 8)) { g.text(l, x + 4, y + 16, Dim.FS_S, color); y += 20 }; y += 4 }
     /** a row that opens the keyboard */
     fun row(key: String, label: String, value: String, placeholder: String = "（點一下填寫）") {
         val id = "row:$key"; val sink = if (app.pressed == id) Dim.LIP - 1 else 0f

@@ -395,7 +395,7 @@ class LifeSim(val life: Life) {
         return out
     }
     internal fun free(q: Person): Boolean {
-        val b = body(q.id); if (q.desk || q.out != null || b.held || b.flying || b.petting || q.with != null || life.arriving || society.hiding(q.id) != null) return false
+        val b = body(q.id); if (q.desk || q.out != null || b.held || b.flying || b.petting || q.with != null || life.arriving) return false
         val a = q.act ?: return true
         return b.arrivedAct && a in INTERRUPTIBLE
     }

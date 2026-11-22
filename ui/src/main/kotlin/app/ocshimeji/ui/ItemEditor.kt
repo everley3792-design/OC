@@ -79,7 +79,7 @@ class ItemEditor(val orig: LibItem?, picture: Raster?) : Screen() {
         title("說明"); Widgets.chip(g, app, "desc", G, y, it0.desc.ifBlank { "（點一下寫說明）" }, false, 40f, W - G * 2); y += 56
         // ---- checks
         val (bad, warn) = Items.check(it0.copy(image = if (front != null || it0.image.isNotBlank()) "x" else ""))
-        (bad.map { "還不能存：$it" } + warn.map { "提醒：$it" }).forEach { s0 -> Widgets.wrap(g, s0, Dim.FS_S, W - G * 2, 2).forEach { l -> g.text(l, G + 4, y + 14, Dim.FS_S, if (s0.startsWith("還")) t.alert else t.accentLip); y += 20 } }
+        (bad.map { "還不能存：$it" } + warn.map { "提醒：$it" }).forEach { s0 -> Widgets.wrap(g, s0, Dim.FS_S, W - G * 2).forEach { l -> g.text(l, G + 4, y + 14, Dim.FS_S, if (s0.startsWith("還")) t.alert else t.accentLip); y += 20 } }
         if (orig != null) { y += 12; val bw = (W - G * 2 - 8) / 2; Widgets.button(g, app, "export", G, y, bw, 48f, "匯出 .ocitem"); Widgets.button(g, app, "delete", G + bw + 8, y, bw, 48f, "刪除", Kind.DANGER); y += 60 }
         g.restore(); app.zoneDy = 0f; scroll.max = maxOf(0f, y + 20 - (btnY - 12))
         g.fillRect(0f, 0f, W, listTop, t.bg); Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back"); g.text(if (orig == null) "新物品" else it0.name, G + 60, top + 42, Dim.FS_L, t.ink)

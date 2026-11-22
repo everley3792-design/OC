@@ -17,7 +17,6 @@ import app.ocshimeji.sim.social.Events
 import app.ocshimeji.sim.social.Feud
 import app.ocshimeji.sim.social.Gift
 import app.ocshimeji.sim.social.Gifts
-import app.ocshimeji.sim.social.HideSeek
 import app.ocshimeji.sim.social.Mail
 import app.ocshimeji.sim.social.Memory
 import app.ocshimeji.sim.social.Narrate
@@ -345,6 +344,7 @@ class Society(private val sim: LifeSim) {
         }
         p.wish?.let { w -> if (!w.done && w.kind == "talk" && w.target == q.id && good) wishDone(p, w) }
         if (act.id == "invite_hide" && good) p.wish?.let { w -> if (!w.done && w.kind == "hide") wishDone(p, w) }
+        if (act.id == "invite_rps" && good) p.wish?.let { w -> if (!w.done && w.kind == "rps") wishDone(p, w) }   /* 2.1.0: played with a friend (no longer with you) */
         sim.log(p, text, kind = "social", weight = weight, cause = cause, with = q.id)
     }
     private fun pickGift(p: Person, q: Person, r: Rng): Gift {
@@ -646,7 +646,7 @@ class Society(private val sim: LifeSim) {
             "nightmare" -> listOf(Choice("pat", "摸摸頭安慰"), Choice("youSay", "跟你說一句話", true)) + listOfNotNull(close?.let { Choice("soc:chat:${it.id}", "去找${nick(it)}聊聊") })
             "heart" -> listOf(Choice("listen", "我聽你說")) + listOfNotNull(close?.let { Choice("soc:deep:${it.id}", "去找${nick(it)}談心") }) + Choice("youSay", "跟你說一句話", true)
             "want" -> listOf(Choice("give", "我幫你找找看"), Choice("wait", "下次吧"))
-            "bored" -> listOfNotNull(close?.let { Choice("soc:invite_rps:${it.id}", "去找${nick(it)}猜拳") }) + Choice("act:tv", "看電視吧") + Choice("rps", "我陪你猜拳")
+            "bored" -> listOfNotNull(close?.let { Choice("soc:invite_rps:${it.id}", "去找${nick(it)}猜拳") }) + Choice("act:tv", "看電視吧") + Choice("listen", "我陪你聊聊")
             "makeup" -> listOf(Choice("soc:apologize", "去道歉吧"), Choice("soc:gift", "送個小禮物"), Choice("say:makeup", "寫一句話給${on}", true), Choice("wait", "再給彼此一點時間"))
             else -> listOf(Choice("wait", "好"))
         }
@@ -694,7 +694,6 @@ class Society(private val sim: LifeSim) {
             "forgive" -> { o?.let { grudge(p.id, it.id)?.settled = true }; return done("……好吧，我不氣了。", true) }
             "calm" -> { o?.let { q -> grudge(p.id, q.id)?.let { it.weight = max(0, it.weight - 2) } }; p.setNeed(Need.FOOD, p.need(Need.FOOD) + 15f); return done("……甜的東西果然有用。", true) }
             "give" -> { val ok = p.spec.likes.isNotEmpty(); if (ok) { sim.addMood(p, "gift"); p.affinity = (p.affinity + 2).coerceIn(0, 100) }; return done("真的嗎！你最好了！", ok) }
-            "rps" -> { sim.events += SimEvent("rps", p.id); return done("好！來猜拳！") }
             else -> return done("嗯……再看看吧。")
         }
     }
@@ -826,7 +825,7 @@ class Society(private val sim: LifeSim) {
     private fun askFor(p: Person, r: Rng): Ask? {
         if (p.need(Need.ATTENTION) < 30) return Ask("pet", text = "可以摸摸我嗎？", since = life.minute)
         if (p.need(Need.FOOD) < 40) { val food = LifeSim.FOODS.keys.firstOrNull { sim.taste(p, it) > 0 } ?: "cookie"; return Ask("snack", food, "可以給我${LifeSim.FOOD_ZH[food]}嗎？", life.minute) }
-        if (p.need(Need.FUN) < 45) return if (r.chance(0.6)) Ask("rps", text = "陪我猜拳好不好？", since = life.minute) else Ask("hide", text = "陪我玩躲貓貓！", since = life.minute)
+        if (p.need(Need.FUN) < 45) return if (r.chance(0.6)) Ask("chat", text = "好無聊……可以陪我聊聊天嗎？", since = life.minute) else Ask("chat", text = "你在忙嗎？想跟你說說話。", since = life.minute)   /* 2.1.0 (#07): no minigames with you — a talk */
         /* a piece of furniture for their own room (plan G-06): what fits who they are, and only what the room does not have */
         if (r.chance(0.35)) { val s = p.spec; val have = sim.house.pieces.filter { it.room == p.room }.flatMap { listOf(it.kind) + app.ocshimeji.sim.house.Furniture.kind(it.kind).actsAs }.toSet()
             val wants = buildList { if (s.roomPref == "要有植物" || s.likes.any { it.contains("植物") || it.contains("花") }) add("plant"); if (s.skill("閱讀") >= 2) add("shelf"); if (s.axis(Axis.GENTLE) > 0.2f) add("rug"); add("lamp"); if (s.axis(Axis.ACTIVE) < 0f) add("sofa") }
@@ -1036,10 +1035,43 @@ class Society(private val sim: LifeSim) {
 
     // ================= talking with you (plan E-04) =================
     val YOU_TOPICS = listOf("最近怎麼樣", "喜歡什麼", "家裡的人", "你的事")
+    /** 2.1.0 (#07): what you could talk about now — from their mood, today, a friend, what they like, their dream, the weather, the hour, a shared memory; no dice */
+    data class YouTopic(val id: String, val label: String, val rank: Int)
+    fun topicsFor(id: String): List<YouTopic> {
+        val p = sim.person(id) ?: return emptyList(); val s = p.spec; val out = ArrayList<YouTopic>()
+        out += YouTopic("how", "最近在忙什麼？", 10)
+        if (p.worry != null || sim.moodValue(p) <= -1) out += YouTopic("worry", "最近有沒有煩惱？", 90)
+        life.log.lastOrNull { it.who == p.id && it.weight >= 2 && it.kind !in setOf("note", "you") && life.minute - it.minute < 12 * 60 }?.let { out += YouTopic("today", "聽說你今天${it.text.removePrefix(p.name).take(14)}？", 80) }
+        life.people.filter { it !== p && !it.desk }.maxByOrNull { (sim.rel(p.id, it.id)?.like ?: 0) + (if (feud(p.id, it.id) != null) 50 else 0) }?.let { q -> out += YouTopic("friend:${q.id}", "聊聊${q.name}", if (feud(p.id, q.id) != null) 85 else 40) }
+        s.likes.firstOrNull()?.let { out += YouTopic("like", "聊聊${it}", 35) }
+        if (s.dream.isNotBlank()) out += YouTopic("dream", "你的夢想怎麼樣了？", 30)
+        when (sim.weather()) { "rain" -> out += YouTopic("weather", "下雨天你都做什麼？", 45); "snow" -> out += YouTopic("weather", "下雪了，你冷不冷？", 45); "sunny" -> out += YouTopic("weather", "天氣真好，要不要出去走走？", 25) }
+        if (sim.hour >= 20 || sim.hour < 2) out += YouTopic("night", "今天過得怎麼樣？", 50)
+        life.log.lastOrNull { it.fav && (it.who == p.id || it.with == p.id) && it.kind != "note" }?.let { out += YouTopic("memory", "還記得「${it.text.take(10)}」嗎？", 55) }
+        if (p.affinity >= 70 && s.secret.isNotBlank() && !p.secretTold) out += YouTopic("secret", "有沒有只想告訴我的事？", 60)
+        if (sim.house.pieces.any { it.kind == "tv" } && !sim.asleep(p)) out += YouTopic("tv", "要不要一起看電視？", 20)
+        out += YouTopic("about", "聊聊你自己", 15)
+        return out.sortedByDescending { it.rank }.take(6)
+    }
     fun youChat(id: String, topic: String): List<String> {
         val p = sim.person(id) ?: return emptyList(); val r = sim.rng; val s = p.spec
         val first = life.minute - p.lastYouChat > 30
-        val lines = when (topic) {
+        askDone(p, "chat")
+        val lines = when (topic.substringBefore(":")) {
+            "how" -> listOf(when (p.act) { null -> "沒在忙什麼，就這樣晃來晃去。"; else -> "剛剛在${app.ocshimeji.sim.life.Acts[p.act!!]?.zh ?: "忙"}。" }, statusOf(p)?.let { "今天$it。" } ?: "你呢？")
+            "worry" -> p.worry?.let { listOf("……被你發現了。", "最近有點在意一件事，${Worries.ALL[it.kind]?.zh ?: "說不太出來"}。", "說出來好像好一點了，謝謝你。") }
+                ?: listOf("沒有啦……只是有點累。", "不過有你問，心情好多了。")
+            "today" -> life.log.lastOrNull { it.who == p.id && it.weight >= 2 && it.kind !in setOf("note", "you") }?.let { listOf("對啊！${it.text.removePrefix(p.name)}。", "你怎麼知道的？") } ?: listOf("今天？很普通啦。")
+            "friend" -> sim.person(topic.substringAfter(":"))?.let { q -> val rel = sim.rel(p.id, q.id)
+                listOf("${nick(q)}啊……" + when { feud(p.id, q.id) != null -> "我們現在在冷戰。哼。"; (rel?.like ?: 0) >= 70 -> "是我很重要的人。"; (rel?.like ?: 0) >= 45 -> "人還不錯。"; else -> "我們不太熟。" },
+                    if (feud(p.id, q.id) != null) "……其實我也想和好啦，只是不知道怎麼開口。" else "你也覺得${nick(q)}很好吧？") } ?: listOf("嗯？")
+            "like" -> listOf("你也喜歡${s.likes.firstOrNull() ?: "這個"}嗎？", "我可以講一整天喔。")
+            "dream" -> listOf("我的夢想是「${s.dream}」。", "還在努力中！你會幫我加油吧？")
+            "weather" -> when (sim.weather()) { "rain" -> listOf(if (s.weather.contains("雨")) "我最喜歡下雨天了，聽雨聲最舒服。" else "下雨天就想窩在家裡。", "你也是嗎？"); "snow" -> listOf("有一點冷……不過雪好漂亮。"); else -> listOf("真的耶，天氣好好。", "等一下也許會出去走走。") }
+            "night" -> listOf(if (sim.moodValue(p) >= 1) "今天過得很開心！" else "今天有點累。", "謝謝你睡前來看我。")
+            "memory" -> life.log.lastOrNull { it.fav && (it.who == p.id || it.with == p.id) && it.kind != "note" }?.let { listOf("記得啊！${it.text}。", "那天真的很難忘。") } ?: listOf("……是哪一次？")
+            "secret" -> if (p.affinity >= 70 && s.secret.isNotBlank()) { p.secretTold = true; sim.addMood(p, "secret"); sim.log(p, "把秘密告訴了你", kind = "you", weight = 2); listOf("……只告訴你喔。", s.secret) } else listOf("秘密？沒有啦。")
+            "tv" -> { p.order = "act:tv"; sim.nudge(p); listOf("好啊！一起看吧。") }
             "最近怎麼樣" -> { val top = p.moods.maxByOrNull { kotlin.math.abs(Moods.ALL[it.id]?.value ?: 0) }?.let { Moods.ALL[it.id] }
                 listOf(if (top == null) "很平常的一天。" else if (top.value >= 0) "${top.zh}，所以心情不錯。" else "嗯……${top.zh}。") + (statusOf(p)?.let { listOf("而且今天${it.zh}。") } ?: emptyList()) }
             "喜歡什麼" -> listOf(if (s.likes.isEmpty()) "我也不知道自己喜歡什麼……你覺得呢？" else "我喜歡${s.likes.take(2).joinToString("和")}。", if (s.dream.isNotBlank()) "總有一天，我要${s.dream}。" else "你呢？你喜歡什麼？")
@@ -1069,51 +1101,7 @@ class Society(private val sim: LifeSim) {
         return Speech.say(p.spec, if (same) "真的嗎！我也是！" else "原來你$option，我記住了。", sim.rng, p.affinity, true)
     }
 
-    // ================= minigames with you (plan L-01, L-02) =================
-    class RpsGame(var you: Int = 0, var them: Int = 0, var last: Pair<Int, Int>? = null, var hand: Int = 0)
-    private val rpsGames = HashMap<String, RpsGame>()
-    /** start: the first hand is already chosen; returns the tell (or null when there is none this time) */
-    fun rpsStart(id: String): String? { val p = sim.person(id) ?: return null; val g = RpsGame(); g.hand = Rps.pick(p.spec, null, sim.rng); rpsGames[id] = g; return Rps.tell(g.hand, sim.rng) }
-    class RpsRound(val theirs: Int, val result: Int, val you: Int, val them: Int, val over: Boolean, val line: String, val nextTell: String?)
-    fun rpsPlay(id: String, yours: Int): RpsRound? {
-        val p = sim.person(id) ?: return null; val g = rpsGames[id] ?: return null
-        val theirs = g.hand; val j = Rps.judge(yours, theirs)
-        if (j > 0) g.you++ else if (j < 0) g.them++
-        g.last = theirs to yours
-        val over = g.you >= 2 || g.them >= 2
-        val line = when { over && g.you >= 2 -> "輸了……再來一次啦！"; over -> "我贏了！嘿嘿。"; j > 0 -> "嗚，被你猜中了。"; j < 0 -> "這局我贏！"; else -> "平手！" }
-        var tell: String? = null
-        if (over) {
-            rpsGames.remove(id); sim.townLife.goal("rps", p.id); p.setNeed(Need.FUN, p.need(Need.FUN) + 25f); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 15f); sim.addMood(p, "played"); p.affinity = (p.affinity + 2).coerceIn(0, 100)
-            askDone(p, "rps"); p.wish?.let { w -> if (!w.done && w.kind == "rps") wishDone(p, w) }; p.worry?.let { if (it.kind == "bored") p.worry = null }
-            sim.log(p, "和你猜拳，${if (g.you >= 2) "你贏了" else "${p.name}贏了"}（${g.you}：${g.them}）", kind = "you", weight = 2)
-        } else { g.hand = Rps.pick(p.spec, g.last, sim.rng); tell = Rps.tell(g.hand, sim.rng) }
-        return RpsRound(theirs, j, g.you, g.them, over, Speech.say(p.spec, line, sim.rng, p.affinity, true), tell)
-    }
-    class HideGame(val piece: Int, var misses: Int = 0)
-    private val hideGames = HashMap<String, HideGame>()
-    /** they hide (the screen stops drawing them until found) */
-    fun hideStart(id: String): Boolean {
-        val p = sim.person(id) ?: return false; if (sim.asleep(p) || p.desk) return false
-        sim.breakFor(p); hideGames[id] = HideGame(HideSeek.spot(p.spec, sim.house, sim.rng)); return true
-    }
-    fun hiding(id: String): Int? = hideGames[id]?.piece
-    class HideResult(val found: Boolean, val over: Boolean, val line: String)
-    fun hideSearch(id: String, piece: Int): HideResult? {
-        val p = sim.person(id) ?: return null; val g = hideGames[id] ?: return null
-        val found = piece == g.piece
-        if (!found) g.misses++
-        val over = found || g.misses >= 4
-        val line = when { found -> "被找到了！你好厲害！"; over -> "我在這裡！（從${Furniture.kind(sim.house.pieces[g.piece].kind).zh}後面跳出來）"; g.misses >= 2 -> HideSeek.hint(sim.house, g.piece); else -> "（沒有人……）" }
-        if (over) {
-            hideGames.remove(id)
-            val pc = sim.house.pieces[g.piece]; val (tx, ty) = sim.grid.nearestWalkable(pc.x + 0.5f, pc.y + 1.5f); p.x = tx + 0.5f; p.y = ty + 0.5f
-            p.setNeed(Need.FUN, p.need(Need.FUN) + 25f); sim.addMood(p, "played"); p.affinity = (p.affinity + 2).coerceIn(0, 100)
-            askDone(p, "hide"); p.wish?.let { w -> if (!w.done && w.kind == "hide") wishDone(p, w) }
-            sim.log(p, "和你玩躲貓貓，${if (found) "躲在${Furniture.kind(pc.kind).zh}被你找到了" else "躲在${Furniture.kind(pc.kind).zh}沒被找到"}", kind = "you", weight = 2)
-        }
-        return HideResult(found, over, if (line.startsWith("（")) line else Speech.say(p.spec, line, sim.rng, p.affinity, true))
-    }
+    /* 2.1.0 (#07): the minigames you started (rock-paper-scissors, hide-and-seek) are gone; residents still play rock-paper-scissors together (invite_rps) */
 
     // ================= what the screen reads =================
     /** a short paragraph about what they are doing (plan 13.3; null when not one of the ten activities) */

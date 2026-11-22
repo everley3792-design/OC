@@ -184,5 +184,5 @@ object Worries {
 /** what they wish for (plan A-07); the player can help */
 object Wishes {
     /** kind → text (with {對方} / {物}) */
-    val TEXT = mapOf("eat" to "想吃{物}", "close" to "想跟{對方}變熟", "talk" to "想跟{對方}好好聊一次", "tidy" to "想把家裡整理乾淨", "rps" to "想跟你玩猜拳", "petted" to "想被你摸摸頭", "hide" to "想玩躲貓貓")
+    val TEXT = mapOf("eat" to "想吃{物}", "close" to "想跟{對方}變熟", "talk" to "想跟{對方}好好聊一次", "tidy" to "想把家裡整理乾淨", "rps" to "想找朋友玩猜拳", "petted" to "想被你摸摸頭", "hide" to "想玩躲貓貓")
 }

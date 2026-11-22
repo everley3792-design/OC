@@ -37,17 +37,21 @@ abstract class Page(val title: String) : Screen() {
         g.save(); g.clip(0f, listTop, W, bottom - listTop); g.translate(0f, -sc); app.zoneDy = -sc
         var y = listTop + 6 + header(g, G, listTop + 6, W - G * 2)
         val rs = rows()
-        if (rs.isEmpty() && empty.isNotEmpty()) { Widgets.emptyArt(g, t, W / 2, y + 40); for ((i, l) in Widgets.wrap(g, empty, Dim.FS_M, W - 64, 3).withIndex()) g.text(l, W / 2, y + 100 + i * 24f, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER) }
+        if (rs.isEmpty() && empty.isNotEmpty()) { Widgets.emptyArt(g, t, W / 2, y + 40); for ((i, l) in Widgets.wrap(g, empty, Dim.FS_M, W - 64).withIndex()) g.text(l, W / 2, y + 100 + i * 24f, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER) }
         for (r in rs) {
             val sink = if (app.pressed == r.id) Dim.LIP - 1 else 0f
-            Widgets.card(g, t, G, y, W - G * 2, 64f, 18f, t.surface, t.lip, sink)
+            /* 2.1.0 (#05): titles and lines wrap, the row grows (it used to cut them with an ellipsis) */
+            val tx0 = if (r.img != null || r.icon != null) G + 64 else G + 16
+            val tl = Widgets.wrap(g, r.title, Dim.FS_M, W - tx0 - G - 50); val sl = if (r.sub.isEmpty()) emptyList() else Widgets.wrap(g, r.sub, Dim.FS_S - 1, W - tx0 - G - 50)
+            val rh = maxOf(64f, 18f + tl.size * 21f + sl.size * 18f + 8f)
+            Widgets.card(g, t, G, y, W - G * 2, rh, 18f, t.surface, t.lip, sink)
             var tx = G + 16
             if (r.img != null) { val k = minOf(44f / r.img.w, 44f / r.img.h); g.fillRound(G + 10, y + 10 + sink, 44f, 44f, 10f, r.tint ?: t.surface2); g.image(r.img, G + 32 - r.img.w * k / 2, y + 32 + sink - r.img.h * k / 2, r.img.w * k, r.img.h * k); tx = G + 64 }
             else if (r.icon != null) { g.fillCircle(G + 32, y + 32 + sink, 20f, r.tint ?: t.surface2); Widgets.icon(g, r.icon, G + 32, y + 32 + sink, 16f, t.ink2); tx = G + 64 }
-            g.text(Widgets.fit(g, r.title, Dim.FS_M, W - tx - G - 50), tx, y + 28 + sink, Dim.FS_M, t.ink)
-            if (r.sub.isNotEmpty()) g.text(Widgets.fit(g, r.sub, Dim.FS_S - 1, W - tx - G - 50), tx, y + 50 + sink, Dim.FS_S - 1, t.ink2)
-            Widgets.icon(g, "next", W - G - 20, y + 32 + sink, 12f, t.ink3)
-            app.zone(r.id, G, y, W - G * 2, 68f); y += 76
+            if (tl.size == 1 && sl.size <= 1) { g.text(tl[0], tx, y + 28 + sink, Dim.FS_M, t.ink); sl.firstOrNull()?.let { g.text(it, tx, y + 50 + sink, Dim.FS_S - 1, t.ink2) } }
+            else { var ly = y + 26 + sink; tl.forEach { g.text(it, tx, ly, Dim.FS_M, t.ink); ly += 21 }; ly += 1; sl.forEach { g.text(it, tx, ly, Dim.FS_S - 1, t.ink2); ly += 18 } }
+            Widgets.icon(g, "next", W - G - 20, y + rh / 2 + sink, 12f, t.ink3)
+            app.zone(r.id, G, y, W - G * 2, rh + 4); y += rh + 12
         }
         g.restore(); app.zoneDy = 0f; scroll.max = maxOf(0f, y + 20 - bottom)
         Widgets.round(g, app, "back", G + 24, top + 34, 24f, "back")
@@ -256,7 +260,7 @@ class PackPage : Page("內容包工坊") {
         "標籤" to studio.tags().map { "t:${it.id}" to it.id })
     override fun header(g: Gfx, x: Float, y: Float, w: Float): Float {
         val t = app.theme; var yy = y
-        for (l in Widgets.wrap(g, "包裡只有資料和圖片，沒有可以執行的程式。內建角色每個人都有，不用打包。", Dim.FS_S, w - 8, 3)) { g.text(l, x + 4, yy + 14, Dim.FS_S, t.ink2); yy += 20 }
+        for (l in Widgets.wrap(g, "包裡只有資料和圖片，沒有可以執行的程式。內建角色每個人都有，不用打包。", Dim.FS_S, w - 8)) { g.text(l, x + 4, yy + 14, Dim.FS_S, t.ink2); yy += 20 }
         yy += 8
         for ((head, xs) in groups()) {
             g.text(head, x + 4, yy + 16, Dim.FS_M, t.ink); yy += 26

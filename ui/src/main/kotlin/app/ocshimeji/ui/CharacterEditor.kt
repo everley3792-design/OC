@@ -119,7 +119,7 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         else Widgets.button(g, app, "save", G, btnY, W - G * 2, 56f, if (dirty) "儲存" else "完成", Kind.PRIMARY, Dim.FS_L)
     }
     private fun stageBubble(g: Gfx, s: String, bottom: Float) {
-        val t = app.theme; val lines = Widgets.wrap(g, s, Dim.FS_S + 1, app.w - 120, 2); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 28; val h = 16f + lines.size * 20; val x = (app.w - w) / 2; val y = maxOf(app.insetTop + 64, bottom - h)
+        val t = app.theme; val lines = Widgets.wrap(g, s, Dim.FS_S + 1, app.w - 120); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 28; val h = 16f + lines.size * 20; val x = (app.w - w) / 2; val y = maxOf(app.insetTop + 64, bottom - h)
         g.fillRound(x, y + 2, w, h, 16f, t.shadow); g.fillRound(x, y, w, h, 16f, t.surface)
         lines.forEachIndexed { i, l -> g.text(l, app.w / 2, y + 23 + i * 20f, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER) }
     }

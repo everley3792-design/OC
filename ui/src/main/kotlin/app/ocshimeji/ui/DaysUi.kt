@@ -18,7 +18,7 @@ import kotlin.math.min
 class RecipesPage(val ws: WorldScreen) : Page("食譜") {
     override val nav get() = ws to "town"
     override fun header(g: Gfx, x: Float, y: Float, w: Float): Float {
-        val l = Widgets.wrap(g, "收納裡有材料時，會煮飯的人到了吃飯時間就會用它做菜。材料來自菜園、公園和市集。", Dim.FS_S, w - 8, 3)
+        val l = Widgets.wrap(g, "收納裡有材料時，會煮飯的人到了吃飯時間就會用它做菜。材料來自菜園、公園和市集。", Dim.FS_S, w - 8)
         l.forEachIndexed { i, s -> g.text(s, x + 4, y + 16 + i * 20f, Dim.FS_S, app.theme.ink2) }; return l.size * 20f + 14
     }
     override fun rows(): List<Row> = Recipes.ALL.values.map { rc -> val known = rc.id in ws.sim.life.days.recipes; val miss = ws.sim.days.missing(rc)
@@ -36,7 +36,7 @@ class FeedPage(val ws: WorldScreen) : Page("小鎮動態") {
         val t = app.theme; val ps = ws.sim.days.feed().take(40); var yy = y
         if (ps.isEmpty()) { Widgets.emptyArt(g, t, x + w / 2, yy + 40); g.text("每天早上，大家會把前一天的事貼上來", x + w / 2, yy + 100, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER); return 130f }
         for (po in ps) { val p = ws.sim.person(po.who)
-            val ls = Widgets.wrap(g, po.text, Dim.FS_S + 1, w - 80, 3); val h = 64f + ls.size * 22f
+            val ls = Widgets.wrap(g, po.text, Dim.FS_S + 1, w - 80); val h = 64f + ls.size * 22f
             Widgets.card(g, t, x, yy, w, h, 18f)
             Widgets.face(g, t, p?.let { app.charImg(ws.libOf(it), 128) }, x + 30, yy + 32, 18f)
             g.text(p?.name ?: "（搬走的人）", x + 58, yy + 28, Dim.FS_S, t.ink2)
@@ -77,7 +77,7 @@ class TripPage(val ws: WorldScreen) : Page("一日小旅行") {
         for (p in sim.life.people) { if (cx + g.measure(p.name, Dim.FS_S + 1) + 28 > x + w) { cx = x; yy += 44 }; cx += Widgets.chip(g, app, "who:${p.id}", cx, yy, p.name, p.id in who, 38f) + 8 }
         yy += 50
         val why = sim.days.tripProblem(place, who.toList())
-        for (l in Widgets.wrap(g, why ?: "可以出發了！回來時會帶紀念品，相簿也會多一張照片。", Dim.FS_S + 1, w - 8, 2)) { g.text(l, x + 4, yy + 16, Dim.FS_S + 1, if (why == null) t.ink else t.ink3); yy += 22 }
+        for (l in Widgets.wrap(g, why ?: "可以出發了！回來時會帶紀念品，相簿也會多一張照片。", Dim.FS_S + 1, w - 8)) { g.text(l, x + 4, yy + 16, Dim.FS_S + 1, if (why == null) t.ink else t.ink3); yy += 22 }
         val past = sim.life.days.trips.filter { it.back }.asReversed().take(5)
         if (past.isNotEmpty()) { yy += 14; g.text("去過的地方", x + 4, yy + 16, Dim.FS_S, t.ink2); yy += 24
             for (tr in past) { g.text(Widgets.fit(g, "第 ${dayOf(ws, tr.start)} 天・${Trips.ALL[tr.place]?.zh ?: ""}・${tr.who.mapNotNull { sim.person(it)?.name }.joinToString("、")}", Dim.FS_S, w - 8), x + 4, yy + 16, Dim.FS_S, t.ink); yy += 24 } }

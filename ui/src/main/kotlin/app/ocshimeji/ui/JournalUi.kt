@@ -42,7 +42,7 @@ abstract class TextPage(title: String) : Page(title) {
         val t = app.theme; var yy = y; val bs = blocks()
         if (bs.isEmpty()) { g.text(none, x + w / 2, yy + 60, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER); return 100f }
         for ((head, lines) in bs) {
-            val ls = lines.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, w - 32, 4) }
+            val ls = lines.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, w - 32) }
             val h = 44f + ls.size * 23f
             Widgets.card(g, t, x, yy, w, h, 18f); g.text(head, x + 16, yy + 28, Dim.FS_S, t.accentLip)
             ls.forEachIndexed { i, l -> g.text(l, x + 16, yy + 54 + i * 23f, Dim.FS_S + 1, t.ink) }

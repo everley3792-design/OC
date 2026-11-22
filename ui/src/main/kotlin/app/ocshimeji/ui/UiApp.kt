@@ -120,7 +120,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
             if (!saves.flag("a11y:calm") && transKind != "fade") g.translate((if (transKind == "back") -24f else 24f) * (1 - e), 0f)
             screen.frame(g, dt); g.restore() } else screen.frame(g, dt)
         overlay?.let { layer = 1; it.frame(g, dt) }
-        toast?.let { (t, at) -> val age = time - at; if (age > 3.4f) { toast = null; toastRect = null } else toastRect = Widgets.toast(g, this, t, age) }
+        toast?.let { (t, at) -> val age = time - at; if (age > Widgets.toastStay(t) + 0.4f) { toast = null; toastRect = null } else toastRect = Widgets.toast(g, this, t, age) }
         perf.sample((System.nanoTime() - t0) / 1e6f, dt)
     }
     /** something is moving: the platform should keep drawing at full rate (otherwise it may idle) */

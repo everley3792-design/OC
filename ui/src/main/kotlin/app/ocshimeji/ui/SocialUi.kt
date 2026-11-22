@@ -102,33 +102,6 @@ class WorrySheet(val ws: WorldScreen, val id: String) : Overlay() {
     }
 }
 
-/** rock-paper-scissors with you (plan L-01): watch their hands — each has a habit, and a little gesture gives it away */
-class RpsSheet(val ws: WorldScreen, val id: String) : Overlay() {
-    private val slide = Spring(0f, 1f)
-    private var tell: String? = ws.sim.society.rpsStart(id)
-    private var last: Society.RpsRound? = null
-    override fun frame(g: Gfx, dt: Float) {
-        val t = app.theme; val s = slide.step(dt); val p = ws.sim.person(id) ?: run { app.closeOverlay(); return }
-        g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, (s * 0.5f).coerceIn(0f, 1f)))
-        val G = Dim.GUTTER; val h = 360f + app.insetBottom; val y = app.h - h * s; val W = app.w
-        g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("rps:body", 0f, y, W, h)
-        g.text("和${p.name}猜拳", G + 4, y + 44, Dim.FS_L, t.ink); g.text("三戰兩勝・看看牠的小動作", G + 4, y + 68, Dim.FS_S, t.ink2)
-        val r = last
-        Portrait.draw(g, t, ws.lookOf(p), W / 2, y + 128, 36f, when { r == null -> "idle"; r.result < 0 -> "happy"; r.result > 0 -> "sad"; else -> "idle" })
-        g.text("你 ${r?.you ?: 0} ： ${r?.them ?: 0} ${p.name}", W / 2, y + 190, Dim.FS_M, t.ink, FontKind.UI, Align.CENTER)
-        val msg = when { r == null -> tell ?: "（牠握著手，看不出來）"; r.over -> r.line; else -> "牠出了${Rps.ZH[r.theirs]}。${r.line}" + (r.nextTell?.let { "　$it" } ?: "") }
-        Widgets.wrap(g, msg, Dim.FS_S + 1, W - G * 2, 2).forEachIndexed { i, l -> g.text(l, W / 2, y + 220 + i * 22f, Dim.FS_S + 1, t.ink2, FontKind.UI, Align.CENTER) }
-        val bw = (W - G * 2 - 16) / 3; val by = y + h - app.insetBottom - 76
-        if (r?.over == true) Widgets.button(g, app, "rps:done", G, by, W - G * 2, 52f, "好", Kind.PRIMARY)
-        else Rps.ZH.forEachIndexed { i, zh -> Widgets.button(g, app, "rps:$i", G + i * (bw + 8), by, bw, 52f, zh) }
-    }
-    override fun tap(id: String) {
-        if (id == "rps:done") { app.closeOverlay(); ws.flush(); return }
-        val hand = id.removePrefix("rps:").toIntOrNull() ?: return
-        last = ws.sim.society.rpsPlay(this.id, hand)
-    }
-}
-
 /** talk with them (plan E-04): pick a topic, they answer in their own words; sometimes they ask you something */
 class TalkSheet(val ws: WorldScreen, val id: String) : Overlay() {
     private val slide = Spring(0f, 1f)
@@ -138,17 +111,22 @@ class TalkSheet(val ws: WorldScreen, val id: String) : Overlay() {
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val sim = ws.sim; val p = sim.person(id) ?: run { app.closeOverlay(); return }
         g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, (s * 0.5f).coerceIn(0f, 1f)))
-        val G = Dim.GUTTER; val W = app.w; val h = 380f + app.insetBottom; val y = app.h - h * s
+        val G = Dim.GUTTER; val W = app.w
+        /* 2.1.0 (#05): measure first — every line they say and every topic fits, the sheet grows (up to the screen) */
+        val shown0 = if (asking) listOf(q!!.text) else lines
+        val wrapped = shown0.map { Widgets.wrap(g, it, Dim.FS_S + 1, W - G * 2 - 24) }
+        val opts = if (asking) q!!.options.map { "ans:$it" to it } else sim.society.topicsFor(id).map { "topic:${it.id}" to it.label } + listOfNotNull(q?.let { "ask" to "牠好像想問你什麼" })
+        var rowsN = 1; run { var x0 = G; for ((_, zh) in opts) { val w0 = g.measure(zh, Dim.FS_S + 1) + 28; if (x0 + w0 > W - G) { x0 = G; rowsN++ }; x0 += w0 + 8 } }
+        val linesH = if (wrapped.isEmpty()) 34f else wrapped.sumOf { (22.0 + it.size * 22.0) }.toFloat()
+        val h = minOf(app.h - app.insetTop - 24, 104f + linesH + 24 + rowsN * 52f + 16 + app.insetBottom); val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("talk:body", 0f, y, W, h)
         Portrait.draw(g, t, ws.lookOf(p), G + 34, y + 54, 28f, "happy")
         g.text("和${p.name}聊天", G + 76, y + 50, Dim.FS_L, t.ink); g.text("選一個話題", G + 76, y + 72, Dim.FS_S, t.ink2)
         var yy = y + 104f
-        val shown = if (asking) listOf(q!!.text) else lines
-        if (shown.isEmpty()) { g.text("（牠在等你開口）", G + 4, yy + 18, Dim.FS_S + 1, t.ink3); yy += 34 }
-        for (l in shown.take(3)) { val ls = Widgets.wrap(g, l, Dim.FS_S + 1, W - G * 2 - 24, 2); g.fillRound(G, yy, W - G * 2, 14f + ls.size * 22f, 14f, t.surface2)
+        if (wrapped.isEmpty()) { g.text("（牠在等你開口）", G + 4, yy + 18, Dim.FS_S + 1, t.ink3); yy += 34 }
+        for (ls in wrapped) { g.fillRound(G, yy, W - G * 2, 14f + ls.size * 22f, 14f, t.surface2)
             ls.forEachIndexed { i, x -> g.text(x, G + 12, yy + 23 + i * 22f, Dim.FS_S + 1, t.ink) }; yy += 22f + ls.size * 22f }
-        var x = G; var cy = y + h - app.insetBottom - 116
-        val opts = if (asking) q!!.options.map { "ans:$it" to it } else sim.society.YOU_TOPICS.map { "topic:$it" to it } + listOfNotNull(q?.let { "ask" to "牠好像想問你什麼" })
+        var x = G; var cy = y + h - app.insetBottom - 16 - rowsN * 52f
         for ((k, zh) in opts) { val w = g.measure(zh, Dim.FS_S + 1) + 28; if (x + w > W - G) { x = G; cy += 52 }; x += Widgets.chip(g, app, k, x, cy, zh, k == "ask") + 8 }
     }
     override fun tap(id: String) {
@@ -209,7 +187,7 @@ class DayCardSheet(val card: DayCard, val home: String) : Overlay() {
         val t = app.theme; val k = pop.step(dt)
         g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, k.coerceIn(0f, 1f)))
         val w = min(app.w - 32, 360f); val x = (app.w - w) / 2
-        val lines = card.lines.map { Widgets.wrap(g, it, Dim.FS_S + 1, w - 64, 2) }
+        val lines = card.lines.map { Widgets.wrap(g, it, Dim.FS_S + 1, w - 64) }
         val h = 150f + lines.sumOf { it.size } * 22f + lines.size * 14f + 70; val y = (app.h - h) / 2
         g.save(); g.translate(app.w / 2, app.h / 2); val sc = 0.86f + 0.14f * k; g.scale(sc, sc); g.translate(-app.w / 2, -app.h / 2)
         Widgets.card(g, t, x, y, w, h); app.zone("dc:body", x, y, w, h)

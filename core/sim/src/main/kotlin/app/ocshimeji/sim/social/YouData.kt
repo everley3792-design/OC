@@ -23,7 +23,7 @@ class YouState(
     val capsules: MutableList<Capsule> = mutableListOf(),
     /** P-11: the house rules you set (`HouseRules` ids) */
     val rules: MutableList<String> = mutableListOf(),
-    /** L-03 / L-04: best scores */
+    /** L-03 / L-04 best scores (2.1.0: those games were removed; kept so old saves still load) */
     val best: MutableMap<String, Int> = mutableMapOf(),
     val seen: MutableMap<String, Double> = mutableMapOf(),
     var nextId: Int = 1, var lastTick: Double = -1.0, var lastDay: Long = -1,
@@ -93,48 +93,4 @@ object Scenarios {
         }
         return out
     }
-}
-
-// ---------------- L-03 catch the snacks / L-04 card flip (pure, testable) ----------------
-/** L-03: snacks fall; the player moves the catcher (0..1 across); 30 seconds */
-class CatchGame(seed: Long, val len: Float = 30f) {
-    private val r = Rng(seed)
-    class Drop(var x: Float, var y: Float, val kind: Int, val speed: Float)
-    val drops = ArrayList<Drop>()
-    var t = 0f; private set
-    var score = 0; private set
-    var missed = 0; private set
-    var x = 0.5f
-    private var next = 0.4f
-    val over get() = t >= len
-    /** the catcher is 0.16 wide at the bottom; `kind` 2 = a pebble (−1) */
-    fun step(dt: Float) {
-        if (over) return
-        t += dt; next -= dt
-        if (next <= 0f) { next = (0.75f - t / len * 0.4f).coerceAtLeast(0.3f); drops += Drop(0.05f + r.nextFloat() * 0.9f, 0f, if (r.chance(0.15)) 2 else r.nextInt(2), 0.35f + r.nextFloat() * 0.25f + t / len * 0.3f) }
-        val it = drops.iterator()
-        while (it.hasNext()) { val d = it.next(); d.y += d.speed * dt
-            if (d.y >= 0.92f && d.y < 1f && kotlin.math.abs(d.x - x) < 0.09f) { if (d.kind == 2) score = (score - 1).coerceAtLeast(0) else score++; it.remove() }
-            else if (d.y >= 1.05f) { if (d.kind != 2) missed++; it.remove() } }
-    }
-}
-/** L-04: pairs of cards whose faces are the residents' expressions */
-class FlipGame(seed: Long, faces: List<String>) {
-    val cards: List<String>
-    val open = HashSet<Int>(); val done = HashSet<Int>()
-    var turns = 0; private set
-    private var first = -1
-    init { val r = Rng(seed); val base = faces.take(6); cards = (base + base).sortedBy { r.nextDouble() } }
-    val over get() = done.size == cards.size
-    /** flip card i; returns "pair", "miss" or "" */
-    fun flip(i: Int): String {
-        if (i !in cards.indices || i in done || i in open) return ""
-        if (open.size == 2) open.clear()
-        open += i
-        if (first < 0) { first = i; return "" }
-        turns++; val a = first; first = -1
-        return if (cards[a] == cards[i]) { done += a; done += i; open.clear(); "pair" } else "miss"
-    }
-    /** stars by turns (perfect = pairs) */
-    fun stars() = when { turns <= cards.size / 2 + 2 -> 3; turns <= cards.size -> 2; else -> 1 }
 }

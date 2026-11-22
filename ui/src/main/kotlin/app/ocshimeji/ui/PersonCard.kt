@@ -45,13 +45,15 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         if (tab == "log") { logPage(g, t, y + 146, y + h); return }
         // ---- now + why
         var yy = y + 142
-        g.fillRound(G, yy, W - G * 2, 62f, 16f, t.surface2)
-        g.text("現在", G + 14, yy + 25, Dim.FS_S, t.accentLip); g.text(Widgets.fit(g, ws.doing(p, b), Dim.FS_M, W - G * 2 - 70), G + 56, yy + 25, Dim.FS_M, t.ink)
         val why = if (p.why.isEmpty()) "沒有特別的理由，隨意地過著" else "因為：" + p.why.joinToString("、")
-        g.text(Widgets.fit(g, why, Dim.FS_S, W - G * 2 - 28), G + 14, yy + 48, Dim.FS_S, t.ink2)
-        yy += 70
+        val whyL = Widgets.wrap(g, why, Dim.FS_S, W - G * 2 - 28); val nowL = Widgets.wrap(g, ws.doing(p, b), Dim.FS_M, W - G * 2 - 70)   /* 2.1.0 (#05): all of it, the card grows */
+        val nowH = 40f + (nowL.size - 1) * 22f + whyL.size * 19f
+        g.fillRound(G, yy, W - G * 2, nowH, 16f, t.surface2)
+        g.text("現在", G + 14, yy + 25, Dim.FS_S, t.accentLip); nowL.forEachIndexed { i, l -> g.text(l, G + 56, yy + 25 + i * 22f, Dim.FS_M, t.ink) }
+        whyL.forEachIndexed { i, l -> g.text(l, G + 14, yy + 25 + nowL.size * 22f + 1 + i * 19f, Dim.FS_S, t.ink2) }
+        yy += nowH + 8
         // ---- what it looks like (plan 13.3 敘事描寫), today's status, wish, worry / request
-        so.narrate(id)?.let { n -> Widgets.wrap(g, n, Dim.FS_S, W - G * 2 - 8, 2).forEachIndexed { i, l -> g.text(l, G + 4, yy + 16 + i * 20f, Dim.FS_S, t.ink2) }; yy += 46 }
+        so.narrate(id)?.let { n -> val ls = Widgets.wrap(g, n, Dim.FS_S, W - G * 2 - 8); ls.forEachIndexed { i, l -> g.text(l, G + 4, yy + 16 + i * 20f, Dim.FS_S, t.ink2) }; yy += ls.size * 20f + 6 }
         val st = so.statusOf(p); val wish = p.wish?.takeIf { !it.done }
         val titles = sim.journal.titlesOf(id); val star = sim.journal.starNow()?.takeIf { it.who == id }
         val info = listOfNotNull(star?.let { "本週之星" }, titles.lastOrNull()?.let { "稱號：${it.zh}" }, st?.let { "今天：${it.zh}" }, wish?.let { "心願：${it.text}" }, p.worry?.let { "煩惱：${Worries.ALL[it.kind]?.zh}" }, p.ask?.let { "請求：${it.text}" },
@@ -70,7 +72,7 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             g.text(s0, ix + 10, yy + 18, Dim.FS_S - 1, t.ink); ix += w0 + 6 }
         if (story.isNotEmpty()) yy += 34
         // ---- what you can do together (plan E-04 / E-05 / E-08)
-        val acts = listOf("card:talk" to "聊天", "card:suggest" to when (p.control) { "observe" -> "觀察中"; "suggest" -> "建議"; else -> "操控" }, "card:rps" to "猜拳", "card:hide" to "躲貓貓", "card:feed" to "點心")
+        val acts = listOf("card:talk" to "聊天", "card:suggest" to when (p.control) { "observe" -> "觀察中"; "suggest" -> "建議"; else -> "操控" }, "card:feed" to "點心", "card:photo" to "拍照", "card:mem" to "回憶")
         val aw = (W - G * 2 - 24) / 5
         acts.forEachIndexed { i, (k, zh) -> Widgets.button(g, app, k, G + i * (aw + 6), yy, aw, 44f, zh, Kind.SECONDARY, Dim.FS_S) }
         yy += 60
@@ -126,17 +128,18 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
     private fun logPage(g: Gfx, t: Theme, y0: Float, bottom: Float) {
         val sim = ws.sim; val W = app.w; val G = Dim.GUTTER; var yy = y0
         val titles = sim.journal.titlesOf(id)
-        if (titles.isNotEmpty()) { g.text(Widgets.fit(g, "稱號：" + titles.joinToString("、") { it.zh }, Dim.FS_S, W - G * 2), G + 4, yy + 14, Dim.FS_S, t.accentLip); yy += 28 }
+        if (titles.isNotEmpty()) { val ls = Widgets.wrap(g, "稱號：" + titles.joinToString("、") { it.zh }, Dim.FS_S, W - G * 2); ls.forEachIndexed { i, x -> g.text(x, G + 4, yy + 14 + i * 19f, Dim.FS_S, t.accentLip) }; yy += 28 + (ls.size - 1) * 19f }
         val top = sim.life.prog.counts.filterKeys { it.startsWith("$id:") }.entries.sortedByDescending { it.value }.take(4)
             .mapNotNull { (k, n) -> Acts[k.substringAfter(":")]?.let { "${it.zh} $n 次" } }
-        if (top.isNotEmpty()) { g.text(Widgets.fit(g, "最常做：" + top.joinToString("・"), Dim.FS_S, W - G * 2), G + 4, yy + 14, Dim.FS_S, t.ink2); yy += 30 }
+        if (top.isNotEmpty()) { val ls = Widgets.wrap(g, "最常做：" + top.joinToString("・"), Dim.FS_S, W - G * 2); ls.forEachIndexed { i, x -> g.text(x, G + 4, yy + 14 + i * 19f, Dim.FS_S, t.ink2) }; yy += 30 + (ls.size - 1) * 19f }
         val lines = sim.life.log.asReversed().asSequence().filter { it.who == id || it.with == id }.take(14).toList()
         if (lines.isEmpty()) { g.text("還沒有紀錄", W / 2, yy + 40, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER); return }
         for (l in lines) { if (yy + 30 > bottom - app.insetBottom - 70) break
             val m = ((l.minute % 1440) + 1440) % 1440; val hm = "%02d:%02d".format((m / 60).toInt(), (m % 60).toInt())
             g.text(hm, G + 4, yy + 18, Dim.FS_S - 1, t.ink3, FontKind.NUM)
-            g.text(Widgets.fit(g, (if (l.who != id) (sim.person(l.who)?.name ?: "") + "：" else "") + l.text + if (l.sound.isNotEmpty()) "　${l.sound}" else "", Dim.FS_S, W - G * 2 - 56), G + 50, yy + 18, Dim.FS_S, if (l.fav) t.accentLip else t.ink)
-            yy += 28 }
+            val ls = Widgets.wrap(g, (if (l.who != id) (sim.person(l.who)?.name ?: "") + "：" else "") + l.text + if (l.sound.isNotEmpty()) "　${l.sound}" else "", Dim.FS_S, W - G * 2 - 56)   /* 2.1.0 (#05) */
+            ls.forEachIndexed { i, x -> g.text(x, G + 50, yy + 18 + i * 19f, Dim.FS_S, if (l.fav) t.accentLip else t.ink) }
+            yy += 28 + (ls.size - 1) * 19f }
         val bw = (W - G * 2 - 16) / 3; val by = bottom - app.insetBottom - 62
         Widgets.button(g, app, "card:note", G, by, bw, 48f, "寫筆記"); Widgets.button(g, app, "card:namecard", G + bw + 8, by, bw, 48f, "名片"); Widgets.button(g, app, "card:more", G + bw * 2 + 16, by, bw, 48f, "更多")
     }
@@ -151,17 +154,14 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         when (id) {
             "card:talk" -> { app.closeOverlay(); app.show(TalkSheet(ws, this.id)); return }
             "card:suggest" -> { app.closeOverlay(); app.show(SuggestSheet(ws, this.id)); return }
-            "card:rps" -> { if (ws.sim.asleep(ws.sim.person(this.id) ?: return)) { app.toast("睡著了"); return }; app.closeOverlay(); app.show(RpsSheet(ws, this.id)); return }
-            "card:hide" -> { app.closeOverlay(); if (ws.sim.society.hideStart(this.id)) app.toast("躲起來了！點家具找找看") else app.toast("現在沒辦法玩"); return }
+            "card:photo" -> { val pid = this.id; app.closeOverlay(); app.push(PhotoStudio(ws, listOf(pid))); return }
             "card:worry" -> { app.closeOverlay(); app.show(WorrySheet(ws, this.id)); return }
             "card:mem" -> { app.closeOverlay(); app.show(MemorySheet(ws, this.id)); return }
             /* 1.8.0: your note, their card, and more (memory, photo, games, a grown version for the library) */
             "card:note" -> { val pid = this.id; app.closeOverlay(); writeNote(app, ws, pid); return }
             "card:namecard" -> { val pid = this.id; app.closeOverlay(); app.show(NameCardSheet(ws, pid)); return }
-            "card:more" -> { val pid = this.id; app.closeOverlay(); app.show(ListSheet("更多", listOf("mem" to "記憶與更多紀錄", "photo" to "拍照", "catch" to "接點心", "flip" to "翻牌", "cabinet" to "收藏櫃", "grown" to "存成收藏庫的新版本")) { k ->
+            "card:more" -> { val pid = this.id; app.closeOverlay(); app.show(ListSheet("更多", listOf("mem" to "記憶與更多紀錄", "photo" to "拍照", "cabinet" to "收藏櫃", "grown" to "存成收藏庫的新版本")) { k ->
                 when (k) { "mem" -> app.show(MemorySheet(ws, pid)); "photo" -> app.push(PhotoStudio(ws, listOf(pid)))
-                    "catch" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(CatchScreen(ws, pid))
-                    "flip" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(FlipScreen(ws, pid))
                     "grown" -> saveGrown(app, ws, pid); "cabinet" -> app.show(CabinetSheet(ws, pid)) } }); return }
         }
         if (id.startsWith("feed:")) { val msg = ws.sim.feed(this.id, id.removePrefix("feed:")); app.closeOverlay(); if (msg.isNotEmpty()) app.toast(msg) }

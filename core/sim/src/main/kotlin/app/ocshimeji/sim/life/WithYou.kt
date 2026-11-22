@@ -91,7 +91,7 @@ class WithYou(private val sim: LifeSim) {
         st.photos += ph; while (st.photos.size > 60) st.photos.removeAt(0)
         for (p in ppl) { sim.addMood(p, "photo"); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 8f) }
         sim.log(ppl[0], "你幫${ppl.joinToString("、") { it.name }}拍了一張照片" + if (caption.isNotBlank()) "：「$caption」" else "", kind = "you", weight = 2)
-        sim.journal.did("", "photo"); return ph
+        sim.journal.did("", "photo"); for (p in ppl) sim.townLife.goal("photo", p.id); return ph
     }
     fun deletePhoto(id: Int) = st.photos.removeAll { it.id == id }
 
@@ -171,16 +171,6 @@ class WithYou(private val sim: LifeSim) {
             val rooms = life.people.associate { it.id to (if (it === a) room.id else it.room) }
             if (Houses.checkRooms(h, ts, rooms) { x, y -> app.ocshimeji.sim.chars.Relations.family(life.rels, x, y) } == null) { a.room = room.id; sim.relayout(); return room.zh } }
         return null
-    }
-
-    // ---------------- L-03 / L-04 the little games ----------------
-    /** a game played with someone: stars, coins (through the ledger), fun and closeness */
-    fun reward(game: String, pid: String, score: Int): Int {
-        val p = sim.person(pid); val coins = when (game) { "catch" -> (score / 2).coerceIn(0, 30); else -> (score * 5).coerceIn(0, 15) }
-        if (coins > 0) sim.economy.earn(coins, if (game == "catch") "接點心遊戲" else "翻牌遊戲")
-        if (score > (st.best[game] ?: 0)) st.best[game] = score
-        p?.let { it.setNeed(Need.FUN, it.need(Need.FUN) + 20f); it.affinity = (it.affinity + 3).coerceIn(0, 100); sim.log(it, (if (game == "catch") "和你玩接點心，接到 $score 個" else "和你玩翻牌，拿到 $score 顆星"), kind = "you", weight = 2) }
-        sim.journal.did(pid, "game:$game"); return coins
     }
 
     // ---------------- M-04 their own lines ----------------

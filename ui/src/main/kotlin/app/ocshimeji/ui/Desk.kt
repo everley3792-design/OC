@@ -163,12 +163,12 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
     /** the bubble window above the pet (dp), kept on screen */
     fun bubbleWindow(g: Gfx, id: String): FloatArray? {
         val text = bubbleOf(id) ?: return null; val pt = pets[id]!!; val b = pt.pet.bounds(0f)
-        val lines = Widgets.wrap(g, text, Dim.FS_S + 1, 200f, 3); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 28; val h = 18f + lines.size * 20f + 8
+        val lines = Widgets.wrap(g, text, Dim.FS_S + 1, 200f, 5); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 28; val h = 18f + lines.size * 20f + 8
         val x = (b[0] + b[2] / 2 - w / 2).coerceIn(4f, screen.w - w - 4); var y = b[1] - h - 4; if (y < screen.top) y = b[1] + b[3] + 4
         return floatArrayOf(x, y, w, h)
     }
     fun drawBubble(g: Gfx, id: String) {
-        val text = bubbleOf(id) ?: return; val t = app.theme; val lines = Widgets.wrap(g, text, Dim.FS_S + 1, 200f, 3)
+        val text = bubbleOf(id) ?: return; val t = app.theme; val lines = Widgets.wrap(g, text, Dim.FS_S + 1, 200f, 5)
         val w = g.width; val h = g.height - 8
         g.fillRound(0f, 3f, w, h, 16f, t.shadow); g.fillRound(0f, 0f, w, h, 16f, if (isLive(id)) t.surface2 else t.surface)
         sim.person(id)?.spec?.tint?.takeIf { it.matches(Regex("#[0-9A-Fa-f]{6}")) }?.let { g.strokeRound(1f, 1f, w - 2, h - 2, 15f, 2f, Colors.hex(it)) }
@@ -333,7 +333,7 @@ class DeskPermissionSheet : Overlay() {
         var yy = y + 76
         for (s in listOf("角色要出現在其他 App 上面，Android 需要你開啟「顯示在其他應用程式上層」。",
             "牠只畫自己的小視窗，不會讀取畫面、通知或你打的字。", "開啟後回到這裡，再按一次「帶到桌面」。"))
-            for (l in Widgets.wrap(g, s, Dim.FS_S + 1, w - 40, 3)) { g.text(l, x + 20, yy, Dim.FS_S + 1, t.ink2); yy += 24 }
+            for (l in Widgets.wrap(g, s, Dim.FS_S + 1, w - 40)) { g.text(l, x + 20, yy, Dim.FS_S + 1, t.ink2); yy += 24 }
         Widgets.button(g, app, "perm:go", x + 20, y + h - 72, w - 40, 52f, "前往設定", Kind.PRIMARY)
     }
     override fun tap(id: String) { if (id == "perm:go") { app.closeOverlay(); app.platform.openOverlaySettings() } }

@@ -115,9 +115,11 @@ object Widgets {
         }
     }
     /** 1.5.1: at the top (under the time capsule), up to two lines, tap to dismiss; returns where it is */
+    /** 2.1.0 (#05): how long a toast stays — longer text, longer time */
+    fun toastStay(text: String) = 3.0f + (text.length - 24).coerceAtLeast(0) * 0.05f
     fun toast(g: Gfx, app: UiApp, text: String, age: Float): FloatArray {
-        val t = app.theme; val inA = Ease.outBack(minOf(1f, age / 0.3f)); val out = if (age > 3.0f) 1 - (age - 3.0f) / 0.4f else 1f
-        val lines = wrap(g, text, Dim.FS_S + 1, app.w - 96, 2); val w = minOf(app.w - 48, lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 48); val h = 26f + lines.size * 20f
+        val t = app.theme; val inA = Ease.outBack(minOf(1f, age / 0.3f)); val stay = toastStay(text); val out = if (age > stay) 1 - (age - stay) / 0.4f else 1f
+        val lines = wrap(g, text, Dim.FS_S + 1, app.w - 96); val w = minOf(app.w - 48, lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 48); val h = 26f + lines.size * 20f
         val x = (app.w - w) / 2; val y = app.insetTop + 114 - (1 - inA) * 24
         g.save(); g.alpha(out.coerceIn(0f, 1f)); card(g, t, x, y, w, h, 22f, t.ink, Colors.mix(t.ink, 0xFF000000.toInt(), 0.3f))
         lines.forEachIndexed { i, l -> g.text(l, app.w / 2, y + 28 + i * 20f, Dim.FS_S + 1, t.bg, FontKind.UI, Align.CENTER) }; g.restore()
@@ -175,22 +177,28 @@ object Widgets {
         }
     }
     /** break text into lines that fit a width (Chinese breaks anywhere; a word with spaces stays whole when it can) */
+    private const val NO_START = "）」』】〉》，。、：；！？…・)]}.,:;!?%"
     fun wrap(g: Gfx, s: String, size: Float, maxW: Float, maxLines: Int = 99): List<String> {
         val out = ArrayList<String>(); var line = StringBuilder()
         for (ch in s) { if (ch == '\n') { out += line.toString(); line = StringBuilder(); continue }
             if (g.measure(line.toString() + ch, size) > maxW && line.isNotEmpty()) {
                 /* keep a run of latin letters / digits (1024, px, M2) together on the next line */
                 var cut = line.length; if (ch.isLetterOrDigit() && ch.code < 128) while (cut > 0 && line[cut - 1].isLetterOrDigit() && line[cut - 1].code < 128) cut--
+                if (ch in NO_START && cut == line.length && line.length > 1) cut = line.length - 1   /* 2.1.0: a closing mark never starts a line — the last character goes down with it */
                 if (cut == 0 || cut == line.length) { out += line.toString(); line = StringBuilder() } else { out += line.substring(0, cut); line = StringBuilder(line.substring(cut)) }
                 if (ch == ' ' && line.isEmpty()) continue }
             line.append(ch) }
         if (line.isNotEmpty()) out += line.toString()
-        if (out.size > maxLines) { val keep = out.take(maxLines).toMutableList(); keep[maxLines - 1] = fit(g, keep[maxLines - 1] + "…", size, maxW); return keep }
+        if (out.size > maxLines) { cut(s); val keep = out.take(maxLines).toMutableList(); keep[maxLines - 1] = fit(g, keep[maxLines - 1] + "…", size, maxW); return keep }
         return out
     }
-    /** text cut to a width with an ellipsis */
+    /** 2.1.0 (#05): every text that had to be cut (tests check that long sentences never are); the last 64 */
+    val cuts = ArrayDeque<String>()
+    private fun cut(s: String) { cuts.addLast(s); while (cuts.size > 64) cuts.removeFirst() }
+    /** text cut to a width with an ellipsis — only for names and short labels in fixed places; sentences wrap */
     fun fit(g: Gfx, s: String, size: Float, maxW: Float, font: FontKind = FontKind.UI): String {
         if (g.measure(s, size, font) <= maxW) return s
+        cut(s)
         var n = s.length; while (n > 0 && g.measure(s.take(n) + "…", size, font) > maxW) n--
         return s.take(n) + "…"
     }

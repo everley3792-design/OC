@@ -371,7 +371,7 @@ class BoardSheet(val ws: WorldScreen, val news: Boolean) : Overlay() {
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w; val life = ws.sim.life
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
-        val lines = if (news) life.town.news.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, W - G * 2 - 16, 2) }.take(8) else emptyList()
+        val lines = if (news) life.town.news.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, W - G * 2 - 16) } else emptyList()
         val hh = 200f + life.goals.size * 52f + (if (news) 40f + lines.size * 24f else 0f) + app.insetBottom; val y = app.h - hh * s
         g.fillRound(0f, y, W, hh + 40, Dim.RADIUS_L, t.surface); app.zone("bd:body", 0f, y, W, hh)
         g.text(if (news) "布告欄" else "錢包與小目標", G + 4, y + 40, Dim.FS_L, t.ink)

@@ -192,7 +192,7 @@ class TownLife(private val sim: LifeSim) {
             life.goalsDay = day; life.goals.clear()
             val ppl = life.people.filter { !it.desk }
             val pool = ArrayList<Goal>()
-            for (p in ppl) { pool += Goal("pet", p.id, "摸摸${p.name}", 20); pool += Goal("feed", p.id, "給${p.name}吃點心", 20); pool += Goal("talk", p.id, "和${p.name}聊天", 20); pool += Goal("rps", p.id, "和${p.name}猜拳", 25) }
+            for (p in ppl) { pool += Goal("pet", p.id, "摸摸${p.name}", 20); pool += Goal("feed", p.id, "給${p.name}吃點心", 20); pool += Goal("talk", p.id, "和${p.name}聊天", 20); pool += Goal("photo", p.id, "幫${p.name}拍一張照片", 25) }
             pool += Goal("buy", "", "在小鎮的店買一樣東西", 25); pool += Goal("worry", "", "處理一個煩惱", 40); pool += Goal("wish", "", "幫誰完成一個心願", 50); pool += Goal("place", "", "在家裡擺一件家具", 30)
             val picked = ArrayList<Goal>(); while (picked.size < 3 && pool.isNotEmpty()) { val g = r.pick(pool); pool.removeAll { it.kind == g.kind }; picked += g }
             life.goals += picked

@@ -232,7 +232,6 @@ class WorldScreen(val slotId: String) : Screen() {
             "closeup" -> { closeup = Triple(e.who, e.text, app.time); if (observing && !lockFollow) follow = e.who }
             "closeupEnd" -> if (closeup?.first == e.who) closeup = null
             "worry" -> { app.platform.sound("chime"); if (observing && !lockFollow) follow = e.who }
-            "rps" -> if (app.overlay == null) app.show(RpsSheet(this, e.who))
             "goal" -> { app.platform.sound("chime"); app.toast("完成小目標：${e.text}") }
             /* 1.7.0: a song (their theme, or one made up on the spot), everyone together, something only you decide */
             "song" -> if (ff == null) e.text.split("|").let { v -> app.platform.melody(v[0].split(",").mapNotNull { it.toIntOrNull() }.toIntArray(), v.getOrNull(1)?.toFloatOrNull() ?: 1f) }
@@ -265,7 +264,6 @@ class WorldScreen(val slotId: String) : Screen() {
         val used = HashSet<Int>()
         life.people.forEachIndexed { i, p ->
             if (p.desk || p.out != null) return@forEachIndexed   /* out on the phone's desktop or in town: not at home */
-            if (sim.society.hiding(p.id) != null) return@forEachIndexed   /* hiding: find them */
             val b = sim.body(p.id); val look = lookOf(p) ?: return@forEachIndexed
             val onPiece = if (b.arrivedAct && p.act != null) p.actPiece else -1; if (onPiece >= 0) used += onPiece
             val kind = sim.house.pieces.getOrNull(onPiece)?.kind
@@ -323,7 +321,7 @@ class WorldScreen(val slotId: String) : Screen() {
         hearts.removeAll { app.time - it.born > 1.4f }
         for (h in hearts) { val r = hits.firstOrNull { it.first == h.who }?.second ?: continue; val k = (app.time - h.born) / 1.4f
             g.save(); g.alpha(1 - k); Widgets.heart(g, r[0] + r[2] / 2 + h.dx * 40, r[1] - k * 40, 6f + k * 3, 0xFFF0705A.toInt()); g.restore() }
-        bubbles.entries.removeAll { app.time - it.value.born > 3.2f }
+        bubbles.entries.removeAll { app.time - it.value.born > 3.2f + 0.06f * it.value.text.length }
         for ((id, b) in bubbles) { val r = hits.firstOrNull { it.first == id }?.second ?: continue; bubble(g, t, b, r[0] + r[2] / 2, r[1] - 10, sim.person(id)?.spec?.tint) }
         // ---- a close-up of the two (plan 13.1): portraits left and right, what they just said
         closeup?.let { (a, b, born) -> closeupBand(g, t, a, b, app.time - born) }
@@ -352,14 +350,6 @@ class WorldScreen(val slotId: String) : Screen() {
         var y0 = top + 116
         if (life.arriving) { val s = "搬家日：大家一個一個到了"; val w = g.measure(s, Dim.FS_S) + 32
             g.fillRound((W - w) / 2, y0, w, 32f, 16f, Colors.withAlpha(t.surface, 0.92f)); g.text(s, W / 2, y0 + 21, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER); y0 += 40 }
-        // ---- hide-and-seek: every piece of furniture can be searched
-        hidingOne()?.let { hid ->
-            val s0 = "${sim.person(hid)?.name ?: ""}躲起來了，點家具找找看"; val w0 = g.measure(s0, Dim.FS_S) + 32
-            g.fillRound((W - w0) / 2, y0, w0, 32f, 16f, Colors.withAlpha(t.accent, 0.95f)); g.text(s0, W / 2, y0 + 21, Dim.FS_S, t.onAccent, FontKind.UI, Align.CENTER); y0 += 40
-            sim.house.pieces.forEachIndexed { i, pc -> val k = Furniture.kind(pc.kind)
-                val x1 = sx(view.bx(pc.x.toFloat())); val x2 = sx(view.bx((pc.x + k.w).toFloat())); val y2 = sy(view.by((pc.y + k.h).toFloat())); val y1 = y2 - (k.h * view.T * view.K + view.T * 0.9f) * zoom
-                app.zone("hide:$i", x1, y1, x2 - x1, y2 - y1) }
-        }
         if (ff != null) { val s0 = "快轉中……"; val w0 = g.measure(s0, Dim.FS_S) + 40
             g.fillRound((W - w0) / 2, y0, w0, 32f, 16f, Colors.withAlpha(t.ink, 0.85f)); Widgets.icon(g, "ff", (W - w0) / 2 + 18, y0 + 16, 12f, t.bg); g.text(s0, W / 2 + 8, y0 + 21, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER); y0 += 40 }
         if (observing) { observeBar(g, t); return }
@@ -467,8 +457,9 @@ class WorldScreen(val slotId: String) : Screen() {
         if (w == "rain" || w == "fog") g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF8A94A6.toInt(), 0.08f))
     }
     private fun bubble(g: Gfx, t: Theme, b: Bubble, cx: Float, bottom: Float, tint: String?) {
-        val age = app.time - b.born; val k = Ease.outBack(min(1f, age / 0.25f)); val fade = if (age > 2.8f) 1 - (age - 2.8f) / 0.4f else 1f
-        val lines = Widgets.wrap(g, b.text, Dim.FS_S + 1, 180f, 2); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 26; val h = 16f + lines.size * 20f
+        val stay = 2.8f + 0.06f * b.text.length   /* 2.1.0 (#05): a longer line stays longer, and every word is shown */
+        val age = app.time - b.born; val k = Ease.outBack(min(1f, age / 0.25f)); val fade = if (age > stay) 1 - (age - stay) / 0.4f else 1f
+        val lines = Widgets.wrap(g, b.text, Dim.FS_S + 1, 200f); val w = lines.maxOf { g.measure(it, Dim.FS_S + 1) } + 26; val h = 16f + lines.size * 20f
         val x = (cx - w / 2).coerceIn(8f, app.w - w - 8); val y = bottom - h - 8
         g.save(); g.alpha(fade.coerceIn(0f, 1f)); g.translate(cx, bottom); g.scale(k, k); g.translate(-cx, -bottom)
         g.fillRound(x, y + 2, w, h, 16f, t.shadow); g.fillRound(x, y, w, h, 16f, t.surface)
@@ -480,7 +471,6 @@ class WorldScreen(val slotId: String) : Screen() {
     private fun tintColor(s: String?): Int? = s?.takeIf { it.matches(Regex("#[0-9A-Fa-f]{6}")) }?.let { Colors.hex(it) }
     private fun worryColor(kind: String): Int = when (kind) { "fight" -> 0xFFE0524A.toInt(); "confess" -> 0xFFF08FA8.toInt(); "hungry" -> 0xFFF4A259.toInt(); "nightmare" -> 0xFF7D74B8.toInt()
         "heart" -> 0xFF7AAAD6.toInt(); "want" -> 0xFF5DB58A.toInt(); "bored" -> 0xFF9A96A0.toInt(); "makeup" -> 0xFFE88AA0.toInt(); else -> 0xFF5EA5C8.toInt() }
-    private fun hidingOne(): String? = sim.life.people.firstOrNull { sim.society.hiding(it.id) != null }?.id
     /** the close-up band: two portraits, their last lines, an effect between them */
     private fun closeupBand(g: Gfx, t: Theme, a: String, b: String, age: Float) {
         val pa = sim.person(a) ?: return; val pb = sim.person(b) ?: return
@@ -493,7 +483,7 @@ class WorldScreen(val slotId: String) : Screen() {
         g.text(Widgets.fit(g, pa.name, Dim.FS_S, 90f), Dim.GUTTER + 48, y + 112, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER)
         g.text(Widgets.fit(g, pb.name, Dim.FS_S, 90f), W - Dim.GUTTER - 48, y + 112, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER)
         val said = listOfNotNull(bubbles[a]?.let { it to true }, bubbles[b]?.let { it to false }).maxByOrNull { it.first.born }
-        if (said != null) { val mw = W - Dim.GUTTER * 2 - 200; val ls = Widgets.wrap(g, said.first.text, Dim.FS_S + 1, mw - 20, 3)
+        if (said != null) { val mw = W - Dim.GUTTER * 2 - 200; val ls = Widgets.wrap(g, said.first.text, Dim.FS_S + 1, mw - 20)
             val bx = W / 2 - mw / 2; g.fillRound(bx, y + 20, mw, 20f + ls.size * 22f, 16f, t.surface)
             ls.forEachIndexed { i, l -> g.text(l, W / 2, y + 44 + i * 22f, Dim.FS_S + 1, t.ink, FontKind.UI, Align.CENTER) }
             g.fillCircle(if (said.second) bx + 6 else bx + mw - 6, y + 34, 6f, t.surface) }
@@ -670,7 +660,6 @@ class WorldScreen(val slotId: String) : Screen() {
             id == "ff" -> ff = if (ff != null) null else FF(sim.life.log.size, sim.life.minute, sim.life.clockMode, sim.life.speed)
             id.startsWith("worry:") -> app.show(WorrySheet(this, id.removePrefix("worry:")))
             id.startsWith("ask:") -> askSheet(id.removePrefix("ask:"))
-            id.startsWith("hide:") -> hidingOne()?.let { hid -> val r = sim.society.hideSearch(hid, id.removePrefix("hide:").toInt()) ?: return; bubbles[hid] = Bubble(r.line, app.time); if (!r.over) app.toast(r.line) else flush() }
         }
     }
     // ---------------- R3: the radial menu, directing one resident, the queue ----------------
@@ -779,8 +768,6 @@ class WorldScreen(val slotId: String) : Screen() {
             "pet" -> { sim.pet(arg, 1.2f, "頭"); sim.petEnd(arg); app.toast("也可以直接在${p?.name ?: ""}身上來回滑") }
             "feed" -> app.show(ListSheet("給${p?.name ?: ""}點心", listOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶")) { k -> val m = sim.feed(arg, k); if (m.isNotEmpty()) app.toast(m); flush() })
             "talk" -> app.show(TalkSheet(this, arg))
-            "rps" -> app.show(RpsSheet(this, arg))
-            "hide" -> if (sim.society.hideStart(arg)) app.toast("躲起來了！點家具找找看") else app.toast("現在沒辦法玩")
             "control" -> { if (!control) setControl(true); pick(arg) }
             "worry" -> app.show(WorrySheet(this, arg))
             "ask" -> askSheet(arg)
@@ -790,13 +777,11 @@ class WorldScreen(val slotId: String) : Screen() {
             "follow" -> { setObserving(true); follow = arg; lockFollow = true }
             "rels" -> openWorldRelations(app, this)
             "photo" -> app.push(PhotoStudio(this, if (p != null) listOf(p.id) else sim.life.people.filter { !it.desk && it.out == null }.map { it.id }))
-            "catch" -> app.push(CatchScreen(this, arg)); "flip" -> app.push(FlipScreen(this, arg))
             "note" -> writeNote(app, this, arg); "namecard" -> app.show(NameCardSheet(this, arg))
             "info" -> arg.toIntOrNull()?.let { pi -> val pc = sim.house.pieces.getOrNull(pi) ?: return
                 val users = sim.life.people.filter { it.actPiece == pi && it.act != null }.joinToString("、") { it.name }
                 app.toast(Furniture.kind(pc.kind).zh + "・" + (sim.house.rooms.firstOrNull { it.id == pc.room }?.zh ?: "") + if (users.isNotEmpty()) "・${users}在用" else "") }
             "move" -> arg.toIntOrNull()?.let { pi -> setPlacing(true); placeSel = sim.decorate.pieces().indexOfFirst { it.x == sim.house.pieces[pi].x && it.y == sim.house.pieces[pi].y && it.kind == sim.house.pieces[pi].kind }; app.toast("點地板上的新位置") }
-            "seek" -> arg.toIntOrNull()?.let { pi -> tap("hide:$pi") }
             "lamp", "curtain", "makebed", "book" -> arg.toIntOrNull()?.let { pi -> sim.youSet(pi, op)?.let { app.toast(it) } ?: run { app.platform.sound("pop"); flush() } }
             "pickup" -> { val (x, y) = arg.split(",").map { it.toInt() }; sim.youPickUp(x, y)?.let { app.toast(it) } ?: run { app.platform.sound("pop"); flush() } }
             "place" -> app.push(StoragePage(this))
@@ -835,10 +820,9 @@ class WorldScreen(val slotId: String) : Screen() {
             when (a.kind) {
                 "snack" -> { val m = sim.feed(pid, a.thing); if (m.isNotEmpty()) app.toast(m) }
                 "pet" -> app.toast("在${p.name}身上來回滑，就能摸摸牠")
-                "rps" -> app.show(RpsSheet(this, pid))
+                "chat", "rps", "hide" -> app.show(TalkSheet(this, pid))   /* 2.1.0: a request is a talk (old saves may still hold a game request) */
                 "furniture" -> { val k = "f:" + a.thing; val zh = Furniture.kind(a.thing).zh
                     if (sim.economy.count(k) > 0) { setPlacing(true, k); app.toast("把${zh}放進${p.name}的房間吧") } else { p.ask = a; app.toast("背包裡還沒有${zh}：小鎮的家具店有時會賣") } }
-                "hide" -> if (sim.society.hideStart(pid)) app.toast("${p.name}躲起來了！") else app.toast("${p.name}現在沒辦法玩")
             }
             flush()
         })
@@ -881,7 +865,7 @@ class AwaySheet(val s: AwaySummary, val home: String) : Overlay() {
         val t = app.theme; val k = pop.step(dt)
         g.fillRect(0f, 0f, app.w, app.h, Colors.withAlpha(t.scrim, k.coerceIn(0f, 1f)))
         val w = min(app.w - 32, 360f); val x = (app.w - w) / 2
-        val lines = s.lines.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, w - 40, 3) }.take(12)
+        val lines = s.lines.flatMap { Widgets.wrap(g, it, Dim.FS_S + 1, w - 40) }.take(((app.h - 260) / 24).toInt().coerceAtLeast(6))
         val h = 132f + lines.size * 24f + 70; val y = (app.h - h) / 2
         g.save(); g.translate(app.w / 2, app.h / 2); val sc = 0.86f + 0.14f * k; g.scale(sc, sc); g.translate(-app.w / 2, -app.h / 2)
         Widgets.card(g, t, x, y, w, h)

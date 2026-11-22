@@ -183,21 +183,16 @@ class SocialTest {
         run(s, 30.0); assertTrue(p.act == "tidy" || s.life.log.any { it.who == "p2" && it.text.contains("整理") } || p.order == null)
     }
 
-    @Test fun rockPaperScissorsHabitsAndHideAndSeek() {
+    @Test fun rockPaperScissorsHabitsAndNoGamesWithYou() {
         val active = CharSpec(axes = listOf(0f, 0.8f, 0f, 0f, 0f)); val gentle = CharSpec(axes = listOf(0f, 0f, 0f, 0f, 0.8f))
         assertEquals(Rps.ROCK, Rps.favourite(active)); assertEquals(Rps.PAPER, Rps.favourite(gentle))
         val r = Rng(5); val throws = (0 until 300).map { Rps.pick(active, null, r) }
         assertTrue(throws.count { it == Rps.ROCK } > 130, "active ones love rock")
         assertEquals(1, Rps.judge(Rps.ROCK, Rps.SCISSORS)); assertEquals(-1, Rps.judge(Rps.ROCK, Rps.PAPER))
-        val s = world(); val so = s.society
-        so.rpsStart("p1"); var round = so.rpsPlay("p1", Rps.ROCK)!!
-        var n = 1; while (!round.over && n < 20) { round = so.rpsPlay("p1", Rps.PAPER)!!; n++ }
-        assertTrue(round.over); assertTrue(s.life.log.any { it.kind == "you" && it.text.contains("猜拳") })
-        assertTrue(so.hideStart("p2")); val spot = so.hiding("p2")!!
-        assertTrue(!s.society.let { s.person("p2")!!.let { p -> so.hiding(p.id) == null } })
-        val miss = (0 until s.house.pieces.size).first { it != spot }
-        assertTrue(!so.hideSearch("p2", miss)!!.found)
-        assertTrue(so.hideSearch("p2", spot)!!.found); assertNull(so.hiding("p2"))
+        /* 2.1.0 (#07): no rock-paper-scissors or hide-and-seek with you; residents still play together, and nobody asks you to */
+        val s = world(); s.catchUp(s.life.minute + 4 * 1440)
+        assertTrue(s.life.people.none { it.ask?.kind in setOf("rps", "hide") }, "requests are a talk now")
+        assertTrue(app.ocshimeji.sim.act.Interactions.ALL.none { it.by == "you" && it.op in setOf("rps", "hide", "catch", "flip", "seek") })
     }
 
     @Test fun cookingForEveryoneTastesAndDishes() {

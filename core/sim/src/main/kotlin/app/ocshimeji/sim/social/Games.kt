@@ -33,22 +33,3 @@ object Rps {
     fun tell(hand: Int, r: Rng): String? = if (!r.chance(0.65)) null else when (hand) { ROCK -> "（握緊了拳頭）"; SCISSORS -> "（手指動了動，像是要比 V）"; else -> "（手掌張開又合上）" }
 }
 
-/**
- * Hide-and-seek (plan L-02): they pick a hiding place by personality (shy ones behind the bed, the vain ones by the mirror,
- * dreamers by the window or the plant, lazy ones on the sofa). You search by tapping furniture; after two misses they give a hint.
- */
-object HideSeek {
-    fun spot(s: CharSpec, h: HouseType, r: Rng): Int {
-        val cands = h.pieces.indices.filter { Furniture.kind(h.pieces[it].kind).blocks || h.pieces[it].kind in setOf("window", "mirror", "rug") }
-        return r.weighted(cands) { i ->
-            val k = h.pieces[i].kind; var w = 1.0
-            if (s.shy > 0.2f && k in setOf("bed", "bed2", "shelf")) w += 2.5
-            if (s.axis(0) > 0.3f && k in setOf("mirror", "tub")) w += 2.0
-            if (s.axis(3) < 0f && k in setOf("window", "plant")) w += 2.0
-            if (s.axis(1) < 0f && k in setOf("sofa", "rug", "bed", "bed2")) w += 2.0
-            if (s.axis(1) > 0.3f && k in setOf("fridge", "shelf", "tub")) w += 1.5
-            w
-        } ?: 0
-    }
-    fun hint(h: HouseType, piece: Int): String = "（${Furniture.kind(h.pieces[piece].kind).zh}那邊好像有聲音……）"
-}
