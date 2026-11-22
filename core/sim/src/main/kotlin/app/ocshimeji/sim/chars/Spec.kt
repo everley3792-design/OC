@@ -84,6 +84,8 @@ data class CharSpec(
     val address: Address = Address(),
     /** little things they do on their own now and then (a line and an icon over the head) */
     val habits: List<Habit> = emptyList(),
+    /** M-04 (1.8.0): their own lines for a situation (`CustomLine.WHEN`) */
+    val lines: List<CustomLine> = emptyList(),
 ) {
     /** how they call you at this closeness (R4: three steps; the old single field is the middle one) */
     fun callFor(affinity: Int): String = when {
@@ -142,6 +144,14 @@ data class Address(
 @Serializable
 data class Call(val name: String = "", val tone: String = "普通")
 
+/** M-04: a line of their own and when they say it */
+@Serializable
+data class CustomLine(val text: String, val whenKey: String = "any") {
+    companion object {
+        val WHEN = linkedMapOf("any" to "隨時", "morning" to "早上", "night" to "晚上", "happy" to "開心時", "sad" to "難過時", "rain" to "下雨時", "petted" to "被摸時", "hungry" to "肚子餓時", "you" to "跟你說話時")
+        const val MAX = 12
+    }
+}
 /** a custom little event (R4 step 7): a line, how often (0 偶爾, 1 有時, 2 常常) and the icon over the head */
 @Serializable
 data class Habit(val text: String, val freq: Int = 1, val icon: String = "sparkle") {

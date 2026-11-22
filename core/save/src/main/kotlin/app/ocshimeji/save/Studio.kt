@@ -179,14 +179,43 @@ class Studio(val saves: SaveSystem) {
         files["manifest.json"] = json.encodeToString(ModManifest(name = name.ifBlank { "我的劇本包" }, author = author, scripts = files.keys.filter { it.startsWith("scripts/") }, tags = if (tg.isNotEmpty()) "tags.json" else "")).encodeToByteArray()
         return zip(files)
     }
-    @Serializable class ModManifest(val format: String = "ocmod", val v: Int = 1, val name: String = "", val author: String = "", val scripts: List<String> = emptyList(), val tags: String = "")
+    @Serializable class ModManifest(val format: String = "ocmod", val v: Int = 1, val name: String = "", val author: String = "", val scripts: List<String> = emptyList(), val tags: String = "",
+        /** v2 (1.8.0 P-15): characters (`.ocpkg` inside) and items (`.ocitem` inside) too */ val chars: List<String> = emptyList(), val items: List<String> = emptyList())
+    /**
+     * P-15 (1.8.0) 內容包工坊: your characters, items, scripts and tags in one `.ocmod` (format v2). Characters go in as `.ocpkg`,
+     * items as `.ocitem` — the same files you could share one by one; nothing executable.
+     */
+    fun exportPack(name: String, author: String, charIds: List<String>, itemIds: List<String>, scriptIds: List<String>, tagIds: List<String>): ByteArray {
+        val chars = charIds.mapNotNull { saves.libChar(it) }.filter { it.source != "preset" }; val items = itemIds.filter { id -> lib().items.any { it.id == id } }
+        val sc = scripts().filter { it.id in scriptIds }; val tg = tags().filter { it.id in tagIds }
+        require(chars.isNotEmpty() || items.isNotEmpty() || sc.isNotEmpty() || tg.isNotEmpty()) { "至少選一樣東西" }
+        val files = LinkedHashMap<String, ByteArray>()
+        chars.forEachIndexed { i, c -> files["chars/$i.ocpkg"] = saves.exportPkg(c.id, author) }
+        items.forEachIndexed { i, id -> files["items/$i.ocitem"] = exportItem(id) }
+        sc.forEachIndexed { i, s -> files["scripts/${i}.txt"] = Scripts.toText(s.copy(author = author)).encodeToByteArray() }
+        if (tg.isNotEmpty()) files["tags.json"] = json.encodeToString(tg).encodeToByteArray()
+        files["manifest.json"] = json.encodeToString(ModManifest(v = 2, name = name.ifBlank { "我的內容包" }, author = author, scripts = files.keys.filter { it.startsWith("scripts/") },
+            tags = if (tg.isNotEmpty()) "tags.json" else "", chars = files.keys.filter { it.startsWith("chars/") }, items = files.keys.filter { it.startsWith("items/") })).encodeToByteArray()
+        return zip(files)
+    }
+    /** import the characters and items of a v2 pack (scripts and tags go through `importMod`); returns how many of each */
+    fun importPackParts(bytes: ByteArray, codec: app.ocshimeji.save.media.Codec): Pair<Int, Int> {
+        val f = unzip(bytes) ?: throw IllegalArgumentException("不是 .ocmod 檔（應該是 ZIP）")
+        val m = runCatching { json.decodeFromString<ModManifest>((f["manifest.json"] ?: throw IllegalArgumentException("少了 manifest.json")).decodeToString()) }.getOrElse { throw IllegalArgumentException(it.message ?: "manifest.json 壞掉了") }
+        var nc = 0; var ni = 0
+        for (n in m.chars) { val b = f[n] ?: throw IllegalArgumentException("少了 $n")
+            val im = app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source(n.substringAfterLast('/'), b)), codec); val pm = im.pkg ?: throw IllegalArgumentException("$n 不是角色包")
+            saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(im), pm.spec ?: app.ocshimeji.sim.chars.CharSpec(name = pm.name), pm.facing, pm.flip, pm.marks, emptyList(), foot = pm.foot.getOrNull(0)?.let { it to (pm.foot.getOrNull(1) ?: 1f) }); nc++ }
+        for (n in m.items) { importItem(f[n] ?: throw IllegalArgumentException("少了 $n"), codec); ni++ }
+        return nc to ni
+    }
     /** what a pack contains and what it needs from your characters (shown before importing) */
     class ModPack(val name: String, val author: String, val scripts: List<ScriptDef>, val tags: List<CustomTag>, val needs: List<String>)
     fun readMod(bytes: ByteArray): ModPack {
         require(bytes.size < 4 * 1024 * 1024) { "劇本包太大（超過 4 MB）" }
         val f = unzip(bytes) ?: throw IllegalArgumentException("不是 .ocmod 檔（應該是 ZIP）")
         val m = runCatching { json.decodeFromString<ModManifest>((f["manifest.json"] ?: throw IllegalArgumentException("少了 manifest.json")).decodeToString()) }.getOrElse { throw IllegalArgumentException(it.message ?: "manifest.json 看不懂") }
-        require(m.format == "ocmod") { "不是 .ocmod 檔" }; require(m.v <= 1) { "這個劇本包比 App 新，請先更新 App" }
+        require(m.format == "ocmod") { "不是 .ocmod 檔" }; require(m.v <= 2) { "這個劇本包比 App 新，請先更新 App" }
         val scripts = m.scripts.mapIndexed { i, n -> val t = (f[n] ?: throw IllegalArgumentException("少了 $n")).decodeToString()
             val s = try { if (n.endsWith(".json")) Scripts.fromJson(t) else Scripts.parse(t, "", m.author) } catch (e: IllegalArgumentException) { throw IllegalArgumentException("$n ${e.message}") }
             val p = Scripts.problems(s); if (p.isNotEmpty()) throw IllegalArgumentException("$n：" + p.joinToString("；")); s.copy(id = "m$i") }

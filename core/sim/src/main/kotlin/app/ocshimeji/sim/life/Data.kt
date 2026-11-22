@@ -121,7 +121,7 @@ object Moods {
         MoodDef("craze", "最近迷上一件事", 1, 24f), MoodDef("whim", "今天突發奇想", 1, 16f), MoodDef("party", "大家一起玩", 2, 6f), MoodDef("debatewin", "爭論贏了", 1, 6f),
         MoodDef("debatelose", "爭論輸了", -1, 3f), MoodDef("contestwin", "比賽贏了", 1, 4f), MoodDef("contestlose", "比賽輸了", -1, 2f), MoodDef("dreamstep", "離夢想更近了", 2, 24f),
         MoodDef("dreamcome", "夢想實現了", 3, 72f), MoodDef("inlove", "戀愛了", 3, 72f), MoodDef("grown", "長大了一歲", 2, 24f), MoodDef("surprised", "收到驚喜派對", 3, 12f),
-        MoodDef("gossiped", "被大家說閒話", -1, 3f), MoodDef("sang", "唱了一首歌", 1, 3f), MoodDef("birthday", "今天生日", 3, 24f), MoodDef("plants", "身邊有植物", 1, 0.25f), MoodDef("annoyed", "被摸到不喜歡的地方", -1, 1f),
+        MoodDef("gossiped", "被大家說閒話", -1, 3f), MoodDef("photo", "被你拍了照", 1, 3f), MoodDef("capsule", "打開了時光膠囊", 2, 24f), MoodDef("newroom", "換了新房間", 1, 24f), MoodDef("sang", "唱了一首歌", 1, 3f), MoodDef("birthday", "今天生日", 3, 24f), MoodDef("plants", "身邊有植物", 1, 0.25f), MoodDef("annoyed", "被摸到不喜歡的地方", -1, 1f),
         MoodDef("spot", "被摸到最喜歡的地方", 2, 3f), MoodDef("chatted", "聊得很開心", 1, 3f), MoodDef("badchat", "聊得不太愉快", -1, 2f), MoodDef("secret", "說出了秘密", 1, 6f),
         MoodDef("angry", "生氣了", -2, 1f),
         MoodDef("socgood", "相處得很開心", 1, 2f), MoodDef("rejected", "被拒絕了", -1, 2f), MoodDef("cried", "哭過了", -2, 2f), MoodDef("madeup", "和好了", 2, 6f),

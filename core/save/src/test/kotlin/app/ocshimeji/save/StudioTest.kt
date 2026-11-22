@@ -26,6 +26,25 @@ class StudioTest {
     private fun png(r: Raster): ByteArray = Png.encode(r).also { made[it.contentHashCode().toString()] = r }
     private fun blob(w: Int, h: Int, c: Int = 0xFF884422.toInt()) = Raster(w, h, IntArray(w * h) { i -> val x = i % w; val y = i / w; if (x in w / 4 until w * 3 / 4 && y in h / 8 until h) c else 0 })
 
+    /** 1.8.0 P-14: the character as they grew up in a world becomes a new library version; the original stays */
+    @Test fun aGrownVersionGoesBackToTheLibrary() {
+        val s = sys(); val st = Studio(s); val doc = PaintDoc.of(Template.CHARACTER); doc.brush.size = 80f; doc.down(500f, 300f); for (y in 300..900 step 20) doc.move(500f, y.toFloat()); doc.up(500f, 900f)
+        val c = st.charFromDrawing(doc, CharSpec(name = "小草", age = 12))
+        val g = s.saveGrown(c.id, c.specOf().copy(age = 13, dream = "寫一本書"), "第 40 天")
+        assertTrue(g.id != c.id); assertEquals("小草（第 40 天）", g.name); assertEquals(13, g.specOf().age); assertEquals(12, s.libChar(c.id)!!.specOf().age, "the original stays")
+        assertTrue(!g.image.contains(c.id) && s.readFile(g.image.removePrefix("lib:")) != null, "pictures copied, not shared")
+        assertNull(s.removeLibChar(c.id)); assertNotNull(s.readFile(s.libChar(g.id)!!.image.removePrefix("lib:")), "deleting the original leaves the grown one whole")
+    }
+    /** 1.8.0 P-15: characters, items, scripts and tags in one .ocmod (v2) — and back */
+    @Test fun aContentPackCarriesCharactersItemsAndScripts() {
+        val s = sys(); val st = Studio(s); val doc = PaintDoc.of(Template.CHARACTER); doc.brush.size = 80f; doc.down(500f, 300f); for (y in 300..900 step 20) doc.move(500f, y.toFloat()); doc.up(500f, 900f)
+        val c = st.charFromDrawing(doc, CharSpec(name = "包包君"))
+        val pack = st.exportPack("我的包", "我", listOf(c.id), emptyList(), emptyList(), emptyList())
+        val m = st.readMod(pack); assertEquals("我的包", m.name)
+        val s2 = SaveSystem(MemStorage()) { t++ }; val dec = Codec { b -> javax.imageio.ImageIO.read(java.io.ByteArrayInputStream(b))?.let { r -> Raster(r.width, r.height, r.getRGB(0, 0, r.width, r.height, null, 0, r.width)) } }
+        val (nc, ni) = Studio(s2).importPackParts(pack, dec); assertEquals(1 to 0, nc to ni); assertTrue(s2.library().chars.any { it.name == "包包君" })
+        assertFailsWith<IllegalArgumentException> { st.exportPack("空", "", emptyList(), emptyList(), emptyList(), emptyList()) }
+    }
     @Test fun drawingsBecomeDraftsCharactersAndAnimations() {
         val s = sys(); val st = Studio(s)
         val doc = PaintDoc.of(Template.CHARACTER); doc.brush.size = 80f; doc.brush.stabilize = 0f; doc.down(500f, 300f); for (y in 300..900 step 20) doc.move(500f, y.toFloat()); doc.up(500f, 900f)

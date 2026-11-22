@@ -170,6 +170,20 @@ class SaveSystem(private val store: Storage, internal val now: () -> Long = { Sy
         val faces = c.faces.toMutableMap(); if (img == null) { store.delete(path); faces.remove(emotion) } else { store.write(path, Png.encode(img)); faces[emotion] = "lib:$path" }
         addLibChar(c.copy(faces = faces)); return null
     }
+    /**
+     * P-14 (1.8.0): the character as they are now in a world (older, with what they learned) saved as a new version in the library,
+     * so the next world can start with 「長大的牠」. The pictures are copied (the two versions never share files); the original stays.
+     */
+    fun saveGrown(libId: String, spec: CharSpec, note: String): LibChar {
+        val c = libChar(libId) ?: throw IllegalArgumentException("收藏庫裡沒有這個角色")
+        val nid = newId("c"); val from = c.image.removePrefix("lib:").substringBeforeLast('/'); val to = "library/chars/$nid"
+        fun copyDir(a: String, b: String) { for (f in store.list(a)) { val p = "$a/$f"; if (store.list(p).isNotEmpty()) copyDir(p, "$b/$f") else store.read(p)?.let { store.write("$b/$f", it) } } }
+        val name = spec.name.ifBlank { c.name }
+        val moved = if (c.source == "preset" || !from.startsWith("library/")) c else { copyDir(from, to)
+            json.decodeFromString(LibChar.serializer(), json.encodeToString(LibChar.serializer(), c).replace("$from/", "$to/")) }
+        val g = moved.copy(id = nid, name = "$name（$note）", spec = spec.copy(name = name), source = if (c.source == "preset") "grown" else moved.source)
+        addLibChar(g); return g
+    }
     /** `.ocpkg` (plan 3.1): the character with its settings, ready to share; presets are not exported (they are in every app) */
     fun exportPkg(id: String, author: String = ""): ByteArray {
         val c = libChar(id) ?: throw IllegalArgumentException("沒有這個角色"); require(c.source != "preset") { "內建角色已經在每個人的 App 裡了" }

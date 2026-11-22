@@ -110,6 +110,11 @@ class WorldTest {
         val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v14.json")!!.readBytes()); val life = w.life!!
         assertEquals(WORLD_VERSION, w.v); assertEquals(listOf("nest", "food"), life.deskProps.map { it.kind }); assertEquals("pudding", life.deskProps[1].item); assertTrue(life.drama.dreams.isEmpty() && life.drama.decisions.isEmpty())
     }
+    @Test fun a170WorldFileIsUpgraded() {   /* format 15 → 16: the stories and the waiting decision stay; nothing between you yet */
+        val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v15.json")!!.readBytes()); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals(1, life.drama.dreams["r_a"]!!.step); assertEquals("栗栗", life.drama.nicks["r_a>r_b"]); assertEquals("debate", life.drama.decisions.single().kind)
+        assertTrue(life.you.messages.isEmpty() && life.you.rules.isEmpty() && life.people.all { it.spec.lines.isEmpty() })
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))

@@ -365,6 +365,8 @@ class Drama(private val sim: LifeSim) {
         sim.society.mail(a.id, "decision", "等你決定", text)
         if (live) sim.events += SimEvent("decision", a.id, d.id.toString())
     }
+    /** for other parts of life that need you (1.8.0 room requests) */
+    fun askFrom(kind: String, a: Person, b: Person?, text: String, options: List<String>, live: Boolean) = ask(kind, a, b, text, options, live)
     /** your answer (option index); returns what happened */
     fun decide(id: Int, option: Int): String {
         val d = st.decisions.firstOrNull { it.id == id } ?: return ""; st.decisions.remove(d)
@@ -383,7 +385,7 @@ class Drama(private val sim: LifeSim) {
                     for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(kind = "戀人", crush = it.crush + 10) }
                     if (sim.rel(a.id, b.id)?.kind == "戀人") { for (x in listOf(a, b)) sim.addMood(x, "inlove"); sim.log(a, "向${b.name}告白，兩人在一起了", kind = "event", weight = 3, with = b.id); "${a.name}和${b.name}在一起了" } else "沒有成功"
                 } else { sim.log(a, "把想說的話又放回心裡", kind = "you", weight = 1, with = b.id); "再等等" } }
-            else -> ""
+            else -> sim.you.decide(d, option)   /* 1.8.0: a room request */
         }
     }
     /** the romance rule, the same as everywhere (adults only, romance on) */

@@ -1048,6 +1048,7 @@ class Society(private val sim: LifeSim) {
         }
         if (first) { p.affinity = (p.affinity + 1).coerceIn(0, 100); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 12f); p.lastYouChat = life.minute }
         sim.townLife.goal("talk", p.id)
+        sim.you.customLine(p, r, "you")?.let { return lines.map { Speech.say(s, it, r, p.affinity, true) } + Speech.say(s, it, r, p.affinity, true) }   /* 1.8.0 M-04 */
         p.knows.entries.firstOrNull()?.let { (k, v) -> if (r.chance(0.3)) return lines.map { Speech.say(s, it, r, p.affinity, true) } + Speech.say(s, "你說過你${QUESTION_ZH[k] ?: ""}$v，我記得喔。", r, p.affinity, true) }
         return lines.map { Speech.say(s, it, r, p.affinity, true) }
     }

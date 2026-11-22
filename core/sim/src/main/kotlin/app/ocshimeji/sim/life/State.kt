@@ -76,6 +76,8 @@ class Life(
     val deskProps: MutableList<DeskPropRec> = mutableListOf(),
     /** 1.7.0: the bigger stories (`Drama`) */
     val drama: app.ocshimeji.sim.social.DramaState = app.ocshimeji.sim.social.DramaState(),
+    /** 1.8.0: between you and them (`WithYou`) */
+    val you: app.ocshimeji.sim.social.YouState = app.ocshimeji.sim.social.YouState(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
