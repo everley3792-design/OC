@@ -49,6 +49,8 @@ class DeskService : Service() {
     private val density get() = resources.displayMetrics.density
     private val petViews = HashMap<String, PetView>()
     private val bubbleViews = HashMap<String, BubbleView>()
+    /** R6: one small window per thing on the desktop (F-05, F-06) */
+    private val propViews = HashMap<String, PropView>()
     private var menu: MenuView? = null
     private var through = false
     private var phone = Phone()
@@ -108,8 +110,8 @@ class DeskService : Service() {
     }
     private fun stopEverything() {
         looping = false; closeMenu()
-        for (v in petViews.values + bubbleViews.values) runCatching { wm.removeView(v) }
-        petViews.clear(); bubbleViews.clear()
+        for (v in petViews.values + bubbleViews.values + propViews.values) runCatching { wm.removeView(v) }
+        petViews.clear(); bubbleViews.clear(); propViews.clear()
         stage?.close(); stage = null
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE) else @Suppress("DEPRECATION") stopForeground(true)
         stopSelf()
@@ -126,7 +128,7 @@ class DeskService : Service() {
         st.screen.apply { val s = screenSize(); w = s.w; h = s.h; top = s.top; bottom = s.bottom }
         st.frame(dt, phone.copy(fullscreen = fullscreen))
         for ((id, v) in petViews) { val b = st.windowOf(id) ?: continue; v.place(b, st.pets[id]?.pet?.hidden == true); v.invalidate() }
-        bubbles(st)
+        bubbles(st); props(st)
         st.menuFor?.let { st.menuFor = null; openMenu(it) }
         if (st.pets.isEmpty()) { stopEverything(); return }
         val fps = st.fps.coerceAtLeast(2)
@@ -142,6 +144,12 @@ class DeskService : Service() {
             val r = st.bubbleWindow(measureG, id) ?: continue
             if (v == null) { val nv = BubbleView(id); bubbleViews[id] = nv; wm.addView(nv, params(r, touchable = st.isLive(id) && !through)) } else { v.place(r); v.invalidate() }
         }
+    }
+    private fun props(st: DeskStage) {
+        val ids = st.propIds.toSet()
+        for (id in propViews.keys.toList()) if (id !in ids) propViews.remove(id)?.let { runCatching { wm.removeView(it) } }
+        for (id in ids) { val b = st.propWindow(id) ?: continue; val v = propViews[id]
+            if (v == null) { val nv = PropView(id); propViews[id] = nv; runCatching { wm.addView(nv, params(b, touchable = !through)) } } else { v.place(b); v.invalidate() } }
     }
     /** a Gfx that only measures text (bubble sizes are computed before there is a canvas) */
     private val measureG by lazy { AndroidGfx(OcRuntime.assets).also { it.measureOnly(resources.displayMetrics.widthPixels / density, resources.displayMetrics.heightPixels / density) } }
@@ -160,6 +168,7 @@ class DeskService : Service() {
     private fun setThrough(on: Boolean) {
         through = on
         for ((id, v) in petViews) { val b = stage?.windowOf(id) ?: continue; runCatching { wm.updateViewLayout(v, params(b, touchable = !on)) } }
+        for ((id, v) in propViews) { val b = stage?.propWindow(id) ?: continue; runCatching { wm.updateViewLayout(v, params(b, touchable = !on)) } }
         if (on) toast("手指會穿過桌寵；從通知可以恢復")
         notifyUpdate()
     }
@@ -183,6 +192,20 @@ class DeskService : Service() {
         override fun onTouchEvent(e: MotionEvent): Boolean {
             val st = stage ?: return false; val x = e.rawX / density; val y = e.rawY / density
             when (e.actionMasked) { MotionEvent.ACTION_DOWN -> st.touch(id, 0, x, y); MotionEvent.ACTION_MOVE -> st.touch(id, 1, x, y); MotionEvent.ACTION_UP -> st.touch(id, 2, x, y); MotionEvent.ACTION_CANCEL -> st.touch(id, 3, x, y) }
+            loop(); return true
+        }
+    }
+    inner class PropView(val id: String) : View(this@DeskService) {
+        private var last = floatArrayOf(Float.NaN, 0f, 0f, 0f)
+        fun place(b: FloatArray) {
+            if (kotlin.math.abs(b[0] - last[0]) < 0.5f && kotlin.math.abs(b[1] - last[1]) < 0.5f) return
+            last = b.copyOf(); val lp = layoutParams as? WindowManager.LayoutParams ?: return
+            lp.x = (b[0] * density).toInt(); lp.y = (b[1] * density).toInt(); lp.width = (b[2] * density).toInt(); lp.height = (b[3] * density).toInt(); runCatching { wm.updateViewLayout(this, lp) }
+        }
+        override fun onDraw(canvas: Canvas) { val st = stage ?: return; gfx.begin(canvas, density); try { st.drawProp(gfx, id) } finally { gfx.end() } }
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            val st = stage ?: return false; val x = e.rawX / density; val y = e.rawY / density
+            when (e.actionMasked) { MotionEvent.ACTION_DOWN -> st.touchProp(id, 0, x, y); MotionEvent.ACTION_MOVE -> st.touchProp(id, 1, x, y); MotionEvent.ACTION_UP -> st.touchProp(id, 2, x, y); MotionEvent.ACTION_CANCEL -> st.touchProp(id, 3, x, y) }
             loop(); return true
         }
     }

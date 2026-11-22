@@ -72,6 +72,8 @@ class Life(
     val litter: MutableList<Litter> = mutableListOf(),
     // ---- 1.5.1: the phone's time-zone offset when the world was last watched (minutes; real time follows the phone's wall clock)
     var tzOffset: Int = Int.MIN_VALUE,
+    /** R6 (F-05, F-06): things on the phone's desktop — a snack, a blanket, a little plant, a note, the nest */
+    val deskProps: MutableList<DeskPropRec> = mutableListOf(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -163,5 +165,7 @@ data class SimEvent(val kind: String, val who: String, val text: String = "")
     /** furniture: footprint, spots (dx, dy, pose 0 sit / 1 lie / 2 stand), what it offers, its base price */
     val w: Int = 1, val h: Int = 1, val spots: List<List<Float>> = emptyList(), val offers: List<String> = emptyList(), val price: Int = 0, val series: String = "")
 /** something left on the floor (R5): a snack wrapper, a book, a cup — gone when someone tidies the room */
+/** R6: a thing on the desktop; `fx` = where along the floor (0..1 of the screen width); `item` = the bag item it came from (a snack goes back to the bag when put away) */
+@Serializable class DeskPropRec(val id: String, val kind: String, var fx: Float, val item: String? = null)
 @Serializable class Litter(val kind: String, val x: Int, val y: Int, val by: String = "", val minute: Double = 0.0)
 @Serializable class Decor(val wall: String = "", val floor: String = "")

@@ -717,6 +717,43 @@ class LifeSim(val life: Life) {
     /** asleep on the desktop (energy comes back like a nap) */
     fun deskRest(id: String, sleeping: Boolean) { val p = person(id) ?: return; body(id).deskSleep = sleeping && p.desk }
     val onDesk: List<Person> get() = life.people.filter { it.desk }
+    // ---------------- R6: things on the desktop (F-05, F-06), together (F-07), keeping you company (F-08) ----------------
+    /** put a thing on the desktop; a snack comes out of the bag (a line in the ledger). null = done, otherwise why not */
+    fun deskPut(kind: String, fx: Float, item: String? = null): String? {
+        if (app.ocshimeji.sim.desk.DeskProps[kind] == null) return "沒有這種東西"
+        if (kind == "nest") life.deskProps.removeAll { it.kind == "nest" }
+        else if (life.deskProps.count { it.kind != "nest" } >= app.ocshimeji.sim.desk.DeskProps.MAX) return "桌面上最多放 ${app.ocshimeji.sim.desk.DeskProps.MAX} 樣東西"
+        if (kind == "food") { val it = item ?: return "要選一樣點心"; if (!economy.move(it, -1, "放到手機桌面")) return "背包裡沒有${foodOf(it)?.zh ?: "點心"}了" }
+        val n = (life.deskProps.maxOfOrNull { it.id.removePrefix("dp").toIntOrNull() ?: 0 } ?: 0) + 1
+        life.deskProps += DeskPropRec("dp$n", kind, fx.coerceIn(0.05f, 0.95f), if (kind == "food") item else null); return null
+    }
+    /** put a thing away; a snack goes back into the bag */
+    fun deskTake(propId: String): Boolean {
+        val r = life.deskProps.firstOrNull { it.id == propId } ?: return false
+        life.deskProps.remove(r); r.item?.let { economy.move(it, 1, "從手機桌面收回") }; return true
+    }
+    /** what a pet did with a thing on the desktop: eat the snack (it is gone), water the plant, read the note, sleep in the nest */
+    fun deskUse(id: String, propId: String, what: String) {
+        val p = person(id) ?: return; val r = life.deskProps.firstOrNull { it.id == propId } ?: return
+        when (what) {
+            "eat" -> { life.deskProps.remove(r); val food = r.item ?: return; if (feed(id, food, fromBag = false).isNotEmpty()) log(p, "在桌面上吃了${foodOf(food)?.zh ?: "點心"}") }
+            "water" -> { log(p, "在桌面上幫小盆栽澆了水", kind = "desk"); journal.did(p.id, "deskWater") }
+            "read" -> { log(p, "在桌面上看了你留的紙條", kind = "desk"); addMood(p, "snack") }
+            "nest" -> { log(p, "在桌面的窩裡睡了一覺", kind = "desk") }
+        }
+    }
+    /** two pets did something together on the desktop: a memory for both, a little closer (through the usual rules) */
+    fun deskTogether(a: String, b: String, kind: String) {
+        val pa = person(a) ?: return; val pb = person(b) ?: return
+        val zh = app.ocshimeji.sim.desk.DeskTogethers.ALL[kind]?.zh ?: return
+        log(pa, "和${pb.name}在桌面上$zh", kind = "desk", with = pb.id)
+        for ((x, y) in listOf(pa to pb, pb to pa)) society.relUpdate(x, y) { it.copy(familiar = it.familiar + 1, like = it.like + if (kind == "greet") 0 else 1) }
+        journal.did(a, "deskTogether"); journal.did(b, "deskTogether")
+    }
+    /** F-08: a focus session with you ended (minutes of work) */
+    fun deskFocus(ids: List<String>, minutes: Int) {
+        for (id in ids) { val p = person(id) ?: continue; log(p, "陪你專心了 $minutes 分鐘", kind = "desk", dur = minutes.toDouble()); journal.did(id, "deskFocus"); p.setNeed(Need.ATTENTION, p.need(Need.ATTENTION) + 15f) }
+    }
     /** what one of your snacks tastes like to them: 1 liked, 0 fine, −1 disliked */
     fun taste(p: Person, food: String): Int {
         val f = foodOf(food) ?: return 0; val cat = f.cat; val zh = f.zh
@@ -736,11 +773,11 @@ class LifeSim(val life: Life) {
     val snacks: List<Pair<String, String>> get() = FOOD_ZH.entries.map { it.key to it.value } + life.items.filter { it.kind == "food" || it.kind == "drink" }.map { "item:${it.id}" to it.name } +
         life.bag.entries.filter { app.ocshimeji.sim.town.Goods.ALL[it.key]?.kind == "food" }.map { it.key to "${app.ocshimeji.sim.town.Goods.ALL[it.key]!!.zh} ×${it.value}" }
     /** player's snacks: the three everyday ones and your own recipes are always there; what you bought in town comes out of the bag */
-    fun feed(id: String, food: String): String {
+    fun feed(id: String, food: String, fromBag: Boolean = true): String {
         val p = person(id) ?: return ""; val f = foodOf(food) ?: return ""; val b = body(id)
         if (b.held || b.flying) return ""
         if (p.out != null) return "${p.name}去小鎮了"
-        val bought = app.ocshimeji.sim.town.Goods.ALL.containsKey(food)
+        val bought = fromBag && app.ocshimeji.sim.town.Goods.ALL.containsKey(food)   /* a snack already on the desktop has left the bag */
         if (bought && economy.count(food) <= 0) return "背包裡沒有${f.zh}了"
         if (asleep(p)) return "${p.name}睡著了"
         if (p.need(Need.FOOD) > 92) { say(p, rng.pick(Lines.M["full"]!!), toPlayer = true); return "${p.name}吃不下了" }

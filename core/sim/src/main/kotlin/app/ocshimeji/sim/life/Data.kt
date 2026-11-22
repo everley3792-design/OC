@@ -183,6 +183,10 @@ object Lines {
         "jump" to listOf("跳！", "嘿咻！"),
         "letGo" to listOf("哇啊——", "手好痠，放手了！"),
         "back" to listOf("我回來了！", "剛剛躲起來了。"),
+        "focusStart" to listOf("好，我在旁邊看書，你加油。", "一起專心吧。我不吵你。", "開始囉，我陪你。"),
+        "breakTime" to listOf("休息一下！起來動一動吧。", "時間到～喝口水，伸個懶腰。", "辛苦了，休息五分鐘。"),
+        "focusDone" to listOf("做完了！你好厲害。", "今天很努力喔。"),
+        "caught" to listOf("抓到你的手指了！", "嘿嘿，追上了。", "等等我～"),
         "tapDesk" to listOf("嗯？", "怎麼了？", "你叫我嗎？", "嘿嘿。"),
         "chatReply" to listOf("真的嗎？", "嗯嗯，然後呢？", "哈哈，好好笑。", "我也這麼覺得。", "咦——是喔？", "原來如此。"),
     )

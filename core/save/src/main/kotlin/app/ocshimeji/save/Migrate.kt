@@ -90,6 +90,8 @@ object Migrate {
         11 to { w -> w },
         /* 12 → 13 (1.5.1): picked-up catchphrases (none yet) and the phone's time-zone offset (unknown until the next look) */
         12 to { w -> w },
+        /* 13 → 14 (R6): things on the phone's desktop (none yet) */
+        13 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

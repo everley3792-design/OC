@@ -211,6 +211,7 @@ class UiTest {
     private fun desktop(st: DeskStage, scale: Float = 2f): BufferedImage = Java2dGfx.render(360, 780, scale, assets) { g ->
         g.fillGradientV(0f, 0f, 360f, 780f, 0xFF9FB8D8.toInt(), 0xFFE8D8F0.toInt())
         for (i in 0 until 16) { val x = 32f + (i % 4) * 84f; val y = 120f + (i / 4) * 110f; g.fillRound(x, y, 48f, 48f, 14f, 0x66FFFFFF) }   /* app icons (we never see the real ones) */
+        for (id in st.propIds) { val b = st.propWindow(id) ?: continue; g.save(); g.translate(b[0], b[1]); st.drawProp(FakeSize(g, b[2], b[3]), id); g.restore() }
         for (id in st.pets.keys) {
             val b = st.windowOf(id) ?: continue; g.save(); g.translate(b[0], b[1]); g.clip(0f, 0f, b[2], b[3]); st.drawPet(g, id); g.restore()
             st.bubbleWindow(g, id)?.let { w -> g.save(); g.translate(w[0], w[1]); st.drawBubble(FakeSize(g, w[2], w[3]), id); g.restore() }
@@ -241,9 +242,9 @@ class UiTest {
         // a long press opens the menu; feeding there is the same as at home
         st.touch(p.id, 0, d.x, d.y - 40); repeat(20) { st.frame(1 / 30f, Phone()) }; assertEquals(p.id, st.menuFor); st.touch(p.id, 2, d.x, d.y - 40)
         val menu = UiApp(a.saves, assets, platform, a.host); var act = ""; menu.push(DeskMenuScreen(st, p.id) { act = it })
-        Java2dGfx.render(260, 292, 1f, assets) { menu.frame(it, 1 / 30f) }; val food = p.need(app.ocshimeji.sim.life.Need.FOOD)
+        Java2dGfx.render(DeskMenuScreen.W.toInt(), DeskMenuScreen.H.toInt(), 1f, assets) { menu.frame(it, 1 / 30f) }; val food = p.need(app.ocshimeji.sim.life.Need.FOOD)
         p.setNeed(app.ocshimeji.sim.life.Need.FOOD, 40f); assertTrue(menu.tapZone("m:feed:apple")); assertTrue(p.need(app.ocshimeji.sim.life.Need.FOOD) > 40f); assertEquals("close", act)
-        shot("desk-menu", Java2dGfx.render(260, 292, 2f, assets) { menu.frame(it, 1 / 30f) }); assertTrue(food >= 0)
+        shot("desk-menu", Java2dGfx.render(DeskMenuScreen.W.toInt(), DeskMenuScreen.H.toInt(), 2f, assets) { menu.frame(it, 1 / 30f) }); assertTrue(food >= 0)
         // climbing and hanging look right too
         var sidePic = false
         for (i in 0 until 6000) { st.frame(1 / 15f, Phone()); if (d.side != app.ocshimeji.sim.desk.Side.FLOOR && st.time > 10f) { shot("desk-wall", desktop(st)); sidePic = true; break } }
@@ -251,6 +252,40 @@ class UiTest {
         // back home: through the menu
         assertTrue(menu.tapZone("m:home")); assertTrue(!p.desk); assertEquals("home", act)
         a.wake(); frames(a, 10); assertNotNull(ws.screenOf(p.id))
+    }
+    /** R6: the desktop rebuilt — things to put down (a snack eaten, the nest), following your finger, two pets together, keeping you company */
+    @Test fun theDesktopR6() {
+        val a = app(); deskApp = a; val ws = home2(a); val sim = ws.sim; val (p1, p2) = sim.life.people; overlayOk = true
+        sim.society.relUpdate(p1, p2) { it.copy(like = 85, familiar = 80) }; sim.society.relUpdate(p2, p1) { it.copy(like = 85, familiar = 80) }
+        assertNull(a.platform.deskStart(ws.slotId, p1.id)); assertNull(a.platform.deskStart(ws.slotId, p2.id)); val st = stage!!; a.pause()
+        repeat(60) { st.frame(1 / 30f, Phone()) }
+        // things on the desktop: a snack from the bag (a ledger line), a nest; drag one along the floor, double tap to put it away
+        val food = app.ocshimeji.sim.town.Goods.ALL.values.first { it.kind == "food" }.id; assertTrue(sim.economy.move(food, 1, "測試"))
+        val menu = UiApp(a.saves, assets, platform, a.host); var act = ""; menu.push(DeskMenuScreen(st, p1.id) { act = it })
+        Java2dGfx.render(DeskMenuScreen.W.toInt(), DeskMenuScreen.H.toInt(), 1f, assets) { menu.frame(it, 1 / 30f) }
+        assertTrue(menu.tapZone("m:put:nest")); assertTrue(menu.tapZone("m:put:food")); assertTrue(menu.tapZone("m:put:plant"))
+        assertEquals(3, sim.life.deskProps.size); assertEquals(0, sim.economy.count(food), "the snack left the bag"); assertTrue(sim.economy.consistent())
+        val plant = sim.life.deskProps.first { it.kind == "plant" }; val pw = st.propWindow(plant.id)!!
+        st.touchProp(plant.id, 0, pw[0] + 20, pw[1] + 20); st.touchProp(plant.id, 1, 300f, pw[1] + 20); st.touchProp(plant.id, 2, 300f, pw[1] + 20); assertEquals(300f / st.screen.w, plant.fx, 0.01f)
+        repeat(20) { st.frame(1 / 30f, Phone()) }; shot("desk-things", desktop(st))
+        // hungry: goes to the snack and eats it (the same person as at home: fuller, a memory)
+        p1.setNeed(app.ocshimeji.sim.life.Need.FOOD, 20f); var n = 0; while (n++ < 900 && sim.life.deskProps.any { it.kind == "food" }) st.frame(1 / 30f, Phone())
+        assertTrue(sim.life.deskProps.none { it.kind == "food" }, "eaten"); assertTrue(p1.need(app.ocshimeji.sim.life.Need.FOOD) > 20f); assertTrue(sim.economy.consistent())
+        // a finger held next to the pet (not on it): it comes after the finger
+        val d = st.pets[p1.id]!!.pet; repeat(10) { st.frame(1 / 30f, Phone()) }; val w = st.windowOf(p1.id)!!; val fx0 = w[0] + 6; val fy = w[1] + w[3] - 10
+        st.touch(p1.id, 0, fx0, fy); var x = fx0; repeat(60) { x = (x + 4f).coerceAtMost(330f); st.touch(p1.id, 1, x, fy); st.frame(1 / 30f, Phone()) }
+        if (d.intent == "follow") assertTrue(kotlin.math.abs(d.x - x) < 120f, "following: ${d.x} → $x"); st.touch(p1.id, 2, x, fy); assertNotNull(d.intent)
+        // together: two friends find each other within a while; it becomes a memory
+        var k = 0; while (k++ < 20000 && sim.life.log.none { it.kind == "desk" && it.text.contains("在桌面上") && it.with.isNotEmpty() }) st.frame(1 / 10f, Phone())
+        assertTrue(sim.life.log.any { it.kind == "desk" && it.with.isNotEmpty() }, "did something together")
+        // keeping you company: 25 minutes, then a break; the session is remembered
+        assertTrue(menu.tapZone("m:focus")); assertNotNull(st.focus); repeat(60) { st.frame(1 / 10f, Phone()) }
+        assertTrue(st.pets.values.any { it.pet.intent == "focus" }); shot("desk-focus", desktop(st))
+        repeat(25 * 60 * 2) { st.frame(1 / 2f, Phone()) }; assertEquals("break", st.focus!!.phase); assertTrue(sim.life.log.any { it.text.contains("陪你專心了 25 分鐘") })
+        assertTrue(menu.tapZone("m:focus")); assertNull(st.focus)
+        // put everything away; the nest and the plant are the pet's own, nothing goes missing
+        assertTrue(menu.tapZone("m:putaway")); assertTrue(sim.life.deskProps.isEmpty()); assertTrue(sim.economy.consistent())
+        for (pt in st.pets.values) { assertEquals(0, pt.pet.illegal); assertEquals(0, pt.pet.rescues) }
     }
     /** M4: three residents — worry bubbles, a close-up, observation mode, the mailbox and timeline, the day-end card, games, talking, suggestions */
     @Test fun socialLifeAtHome() {
