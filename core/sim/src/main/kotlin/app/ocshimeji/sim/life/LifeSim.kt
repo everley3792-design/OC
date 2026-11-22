@@ -333,6 +333,7 @@ class LifeSim(val life: Life) {
     private fun decide(p: Person, b: Body) {
         val tx = p.x.toInt(); val ty = p.y.toInt()
         val dist = grid.distances(tx, ty)
+        if (p.order == null && p.queue.isNotEmpty()) p.order = p.queue.removeAt(0)   /* the next of your orders (R3) */
         if (p.order != null && society.followOrder(p, dist)) return
         val c = candidates(p, dist, rng, false); val best = pick(c, rng)
         if (best == null || best.score < 1.2f) { idle(p, b); return }
@@ -356,6 +357,35 @@ class LifeSim(val life: Life) {
     }
     /** the best way to do one particular activity now (your suggestions), or null */
     internal fun candidatesFor(p: Person, dist: IntArray, actId: String): Cand? = candidates(p, dist, rng, false).filter { it.act.id == actId && it.partner == null }.maxByOrNull { it.score }
+    /** R3: why `p` cannot do `a` on piece `pi` (your order for one particular piece), or null */
+    internal fun pieceProblem(p: Person, a: Activity, pi: Int): String? {
+        val piece = house.pieces.getOrNull(pi) ?: return "那件家具不見了"; val k = Furniture.kind(piece.kind)
+        if (a.kind == null || !fits(a.kind, piece.kind) || k.slots.isEmpty()) return "${k.zh}不能用來${a.zh}"
+        if (a.sameRoomAs != null && house.pieces.none { it.kind == a.sameRoomAs && it.room == piece.room }) return "這個房間少了${Furniture.kind(a.sameRoomAs).zh}"
+        if (a.id in SLEEPY && a.kind == "bed" && piece.room != p.room) return "那不是${p.name}的床"
+        if (k.slots.indices.none { reserved["$pi:$it"].let { w -> w == null || w == p.id } }) return "有人在用"
+        return null
+    }
+    /** R3: `a` on piece `pi`, or null when there is no way there */
+    internal fun candidateAt(p: Person, dist: IntArray, a: Activity, pi: Int): Cand? {
+        if (pieceProblem(p, a, pi) != null) return null
+        val piece = house.pieces[pi]
+        Furniture.kind(piece.kind).slots.forEachIndexed { si, s ->
+            val who = reserved["$pi:$si"]; if (who != null && who != p.id) return@forEachIndexed
+            val sx = piece.x + s.dx; val sy = piece.y + s.dy; val (ax, ay) = approach(sx, sy)
+            if (ax in 0 until grid.w && ay in 0 until grid.hh && dist[ay * grid.w + ax] >= 0) return Cand(a, pi, si, sx, sy, 10f, emptyList())
+        }
+        return null
+    }
+    /** R3: the nearest way to do `a` at all (an order without a place) */
+    internal fun anyWay(p: Person, dist: IntArray, a: Activity): Cand? =
+        if (a.id == "outing") null else if (a.kind == null) candidateOn(dist, a, p.x.toInt(), p.y.toInt()) ?: grid.nearestWalkable(p.x, p.y).let { (x, y) -> candidateOn(dist, a, x, y) }
+        else house.pieces.indices.mapNotNull { candidateAt(p, dist, a, it) }.minByOrNull { c -> val (ax, ay) = approach(c.tx, c.ty); dist[ay * grid.w + ax] }
+    /** R3: `a` (one without furniture) on the tile you pointed at, or null */
+    internal fun candidateOn(dist: IntArray, a: Activity, tx: Int, ty: Int): Cand? {
+        if (a.kind != null || tx !in 0 until grid.w || ty !in 0 until grid.hh || !grid.walkable(tx, ty) || dist[ty * grid.w + tx] < 0) return null
+        return Cand(a, -1, -1, tx + 0.5f, ty + 0.5f, 10f, emptyList())
+    }
     /** `a` goes to `b` for a social act or an event (`soc`); both must be free */
     internal fun startTogether(a: Person, b: Person, soc: String, why: List<String>): Boolean {
         if (!free(a) || !free(b) || a === b) return false

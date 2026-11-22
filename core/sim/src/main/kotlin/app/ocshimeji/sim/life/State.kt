@@ -123,6 +123,8 @@ class Person(
     var out: Outing? = null,
     /** what they did today, how many times (boredom and novelty; cleared each morning) */
     val today: MutableMap<String, Int> = mutableMapOf(),
+    /** R3: your next orders, after `order` (at most 5 in all, each can be cancelled) */
+    val queue: MutableList<String> = mutableListOf(),
 ) {
     val name: String get() = spec.name
     val adult: Boolean get() = spec.adult

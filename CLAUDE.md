@@ -67,24 +67,29 @@
   - 環境面板 `EnvSheet`＋`life/Env`：暫停、撥時刻、選天氣含特殊天象、鎖季節，全部記在 `Life.env`；
   - 收納 `StoragePage`＋`ItemArt`＋`ItemSheet`；住民 `ResidentsPage`；
   - 畫面轉場；存檔格式 v9。
-- 下一步：**R3（1.3.0）環狀選單與操控**（互動登錄表、點任何東西的環狀選單、觀察／操控、指令佇列、人物卡三頁、拖曳擺放與給東西）。
+- **R3（1.3.0）環狀選單與操控——完成**（`docs/reboot/r3-report.md`）：
+  - `core:sim/act/Interactions`：互動登錄表（138 種：社交 44、活動 52、你能做的 42），`forPerson/forPiece/forFloor/forSky` 回傳可不可以做與原因；
+  - 指定的指令：`act:<id>@<家具>`、`act:<id>@t<x>,<y>`（`LifeSim.candidateAt/candidateOn/anyWay/pieceProblem`）；
+  - 指令佇列 `Person.queue`（`Society.pending/cancelOrder/stopNow/orderLabel`，最多 5 件）；存檔格式 v10；
+  - `ui`：`PieMenu`（環狀選單，最多 8 格、分組、更多、灰色附原因）、`WorldScreen` 觀看／操控、選取光圈、佇列列、拖曳擺放；`PersonCard` 三頁（現在／關係／紀錄）。
+- 下一步：**R4（1.4.0）創角與說話**（7 步創角、即時反應與試聽、互斥標籤、喜歡不喜歡三態、稱謂系統、開始畫面的編輯入口；見 `overhaul-plan.md`）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
+core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
                chars/（Spec＝CharSpec／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：paint/（Paint＝繪圖引擎、Draft＝草稿）、Studio（創作套件的收藏庫端：動畫、物品、聲音、標籤、劇本、.ocitem／.ocmod、空間）；Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
 render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
 ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、PaintUi（繪圖工坊、ColorSheet、LayerSheet）、AnimStudio、ItemEditor、ScriptUi（ScriptsPage、ScriptEditor）、CreateUi（Page、CreateHub、DraftsPage、ItemsPage、SoundsPage、TagsPage、TagEditor、SpacePage）、SocialUi（Fx 特效、Portrait 特寫、WorrySheet、RpsSheet、TalkSheet、SuggestSheet、DayCardSheet、MemorySheet、TimelineScreen）、TownUi（Wx、TownScreen、MoveSheet、BoardSheet、LedgerPage、Placing）、JournalUi（JournalHub、各紀錄頁、A11ySheet）、ListSheet、Confirm
-               MemoryUi（MemoryScreen：回憶回放與收藏）、NavUi（Nav 底部導覽、EnvSheet 環境面板、ItemArt 物品圖、StoragePage／ItemSheet 收納、ResidentsPage 住民）
+               PieUi（PieMenu 環狀選單）、MemoryUi（MemoryScreen：回憶回放與收藏）、NavUi（Nav 底部導覽、EnvSheet 環境面板、ItemArt 物品圖、StoragePage／ItemSheet 收納、ResidentsPage 住民）
                src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/、r2/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r3/（截圖）
 ```
 
 ## 指令
@@ -110,6 +115,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **家具擺放只經 `Decorate`**：先 `problem()` 檢查（房間、門口、重疊、走得到、床夠不夠），再寫 `life.layout` 並 `relayout()`；固定的東西（窗、浴缸、冰箱、爐子、鏡子）不能動。
 - **小鎮只經 `TownLife`**：出門的人 `Person.out` 不為 null，不在家裡畫面、不參與家裡的活動與社交；`step(live)` 在即時與補算都跑，補算用 `Rng.of(seed, "town:…")`。
 - **天氣、季節、暫停只經 `Env`**（`LifeSim.env`）：生活用 `sim.weather()`（特殊天象換算成一般天氣），畫面用 `sim.sky()`；你的每個改變記在 `Life.env.changes`。
+- **互動只經 `Interactions`**（R3）：選單上的每一格都來自登錄表；新的社交行為或活動加進自己的表就會出現在選單。做不到的要給原因（灰色），不要藏起來；戀愛互動對未成年或戀愛關閉時**不顯示**。你給住民的事一律經 `Society.suggest(…, queue = true)`（意願照算），排在 `Person.queue`，最多 5 件、每件可取消。
 - **導覽**：世界裡的頁面在底部畫 `Nav`，點擊先交給 `Nav.tap`（先回到家再推入新頁）；`Page` 設 `nav` 就會畫導覽列。
 - **次數與紀錄只經 `Journal`**（`did(who, what)`）：稱號、成就、統計、本週之星都從次數算；成就只由玩家領取（`claim`），星幣經帳本。圖鑑只由真實發生的事更新。無障礙設定是收藏庫旗標 `a11y:big`／`a11y:calm`／`a11y:vib0`／`a11y:vib1`。
 - **創作只經 `Studio`**（`core:save`）：草稿、動畫、物品、聲音、標籤、劇本都寫在收藏庫；世界打開時由 `Studio.syncWorld` 複製一份進 `Life`（世界自己存，確定性不受收藏庫影響）。劇本沒有可執行的程式，只有資料；戀愛相關的劇本只配對兩位成年角色且戀愛打開（`Society.scriptOk`）。

@@ -1,6 +1,8 @@
 package app.ocshimeji.ui
 
 import app.ocshimeji.sim.life.Decor
+import app.ocshimeji.sim.act.Choice
+import app.ocshimeji.sim.act.Interactions
 import app.ocshimeji.save.Studio
 import app.ocshimeji.sim.social.Worries
 import app.ocshimeji.render.Align
@@ -133,6 +135,18 @@ class WorldScreen(val slotId: String) : Screen() {
         placeSel = if (hit == placeSel) -1 else hit
         if (hit >= 0 && pcs[hit].kind in d.FIXED) { app.toast("${Furniture.kind(pcs[hit].kind).zh}是固定的"); placeSel = -1 }
     }
+    // R3: drag a piece from the bag onto the floor
+    private var dragBag: String? = null; private var dragX = 0f; private var dragY = 0f
+    /** tests: a piece is being dragged */
+    val draggingBag: String? get() = dragBag
+    override fun drag(dx: Float, dy: Float, x: Float, y: Float, start: Boolean) {
+        if (start) { dragBag = app.pressed?.takeIf { placing && it.startsWith("pl:") }?.removePrefix("pl:")?.takeIf { it !in setOf("done", "undo", "flip", "remove") }; dragX = x; dragY = y; return }
+        if (dragBag != null) { dragX = x; dragY = y }
+    }
+    override fun release() {
+        val k = dragBag ?: return; dragBag = null
+        if (dragY < app.h - app.insetBottom - 184) { placeBag = k; placeSel = -1; val (tx, ty) = tileAt(dragX, dragY - 34); placeAt(tx, ty) }
+    }
     private fun tileAt(x: Float, y: Float): Pair<Int, Int> { val bx = camX + (x - app.w / 2) / zoom; val by = camY + (y - viewCy) / zoom; return kotlin.math.floor(bx / view.T).toInt() to kotlin.math.floor(by / (view.T * view.K)).toInt() }
 
     fun light(h: Double): Float = when { h < 5 -> 0f; h < 7 -> ((h - 5) / 2).toFloat(); h < 17 -> 1f; h < 19.5 -> (1 - (h - 17) / 2.5).toFloat(); else -> 0f }
@@ -189,6 +203,7 @@ class WorldScreen(val slotId: String) : Screen() {
             val asleep = sim.asleep(p); val phase = i * 1.37f
             ds += HouseView.D(if (b.held || b.flying) 99f + i else key) {
                 if (!b.held && kind != "bed" && kind != "bed2" && kind != "tub") Widgets.footShadow(g, t, x, y, CH * 0.5f * (1f - min(0.5f, b.z * 0.2f)))
+                if (control && picked == p.id) { val pr = 1f + 0.08f * kotlin.math.sin(app.time * 4); g.strokeRound(x - 21 * pr, y - 7 * pr, 42 * pr, 14 * pr, 7 * pr, 2.5f, t.accentLip) }   /* R3: the one you are directing */
                 Actors.draw(g, look, x, y, CH, b.pose, app.time, phase, p.facing, lift, kind, asleep, sim.moodSky(p))
                 Actors.extras(g, t, look, b.pose, x, y - lift, CH, app.time, phase, p.facing, asleep, sim.propOf(p))
             }
@@ -270,13 +285,16 @@ class WorldScreen(val slotId: String) : Screen() {
         if (ff != null) { val s0 = "快轉中……"; val w0 = g.measure(s0, Dim.FS_S) + 40
             g.fillRound((W - w0) / 2, y0, w0, 32f, 16f, Colors.withAlpha(t.ink, 0.85f)); Widgets.icon(g, "ff", (W - w0) / 2 + 18, y0 + 16, 12f, t.bg); g.text(s0, W / 2 + 8, y0 + 21, Dim.FS_S, t.bg, FontKind.UI, Align.CENTER); y0 += 40 }
         if (observing) { observeBar(g, t); return }
-        if (placing) { Placing.bar(g, app, this, placeSel, placeBag); return }
+        if (placing) { Placing.bar(g, app, this, placeSel, placeBag)
+            dragBag?.let { k -> g.fillCircle(dragX, dragY - 34, 30f, Colors.withAlpha(t.surface, 0.9f)); ItemArt.draw(g, t, life, k, dragX, dragY - 34, 44f, app) }   /* R3: the piece under your finger */
+            return }
         Nav.draw(g, app, "home", Nav.badges(this))
         // ---- the bottom: residents (tap = their card)
         val by = H - Nav.height(app) - 80
         Widgets.card(g, t, Dim.GUTTER, by, W - Dim.GUTTER * 2, 72f, Dim.RADIUS_L)
         life.people.forEachIndexed { i, p ->
-            val cx = Dim.GUTTER + 44 + i * 66f; if (cx > W - 40) return@forEachIndexed; val id = "who:${p.id}"; val sink = if (app.pressed == id) 2f else 0f
+            val cx = Dim.GUTTER + 44 + i * 66f; if (cx > W - 110) return@forEachIndexed; val id = "who:${p.id}"; val sink = if (app.pressed == id) 2f else 0f
+            if (control && picked == p.id) g.strokeRound(cx - 25, by + 5 + sink, 50f, 50f, 25f, 3f, t.accentLip)
             Widgets.face(g, t, app.charImg(libOf(p), 256), cx, by + 30 + sink, 21f)
             g.text(Widgets.fit(g, p.name, 11f, 60f), cx, by + 64, 11f, t.ink2, FontKind.UI, Align.CENTER)
             Widgets.sky(g, t, sim.moodSky(p), cx + 18, by + 12, 7f)
@@ -284,8 +302,15 @@ class WorldScreen(val slotId: String) : Screen() {
             else if (p.out != null) { g.fillRound(cx - 22, by + 32, 44f, 16f, 8f, t.select); g.text("小鎮", cx, by + 44, 11f, t.ink, FontKind.UI, Align.CENTER) }
             app.zone(id, cx - 32, by, 64f, 76f)
         }
+        // ---- R3: watch / direct (the switch at the end of the strip), and the queue of the one you direct
+        run { val cx = W - Dim.GUTTER - 40; val sink = if (app.pressed == "ctl") 2f else 0f
+            g.fillCircle(cx, by + 30 + Dim.LIP, 21f, if (control) t.accentLip else t.lip); g.fillCircle(cx, by + 30 + sink, 21f, if (control) t.accent else t.surface2)
+            Widgets.icon(g, if (control) "move" else "eye", cx, by + 30 + sink, 15f, if (control) t.onAccent else t.ink2)
+            g.text(if (control) "操控中" else "觀看", cx, by + 64, 11f, if (control) t.accentLip else t.ink2, FontKind.UI, Align.CENTER)
+            app.zone("ctl", cx - 32, by, 64f, 76f) }
+        if (control) queueBar(g, t, by - 8)
         if (life.people.size == 1) { val p = life.people[0]; val b = sim.body(p.id)
-            g.text(Widgets.fit(g, doing(p, b), Dim.FS_S + 1, W - 150), Dim.GUTTER + 84, by + 32, Dim.FS_S + 1, t.ink)
+            g.text(Widgets.fit(g, doing(p, b), Dim.FS_S + 1, W - 200), Dim.GUTTER + 84, by + 32, Dim.FS_S + 1, t.ink)
             g.text(sim.moodLabel(p), Dim.GUTTER + 84, by + 54, Dim.FS_S, t.ink2) }
         // ---- first visit: how to touch (a tip card, plan: tutorials are context cards)
         if (tip && app.overlay == null) {
@@ -294,7 +319,7 @@ class WorldScreen(val slotId: String) : Screen() {
             g.text("可以直接碰牠們", Dim.GUTTER + 18, ty + 30, Dim.FS_M, t.ink)
             g.text("在角色身上來回滑＝摸摸", Dim.GUTTER + 18, ty + 54, Dim.FS_S, t.ink2)
             g.text("按住不動＝抱起來，甩出去再放開＝丟出去", Dim.GUTTER + 18, ty + 76, Dim.FS_S, t.ink2)
-            g.text("點一下＝人物卡・兩指縮放", Dim.GUTTER + 18, ty + 98, Dim.FS_S, t.ink2)
+            g.text("點一下＝環狀選單・兩指縮放", Dim.GUTTER + 18, ty + 98, Dim.FS_S, t.ink2)
             Widgets.round(g, app, "tip:close", W - Dim.GUTTER - 26, ty + 26, 16f, "close")
         }
     }
@@ -425,12 +450,13 @@ class WorldScreen(val slotId: String) : Screen() {
             2, 3 -> { val tc = touch ?: return true; touch = null
                 if (pinch != null) { pinch = null; return true }
                 if (placing && !tc.moved && kind == 2) { val (tx, ty) = tileAt(x, y); placeAt(tx, ty); return true }
-                val id = tc.id ?: return true
-                when {
+                val id = tc.id
+                if (id != null) when {
                     tc.lifted -> { val v = velocity(tc); if (kind == 3) sim.drop(id, 0f, 0f) else sim.drop(id, v.first, v.second); app.platform.haptic("soft") }
                     tc.petting -> sim.petEnd(id)
-                    !tc.moved && app.time - tc.t0 < 0.45f && kind == 2 -> openCard(id)
-                } }
+                    !tc.moved && app.time - tc.t0 < 0.45f && kind == 2 -> tapPerson(id, x, y)
+                }
+                if (tc.id == null && !tc.moved && kind == 2 && app.time - tc.t0 < 0.45f) tapScene(x, y) }
             10 -> { p2x = x; p2y = y; val tc = touch
                 if (tc != null && tc.id != null) { if (tc.lifted) sim.drop(tc.id, 0f, 0f) else if (tc.petting) sim.petEnd(tc.id) }
                 val px = tc?.x ?: x; val py = tc?.y ?: y
@@ -484,7 +510,10 @@ class WorldScreen(val slotId: String) : Screen() {
             id == "clock" -> app.show(EnvSheet(this))
             Nav.tap(app, this, id) -> {}
             id.startsWith("who:") && observing -> { val pid = id.removePrefix("who:"); if (follow == pid && lockFollow) { lockFollow = false } else { follow = pid; lockFollow = true } }
+            id.startsWith("who:") && control -> { val pid = id.removePrefix("who:"); pick(if (picked == pid) null else pid); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() } }
             id.startsWith("who:") -> { val pid = id.removePrefix("who:"); sim.person(pid)?.let { camX = view.bx(it.x); camY = view.by(it.y) - 20; clampCam() }; openCard(pid) }
+            id == "ctl" -> setControl(!control)
+            id.startsWith("q:") -> picked?.let { pid -> if (sim.society.cancelOrder(pid, id.removePrefix("q:").toInt())) { app.platform.sound("tick"); flush() } }
             id == "observe" -> setObserving(!observing)
             id == "mail" -> app.push(TimelineScreen(this))
             id == "decor" -> app.show(DecorSheet(this))
@@ -504,6 +533,149 @@ class WorldScreen(val slotId: String) : Screen() {
             id.startsWith("ask:") -> askSheet(id.removePrefix("ask:"))
             id.startsWith("hide:") -> hidingOne()?.let { hid -> val r = sim.society.hideSearch(hid, id.removePrefix("hide:").toInt()) ?: return; bubbles[hid] = Bubble(r.line, app.time); if (!r.over) app.toast(r.line) else flush() }
         }
+    }
+    // ---------------- R3: the radial menu, directing one resident, the queue ----------------
+    /** 操控: tap a resident to direct them, then tap someone, a piece of furniture or the floor; off = 觀看 (tap anything for what you can do) */
+    var control = false; private set
+    var picked: String? = null; private set
+    /** the radial menu showing now (tests) */
+    val pie: PieMenu? get() = app.overlay as? PieMenu
+    fun setControl(on: Boolean) {
+        control = on; if (!on) picked = null else if (picked == null) sim.life.people.singleOrNull { it.out == null && !it.desk }?.let { pick(it.id) }
+        app.toast(if (on) "操控：點住民，再點別人或家具" else "觀看：點任何東西看看"); app.platform.haptic("tick")
+    }
+    fun pick(pid: String?) {
+        picked = pid; val p = pid?.let { sim.person(it) } ?: return; app.platform.haptic("tick")
+        if (p.control == "observe") { sim.society.setControl(p.id, "suggest"); app.toast("${p.name}改成「建議」模式") }
+    }
+    private fun tapPerson(id: String, x: Float, y: Float) {
+        if (tip) dismissTip()
+        val p = sim.person(id) ?: return
+        if (control) { val a = picked?.let { sim.person(it) }
+            if (a == null) { pick(id); return }
+            menuPerson(a, p, x, y); return }
+        menuPerson(null, p, x, y)
+    }
+    /** the piece of furniture drawn under (x, y) on screen, nearest the viewer first */
+    private fun pieceAt(x: Float, y: Float): Int = sim.house.pieces.indices.lastOrNull { i -> val pc = sim.house.pieces[i]; val k = Furniture.kind(pc.kind)
+        val x1 = sx(view.bx(pc.x.toFloat())); val x2 = sx(view.bx((pc.x + k.w).toFloat())); val y2 = sy(view.by((pc.y + k.h).toFloat())); val y1 = y2 - (k.h * view.T * view.K + view.T * 0.9f) * zoom
+        x in x1..x2 && y in y1..y2 } ?: -1
+    /** tests: the middle of a piece / a tile on screen */
+    fun screenOfPiece(pi: Int): Pair<Float, Float> { val pc = sim.house.pieces[pi]; val k = Furniture.kind(pc.kind); return sx(view.bx(pc.x + k.w / 2f)) to sy(view.by(pc.y + k.h / 2f)) }
+    fun screenOfTile(tx: Int, ty: Int): Pair<Float, Float> = sx(view.bx(tx + 0.5f)) to sy(view.by(ty + 0.5f))
+    /** a tap on the house that was not a person: a piece, the floor, or the sky / wall */
+    fun tapScene(x: Float, y: Float) {
+        if (tip) dismissTip()
+        val a = if (control) picked?.let { sim.person(it) } else null
+        if (control && a == null) { app.toast("先點一位住民"); return }
+        val pi = pieceAt(x, y)
+        if (pi >= 0) { menuPiece(a, pi, x, y); return }
+        val (tx, ty) = tileAt(x, y); val room = sim.house.roomAt(tx, ty)
+        if (room != null && ty > room.y && sim.grid.walkable(tx, ty)) menuFloor(a, tx, ty, x, y) else menuSky(x, y)
+    }
+    private fun item(c: Choice, id: String) = PieItem(id, c.ia.zh, c.ia.icon, c.why)
+    private fun grouped(cs: List<Choice>, id: (Choice) -> String) = PieMenu.grouped(cs.map { it.ia.cat to item(it, id(it)) }) { Interactions.CAT_ICON[it] ?: "dots" }
+    private fun doId(pid: String, c: Choice) = "do|$pid|${c.what}|${c.target ?: ""}"
+    /** who could be asked: everyone at home */
+    private fun home() = sim.life.people.filter { it.out == null && !it.desk }
+    private fun open(title: String, x: Float, y: Float, items: List<PieItem>) { if (items.isEmpty()) return; app.show(PieMenu(title, x, y, items) { run(it) }) }
+    fun menuPerson(actor: app.ocshimeji.sim.life.Person?, target: app.ocshimeji.sim.life.Person, x: Float, y: Float) {
+        val cs = Interactions.forPerson(sim, actor, target)
+        when {
+            actor == null -> open(target.name, x, y, cs.map { item(it, "you|${it.ia.op}|${target.id}") })
+            actor === target -> { val (mine, here) = cs.partition { it.ia.by == "you" }
+                open(actor.name, x, y, mine.map { item(it, "self|${it.ia.op}") } + PieItem("cat:here", "在這裡做…", "dots", null, grouped(here) { doId(actor.id, it) })) }
+            else -> open("${actor.name}→${target.name}", x, y, grouped(cs) { doId(actor.id, it) })
+        }
+    }
+    fun menuPiece(actor: app.ocshimeji.sim.life.Person?, pi: Int, x: Float, y: Float) {
+        val piece = sim.house.pieces[pi]; val zh = Furniture.kind(piece.kind).zh; val cs = Interactions.forPiece(sim, actor, pi)
+        val sky = if (piece.kind == "window") listOf(PieItem("cat:sky", "天氣與時間", "sun", null, skyItems())) else emptyList()
+        if (actor != null) { open("${actor.name}：$zh", x, y, grouped(cs) { doId(actor.id, it) } + sky); return }
+        val (mine, acts) = cs.partition { it.ia.by == "you" }
+        val ask = acts.map { c -> PieItem("cat:${c.ia.id}", "叫誰來${c.ia.zh}", c.ia.icon, if (home().isEmpty()) "大家都不在家" else null,
+            home().map { p -> val w = Interactions.forPiece(sim, p, pi).firstOrNull { it.ia.id == c.ia.id }; PieItem(doId(p.id, c), p.name, "people", w?.why) }) }
+        open(zh, x, y, mine.map { item(it, "you|${it.ia.op}|$pi") } + sky + ask)
+    }
+    fun menuFloor(actor: app.ocshimeji.sim.life.Person?, tx: Int, ty: Int, x: Float, y: Float) {
+        val cs = Interactions.forFloor(sim, actor, tx, ty)
+        if (actor != null) { open("${actor.name}：這裡", x, y, grouped(cs) { doId(actor.id, it) }); return }
+        open("地板", x, y, cs.map { c -> if (c.ia.op == "call") PieItem("cat:call", c.ia.zh, c.ia.icon, if (home().isEmpty()) "大家都不在家" else null,
+            home().map { p -> PieItem("do|${p.id}|act:daydream@t$tx,$ty|", p.name, "people", Interactions.forFloor(sim, p, tx, ty).firstOrNull { it.ia.op == "act:daydream" }?.why) }) else item(c, "you|${c.ia.op}|") })
+    }
+    private fun skyItems() = PieMenu.grouped(Interactions.forSky(sim).map { it.ia.cat to item(it, "sky|${it.ia.op}") }) { when (it) { "天象" -> "star"; "季節" -> "sun"; "時間" -> "clock"; else -> "cloud" } }
+    fun menuSky(x: Float, y: Float) = open("天空", x, y, skyItems())
+    /** carry out what was picked in a radial menu */
+    fun run(id: String) {
+        val parts = id.split("|")
+        when (parts[0]) {
+            "do" -> { val pid = parts[1]; val p = sim.person(pid) ?: return; val what = parts[2]; val target = parts.getOrNull(3)?.ifBlank { null }
+                if (p.control == "observe") { sim.society.setControl(pid, "suggest") }
+                val ans = sim.society.suggest(pid, if (what.startsWith("act:")) what.removePrefix("act:") else what, target, queue = true)
+                if (ans.isNotBlank()) bubbles[pid] = Bubble(ans, app.time)
+                if (!sim.society.lastOk && ans.isNotBlank()) app.toast(ans) else if (sim.society.pending(p).size > 1) app.toast("排進${p.name}的行程（第 ${sim.society.pending(p).size} 件）")
+                flush() }
+            "self" -> { val p = picked?.let { sim.person(it) } ?: return
+                when (parts[1]) {
+                    "stop" -> if (sim.society.stopNow(p.id)) app.toast("${p.name}停下來了")
+                    "out" -> run("do|${p.id}|act:outing|")
+                    "card" -> openCard(p.id)
+                    "unselect" -> picked = null
+                    "clear" -> { while (sim.society.pending(p).isNotEmpty()) sim.society.cancelOrder(p.id, 0); flush() }
+                } }
+            "sky" -> { val op = parts[1]; val env = sim.env
+                val r = when {
+                    op.startsWith("w:") -> env.setWeather(op.removePrefix("w:").ifBlank { null })
+                    op.startsWith("s:") -> env.setSeason(op.removePrefix("s:").ifBlank { null })
+                    op == "pause" -> { env.setPaused(!sim.life.env.paused); null }
+                    else -> { app.show(EnvSheet(this)); null } }
+                if (r != null) app.toast(r); flush() }
+            "you" -> youDo(parts[1], parts.getOrElse(2) { "" })
+        }
+    }
+    private fun youDo(op: String, arg: String) {
+        val p = sim.person(arg)
+        when (op) {
+            "card" -> openCard(arg)
+            "pet" -> { sim.pet(arg, 1.2f, "頭"); sim.petEnd(arg); app.toast("也可以直接在${p?.name ?: ""}身上來回滑") }
+            "feed" -> app.show(ListSheet("給${p?.name ?: ""}點心", listOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶")) { k -> val m = sim.feed(arg, k); if (m.isNotEmpty()) app.toast(m); flush() })
+            "talk" -> app.show(TalkSheet(this, arg))
+            "rps" -> app.show(RpsSheet(this, arg))
+            "hide" -> if (sim.society.hideStart(arg)) app.toast("躲起來了！點家具找找看") else app.toast("現在沒辦法玩")
+            "control" -> { if (!control) setControl(true); pick(arg) }
+            "worry" -> app.show(WorrySheet(this, arg))
+            "ask" -> askSheet(arg)
+            "mem" -> app.show(MemorySheet(this, arg))
+            "desk" -> p?.let { q -> app.show(DeskSheet(slotId, q.id, q.name) { sim.person(q.id)?.desk == true }) }
+            "edit" -> editResident(app, this, arg)
+            "follow" -> { setObserving(true); follow = arg; lockFollow = true }
+            "rels" -> openWorldRelations(app, this)
+            "info" -> arg.toIntOrNull()?.let { pi -> val pc = sim.house.pieces.getOrNull(pi) ?: return
+                val users = sim.life.people.filter { it.actPiece == pi && it.act != null }.joinToString("、") { it.name }
+                app.toast(Furniture.kind(pc.kind).zh + "・" + (sim.house.rooms.firstOrNull { it.id == pc.room }?.zh ?: "") + if (users.isNotEmpty()) "・${users}在用" else "") }
+            "move" -> arg.toIntOrNull()?.let { pi -> setPlacing(true); placeSel = sim.decorate.pieces().indexOfFirst { it.x == sim.house.pieces[pi].x && it.y == sim.house.pieces[pi].y && it.kind == sim.house.pieces[pi].kind }; app.toast("點地板上的新位置") }
+            "seek" -> arg.toIntOrNull()?.let { pi -> tap("hide:$pi") }
+            "place" -> app.push(StoragePage(this))
+            "decor" -> app.show(DecorSheet(this))
+        }
+    }
+    /** the queue of the one you direct: what they do now, then your orders (✕ = cancel) */
+    private fun queueBar(g: Gfx, t: Theme, bottom: Float) {
+        val W = app.w; val G = Dim.GUTTER; val p = picked?.let { sim.person(it) }
+        val pend = p?.let { sim.society.pending(it) }.orEmpty(); val h = if (pend.isEmpty()) 56f else 96f; val y = bottom - h
+        Widgets.card(g, t, G, y, W - G * 2, h, 20f, Colors.withAlpha(t.surface, 0.96f))
+        if (p == null) { g.text("點一位住民，就能排他的行程", G + 16, y + 34, Dim.FS_S, t.ink2); return }
+        val head = p.name + "・" + doing(p); g.text(Widgets.fit(g, head, Dim.FS_S, W - G * 2 - 80), G + 16, y + 24, Dim.FS_S, t.ink)
+        g.text("${pend.size}/${sim.society.QUEUE_MAX}", W - G - 16, y + 24, Dim.FS_S - 1, t.ink3, FontKind.NUM, Align.RIGHT)
+        if (pend.isEmpty()) { g.text("還沒有排程：點別人、家具或地板", G + 16, y + 46, Dim.FS_S - 1, t.ink3); return }
+        val n = sim.society.QUEUE_MAX; val gap = 6f; val cw = (W - G * 2 - 24 - gap * (n - 1)) / n
+        pend.forEachIndexed { i, o -> val x = G + 12 + i * (cw + gap); val cy = y + 38
+            val down = app.pressed == "q:$i"
+            g.fillRound(x, cy, cw, 46f, 14f, if (i == 0) Colors.mix(t.accent, t.surface, 0.55f) else t.surface2)
+            g.text("${i + 1}", x + 8, cy + 16, 11f, t.ink3, FontKind.NUM)
+            Widgets.icon(g, "close", x + cw - 11, cy + 11, 7f, if (down) t.ink else t.ink3)
+            g.text(Widgets.fit(g, sim.society.orderLabel(o).substringBefore("（").substringBefore("・"), Dim.FS_S - 2, cw - 10), x + cw / 2, cy + 37, Dim.FS_S - 2, t.ink, FontKind.UI, Align.CENTER)
+            app.zone("q:$i", x, cy - 4, cw, 54f) }
     }
     /** observation on: controls fold away; off: back to normal, and the 30× / 60× speeds end with it (plan 12.11) */
     fun setObserving(on: Boolean) {
@@ -541,7 +713,7 @@ class WorldScreen(val slotId: String) : Screen() {
             flush()
         })
     }
-    override fun back(): Boolean { if (placing) { setPlacing(false); return true }; if (observing) { setObserving(false); return true }; return false }
+    override fun back(): Boolean { if (placing) { setPlacing(false); return true }; if (observing) { setObserving(false); return true }; if (control) { setControl(false); return true }; return false }
     /** a break after an hour (plan O-05): someone at home says so (screen-side words; the life is not touched) */
     private var played = 0f
     private fun restReminder(g: Gfx, t: Theme, dt: Float) {

@@ -35,8 +35,13 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         val sp = listOfNotNull(p.spec.species.takeIf { it != "未知" }, "喜歡被摸${p.found.joinToString("、")}".takeIf { p.found.isNotEmpty() }).joinToString("・")
         if (sp.isNotEmpty()) g.text(Widgets.fit(g, sp, Dim.FS_S - 2, W - 190), G + 154, y + 88, Dim.FS_S - 2, t.ink3)
         val so = sim.society
+        // ---- R3: three pages — now, relationships, records
+        var tx = G
+        for ((k, zh) in listOf("now" to "現在", "rels" to "關係", "log" to "紀錄")) tx += Widgets.chip(g, app, "ptab:$k", tx, y + 98, zh, tab == k, 36f, 72f) + 8
+        if (tab == "rels") { relsPage(g, t, y + 146, y + h); return }
+        if (tab == "log") { logPage(g, t, y + 146, y + h); return }
         // ---- now + why
-        var yy = y + 100
+        var yy = y + 142
         g.fillRound(G, yy, W - G * 2, 62f, 16f, t.surface2)
         g.text("現在", G + 14, yy + 25, Dim.FS_S, t.accentLip); g.text(Widgets.fit(g, ws.doing(p, b), Dim.FS_M, W - G * 2 - 70), G + 56, yy + 25, Dim.FS_M, t.ink)
         val why = if (p.why.isEmpty()) "沒有特別的理由，隨意地過著" else "因為：" + p.why.joinToString("、")
@@ -53,7 +58,7 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             g.text(s0, ix + 10, yy + 18, Dim.FS_S - 1, t.ink); ix += w0 + 6 }
         if (info.isNotEmpty()) yy += 34
         // ---- what you can do together (plan E-04 / E-05 / E-08)
-        val acts = listOf("card:talk" to "聊天", "card:suggest" to when (p.control) { "observe" -> "觀察中"; "suggest" -> "建議"; else -> "操控" }, "card:rps" to "猜拳", "card:hide" to "躲貓貓", "card:mem" to "記憶")
+        val acts = listOf("card:talk" to "聊天", "card:suggest" to when (p.control) { "observe" -> "觀察中"; "suggest" -> "建議"; else -> "操控" }, "card:rps" to "猜拳", "card:hide" to "躲貓貓", "card:feed" to "點心")
         val aw = (W - G * 2 - 24) / 5
         acts.forEachIndexed { i, (k, zh) -> Widgets.button(g, app, k, G + i * (aw + 6), yy, aw, 44f, zh, Kind.SECONDARY, Dim.FS_S) }
         yy += 60
@@ -83,12 +88,50 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             yy += (min(rows, 1) + 1) * 34f
         }
         if (p.worry != null) Widgets.button(g, app, "card:worry", G, yy + 4, W - G * 2, 44f, "處理煩惱：${Worries.ALL[p.worry!!.kind]?.zh}", Kind.PRIMARY, Dim.FS_S + 1)
-        // ---- a snack from you (bottom: the hand reaches it)
-        val fy = y + h - app.insetBottom - 64; val bw = (W - G * 2 - 16) / 3
-        g.text("給點心", G + 2, fy - 8, Dim.FS_S, t.ink2)
-        listOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶").forEachIndexed { i, (k, zh) -> Widgets.button(g, app, "feed:$k", G + i * (bw + 8), fy, bw, 48f, zh) }
     }
+    /** who they are to everyone else in the house: the step, how much they like and trust them, what life has called the two */
+    private fun relsPage(g: Gfx, t: Theme, y0: Float, bottom: Float) {
+        val sim = ws.sim; val W = app.w; val G = Dim.GUTTER; var yy = y0
+        val others = sim.life.people.filter { it.id != id }
+        if (others.isEmpty()) { g.text("這裡只住了${sim.person(id)?.name ?: ""}", W / 2, yy + 40, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER); return }
+        for (q in others) { if (yy + 96 > bottom - 70) break
+            val r = sim.rel(id, q.id); val back = sim.rel(q.id, id)
+            Widgets.card(g, t, G, yy, W - G * 2, 88f, 18f, t.surface2, t.lip)
+            Widgets.face(g, t, app.charImg(ws.libOf(q), 256), G + 30, yy + 32, 18f)
+            g.text(Widgets.fit(g, q.name, Dim.FS_M, 120f), G + 58, yy + 28, Dim.FS_M, t.ink)
+            g.text((r?.kind ?: "陌生") + (r?.identity?.takeIf { it.isNotBlank() }?.let { "・$it" } ?: ""), W - G - 16, yy + 28, Dim.FS_S, t.accentLip, FontKind.UI, Align.RIGHT)
+            fun bar(label: String, v: Int, bx: Float, by: Float, col: Int) { g.text(label, bx, by + 10, Dim.FS_S - 2, t.ink2); val w0 = (W - G * 2 - 90) / 3 - 30
+                g.fillRound(bx + 28, by + 2, w0, 9f, 5f, t.surface); g.fillRound(bx + 28, by + 2, maxOf(9f, w0 * v.coerceIn(0, 100) / 100f), 9f, 5f, col) }
+            val cw = (W - G * 2 - 70) / 3
+            bar("喜歡", r?.like ?: 0, G + 58, yy + 40, t.select); bar("信任", r?.trust ?: 0, G + 58 + cw, yy + 40, t.accent); bar("熟悉", r?.familiar ?: 0, G + 58 + cw * 2, yy + 40, t.lip)
+            val tags = (r?.flavor.orEmpty() + r?.tags.orEmpty()).distinct().take(3).joinToString("・")
+            val note = listOfNotNull(tags.ifBlank { null }, back?.let { "對方覺得是「${it.kind}」" }, sim.society.feud(id, q.id)?.let { "冷戰中" }).joinToString("　")
+            g.text(Widgets.fit(g, note, Dim.FS_S - 1, W - G * 2 - 74), G + 58, yy + 76, Dim.FS_S - 1, t.ink2)
+            yy += 96 }
+        Widgets.button(g, app, "card:rels", G, bottom - app.insetBottom - 62, W - G * 2, 48f, "關係圖")
+    }
+    /** what they did lately (the timeline, their lines only), titles and the things they do most */
+    private fun logPage(g: Gfx, t: Theme, y0: Float, bottom: Float) {
+        val sim = ws.sim; val W = app.w; val G = Dim.GUTTER; var yy = y0
+        val titles = sim.journal.titlesOf(id)
+        if (titles.isNotEmpty()) { g.text(Widgets.fit(g, "稱號：" + titles.joinToString("、") { it.zh }, Dim.FS_S, W - G * 2), G + 4, yy + 14, Dim.FS_S, t.accentLip); yy += 28 }
+        val top = sim.life.prog.counts.filterKeys { it.startsWith("$id:") }.entries.sortedByDescending { it.value }.take(4)
+            .mapNotNull { (k, n) -> Acts[k.substringAfter(":")]?.let { "${it.zh} $n 次" } }
+        if (top.isNotEmpty()) { g.text(Widgets.fit(g, "最常做：" + top.joinToString("・"), Dim.FS_S, W - G * 2), G + 4, yy + 14, Dim.FS_S, t.ink2); yy += 30 }
+        val lines = sim.life.log.asReversed().asSequence().filter { it.who == id || it.with == id }.take(14).toList()
+        if (lines.isEmpty()) { g.text("還沒有紀錄", W / 2, yy + 40, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER); return }
+        for (l in lines) { if (yy + 30 > bottom - app.insetBottom - 70) break
+            val m = ((l.minute % 1440) + 1440) % 1440; val hm = "%02d:%02d".format((m / 60).toInt(), (m % 60).toInt())
+            g.text(hm, G + 4, yy + 18, Dim.FS_S - 1, t.ink3, FontKind.NUM)
+            g.text(Widgets.fit(g, (if (l.who != id) (sim.person(l.who)?.name ?: "") + "：" else "") + l.text + if (l.sound.isNotEmpty()) "　${l.sound}" else "", Dim.FS_S, W - G * 2 - 56), G + 50, yy + 18, Dim.FS_S, if (l.fav) t.accentLip else t.ink)
+            yy += 28 }
+        Widgets.button(g, app, "card:mem", G, bottom - app.insetBottom - 62, W - G * 2, 48f, "記憶與更多紀錄")
+    }
+    /** which page shows (R3) */
+    var tab = "now"
     override fun tap(id: String) {
+        if (id.startsWith("ptab:")) { tab = id.removePrefix("ptab:"); app.platform.sound("tick"); return }
+        if (id == "card:feed") { val pid = this.id; app.closeOverlay(); app.show(ListSheet("給${ws.sim.person(pid)?.name ?: ""}點心", listOf("cookie" to "餅乾", "apple" to "蘋果", "milk" to "牛奶")) { k -> val m = ws.sim.feed(pid, k); if (m.isNotEmpty()) app.toast(m); ws.flush() }); return }
         if (id == "card:edit") { edit(); return }
         if (id == "card:rels") { rels(); return }
         if (id == "card:desk") { val p = ws.sim.person(this.id) ?: return; app.closeOverlay(); app.show(DeskSheet(ws.slotId, p.id, p.name) { ws.sim.person(this.id)?.desk == true }); return }
@@ -104,14 +147,17 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
     }
 
     /** edit this resident (their own copy in this world) */
-    private fun edit() {
-        val p = ws.sim.person(id) ?: return; val c = ws.libOf(p) ?: return; app.closeOverlay()
-        app.push(CharacterEditor(c, p.spec, world = true, title = p.name, houseId = ws.sim.house.id, housemates = ws.sim.life.people.size) { s, _ ->
-            ws.sim.editSpec(id, s); ws.refresh(); ws.flush(); null })
-    }
+    private fun edit() { app.closeOverlay(); editResident(app, ws, id) }
     /** this world's relationships */
     private fun rels() { if (ws.sim.life.people.size >= 2) app.closeOverlay(); openWorldRelations(app, ws) }
 
+}
+
+/** edit a resident (their own copy in this world) */
+fun editResident(app: UiApp, ws: WorldScreen, id: String) {
+    val p = ws.sim.person(id) ?: return; val c = ws.libOf(p) ?: return
+    app.push(CharacterEditor(c, p.spec, world = true, title = p.name, houseId = ws.sim.house.id, housemates = ws.sim.life.people.size) { s, _ ->
+        ws.sim.editSpec(id, s); ws.refresh(); ws.flush(); null })
 }
 
 /** the relationship map of this home (edits go through LifeSim.setRel → the relationship rules) */

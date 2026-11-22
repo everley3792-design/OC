@@ -152,6 +152,8 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** tests: tap the centre of a zone by id (the same path a finger takes) */
     fun tapZone(id: String): Boolean { val z = zones.lastOrNull { it.id == id } ?: return false; val x = z.x + z.w / 2; val y = z.y + z.h / 2; down(x, y); up(x, y); return true }
     fun hasZone(id: String) = zones.any { it.id == id }
+    /** tests: where a zone is (to drag from it) */
+    fun zoneRect(id: String): Zone? = zones.lastOrNull { it.id == id }
     val zoneIds: List<String> get() = zones.map { it.id }
 
     /** the system back button: closes the overlay first, then the screen; false = nothing left (leave the app) */

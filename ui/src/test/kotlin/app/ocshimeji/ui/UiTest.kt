@@ -120,12 +120,16 @@ class UiTest {
         a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3)
         return (a.screen as WorldScreen).also { w -> w.sim.life.people.forEach { it.recent["outing"] = w.sim.life.minute + 24 * 60.0 } }   /* these tests watch them at home */
     }
+    /** R3: a tap on a resident opens the radial menu; 「看看」 = the person card */
+    private fun tapCard(a: UiApp, ws: WorldScreen, id: String) { val (x, y) = ws.screenOf(id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        assertTrue(a.overlay is PieMenu, "a tap opens the radial menu"); assertTrue((a.overlay as PieMenu).pick("看看")); frames(a, 15) }
     @Test fun touchingACharacterTapRubLiftThrow() {
         val a = app(); val ws = world(a); val p = ws.sim.life.people[0]
         frames(a, 200)   /* moved in */
         assertFalse(ws.sim.life.arriving)
         // tap = the card
         var (x, y) = ws.screenOf(p.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        assertTrue(a.overlay is PieMenu, "a tap opens the radial menu"); assertTrue((a.overlay as PieMenu).pick("看看")); frames(a, 15)
         assertTrue(a.overlay is PersonCard); shot("person-card", frames(a, 1, scale = 2f))
         assertTrue(a.back()); assertNull(a.overlay)
         // rub back and forth = petting; the data changes once when the stroke ends
@@ -196,7 +200,7 @@ class UiTest {
         val look = ws.lookOf(p)!!; assertEquals("walk", look.mine(app.ocshimeji.sim.life.Pose.WALK, false)); assertEquals(4, look.frames("walk")!!.size)
         assertEquals(null, look.mine(app.ocshimeji.sim.life.Pose.EAT, false), "mixed: no eat animation → the system's motion")
         // edit them from the card: the world copy changes, the library one does not
-        val (x, y) = ws.screenOf(p.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15); assertTrue(a.overlay is PersonCard)
+        tapCard(a, ws, p.id); assertTrue(a.overlay is PersonCard)
         shot("person-card-m2", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("card:edit")); frames(a, 15); val ed = a.screen as CharacterEditor; assertTrue(ed.world)
         assertTrue(a.tapZone("tab:5")); frames(a, 2); assertTrue(a.tapZone("step:wake:-")); assertTrue(a.tapZone("save")); frames(a, 5)
@@ -215,13 +219,13 @@ class UiTest {
     @Test fun theDesktopPet() {
         val a = app(); deskApp = a; val ws = world(a); val p = ws.sim.life.people[0]; frames(a, 200)
         // the person card → 桌面: without the permission, an explanation first
-        var (x, y) = ws.screenOf(p.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        tapCard(a, ws, p.id)
         assertTrue(a.tapZone("card:desk")); frames(a, 15); assertTrue(a.overlay is DeskSheet); shot("desk-sheet", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("chip:remind:每 30 分")); assertEquals("30", a.saves.pref("desk:remind"))
         assertTrue(a.tapZone("desk:go")); frames(a, 15); assertTrue(a.overlay is DeskPermissionSheet); shot("desk-permission", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("perm:go")); assertTrue(openedSettings)
         // allowed: out on the desktop; the home no longer draws them
-        overlayOk = true; ws.screenOf(p.id)!!.let { x = it.first; y = it.second }; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15)
+        overlayOk = true; tapCard(a, ws, p.id)
         assertTrue(a.tapZone("card:desk")); frames(a, 15); assertTrue(a.tapZone("desk:go")); frames(a, 10)
         val st = stage!!; assertTrue(p.desk); assertEquals(null, ws.screenOf(p.id)); assertTrue(st.open === a.host.get(ws.slotId), "one simulation for both")
         shot("world-desk-badge", frames(a, 1, scale = 2f))
@@ -271,12 +275,12 @@ class UiTest {
         var seen = false; for (i in 0 until 1500) { frames(a, 1); if (ws.inCloseup) { frames(a, 50); if (ws.inCloseup) { shot("world-closeup", frames(a, 1, scale = 2f)); seen = true; break } } }
         assertTrue(seen, "no close-up for the gift"); frames(a, 400)
         // the person card with today's status, wish, plan, narrative and what you can do
-        val (x, y) = ws.screenOf(p2.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 15); assertTrue(a.overlay is PersonCard); shot("person-card-m4", frames(a, 1, scale = 2f))
+        tapCard(a, ws, p2.id); assertTrue(a.overlay is PersonCard); shot("person-card-m4", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("card:talk")); frames(a, 15); assertTrue(a.tapZone("topic:最近怎麼樣")); frames(a, 5); shot("talk-sheet", frames(a, 1, scale = 2f)); a.back()
         a.show(PersonCard(ws, p2.id)); frames(a, 15); assertTrue(a.tapZone("card:suggest")); frames(a, 15); assertTrue(a.tapZone("mode:suggest")); frames(a, 5); shot("suggest-sheet", frames(a, 1, scale = 2f)); a.back()
         a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:rps")); frames(a, 15); assertTrue(a.tapZone("rps:0")); frames(a, 15); shot("rps-sheet", frames(a, 1, scale = 2f))
         var n = 0; while (a.hasZone("rps:1") && n++ < 10) { a.tapZone("rps:1"); frames(a, 12) }; assertTrue(a.tapZone("rps:done")); frames(a, 2)
-        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:log")); frames(a, 2); assertTrue(a.tapZone("card:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
         // hide-and-seek: search the furniture
         assertTrue(sim.society.hideStart(p1.id)); frames(a, 5); shot("world-hide", frames(a, 1, scale = 2f))
         val spot = sim.society.hiding(p1.id)!!; assertTrue(a.tapZone("hide:$spot")); frames(a, 5); assertNull(sim.society.hiding(p1.id))
@@ -399,6 +403,70 @@ class UiTest {
         assertTrue(a.tapZone("nav:records")); frames(a, 12); assertTrue(a.screen is JournalHub); assertEquals(3, a.screens.size); shot("records", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("nav:home")); frames(a, 5); assertTrue(a.screen === ws)
         assertTrue(sim.economy.consistent())
+    }
+    /** R3: the radial menu on everything, watching and directing, the queue of orders, the person card's three pages, dragging furniture in */
+    @Test fun radialMenuDirectingAndTheQueue() {
+        val a = app()
+        fun png(c: java.awt.Color) = java.io.ByteArrayOutputStream().also { val b = java.awt.image.BufferedImage(120, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val g = b.createGraphics(); g.color = c; g.fillOval(20, 20, 80, 130); g.color = java.awt.Color.WHITE; g.fillOval(42, 50, 12, 12); g.fillOval(66, 50, 12, 12); g.dispose(); ImageIO.write(b, "png", it) }.toByteArray()
+        val b = a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", png(java.awt.Color(0x7A, 0xAA, 0xD6)))), platform.codec)), app.ocshimeji.sim.chars.CharSpec(name = "小雨"), 1, true, emptyMap(), emptyList())
+        val ids = listOf(Presets.CINNAMON.id, b.id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen
+        val sim = ws.sim; ws.sim.life.people.forEach { it.recent["outing"] = sim.life.minute + 24 * 60.0 }; val (p1, p2) = sim.life.people; frames(a, 300)
+        fun pie() = a.overlay as PieMenu
+        fun find(label: (String) -> Boolean): Boolean { repeat(4) { val i = pie().ring.indexOfFirst { label(it.zh) }; if (i >= 0) { pie().tap("pie:$i"); frames(a, 8); return true }
+            if (!pie().pick("更多")) return false; frames(a, 8) }; return false }
+        // watching: a tap on a resident = what you can do with them
+        var (x, y) = ws.screenOf(p1.id)!!; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 20)
+        assertTrue(a.overlay is PieMenu); val ring = pie().ring.map { it.zh }; assertTrue(ring.containsAll(listOf("看看", "摸摸", "給點心", "聊天", "猜拳", "躲貓貓")), "$ring"); assertTrue(ring.size <= 8)
+        shot("pie-person", frames(a, 1, scale = 2f))
+        assertTrue(pie().pick("摸摸")); frames(a, 5); assertNull(a.overlay)
+        // a piece of furniture: ask someone to use it (a second ring of who), it becomes their order for that very piece
+        sim.society.setControl(p1.id, "command")
+        val pi = sim.house.pieces.indices.first { i -> app.ocshimeji.sim.act.Interactions.forPiece(sim, p1, i).any { it.ok && it.ia.op !in setOf("act:sleep", "act:nap", "act:sofanap") } }
+        ws.screenOfPiece(pi).let { (px, py) -> ws.tapScene(px, py) }; frames(a, 15); assertTrue(a.overlay is PieMenu)
+        shot("pie-piece", frames(a, 1, scale = 2f))
+        val use = app.ocshimeji.sim.act.Interactions.forPiece(sim, p1, pi).first { it.ok && it.ia.by == "them" && it.ia.op !in setOf("act:sleep", "act:nap", "act:sofanap") }
+        assertTrue(find { it == "叫誰來${use.ia.zh}" }, "叫誰來${use.ia.zh}"); assertTrue(pie().level >= 2); assertTrue(pie().pick(p1.name)); frames(a, 3)
+        assertEquals(use.what, p1.order, "an order for that piece")
+        // directing: switch on, pick 肉桂捲, tap 小雨 → the social acts, grouped; each one goes into the queue
+        assertTrue(a.tapZone("ctl")); assertTrue(ws.control); assertTrue(a.tapZone("who:${p1.id}")); assertEquals(p1.id, ws.picked)
+        repeat(30) { frames(a, 1) }
+        ws.screenOf(p2.id)!!.let { x = it.first; y = it.second }; a.down(x, y); frames(a, 2); a.up(x, y); frames(a, 20)
+        assertTrue(a.overlay is PieMenu); assertTrue(pie().ring.size <= 8); assertTrue(pie().ring.any { it.kids != null }, "grouped by kind"); shot("pie-social", frames(a, 1, scale = 2f))
+        assertTrue(find { it == "打招呼" }); assertTrue(find { it == "揮手" }); frames(a, 3)
+        assertTrue(sim.society.pending(p1).any { it == "soc:wave:${p2.id}" }, "${sim.society.pending(p1)}")
+        // the floor: a spot to go to (a real tap where nobody stands)
+        val spot = (0 until sim.house.w).flatMap { tx -> (0 until sim.house.h).map { tx to it } }.first { (tx, ty) -> val r = sim.house.roomAt(tx, ty)
+            r != null && ty > r.y && sim.grid.walkable(tx, ty) && app.ocshimeji.sim.act.Interactions.forFloor(sim, p1, tx, ty).any { it.ok } &&
+                sim.life.people.none { kotlin.math.abs(it.x - tx - 0.5f) < 1.5f && kotlin.math.abs(it.y - ty - 0.5f) < 2.5f } && sim.house.pieces.none { pc -> val k = app.ocshimeji.sim.house.Furniture.kind(pc.kind); tx >= pc.x && tx < pc.x + k.w && ty >= pc.y - 1 && ty < pc.y + k.h } }
+        ws.screenOfTile(spot.first, spot.second).let { (fx, fy) -> a.down(fx, fy); frames(a, 2); a.up(fx, fy) }; frames(a, 15)
+        assertTrue(a.overlay is PieMenu, "the floor has a menu too"); assertTrue(pie().title.endsWith("這裡"))
+        val before = sim.society.pending(p1).size
+        println("floor ring: " + pie().ring.map { it.zh + (it.kids?.size ?: "") })
+        pie().ring.firstOrNull { it.kids != null && it.zh != "更多" }?.let { assertTrue(pie().pick(it.zh)); frames(a, 8) }; val first = pie().ring.indexOfFirst { it.why == null && it.kids == null }; pie().tap("pie:$first"); frames(a, 3)
+        assertEquals(before + 1, sim.society.pending(p1).size); assertTrue(sim.society.pending(p1).last().contains("@t${spot.first},${spot.second}"))
+        frames(a, 10); shot("world-queue", frames(a, 1, scale = 2f))
+        // the queue: ✕ cancels one; tapping the one you direct = their own menu (clear, stop, go out…)
+        val n0 = sim.society.pending(p1).size; assertTrue(a.tapZone("q:${n0 - 1}")); assertEquals(n0 - 1, sim.society.pending(p1).size)
+        ws.menuPerson(p1, p1, 180f, 400f); frames(a, 15); assertTrue(pie().ring.any { it.zh == "停下來" }); assertTrue(pie().pick("清空排程")); frames(a, 2); assertTrue(sim.society.pending(p1).isEmpty())
+        // the sky above the house: the environment, recorded
+        ws.tapScene(180f, a.insetTop + 90f); frames(a, 15); assertTrue(a.overlay is PieMenu); assertEquals("天空", pie().title)
+        assertTrue(find { it == "天象" }); assertTrue(pie().pick("流星雨")); frames(a, 2); assertEquals("stars", sim.sky())
+        // the person card: now / relationships / records
+        assertTrue(a.tapZone("ctl")); assertFalse(ws.control)
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:rels")); frames(a, 5); shot("card-rels", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("ptab:log")); frames(a, 5); shot("card-log", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        // decorating: drag a piece from the bag onto the floor
+        sim.economy.earn(100, "測試"); sim.economy.move("f:plant", 1, "測試"); ws.setPlacing(true); frames(a, 10)
+        val chip = a.zoneRect("pl:f:plant")!!; val n = sim.house.pieces.size
+        val (dx, dy) = ws.screenOfTile(spot.first, spot.second)
+        a.down(chip.x + chip.w / 2, chip.y + chip.h / 2); frames(a, 1)
+        for (i in 1..8) { a.move(chip.x + chip.w / 2 + (dx - chip.x - chip.w / 2) * i / 8, chip.y + chip.h / 2 + (dy + 34 - chip.y - chip.h / 2) * i / 8); frames(a, 1) }
+        assertEquals("f:plant", ws.draggingBag); shot("drag-place", frames(a, 1, scale = 2f)); a.up(dx, dy + 34); frames(a, 3)
+        assertEquals(n + 1, sim.house.pieces.size, "dropped on the floor = placed"); assertEquals(0, sim.economy.count("f:plant"))
+        ws.setPlacing(false); assertTrue(sim.economy.consistent())
     }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {

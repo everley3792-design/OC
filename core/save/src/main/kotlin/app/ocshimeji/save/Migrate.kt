@@ -78,6 +78,8 @@ object Migrate {
         /* 8 → 9 (R2): your hand on the environment (chosen weather per day, a locked season, a paused clock) — an old world follows the date */
         8 to { w -> val life = w["life"] as? JsonObject
             if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("env", buildJsonObject { put("season", JsonPrimitive("")); put("paused", JsonPrimitive(false)) }) })) }) },
+        /* 9 → 10 (R3): residents get a queue of your orders after the one waiting — an old world starts with empty queues */
+        9 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

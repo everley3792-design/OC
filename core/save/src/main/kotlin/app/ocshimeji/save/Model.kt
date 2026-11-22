@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
  */
 
 const val LIBRARY_VERSION = 1
-const val WORLD_VERSION = 9
+const val WORLD_VERSION = 10
 
 /** a character as it sits in the library (its original) */
 @Serializable

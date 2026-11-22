@@ -86,6 +86,10 @@ class WorldTest {
         val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v8.json")!!.readBytes()); val life = w.life!!
         assertEquals(WORLD_VERSION, w.v); assertTrue(life.env.weather.isEmpty() && life.env.season.isEmpty() && !life.env.paused)
     }
+    @Test fun anR2WorldFileIsUpgraded() {   /* format 9 → 10: the order that was waiting is kept, the queue behind it starts empty */
+        val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v9.json")!!.readBytes()); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals("winter", life.env.season); assertTrue(life.people.all { it.order == "act:read" && it.queue.isEmpty() })
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))

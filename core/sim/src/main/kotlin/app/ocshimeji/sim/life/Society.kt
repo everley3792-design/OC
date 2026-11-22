@@ -684,8 +684,8 @@ class Society(private val sim: LifeSim) {
     /** observe / suggest / command */
     fun setControl(id: String, mode: String) { sim.person(id)?.let { it.control = mode; sim.log(it, "切換成「${CONTROL_ZH[mode]}」模式", kind = "you", weight = 1) } }
     /** `what` = activity id, or "soc:<act>" with `target`. Returns what they answer (accepted or why not). */
-    fun suggest(id: String, what: String, target: String? = null): String {
-        val p = sim.person(id) ?: return ""
+    fun suggest(id: String, what: String, target: String? = null, queue: Boolean = false): String {
+        lastOk = false; val p = sim.person(id) ?: return ""
         if (p.control == "observe") return "現在是觀察模式：切換到「建議」或「操控」才能請${p.name}做事"
         if (sim.asleep(p)) return "${p.name}睡著了"
         if (p.desk) return "${p.name}在手機桌面上"
@@ -696,19 +696,51 @@ class Society(private val sim: LifeSim) {
             if (act.cond == "playerOnly") return "告白要從煩惱泡泡「想告白」裡由你決定"
             if (!cmd) { val w = Will.score(act, ctx(p, q, act).let { Will.Ctx(p.spec, sim.rel(p.id, q.id), it.mood, it.social, it.energy, it.crowd, ledger(p.id, q.id), it.feud, sim.mods(p).act("s:" + act.cat)) }, 0f)
                 if (w < 0.42f) return answer(p, if (feud(p.id, q.id) != null) "我現在不想理${nick(q)}。" else "現在不想${act.zh}……", false) }
-            p.order = "soc:${act.id}:${q.id}"; sim.nudge(p); return answer(p, if (cmd) "好。" else "好啊，我去找${nick(q)}。", true)
+            if (queue && pending(p).size >= QUEUE_MAX) return "${p.name}的排程滿了（最多 $QUEUE_MAX 件）"
+            give(p, "soc:${act.id}:${q.id}", queue); return answer(p, if (cmd) "好。" else "好啊，我去找${nick(q)}。", true)
         }
-        val a = Acts[what] ?: return ""
+        val a = Acts[what.substringBefore("@")] ?: return ""
         if (!sim.canDo(p, a)) return answer(p, "我做不到${a.zh}。", false)
+        what.substringAfter("@", "").takeIf { it.isNotEmpty() && !it.startsWith("t") }?.let { pi -> sim.pieceProblem(p, a, pi.toInt())?.let { return it } }
+        if (queue && pending(p).size >= QUEUE_MAX) return "${p.name}的排程滿了（最多 $QUEUE_MAX 件）"
         if (!cmd) {
             val (k, _) = sim.appeal(p, a)
             val low = Need.values().filter { it != Need.ROOM && p.need(it) < 20 }.firstOrNull { n -> (a.per[n] ?: 0f) <= 0f }
             if (low != null) return answer(p, "現在不行，我${low.low}。", false)
             if (a.id in sim.mods(p).hate || k < 0.5f) return answer(p, "我不太想${a.zh}……", false)
         }
-        p.order = "act:${a.id}"; sim.nudge(p); return answer(p, if (cmd) "好。" else "嗯，那我去${a.zh}。", true)
+        give(p, "act:$what", queue); return answer(p, if (cmd) "好。" else "嗯，那我去${a.zh}。", true)
+    }
+    /** an accepted order: now (and they stop what they are doing), or after the ones already waiting (R3 queue) */
+    private fun give(p: Person, order: String, queue: Boolean) {
+        if (queue && pending(p).isNotEmpty()) p.queue += order else { p.order = order; sim.nudge(p) }
+    }
+    /** whether the last `suggest` was accepted (the screen shows the answer either way) */
+    var lastOk = false; private set
+    val QUEUE_MAX = 5
+    /** your orders still waiting, the next one first (R3) */
+    fun pending(p: Person): List<String> = listOfNotNull(p.order) + p.queue
+    /** cancel the `i`-th waiting order (R3) */
+    fun cancelOrder(id: String, i: Int): Boolean {
+        val p = sim.person(id) ?: return false; val all = pending(p); val o = all.getOrNull(i) ?: return false
+        if (p.order != null && i == 0) { p.order = null; ideas.remove(p.id); orderTries.remove(p.id) } else p.queue.removeAt(i - (if (p.order != null) 1 else 0))
+        sim.log(p, "取消了你排的「${orderLabel(o)}」", kind = "you", weight = 1); return true
+    }
+    /** stop what they are doing now (R3: "停下來") */
+    fun stopNow(id: String): Boolean { val p = sim.person(id) ?: return false; if (p.act == null || p.with != null || sim.asleep(p)) return false; sim.nudge(p); return true }
+    /** an order in words: "act:sleep@3" → 睡覺（雙人床） */
+    fun orderLabel(o: String): String {
+        val parts = o.split(":")
+        return when (parts[0]) {
+            "act" -> { val a = Acts[parts[1].substringBefore("@")]; val at = parts[1].substringAfter("@", "")
+                (a?.zh ?: "做事") + when { at.startsWith("t") -> "（那裡）"; at.isNotEmpty() -> sim.house.pieces.getOrNull(at.toInt())?.let { "（${Furniture.kind(it.kind).zh}）" } ?: ""; else -> "" } }
+            "soc" -> (SocialActs[parts[1]]?.zh ?: "互動") + (sim.person(parts.getOrElse(2) { "" })?.let { "・${it.name}" } ?: "")
+            "say" -> "說你寫的話" + (sim.person(parts.getOrElse(2) { "" })?.let { "・${it.name}" } ?: "")
+            else -> o
+        }
     }
     private fun answer(p: Person, text: String, ok: Boolean): String {
+        lastOk = ok
         sim.log(p, if (ok) "答應了你的建議" else "婉拒了你的建議：$text", kind = "you", weight = 1)
         return Speech.say(p.spec, text, sim.rng, p.affinity, toPlayer = true)
     }
@@ -718,7 +750,13 @@ class Society(private val sim: LifeSim) {
         val by = if (ideas.containsKey(p.id)) "照你的主意" else if (p.control == "command") "你要我做的" else "你建議的"
         if (parts[0] == "act") {
             p.order = null
-            val c = sim.candidatesFor(p, dist, parts[1]) ?: run { if (parts[1] != "meal" && parts[1] != "dishes") sim.say(p, "現在沒辦法${Acts[parts[1]]?.zh ?: "做那個"}。"); return false }
+            val aid = parts[1].substringBefore("@"); val at = parts[1].substringAfter("@", ""); val a = Acts[aid]
+            val c = when {   /* R3: "act:<id>@<piece>" = that piece, "act:<id>@t<x>,<y>" = that spot on the floor */
+                a == null -> null
+                at.startsWith("t") -> at.drop(1).split(",").let { xy -> sim.candidateOn(dist, a, xy[0].toInt(), xy.getOrElse(1) { "0" }.toInt()) }
+                at.isNotEmpty() -> sim.candidateAt(p, dist, a, at.toInt())
+                else -> sim.candidatesFor(p, dist, aid) ?: sim.anyWay(p, dist, a)   /* you asked for it: any piece or spot that works, even if they would not choose it now */
+            } ?: run { if (aid != "meal" && aid != "dishes") sim.say(p, "現在沒辦法${a?.zh ?: "做那個"}。"); return false }
             return sim.commit(p, c, listOf(by))
         }
         val q = sim.person(parts.getOrNull(2) ?: "") ?: run { p.order = null; return false }
