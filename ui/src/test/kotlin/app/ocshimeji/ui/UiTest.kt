@@ -332,7 +332,7 @@ class UiTest {
         a.show(PersonCard(ws, p2.id)); frames(a, 15); assertTrue(a.tapZone("card:suggest")); frames(a, 15); assertTrue(a.tapZone("mode:suggest")); frames(a, 5); shot("suggest-sheet", frames(a, 1, scale = 2f)); a.back()
         a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("card:rps")); frames(a, 15); assertTrue(a.tapZone("rps:0")); frames(a, 15); shot("rps-sheet", frames(a, 1, scale = 2f))
         var n = 0; while (a.hasZone("rps:1") && n++ < 10) { a.tapZone("rps:1"); frames(a, 12) }; assertTrue(a.tapZone("rps:done")); frames(a, 2)
-        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:log")); frames(a, 2); assertTrue(a.tapZone("card:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
+        a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:log")); frames(a, 2); assertTrue(a.tapZone("card:more")); frames(a, 15); assertTrue(a.tapZone("row:mem")); frames(a, 15); shot("memory-sheet", frames(a, 1, scale = 2f)); a.back()
         // hide-and-seek: search the furniture
         assertTrue(sim.society.hideStart(p1.id)); frames(a, 5); shot("world-hide", frames(a, 1, scale = 2f))
         val spot = sim.society.hiding(p1.id)!!; assertTrue(a.tapZone("hide:$spot")); frames(a, 5); assertNull(sim.society.hiding(p1.id))
@@ -761,6 +761,23 @@ class UiTest {
         val a = app(); a.push(ItemsPage()); frames(a, 20); assertTrue(a.screen is ItemsPage); shot("empty-items", frames(a, 1, scale = 2f))
         for (n in listOf("bed", "sofa", "lamp", "cup", "broom", "crane", "umbrella", "cake", "paw", "zzz")) { val img = Java2dGfx.render(24, 24, 1f, assets) { g -> Widgets.icon(g, n, 12f, 12f, 18f, 0xFF5A3A29.toInt()) }
             assertTrue((0 until 24).any { x -> (0 until 24).any { y -> (img.getRGB(x, y) ushr 24) > 0 } }, "icon $n is drawn") }
+    }
+    @Test fun withYou() {   /* 1.8.0 「和你」 */
+        val a = app(); val ws = home2(a); val sim = ws.sim; val p = sim.life.people[0]
+        val mid = sim.life.you.nextId++; sim.life.you.messages += app.ocshimeji.sim.social.Msg(mid, p.id, sim.life.minute, "goodnight", "今天也謝謝你陪我。晚安。", listOf("晚安", "明天見", "好好睡"))
+        assertTrue(a.tapZone("nav:records")); frames(a, 20); assertTrue(a.tapZone("you")); frames(a, 20); assertTrue(a.screen is YouHub); shot("you-hub", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("msgs")); frames(a, 20); shot("you-messages", frames(a, 1, scale = 2f)); val un = sim.you.unread(); assertTrue(a.tapZone("re:$mid:0")); frames(a, 10)
+        assertEquals(un - 1, sim.you.unread()); assertEquals(0, sim.life.you.messages.first { it.id == mid }.reply); a.back(); frames(a, 20)
+        assertTrue(a.tapZone("photo")); frames(a, 20); val ps = a.screen as PhotoStudio
+        assertTrue(a.tapZone("flt:warm")); assertTrue(a.tapZone("frm:film")); frames(a, 5); assertTrue(a.tapZone("stk:heart")); frames(a, 5)
+        val n0 = sim.life.you.photos.size; assertTrue(a.tapZone("shoot")); frames(a, 30); assertEquals(n0 + 1, sim.life.you.photos.size, "before: $n0"); shot("you-photo", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("album")); frames(a, 20); shot("you-album", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("ph:${sim.life.you.photos[0].id}")); frames(a, 20); shot("you-photo-big", frames(a, 1, scale = 2f))
+        a.back(); frames(a, 10); a.back(); frames(a, 10); a.back(); frames(a, 20); assertTrue(ps !== a.screen)
+        a.push(CatchScreen(ws, p.id)); frames(a, 60); shot("you-catch", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); if (a.screen is CatchScreen) a.pop()
+        a.push(FlipScreen(ws, p.id)); frames(a, 10); assertTrue(a.tapZone("c:0")); frames(a, 5); assertTrue(a.tapZone("c:1")); frames(a, 5); shot("you-flip", frames(a, 1, scale = 2f)); a.pop(); frames(a, 10)
+        a.push(CardsPage(ws)); frames(a, 20); shot("you-cards", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("card:${p.id}")); frames(a, 20); shot("you-namecard", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); a.pop()
+        a.push(RulesPage(ws)); frames(a, 20); assertTrue(a.tapZone("rule:quiet")); frames(a, 5); assertTrue("quiet" in sim.life.you.rules); shot("you-rules", frames(a, 1, scale = 2f)); a.pop()
+        assertNull(sim.you.bury("給未來的我們")); a.push(CapsulePage(ws)); frames(a, 20); shot("you-capsule", frames(a, 1, scale = 2f)); a.pop()
     }
     @Test fun coinsRollAndFlyToTheBag() {
         val a = app(); val ws = home2(a); val sim = ws.sim; val w0 = sim.economy.wallet; frames(a, 5)

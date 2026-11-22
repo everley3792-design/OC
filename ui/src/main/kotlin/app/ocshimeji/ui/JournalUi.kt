@@ -13,6 +13,7 @@ class JournalHub(val ws: WorldScreen) : Page("紀錄") {
         val life = ws.sim.life; val ready = j.ACHIEVEMENTS.count { j.claimable(it) }
         return listOf(
             Row("timeline", "時間線與信箱", "發生過的每一件事・信箱" + ws.sim.society.unreadMail().let { if (it > 0) "（$it 封新的）" else "" }, icon = "mail", tint = 0xFFE6E0F4.toInt()),
+            Row("you", "和你", "訊息、拍照、小遊戲、角色卡、時光膠囊、家規" + ws.sim.you.unread().let { if (it > 0) "（$it 則新訊息）" else "" }, icon = "heart", tint = 0xFFF6D0B8.toInt()),
             Row("memory", "回憶", "回放一天的小事、收藏名場面・${life.log.count { it.fav }} 個名場面", icon = "clock", tint = 0xFFFFE9A8.toInt()),
             Row("diary", "日記", "每個人每天睡前寫的・${life.prog.diary.size} 篇", icon = "edit", tint = 0xFFF6D0B8.toInt()),
             Row("titles", "稱號", "做久了就會得到・${life.prog.titles.values.sumOf { it.size }} 個", icon = "star", tint = 0xFFF8E0A8.toInt()),
@@ -25,7 +26,7 @@ class JournalHub(val ws: WorldScreen) : Page("紀錄") {
     override fun tap(id: String) {
         if (Nav.tap(app, ws, id)) return
         when (id) {
-            "back" -> app.pop(); "timeline" -> app.push(TimelineScreen(ws)); "memory" -> app.push(MemoryScreen(ws)); "diary" -> app.push(DiaryPage(ws)); "titles" -> app.push(TitlesPage(ws)); "ach" -> app.push(AchievementsPage(ws))
+            "back" -> app.pop(); "you" -> app.push(YouHub(ws)); "timeline" -> app.push(TimelineScreen(ws)); "memory" -> app.push(MemoryScreen(ws)); "diary" -> app.push(DiaryPage(ws)); "titles" -> app.push(TitlesPage(ws)); "ach" -> app.push(AchievementsPage(ws))
             "book" -> app.push(BookPage(ws)); "stats" -> app.push(StatsPage(ws)); "works" -> app.push(PortfolioPage(ws))
         }
     }

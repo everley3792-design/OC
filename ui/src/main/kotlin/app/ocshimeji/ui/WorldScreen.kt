@@ -237,6 +237,9 @@ class WorldScreen(val slotId: String) : Screen() {
             /* 1.7.0: a song (their theme, or one made up on the spot), everyone together, something only you decide */
             "song" -> if (ff == null) e.text.split("|").let { v -> app.platform.melody(v[0].split(",").mapNotNull { it.toIntOrNull() }.toIntArray(), v.getOrNull(1)?.toFloatOrNull() ?: 1f) }
             "group" -> { app.platform.sound("chime"); app.toast("大家一起：${e.text}") }
+            /* 1.8.0: a message for you; the time capsule opened */
+            "message" -> { app.platform.sound("chime"); app.toast("${sim.person(e.who)?.name ?: ""}傳了訊息給你（紀錄 → 和你）") }
+            "capsule" -> { app.platform.sound("chime"); app.toast("時光膠囊打開了！信在信箱裡") }
             "decision" -> if (app.overlay == null && ff == null) e.text.toIntOrNull()?.let { decide(it) }
         }
         if (closeup?.let { app.time - it.third > 30f } == true) closeup = null
@@ -786,6 +789,9 @@ class WorldScreen(val slotId: String) : Screen() {
             "edit" -> editResident(app, this, arg)
             "follow" -> { setObserving(true); follow = arg; lockFollow = true }
             "rels" -> openWorldRelations(app, this)
+            "photo" -> app.push(PhotoStudio(this, if (p != null) listOf(p.id) else sim.life.people.filter { !it.desk && it.out == null }.map { it.id }))
+            "catch" -> app.push(CatchScreen(this, arg)); "flip" -> app.push(FlipScreen(this, arg))
+            "note" -> writeNote(app, this, arg); "namecard" -> app.show(NameCardSheet(this, arg))
             "info" -> arg.toIntOrNull()?.let { pi -> val pc = sim.house.pieces.getOrNull(pi) ?: return
                 val users = sim.life.people.filter { it.actPiece == pi && it.act != null }.joinToString("、") { it.name }
                 app.toast(Furniture.kind(pc.kind).zh + "・" + (sim.house.rooms.firstOrNull { it.id == pc.room }?.zh ?: "") + if (users.isNotEmpty()) "・${users}在用" else "") }

@@ -137,7 +137,8 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             g.text(hm, G + 4, yy + 18, Dim.FS_S - 1, t.ink3, FontKind.NUM)
             g.text(Widgets.fit(g, (if (l.who != id) (sim.person(l.who)?.name ?: "") + "：" else "") + l.text + if (l.sound.isNotEmpty()) "　${l.sound}" else "", Dim.FS_S, W - G * 2 - 56), G + 50, yy + 18, Dim.FS_S, if (l.fav) t.accentLip else t.ink)
             yy += 28 }
-        Widgets.button(g, app, "card:mem", G, bottom - app.insetBottom - 62, W - G * 2, 48f, "記憶與更多紀錄")
+        val bw = (W - G * 2 - 16) / 3; val by = bottom - app.insetBottom - 62
+        Widgets.button(g, app, "card:note", G, by, bw, 48f, "寫筆記"); Widgets.button(g, app, "card:namecard", G + bw + 8, by, bw, 48f, "名片"); Widgets.button(g, app, "card:more", G + bw * 2 + 16, by, bw, 48f, "更多")
     }
     /** which page shows (R3) */
     var tab = "now"
@@ -154,6 +155,14 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             "card:hide" -> { app.closeOverlay(); if (ws.sim.society.hideStart(this.id)) app.toast("躲起來了！點家具找找看") else app.toast("現在沒辦法玩"); return }
             "card:worry" -> { app.closeOverlay(); app.show(WorrySheet(ws, this.id)); return }
             "card:mem" -> { app.closeOverlay(); app.show(MemorySheet(ws, this.id)); return }
+            /* 1.8.0: your note, their card, and more (memory, photo, games, a grown version for the library) */
+            "card:note" -> { val pid = this.id; app.closeOverlay(); writeNote(app, ws, pid); return }
+            "card:namecard" -> { val pid = this.id; app.closeOverlay(); app.show(NameCardSheet(ws, pid)); return }
+            "card:more" -> { val pid = this.id; app.closeOverlay(); app.show(ListSheet("更多", listOf("mem" to "記憶與更多紀錄", "photo" to "拍照", "catch" to "接點心", "flip" to "翻牌", "grown" to "存成收藏庫的新版本")) { k ->
+                when (k) { "mem" -> app.show(MemorySheet(ws, pid)); "photo" -> app.push(PhotoStudio(ws, listOf(pid)))
+                    "catch" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(CatchScreen(ws, pid))
+                    "flip" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(FlipScreen(ws, pid))
+                    "grown" -> saveGrown(app, ws, pid) } }); return }
         }
         if (id.startsWith("feed:")) { val msg = ws.sim.feed(this.id, id.removePrefix("feed:")); app.closeOverlay(); if (msg.isNotEmpty()) app.toast(msg) }
     }
@@ -186,4 +195,12 @@ fun openWorldRelations(app: UiApp, ws: WorldScreen) {
     val sim = ws.sim; if (sim.life.people.size < 2) { app.toast("這裡只住了一位"); return }
     val people = sim.life.people.map { Triple(it.id, it.spec, ws.libOf(it)) }
     app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom -> applyRels(sim, r, rom) ?: run { ws.flush(); null } })
+}
+
+/** P-14: keep who they became here (their settings now, and what they learned) as a new character in the library */
+fun saveGrown(app: UiApp, ws: WorldScreen, pid: String) {
+    val p = ws.sim.person(pid) ?: return
+    val note = "${ws.sim.life.homeName}第 ${ws.sim.life.day} 天"
+    val id = runCatching { app.saves.saveGrown(p.libId, p.spec, note) }.getOrNull()
+    if (id == null) app.toast("存不起來（找不到收藏庫裡的原版）") else { app.platform.sound("chime"); app.toast("收藏庫多了「${p.name}（$note）」，原版不變") }
 }

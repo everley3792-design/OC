@@ -1,5 +1,7 @@
 package app.ocshimeji.ui
 
+import app.ocshimeji.sim.social.Scenarios
+
 import app.ocshimeji.render.Align
 import app.ocshimeji.render.Colors
 import app.ocshimeji.render.FontKind
@@ -59,6 +61,8 @@ class OpeningScreen : Screen() {
     val rooms = HashMap<String, String>()
     /** relationships between the chosen characters (library ids) and whether romance is on (plan 12.5) */
     val rels = ArrayList<Rel>(); var romance = false
+    /** P-05 (1.8.0): a scenario start — a house, how many, and how everyone knows each other (you can still change it all) */
+    var scenario: String? = null
     private val list = Scroller()
     private val enterK = Spring(0f, 1f, 200f, 22f)
     override val animating get() = true
@@ -67,7 +71,7 @@ class OpeningScreen : Screen() {
     private fun tenants() = chosen.mapNotNull { app.saves.libChar(it) }.map { Tenant(it.id, it.name, it.adult) }
     fun problem(): String? = when (step) {
         1 -> null
-        2 -> Houses.check(house, tenants())
+        2 -> Houses.check(house, tenants()) ?: scenario?.let { Scenarios.ALL[it] }?.let { sc -> when { chosen.size < sc.min -> "「${sc.zh}」要 ${sc.min} 位以上"; chosen.size > sc.max -> "「${sc.zh}」最多 ${sc.max} 位"; else -> null } }
         3 -> Houses.checkRooms(house, tenants(), rooms) { a, b -> Relations.family(rels, a, b) }
         else -> null
     }
@@ -116,6 +120,11 @@ class OpeningScreen : Screen() {
     private fun houses(g: Gfx, y0: Float, btnY: Float) {
         val t = app.theme; val G = Dim.GUTTER; val W = app.w
         var x = G; var cy = y0
+        g.text("情境開局（可以不選）", G + 4, cy + 10, Dim.FS_S, t.ink2); cy += 20
+        for (sc in Scenarios.ALL.values) { if (x + g.measure(sc.zh, Dim.FS_S + 1) + 28 > W - G) { x = G; cy += 44 }
+            x += Widgets.chip(g, app, "scn:${sc.id}", x, cy, sc.zh, scenario == sc.id, 38f) + 8 }
+        scenario?.let { Scenarios.ALL[it] }?.let { sc -> cy += 50; g.text(Widgets.fit(g, "${sc.desc}（${sc.min}～${sc.max} 位）", Dim.FS_S, W - G * 2 - 8), G + 4, cy, Dim.FS_S, t.accentLip); cy -= 6 }
+        x = G; cy += 52
         for (h in Houses.ALL) { val label = h.zh + if (locked(h)) "（未開放）" else ""; if (x + g.measure(label, Dim.FS_S + 1) + 28 > W - G) { x = G; cy += 48 }
             x += Widgets.chip(g, app, "house:${h.id}", x, cy, label, h == house, 40f) + 8 }
         val top = cy + 56
@@ -184,7 +193,11 @@ class OpeningScreen : Screen() {
             id == "next" && problem() == null -> next()
             id == "name:town" -> app.platform.prompt("小鎮的名字", town, 12) { n -> if (!n.isNullOrBlank()) town = n.trim() }
             id == "name:home" -> app.platform.prompt("家的名字", home, 12) { n -> if (!n.isNullOrBlank()) home = n.trim() }
-            id.startsWith("house:") -> { val h = Houses.get(id.removePrefix("house:")); if (locked(h)) app.toast(h.locked) else { house = h; rooms.clear() } }
+            id.startsWith("scn:") -> { val sc = Scenarios.ALL[id.removePrefix("scn:")] ?: return
+                if (scenario == sc.id) { scenario = null; return }
+                val h = Houses.get(sc.house); if (locked(h)) { app.toast(h.locked); return }
+                scenario = sc.id; house = h; rooms.clear(); app.platform.sound("pop") }
+            id.startsWith("house:") -> { val h = Houses.get(id.removePrefix("house:")); if (locked(h)) app.toast(h.locked) else { house = h; rooms.clear(); if (scenario?.let { Scenarios.ALL[it]?.house } != h.id) scenario = null } }
             id.startsWith("pick:") -> { val c = id.removePrefix("pick:")
                 if (!chosen.remove(c)) { if (chosen.size >= house.capacity) app.toast("${house.zh}最多住 ${house.capacity} 位") else chosen += c } }
             id == "import" -> pickImage()
@@ -202,7 +215,8 @@ class OpeningScreen : Screen() {
     }
     private fun next() {
         when (step) {
-            2 -> { val auto = Houses.autoRooms(house, tenants()); rooms.keys.retainAll(chosen); for (lid in chosen) if (house.bedrooms.none { it.id == rooms[lid] }) auto[lid]?.let { rooms[lid] = it } }
+            2 -> { scenario?.let { sc -> val have = rels.map { it.from to it.to }.toSet(); rels += Scenarios.rels(sc, chosen.toList()).filter { (it.from to it.to) !in have } }   /* the scenario's ties, under any you drew yourself */
+                val auto = Houses.autoRooms(house, tenants()); rooms.keys.retainAll(chosen); for (lid in chosen) if (house.bedrooms.none { it.id == rooms[lid] }) auto[lid]?.let { rooms[lid] = it } }
             3 -> { finish(); return }
         }
         step++; list.reset(); enterK.snap(0f); enterK.target = 1f

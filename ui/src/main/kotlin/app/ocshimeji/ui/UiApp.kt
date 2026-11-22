@@ -98,7 +98,10 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** added to every zone registered while drawing inside a translated (scrolled) area */
     var zoneDx = 0f; var zoneDy = 0f
     fun zone(id: String, x: Float, y: Float, w: Float, h: Float) { zones += Zone(id, x + zoneDx, y + zoneDy, w, h, layer, overlay?.born ?: -1f) }
+    /** 1.8.0: the last frame's Gfx, so a tap can make a picture off screen (photos, cards) */
+    var gfxForSnap: Gfx? = null; private set
     fun frame(g: Gfx, dt: Float) {
+        gfxForSnap = g
         time += dt; w = g.width; h = g.height; zones.clear(); zoneDx = 0f; zoneDy = 0f
         layer = 0
         val dur = if (saves.flag("a11y:calm")) 0.12f else if (transKind == "fade") 0.18f else 0.24f; val k = ((time - transAt) / dur).coerceIn(0f, 1f)

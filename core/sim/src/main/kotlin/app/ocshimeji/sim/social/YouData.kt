@@ -46,7 +46,7 @@ object PhotoKit {
     val FILTERS = linkedMapOf("none" to "原色", "warm" to "暖暖", "mono" to "黑白", "retro" to "復古", "dream" to "夢幻")
     val FRAMES = linkedMapOf("none" to "無", "polaroid" to "拍立得", "lace" to "花邊", "film" to "底片", "stamp" to "郵票")
     val POSES = linkedMapOf("HAPPY" to "比耶", "SHY" to "害羞", "LOOK" to "看鏡頭", "SING" to "唱歌", "SWING" to "帥氣", "DAYDREAM" to "發呆")
-    val STICKERS = listOf("heart", "star", "sparkle", "flower", "note", "cake")
+    val STICKERS = listOf("heart", "star", "smile", "flower", "note", "cake")
 }
 
 // ---------------- P-04 time capsules ----------------

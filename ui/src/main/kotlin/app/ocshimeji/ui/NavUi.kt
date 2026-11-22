@@ -43,7 +43,7 @@ object Nav {
         when (to) { "town" -> app.push(TownScreen(ws)); "people" -> app.push(ResidentsPage(ws)); "storage" -> app.push(StoragePage(ws)); "records" -> app.push(JournalHub(ws)) }
         app.transition("fade"); return true
     }
-    fun badges(ws: WorldScreen) = mapOf("records" to ws.sim.society.unreadMail() + ws.sim.journal.ACHIEVEMENTS.count { ws.sim.journal.claimable(it) }, "people" to ws.sim.life.people.count { it.worry?.shown == true || it.ask != null })
+    fun badges(ws: WorldScreen) = mapOf("records" to ws.sim.society.unreadMail() + ws.sim.you.unread() + ws.sim.journal.ACHIEVEMENTS.count { ws.sim.journal.claimable(it) }, "people" to ws.sim.life.people.count { it.worry?.shown == true || it.ask != null })
 }
 
 /** 環境面板 (R2, plan B-4): the clock, its speed and a pause; the hour (game time); today's weather including special skies; the season */

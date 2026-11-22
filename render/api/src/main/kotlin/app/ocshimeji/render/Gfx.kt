@@ -41,6 +41,8 @@ interface Gfx {
     fun pxPerDp(): Float = 0f
     /** 1.5.1: draw into a new transparent picture of wPx × hPx pixels (`draw` gets a Gfx whose units are those pixels); null = can't */
     fun offscreen(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): Img? = null
+    /** 1.8.0: draw into a picture and read its pixels back (ARGB, row by row) — photos, name cards and their filters; null = not on this backend */
+    fun offscreenPixels(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): IntArray? = null
 
     fun text(s: String, x: Float, y: Float, size: Float, color: Int, font: FontKind = FontKind.UI, align: Align = Align.LEFT)
     fun measure(s: String, size: Float, font: FontKind = FontKind.UI): Float

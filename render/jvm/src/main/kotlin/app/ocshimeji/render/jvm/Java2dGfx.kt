@@ -68,6 +68,13 @@ class Java2dGfx(private val g: Graphics2D, override val width: Float, override v
         try { draw(Java2dGfx(g2, wPx.toFloat(), hPx.toFloat(), 1f, assets)) } finally { g2.dispose() }
         return JImg(bi)
     }
+    override fun offscreenPixels(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): IntArray? {
+        if (wPx <= 0 || hPx <= 0) return null
+        val bi = BufferedImage(wPx, hPx, BufferedImage.TYPE_INT_ARGB); val g2 = bi.createGraphics()
+        g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+        try { draw(Java2dGfx(g2, wPx.toFloat(), hPx.toFloat(), 1f, assets)) } finally { g2.dispose() }
+        return bi.getRGB(0, 0, wPx, hPx, null, 0, wPx)
+    }
     override fun clip(x: Float, y: Float, w: Float, h: Float) = g.clip(Rectangle2D.Float(x, y, w, h))
     override fun fillRect(x: Float, y: Float, w: Float, h: Float, color: Int) { g.color = col(color); g.fill(Rectangle2D.Float(x, y, w, h)) }
     override fun fillRound(x: Float, y: Float, w: Float, h: Float, r: Float, color: Int) { g.color = col(color); g.fill(RoundRectangle2D.Float(x, y, w, h, r * 2, r * 2)) }

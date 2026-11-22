@@ -70,6 +70,7 @@ class CreateHub : Page("創作") {
         Row("sounds", "聲音", "匯入角色的聲音、音效、家裡的音樂・${studio.sounds().size} 個", icon = "note2", tint = 0xFFD6D0F0.toInt()),
         Row("scripts", "劇本", "自己寫的事件：積木或文字・${studio.scripts().size} 個", icon = "list", tint = 0xFFF0C8D8.toInt()),
         Row("tags", "標籤", "自己定義標籤的效果・${studio.tags().size} 個", icon = "star", tint = 0xFFCFE2F2.toInt()),
+        Row("pack", "內容包工坊", "把角色、物品、劇本、標籤打包成一個 .ocmod 分享，或匯入別人的", icon = "share", tint = 0xFFE6E0F4.toInt()),
         Row("space", "空間使用", "看看哪些東西佔空間，清掉沒用到的檔案", icon = "dots"),
     )
     override fun tap(id: String) {
@@ -79,7 +80,7 @@ class CreateHub : Page("創作") {
             "anim" -> { val own = app.saves.library().chars.filter { it.source != "preset" }
                 if (own.isEmpty()) app.toast("收藏庫還沒有可以改的角色（內建角色可以先複製一份）")
                 else app.show(ListSheet("幫誰做動畫？", own.map { it.id to it.name }) { c -> app.saves.libChar(c)?.let { app.push(AnimStudio(it)) } }) }
-            "items" -> app.push(ItemsPage()); "sounds" -> app.push(SoundsPage()); "scripts" -> app.push(ScriptsPage()); "tags" -> app.push(TagsPage()); "space" -> app.push(SpacePage())
+            "items" -> app.push(ItemsPage()); "sounds" -> app.push(SoundsPage()); "scripts" -> app.push(ScriptsPage()); "tags" -> app.push(TagsPage()); "space" -> app.push(SpacePage()); "pack" -> app.push(PackPage())
         }
     }
 }
@@ -236,6 +237,51 @@ class SpacePage : Page("空間使用") {
             "back" -> app.pop()
             "clean" -> app.show(Confirm("清掉沒用到的檔案？", "已經沒有任何角色或物品用到的圖和聲音會被刪除。", "清掉") { app.toast("清出了 ${mb(studio.cleanup(false))}"); u = null })
             "originals" -> app.show(Confirm("刪除匯入的原圖？", "之後就沒辦法用原圖重新處理，角色會照常顯示。", "刪除") { app.toast("清出了 ${mb(studio.cleanup(true))}"); u = null })
+        }
+    }
+}
+
+
+/** P-15 (1.8.0) 內容包工坊: choose what goes in, name it, export one `.ocmod`; or import one (characters, items, scripts, tags) */
+class PackPage : Page("內容包工坊") {
+    private val pick = LinkedHashSet<String>()
+    override fun rows(): List<Row> = emptyList()
+    override val empty = ""
+    override val tools get() = listOf("import" to "import")
+    override val primary get() = "export" to if (pick.isEmpty()) "選好再打包" else "打包 ${pick.size} 樣"
+    private fun groups(): List<Pair<String, List<Pair<String, String>>>> = listOf(
+        "角色" to app.saves.library().chars.filter { it.source != "preset" }.map { "c:${it.id}" to it.name },
+        "物品" to studio.items().map { "i:${it.id}" to it.name },
+        "劇本" to studio.scripts().map { "s:${it.id}" to it.name },
+        "標籤" to studio.tags().map { "t:${it.id}" to it.id })
+    override fun header(g: Gfx, x: Float, y: Float, w: Float): Float {
+        val t = app.theme; var yy = y
+        for (l in Widgets.wrap(g, "包裡只有資料和圖片，沒有可以執行的程式。內建角色每個人都有，不用打包。", Dim.FS_S, w - 8, 3)) { g.text(l, x + 4, yy + 14, Dim.FS_S, t.ink2); yy += 20 }
+        yy += 8
+        for ((head, xs) in groups()) {
+            g.text(head, x + 4, yy + 16, Dim.FS_M, t.ink); yy += 26
+            if (xs.isEmpty()) { g.text("（還沒有）", x + 8, yy + 14, Dim.FS_S, t.ink3); yy += 30; continue }
+            var cx = x
+            for ((id, name) in xs) { val label = Widgets.fit(g, name, Dim.FS_S + 1, w - 60); if (cx + g.measure(label, Dim.FS_S + 1) + 28 > x + w) { cx = x; yy += 44 }
+                cx += Widgets.chip(g, app, "pk:$id", cx, yy, label, id in pick, 38f) + 8 }
+            yy += 52 }
+        return yy - y
+    }
+    override fun tap(id: String) {
+        when {
+            id == "back" -> app.pop()
+            id.startsWith("pk:") -> { val k = id.removePrefix("pk:"); if (!pick.remove(k)) pick += k; app.platform.sound("tick") }
+            id == "export" -> { if (pick.isEmpty()) { app.toast("至少選一樣東西"); return }
+                app.platform.prompt("內容包的名字", "我的內容包", 20) { n -> if (n == null) return@prompt
+                    fun of(p: String) = pick.filter { it.startsWith(p) }.map { it.drop(2) }
+                    val b = runCatching { studio.exportPack(n.trim(), "", of("c:"), of("i:"), of("s:"), of("t:")) }.getOrElse { app.toast(it.message ?: "打包失敗"); return@prompt }
+                    app.platform.saveFile("${n.trim().ifBlank { "pack" }}.ocmod", "application/zip", b) { ok -> app.toast(if (ok) "打包好了" else "沒有存") } } }
+            id == "import" -> app.platform.openFile("application/zip") { b -> if (b == null) return@openFile
+                val p = runCatching { studio.readMod(b) }.getOrElse { app.toast(it.message ?: "匯入失敗"); return@openFile }
+                val parts = runCatching { studio.importPackParts(b, app.platform.codec) }.getOrElse { app.toast(it.message ?: "匯入失敗"); return@openFile }
+                val remap = p.needs.filter { !studio.has(it) }.associateWith { "any" }   /* a role nobody here fits → anyone */
+                val n = studio.importMod(p, remap)
+                app.toast("「${p.name}」：角色 ${parts.first}、物品 ${parts.second}、劇本 $n、標籤 ${p.tags.size}" + if (remap.isNotEmpty()) "（有 ${remap.size} 個角色條件改成任何人）" else "") }
         }
     }
 }

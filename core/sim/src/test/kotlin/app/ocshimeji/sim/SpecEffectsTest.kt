@@ -82,6 +82,12 @@ class SpecEffectsTest {
         val (s3, a3) = sim(base, 10.0, other, rels = listOf(Rel("a", "b", "好友", like = 80, familiar = 70), Rel("b", "a", "好友")))
         assertEquals("點點", s3.society.nickBy(a3, s3.person("b")!!), "a nickname of their own once close (C-07)"); assertEquals("測試", s3.society.nickBy(s3.person("b"), a3), "not close the other way round: the plain name")
     }
+    @Test fun theirOwnLines() {   /* 1.8.0 M-04: a line of their own is said, and only when it fits */
+        val (s, p) = sim(base.copy(lines = listOf(app.ocshimeji.sim.chars.CustomLine("今天的雲好像棉花糖", "any"), app.ocshimeji.sim.chars.CustomLine("下雨了好想睡", "rain"))), 10.0)
+        var said = false; var rain = false
+        repeat(12000) { s.update(0.1f); for (e in s.events) if (e.kind == "say" && e.who == p.id) { if (e.text.contains("棉花糖")) said = true; if (e.text.contains("下雨了")) rain = true }; s.events.clear() }
+        assertTrue(said, "lines"); if (s.weather() != "rain") assertTrue(!rain || s.life.log.isNotEmpty(), "a rain line waits for rain")
+    }
     @Test fun lifeAndSchedule() {
         val (s0, p0) = sim(base)
         assertTrue(sim(base.copy(wake = 5)).let { (s, p) -> s.wakeOf(p) } < s0.wakeOf(p0), "wake")

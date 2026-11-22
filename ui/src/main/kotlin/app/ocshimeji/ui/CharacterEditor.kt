@@ -1,5 +1,7 @@
 package app.ocshimeji.ui
 
+import app.ocshimeji.sim.chars.CustomLine
+
 import app.ocshimeji.render.Align
 import app.ocshimeji.render.Colors
 import app.ocshimeji.render.FontKind
@@ -215,6 +217,18 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         f.header("自訂事件", "一句話＋多久一次＋頭上的圖示；閒下來時會自己做（最多 ${Builder.MAX_HABITS} 個）")
         spec.habits.forEachIndexed { i, h -> habitCard(f, i, h) }
         if (spec.habits.size < Builder.MAX_HABITS) f.button("addhabit", "新增一個自訂事件")
+        f.header("自己的台詞", "牠會在對的時候說（最多 ${CustomLine.MAX} 句）；點時機換一個")
+        spec.lines.forEachIndexed { i, l -> lineCard(f, i, l) }
+        if (spec.lines.size < CustomLine.MAX) f.button("addline", "新增一句台詞")
+    }
+    /** M-04 (1.8.0): one of their own lines and when they say it */
+    private fun lineCard(f: Form, i: Int, l: CustomLine) {
+        val t = app.theme; val g = f.g
+        Widgets.card(g, t, f.x, f.y, f.w, 60f, 18f, t.surface2, t.surface2)
+        val wz = CustomLine.WHEN[l.whenKey] ?: "隨時"; val cw = Widgets.chip(g, app, "line:$i:when", f.x + 10, f.y + 10, wz, true, 40f)
+        g.text(Widgets.fit(g, "「${l.text}」", Dim.FS_S + 1, f.w - cw - 70), f.x + cw + 22, f.y + 36, Dim.FS_S + 1, t.ink)
+        Widgets.round(g, app, "line:$i:del", f.x + f.w - 26, f.y + 30, 16f, "close")
+        f.y += 70
     }
     private fun habitCard(f: Form, i: Int, h: Habit) {
         val t = app.theme; val g = f.g
@@ -280,6 +294,10 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
             id.startsWith("add:") -> { val k = id.removePrefix("add:"); app.platform.prompt(LIST_TITLE[k] ?: "新增", "", 20) { v -> if (!v.isNullOrBlank()) edit { setList(it, k, listOf(it, k) + v.trim()) } } }
             id.startsWith("del:") -> { val (k, i) = id.removePrefix("del:").split(":"); edit { s -> setList(s, k, listOf(s, k).filterIndexed { j, _ -> j != i.toInt() }) } }
             id.startsWith("btn:") -> button(id.removePrefix("btn:"))
+            id.startsWith("line:") -> { val p = id.removePrefix("line:").split(":"); val i = p[0].toInt()
+                edit { s -> val ls = s.lines.toMutableList(); val l = ls.getOrNull(i) ?: return@edit s
+                    when (p[1]) { "del" -> ls.removeAt(i); "when" -> { val keys = CustomLine.WHEN.keys.toList(); ls[i] = l.copy(whenKey = keys[(keys.indexOf(l.whenKey) + 1) % keys.size]) } }
+                    s.copy(lines = ls) } }
             id.startsWith("hab:") -> { val p = id.removePrefix("hab:").split(":"); val i = p[0].toInt()
                 edit { s -> val hs = s.habits.toMutableList(); val h = hs.getOrNull(i) ?: return@edit s
                     when (p[1]) { "del" -> hs.removeAt(i); "f" -> hs[i] = h.copy(freq = p[2].toInt())
@@ -366,6 +384,7 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         when (k) {
             "next" -> selectTab((tab + 1).coerceAtMost(6))
             "addlike" -> app.platform.prompt("喜歡或不喜歡的東西（之後點它切換）", "", 12) { v -> if (!v.isNullOrBlank()) edit { Builder.cycleLike(it, v.trim()) } }
+            "addline" -> app.platform.prompt("一句台詞（用「我」「你」寫）", "", 40) { v -> if (!v.isNullOrBlank()) edit { it.copy(lines = it.lines + CustomLine(v.trim())) } }
             "addhabit" -> app.platform.prompt("一句話（例：對著窗戶哼了一首歌）", "", 30) { v -> if (!v.isNullOrBlank()) edit { it.copy(habits = it.habits + Habit(v.trim())) } }
             "listen" -> { val l = Speech.say(spec, "你好，我是${spec.name}。今天也請多指教。", Rng(app.platform.now()), 60, true); bubble = l to app.time; scenePose = Pose.TALK; app.platform.voice(spec.voice, l) }
             "tagpick" -> app.show(TagSheet(spec.tags) { tags -> edit { it.copy(tags = tags) } })

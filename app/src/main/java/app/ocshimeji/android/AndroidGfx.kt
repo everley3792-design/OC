@@ -73,6 +73,11 @@ class AndroidGfx(private val assets: AndroidAssets) : Gfx {
         val bmp = Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888); val og = AndroidGfx(assets)
         og.begin(Canvas(bmp), 1f); try { draw(og) } finally { og.end() }; AImg(bmp) as Img
     }.getOrNull()
+    override fun offscreenPixels(wPx: Int, hPx: Int, draw: (Gfx) -> Unit): IntArray? = runCatching {
+        val bmp = Bitmap.createBitmap(wPx, hPx, Bitmap.Config.ARGB_8888); val og = AndroidGfx(assets)
+        og.begin(Canvas(bmp), 1f); try { draw(og) } finally { og.end() }
+        val px = IntArray(wPx * hPx); bmp.getPixels(px, 0, wPx, 0, 0, wPx, hPx); bmp.recycle(); px
+    }.getOrNull()
     /** a Gfx used only to measure text (no canvas yet) */
     fun measureOnly(w: Float, h: Float) { width = w; height = h }
 
