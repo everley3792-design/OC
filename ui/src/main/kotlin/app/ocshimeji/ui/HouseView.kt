@@ -31,6 +31,15 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
     var itemImg: (String) -> Img? = { null }
     /** how grown a potted plant is (0 sprout … 3 flowering, −1 drooping): from the life's journal */
     var plantStage: (Int, Int) -> Int = { _, _ -> 2 }
+    // ---- R5: what the life says about how things look, and the light
+    /** a piece's look (`LifeSim.stateOf`): "" = the default look (previews) */
+    var state: (Int) -> String = { "" }
+    /** game hour and the weather, for window light and the clock */
+    var hour = 12.0; var weather = "sunny"
+    /** things on the floor (kind, x, y) */
+    var litter: List<Triple<String, Int, Int>> = emptyList()
+    /** reduce motion: no drifting dust, no swaying curtains */
+    var calm = false
     private fun tile(g: Gfx, img: Img, x: Float, y: Float, w: Float, h: Float, tw: Float, th: Float) {
         g.save(); g.clip(x, y, w, h); var yy = y; while (yy < y + h) { var xx = x; while (xx < x + w) { g.image(img, xx, yy, tw, th); xx += tw }; yy += th }; g.restore()
     }
@@ -56,23 +65,27 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         // ---- flat things on the floor (rugs) and the doormat
         house.pieces.forEachIndexed { i, pc -> if (pc.kind == "rug") rug(g, p, pc.x, pc.y, i) }
         val e = house.entrance; g.fillRound(bx(e.x.toFloat()) + 4, by(e.y + 1f) - T * K * 0.42f, T - 8, T * K * 0.36f, 4f, p.mat)
+        // ---- R5 light layer 2: sunlight through the windows, leaning with the hour, weaker under clouds
+        house.pieces.forEach { pc -> if (pc.kind == "window") windowLight(g, p, pc.x, pc.y, Furniture.kind(pc.kind).w, time) }
         // ---- back walls with what hangs on them
         for (r in house.rooms) wall(g, p, r, light)
-        house.pieces.forEachIndexed { _, pc -> when (pc.kind) { "window" -> window(g, p, pc.x, pc.y, Furniture.kind(pc.kind).w, light); "mirror" -> mirror(g, p, pc.x, pc.y)
+        clock(g, p)
+        house.pieces.forEachIndexed { wi, pc -> when (pc.kind) { "window" -> window(g, p, pc.x, pc.y, Furniture.kind(pc.kind).w, light, time, state(wi)); "mirror" -> mirror(g, p, pc.x, pc.y)
             else -> Furniture.kind(pc.kind).takeIf { it.wall }?.let { k -> sticker(g, p, k, pc.x, pc.y) } } }
         for (d in house.doors) { val r = house.roomAt(d.x, d.y) ?: continue; if (d.y == r.y) doorway(g, p, d.x, d.y, r) }
         // ---- depth-sorted: furniture and whatever the caller adds
         val list = ArrayList<D>(extra)
+        for ((k, lx, ly) in litter) list += D(ly + 0.3f) { litterThing(g, p, k, lx, ly) }
         house.pieces.forEachIndexed { i, pc ->
             val k = Furniture.kind(pc.kind); val key = pc.y + k.h.toFloat()
             /* a flipped piece is drawn as its mirror image around its own middle */
             fun m(draw: () -> Unit): () -> Unit = if (!pc.flip) draw else { { val cx = bx(pc.x + k.w / 2f); g.save(); g.translate(cx, 0f); g.scale(-1f, 1f); g.translate(-cx, 0f); draw(); g.restore() } }
             when {
                 pc.kind == "rug" || pc.kind == "window" || pc.kind == "mirror" || k.wall -> {}
-                pc.kind == "bed" || pc.kind == "bed2" -> { list += D(key - 0.02f, m { bed(g, p, pc.x, pc.y, k.w, i) }); list += D(key + 0.02f, m { blanket(g, p, pc.x, pc.y, k.w, i) }) }
-                pc.kind == "tub" -> { list += D(key - 0.02f) { tub(g, p, pc.x, pc.y) }; list += D(key + 0.02f) { tubFront(g, p, pc.x, pc.y) } }
+                pc.kind == "bed" || pc.kind == "bed2" -> { val st = state(i); list += D(key - 0.02f, m { bed(g, p, pc.x, pc.y, k.w, i, st) }); list += D(key + 0.02f, m { blanket(g, p, pc.x, pc.y, k.w, i, st) }) }
+                pc.kind == "tub" -> { val st = state(i); list += D(key - 0.02f) { tub(g, p, pc.x, pc.y, st, time) }; list += D(key + 0.02f) { tubFront(g, p, pc.x, pc.y) } }
                 pc.kind == "sofa" -> list += D(key - 0.02f, m { sofa(g, p, pc.x, pc.y) })
-                else -> list += D(key, m { piece(g, p, pc.kind, pc.x, pc.y, time, light, occupied(i)) })
+                else -> { val st = state(i); list += D(key, m { piece(g, p, pc.kind, pc.x, pc.y, time, light, occupied(i) || st == "on" || st == "cooking", st) }) }
             }
         }
         list.sortBy { it.key }
@@ -149,13 +162,56 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         g.fillRect(x - 2, y - 3, w + 4, h + 3, p.cap); g.fillRect(x, y, w, h, floorColor(p, house.roomAt(tx, ty - 1) ?: r))
         g.fillRect(x, y + h - 2, w, 2f, Colors.withAlpha(0xFF000000.toInt(), 0.08f))
     }
-    private fun window(g: Gfx, p: Pal, tx: Int, ty: Int, tw: Int, light: Float) {
+    private fun window(g: Gfx, p: Pal, tx: Int, ty: Int, tw: Int, light: Float, time: Float = 0f, st: String = "") {
         val x = bx(tx.toFloat()) + 5; val y = by(ty.toFloat()) + 3; val w = tw * T - 10; val h = T * K - 9
         g.fillRound(x - 2, y - 2, w + 4, h + 4, 4f, p.white)
         g.fillRect(x, y, w, h, Colors.mix(p.night, p.water, light))
         if (light > 0.5f) g.fillCircle(x + w * 0.75f, y + h * 0.35f, h * 0.16f, Colors.withAlpha(p.sun, light)) else g.fillCircle(x + w * 0.72f, y + h * 0.32f, h * 0.13f, p.shade)
+        if (weather == "rain") for (k in 0 until 5) { val rx = x + (k * 0.21f + 0.08f) * w; val ry = y + ((time * 30 + k * 7) % h); g.line(rx, ry, rx - 1, ry + 4, 1f, Colors.withAlpha(p.white, 0.7f)) }
         g.fillRect(x + w / 2 - 1, y, 2f, h, p.white); g.fillRect(x, y + h / 2 - 1, w, 2f, p.white)
-        g.fillRound(x - 4, y - 3, w * 0.16f, h + 5, 3f, p.coral); g.fillRound(x + w * 0.84f + 4, y - 3, w * 0.16f, h + 5, 3f, p.coral)
+        /* curtains: drawn closed at night (R5), open by day and moving a little in the draught */
+        val sway = if (calm || st == "closed") 0f else kotlin.math.sin(time * 1.4f) * 1.6f
+        val cw = if (st == "closed") w * 0.52f else w * 0.16f
+        g.fillRound(x - 4, y - 3, cw + sway, h + 5, 3f, p.coral); g.fillRound(x + w - cw + 4 - sway, y - 3, cw + sway, h + 5, 3f, p.coral)
+        for (k in 1..2) { g.fillRect(x - 4 + cw * k / 3 + sway * 0.5f, y - 2, 1f, h + 3, p.coralLip); g.fillRect(x + w + 4 - cw * k / 3 - sway * 0.5f, y - 2, 1f, h + 3, p.coralLip) }
+        g.fillRect(x - 6, y - 5, w + 12, 2.5f, p.woodLip)   /* rail */
+    }
+    /** R5: the patch of sun a window throws on the floor — leans east in the morning and west in the afternoon; dust floats in it */
+    private fun windowLight(g: Gfx, p: Pal, tx: Int, ty: Int, tw: Int, time: Float) {
+        val sunK = when { hour < 7 || hour > 17.5 -> 0f; hour < 8.5 -> ((hour - 7) / 1.5).toFloat(); hour > 16 -> ((17.5 - hour) / 1.5).toFloat(); else -> 1f }
+        val wk = when (weather) { "sunny" -> 1f; "cloudy" -> 0.45f; "snow" -> 0.55f; "fog" -> 0.3f; else -> 0.2f }
+        val a = 0.34f * sunK * wk; if (a < 0.02f) return
+        val lean = ((hour - 12) / 5.5).toFloat().coerceIn(-1f, 1f) * T * -1.1f
+        val x0 = bx(tx.toFloat()) + 6; val w = tw * T - 12; val y0 = by(ty + 1f); val rows = 10; val depth = T * K * 2.4f
+        for (r in 0 until rows) { val k = r / rows.toFloat(); g.fillRect(x0 + lean * k, y0 + depth * k, w * (1f - 0.15f * k), depth / rows + 0.5f, Colors.withAlpha(p.sun, a * (1f - 0.55f * k))) }
+        if (!calm) for (d in 0 until 6) { val ph = d * 1.7f + tx; val px = x0 + w * (((d * 37) % 10) / 10f) + lean * 0.5f + kotlin.math.sin(time * 0.4f + ph) * 4; val py = y0 + depth * ((time * 0.05f + d * 0.17f) % 1f)
+            g.fillCircle(px, py - 10, 0.9f, Colors.withAlpha(p.white, a * 2.4f)) }
+    }
+    /** R5: a wall clock in the first room with a free stretch of wall; its hands follow the game time */
+    private fun clock(g: Gfx, p: Pal) {
+        val r = house.rooms.firstOrNull { rr -> rr.kind != RoomKind.YARD && rr.kind != RoomKind.BALCONY && rr.kind != RoomKind.BATH && house.pieces.none { pc -> pc.y == rr.y && (pc.kind == "window" || pc.kind == "mirror" || Furniture.kind(pc.kind).wall) && pc.x <= rr.x + rr.w / 2 && pc.x + Furniture.kind(pc.kind).w > rr.x + rr.w / 2 - 1 } } ?: return
+        val cx = bx(r.x + r.w / 2f); val cy = by(r.y.toFloat()) + T * K * 0.42f; val rr = T * 0.22f
+        g.fillCircle(cx, cy + 1.5f, rr + 1.5f, Colors.withAlpha(0xFF000000.toInt(), 0.12f)); g.fillCircle(cx, cy, rr + 1.5f, p.woodLip); g.fillCircle(cx, cy, rr, p.white)
+        for (k in 0 until 4) { val an = k * Math.PI.toFloat() / 2; g.fillCircle(cx + kotlin.math.cos(an) * rr * 0.78f, cy + kotlin.math.sin(an) * rr * 0.78f, 0.8f, p.ink2) }
+        val hA = ((hour % 12) / 12 * 2 * Math.PI - Math.PI / 2).toFloat(); val mA = ((hour % 1) * 2 * Math.PI - Math.PI / 2).toFloat()
+        g.line(cx, cy, cx + kotlin.math.cos(hA) * rr * 0.5f, cy + kotlin.math.sin(hA) * rr * 0.5f, 1.6f, p.dk); g.line(cx, cy, cx + kotlin.math.cos(mA) * rr * 0.78f, cy + kotlin.math.sin(mA) * rr * 0.78f, 1.1f, p.dk)
+        g.fillCircle(cx, cy, 1.2f, p.coral)
+    }
+    /** R5: what was left on the floor */
+    private fun litterThing(g: Gfx, p: Pal, kind: String, tx: Int, ty: Int) {
+        val cx = bx(tx + 0.5f) + ((tx * 7 + ty * 3) % 5 - 2) * 2f; val cy = by(ty + 0.62f)
+        g.fillRound(cx - 6, cy + 1, 12f, 3f, 1.5f, Colors.withAlpha(0xFF000000.toInt(), 0.1f))
+        when (kind) {
+            "book" -> { g.fillRound(cx - 6, cy - 4, 12f, 7f, 1.5f, p.sky); g.fillRect(cx - 5, cy - 3, 10f, 1.2f, p.white); g.fillRect(cx - 0.5f, cy - 4, 1f, 7f, p.skyLip) }
+            "cup" -> { g.fillRound(cx - 3.5f, cy - 6, 7f, 7f, 2f, p.white); g.fillRect(cx - 3, cy - 5.5f, 6f, 1.6f, p.s("#8A5A3A")); g.strokeRound(cx + 3, cy - 5, 3f, 3.5f, 1.5f, 1f, p.white) }
+            else -> { g.fillRound(cx - 5, cy - 3, 10f, 5f, 2f, p.coral); g.line(cx - 5, cy - 0.5f, cx - 7, cy - 2, 1f, p.coralLip); g.line(cx + 5, cy - 0.5f, cx + 7, cy + 1, 1f, p.coralLip); g.fillRect(cx - 2, cy - 2, 4f, 1.2f, p.white) }
+        }
+    }
+    /** R5: wood grain on a top surface, and the light catching its edge */
+    private fun grain(g: Gfx, p: Pal, x: Float, y: Float, w: Float, h: Float) {
+        val c = Colors.withAlpha(p.woodLip, 0.28f); var k = 0
+        while (k * 4f < h - 2) { val yy = y + 2 + k * 4f; val off = ((k * 13) % 7) * 2f; g.fillRect(x + 3 + off, yy, w - 8 - off * 1.5f, 0.8f, c); k++ }
+        g.fillRect(x + 2, y + 1, w - 4, 1.2f, Colors.withAlpha(p.white, 0.35f))
     }
     /** a sticker on the back wall (the player's own picture) */
     private fun sticker(g: Gfx, p: Pal, k: app.ocshimeji.sim.house.FurnitureKind, tx: Int, ty: Int) {
@@ -176,10 +232,11 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         g.fillRound(X, yb - h - 2, W, h + 2, r, front)
         g.fillRound(X, by(y) - h + inset * 0.6f, W, (yb - by(y)) - inset * 0.6f, r, top)
     }
-    private fun piece(g: Gfx, p: Pal, kind: String, x: Int, y: Int, time: Float, light: Float, used: Boolean) {
+    private fun piece(g: Gfx, p: Pal, kind: String, x: Int, y: Int, time: Float, light: Float, used: Boolean, st: String = "") {
         val fx = x.toFloat(); val fy = y.toFloat()
         when (kind) {
-            "fridge" -> { box(g, fx, fy, 1f, 1f, 44f, p.white, p.whiteLip); g.fillRect(bx(fx) + 6, by(fy + 1) - 26, T - 12, 1.5f, p.whiteLip); g.fillRound(bx(fx) + T - 10, by(fy + 1) - 40, 2.5f, 10f, 1f, p.ink2) }
+            "fridge" -> { box(g, fx, fy, 1f, 1f, 44f, p.white, p.whiteLip); g.fillRect(bx(fx) + 6, by(fy + 1) - 26, T - 12, 1.5f, p.whiteLip); g.fillRound(bx(fx) + T - 10, by(fy + 1) - 40, 2.5f, 10f, 1f, p.ink2)
+                g.fillRect(bx(fx) + 7, by(fy + 1) - 44, 2f, 16f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.7f)); g.fillCircle(bx(fx) + 12, by(fy + 1) - 34, 2.2f, p.coral); g.fillCircle(bx(fx) + 17, by(fy + 1) - 36, 1.8f, p.sky) }   /* shine and two magnets */
             "stove" -> { box(g, fx, fy, 1f, 1f, 22f, p.s("#E7E2DA"), p.whiteLip)
                 val ty = by(fy) - 22 + T * K * 0.5f; g.fillCircle(bx(fx + 0.32f), ty, T * 0.12f, p.dk); g.fillCircle(bx(fx + 0.7f), ty, T * 0.12f, p.dk)
                 if (used) { g.fillCircle(bx(fx + 0.32f), ty, T * 0.07f, p.coral); g.fillCircle(bx(fx + 0.5f) + kotlin.math.sin(time * 3) * 2, by(fy) - 34 - (time * 8) % 10, 3f, Colors.withAlpha(p.white, 0.7f)) }
@@ -187,14 +244,22 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
             "table" -> { val X = bx(fx) + 3; val W = 2 * T - 6
                 for (sx in listOf(0.5f, 1.5f)) { g.fillRound(bx(fx + sx) - T * 0.22f, by(fy + 1.5f) - 9, T * 0.44f, 9f, 3f, p.woodLip) }   /* stools in front */
                 g.fillRect(X + 4, by(fy + 1) - 16, 4f, 16f, p.woodLip); g.fillRect(X + W - 8, by(fy + 1) - 16, 4f, 16f, p.woodLip)
-                g.fillRound(X, by(fy) - 16 + 3, W, T * K - 3, 5f, p.woodTop); g.fillRect(X, by(fy + 1) - 18, W, 4f, p.wood)
-                g.fillCircle(X + W / 2, by(fy + 0.5f) - 16, T * 0.14f, p.white) }
-            "tv" -> { box(g, fx, fy, 1f, 1f, 12f, p.woodTop, p.wood)
+                g.fillRound(X, by(fy) - 16 + 3, W, T * K - 3, 5f, p.woodTop); grain(g, p, X, by(fy) - 13, W, T * K - 4); g.fillRect(X, by(fy + 1) - 18, W, 4f, p.wood)
+                val ty0 = by(fy + 0.5f) - 16
+                when (st) {
+                    "food" -> for (sx in listOf(0.5f, 1.5f)) { val cx = bx(fx + sx); g.fillCircle(cx, ty0, T * 0.17f, p.white); g.fillCircle(cx, ty0, T * 0.11f, p.s("#E9A15A")); g.fillCircle(cx - 2, ty0 - 1, T * 0.05f, p.leaf)
+                        if (!calm) g.fillCircle(cx + kotlin.math.sin(time * 2 + sx) * 1.5f, ty0 - 8 - (time * 6 + sx * 5) % 8, 1.6f, Colors.withAlpha(p.white, 0.6f)) }
+                    "dishes" -> { for (k in 0 until 3) g.fillCircle(X + W * 0.35f, ty0 + 1 - k * 1.6f, T * 0.15f, if (k % 2 == 0) p.white else p.whiteLip); g.fillCircle(X + W * 0.7f, ty0, T * 0.14f, p.white)
+                        g.fillCircle(X + W * 0.68f, ty0 - 1, 1.2f, p.s("#C08040")); g.fillCircle(X + W * 0.73f, ty0 + 1, 1f, p.s("#C08040")) }
+                    else -> g.fillCircle(X + W / 2, ty0, T * 0.14f, p.white)
+                } }
+            "tv" -> { box(g, fx, fy, 1f, 1f, 12f, p.woodTop, p.wood); grain(g, p, bx(fx) + 3, by(fy) - 10, T - 6, T * K - 4)
                 val X = bx(fx) + 4; val W = T - 8; val sy = by(fy) - 12 - 20; g.fillRound(X, sy, W, 20f, 3f, p.dk)
                 g.fillRound(X + 2, sy + 2, W - 4, 16f, 2f, if (used) Colors.mix(p.sky, p.sun, (kotlin.math.sin(time * 1.7f) + 1) / 2) else p.s("#3B3550")) }
             "shelf" -> { box(g, fx, fy, 1f, 1f, 40f, p.woodTop, p.wood)
                 val X = bx(fx) + 6; val cols = listOf(p.coral, p.sky, p.mint, p.sun, p.coralLip)
-                for (row in 0 until 3) { val ry = by(fy + 1) - 38 + row * 12f; var xx = X; var i = row; while (xx < bx(fx) + T - 9) { g.fillRect(xx, ry, 3.5f, 9f, cols[i % cols.size]); xx += 4.5f; i++ }; g.fillRect(bx(fx) + 4, ry + 9, T - 8, 1.5f, p.woodLip) } }
+                for (row in 0 until 3) { val ry = by(fy + 1) - 38 + row * 12f; var xx = X; var i = row; while (xx < bx(fx) + T - 9) { if (!(st == "out" && row == 1 && i in 2..3)) g.fillRect(xx, ry, 3.5f, 9f, cols[i % cols.size]); xx += 4.5f; i++ }; g.fillRect(bx(fx) + 4, ry + 9, T - 8, 1.5f, p.woodLip) }
+                if (st == "out") { val bx0 = bx(fx) + 8; val by0 = by(fy + 1) - 42; g.fillRound(bx0, by0 - 3, 11f, 4f, 1f, p.coral); g.fillRect(bx0 + 1, by0 - 2, 9f, 1f, p.white) } }   /* a gap, and the book lying on top */
             "plant" -> { val cx = bx(fx + 0.5f); val yb = by(fy + 1) - 2; g.fillRound(cx - T * 0.22f, yb - 14, T * 0.44f, 14f, 4f, p.pot)
                 val stage = plantStage(x, y); val sway = kotlin.math.sin(time * 1.3f + x) * 1.5f
                 val k = when (stage) { 0 -> 0.45f; 1 -> 0.75f; else -> 1f }; val droop = if (stage < 0) 5f else 0f
@@ -203,8 +268,10 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
                 if (stage >= 3) for ((dx, dy) in listOf(-6f to -30f, 6f to -33f, 1f to -38f)) { g.fillCircle(cx + dx + sway, yb + dy, 3.2f, p.coral); g.fillCircle(cx + dx + sway, yb + dy, 1.3f, p.sun) } }
             "lantern" -> { val cx = bx(fx + 0.5f); val yb = by(fy + 1) - 4; if (light < 0.6f) g.fillCircle(cx, yb - 18, 22f, Colors.withAlpha(p.sun, (0.6f - light) * 0.6f))
                 g.fillRect(cx - 1, yb - 4, 2f, 4f, p.woodLip); g.fillRound(cx - 9, yb - 26, 18f, 22f, 8f, p.coral); g.fillRect(cx - 9, yb - 17, 18f, 2f, p.coralLip); g.fillRound(cx - 5, yb - 29, 10f, 4f, 2f, p.woodLip) }
-            "lamp" -> { val cx = bx(fx + 0.5f); val yb = by(fy + 1) - 4; if (light < 0.6f) g.fillCircle(cx, yb - 40, 26f, Colors.withAlpha(p.shade, (0.6f - light) * 0.6f))
-                g.fillRound(cx - 6, yb - 3, 12f, 4f, 2f, p.ink2); g.fillRect(cx - 1, yb - 38, 2f, 36f, p.ink2); g.fillRound(cx - 9, yb - 48, 18f, 13f, 4f, if (light < 0.6f) p.sun else p.shade) }
+            "lamp" -> { val cx = bx(fx + 0.5f); val yb = by(fy + 1) - 4; val on = if (st.isEmpty()) light < 0.6f else st == "on"
+                if (on) { for (k in 4 downTo 1) g.fillCircle(cx, yb - 40, 14f + k * 12f, Colors.withAlpha(p.sun, 0.07f)); g.fillRound(cx - 34, yb - 6, 68f, 14f, 7f, Colors.withAlpha(p.sun, 0.18f)) }   /* R5 light layer 3: a warm pool */
+                g.fillRound(cx - 6, yb - 3, 12f, 4f, 2f, p.ink2); g.fillRect(cx - 1, yb - 38, 2f, 36f, p.ink2); g.fillRound(cx - 9, yb - 48, 18f, 13f, 4f, if (on) p.sun else p.shade)
+                g.fillRect(cx - 7, yb - 46, 14f, 1.5f, Colors.withAlpha(p.white, 0.5f)) }
             "garden" -> { val X = bx(fx) + 3; val W = 2 * T - 6; val yb = by(fy + 1)
                 g.fillRound(X, by(fy) - 6, W, yb - by(fy) + 4, 5f, p.woodLip); g.fillRound(X + 3, by(fy) - 3, W - 6, yb - by(fy) - 4, 4f, p.s("#8A5A3A"))
                 for (k in 0 until 4) { val cx = X + 8 + k * (W - 16) / 3; val sway = kotlin.math.sin(time * 1.5f + k) * 1.2f
@@ -216,7 +283,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
                     g.fillRound(cx - 7 + sw, yb - 32, 14f, 15f, 3f, cs[k]) } }
             "bench" -> { val X = bx(fx) + 3; val W = 2 * T - 6; val yb = by(fy + 1)
                 g.fillRect(X + 4, yb - 12, 3f, 12f, p.woodLip); g.fillRect(X + W - 7, yb - 12, 3f, 12f, p.woodLip)
-                g.fillRound(X, by(fy) - 20, W, 6f, 2f, p.wood); g.fillRound(X, yb - 16, W, 7f, 2f, p.woodTop) }
+                g.fillRound(X, by(fy) - 20, W, 6f, 2f, p.wood); g.fillRound(X, yb - 16, W, 7f, 2f, p.woodTop); grain(g, p, X, yb - 16, W, 7f) }
             else -> { val k = Furniture.kind(kind); val img = k.image.takeIf { it.isNotBlank() }?.let { itemImg(it) }
                 if (img != null) { val W = k.w * T - 4; val H = k.h * T * K + T * 0.8f; val sc = minOf(W / img.w, H / img.h); val iw = img.w * sc; val ih = img.h * sc
                     g.fillRound(bx(fx) + 4, by(fy + k.h) - 6, k.w * T - 8, 6f, 3f, Colors.withAlpha(0xFF000000.toInt(), 0.12f))
@@ -225,20 +292,32 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         }
     }
     private fun blanketColor(p: Pal, i: Int) = if (i % 2 == 0) p.coral to p.coralLip else p.sky to p.skyLip
-    private fun bed(g: Gfx, p: Pal, x: Int, y: Int, w: Int, i: Int) {
+    private fun bed(g: Gfx, p: Pal, x: Int, y: Int, w: Int, i: Int, st: String = "") {
         val X = bx(x.toFloat()) + 3; val W = w * T - 6; val top = by(y.toFloat()) - 10; val yb = by(y + 2f)
         g.fillRound(X - 1, top - 10, W + 2, 14f, 5f, p.woodLip)   /* headboard */
         g.fillRound(X, yb - 12, W, 12f, 4f, p.wood); g.fillRound(X, top, W, yb - 12 - top + 2, 5f, p.white)
-        for (k in 0 until w) g.fillRound(bx(x + k + 0.5f) - T * 0.32f, top + 4, T * 0.64f, T * K * 0.34f, 6f, Colors.mix(p.white, p.sky, 0.25f))
+        val tilt = if (st == "messy") 4f else 0f
+        for (k in 0 until w) g.fillRound(bx(x + k + 0.5f) - T * 0.32f + tilt, top + 4 + tilt * 0.4f, T * 0.64f, T * K * 0.34f, 6f, Colors.mix(p.white, p.sky, 0.25f))
+        g.fillRect(X + 2, yb - 10, W - 4, 1.2f, Colors.withAlpha(p.white, 0.3f))
     }
-    private fun blanket(g: Gfx, p: Pal, x: Int, y: Int, w: Int, i: Int) {
+    private fun blanket(g: Gfx, p: Pal, x: Int, y: Int, w: Int, i: Int, st: String = "") {
         val X = bx(x.toFloat()) + 3; val W = w * T - 6; val yb = by(y + 2f) - 12; val bt = by(y + 1.05f) - 10; val (c, l) = blanketColor(p, i)
+        if (st == "messy") {   /* R5: thrown back after getting up — folded down, crumpled, a corner hanging off */
+            val mt = bt + (yb - bt) * 0.42f
+            g.fillRound(X, mt + 3, W, yb - mt, 5f, l); g.fillRound(X - 2, mt, W + 3, yb - mt - 2, 6f, c)
+            for (k in 1..3) g.line(X + W * k / 4f, mt + 3, X + W * k / 4f + 3, yb - 6, 1f, l)
+            g.fillRound(X + W - 6, yb - 8, 9f, 12f, 3f, c); g.fillRound(X + 2, mt - 3, W - 4, 6f, 3f, Colors.mix(c, p.white, 0.35f)); return
+        }
         g.fillRound(X, bt + 3, W, yb - bt, 5f, l); g.fillRound(X, bt, W, yb - bt - 2, 5f, c)
         g.fillRect(X + 2, bt + 5, W - 4, 2f, Colors.withAlpha(p.white, 0.55f))
+        var sx = X + 6f; while (sx < X + W - 4) { g.fillRect(sx, bt + 8, 1f, yb - bt - 12, Colors.withAlpha(l, 0.45f)); sx += 7f }   /* fabric stripes */
     }
-    private fun tub(g: Gfx, p: Pal, x: Int, y: Int) {
+    private fun tub(g: Gfx, p: Pal, x: Int, y: Int, st: String = "", time: Float = 0f) {
         val X = bx(x.toFloat()) + 3; val W = 2 * T - 6; val top = by(y.toFloat()) - 14; val yb = by(y + 1f)
-        g.fillRound(X, top, W, yb - top, 9f, p.white); g.fillRound(X + 4, top + 3, W - 8, yb - top - 16, 7f, p.water)
+        g.fillRound(X, top, W, yb - top, 9f, p.white)
+        if (st == "dry") { g.fillRound(X + 4, top + 3, W - 8, yb - top - 16, 7f, p.s("#E6F1F4")); g.fillCircle(X + W * 0.8f, top + 8, 1.6f, p.whiteLip); return }
+        g.fillRound(X + 4, top + 3, W - 8, yb - top - 16, 7f, p.water)
+        if (st == "full") for (k in 0 until 7) { val bxp = X + 8 + k * (W - 16) / 6; val bob = if (calm) 0f else kotlin.math.sin(time * 2 + k) * 1f; g.fillCircle(bxp, top + 6 + bob + (k % 2) * 2, 3.2f + (k % 3), Colors.withAlpha(0xFFFFFFFF.toInt(), 0.9f)) }   /* bubbles */
     }
     private fun tubFront(g: Gfx, p: Pal, x: Int, y: Int) {
         val X = bx(x.toFloat()) + 3; val W = 2 * T - 6; val yb = by(y + 1f)

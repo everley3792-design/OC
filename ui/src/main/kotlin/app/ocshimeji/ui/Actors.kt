@@ -158,7 +158,8 @@ object Actors {
             Pose.DIZZY -> for (i in 0 until 3) { val a = tt * 4f + i * 2.09f; star(g, x + cos(a) * h * 0.3f, y - h * 1.02f + sin(a) * 5f, 4f, 0xFFFFC857.toInt()) }
             Pose.BATHE -> for (i in 0 until 4) { val k = (tt * 0.6f + i * 0.25f) % 1f; g.save(); g.alpha(1f - k); g.fillCircle(x - h * 0.35f + i * h * 0.22f, y - h * 0.25f - k * 20f, 3f + i % 2 * 2f, 0xFFFFFFFF.toInt()); g.restore() }
             Pose.WATER -> for (i in 0 until 3) { val k = (tt * 1.5f + i / 3f) % 1f; g.fillCircle(hand.first + facing * 6f + i * 2f, hand.second + k * h * 0.3f, 2f, 0xFF7AAAD6.toInt()) }
-            Pose.READ -> if (prop == null) { g.fillRound(hand.first - 8, hand.second - 5, 16f, 11f, 2f, 0xFFF0705A.toInt()); g.fillRect(hand.first - 0.6f, hand.second - 5, 1.2f, 11f, 0xFFFFFDF7.toInt()) }
+            Pose.READ -> if (prop == null) { g.fillRound(hand.first - 8, hand.second - 5, 16f, 11f, 2f, 0xFFF0705A.toInt()); g.fillRect(hand.first - 0.6f, hand.second - 5, 1.2f, 11f, 0xFFFFFDF7.toInt())
+                val ph = (tt * 0.25f + phase) % 1f; if (ph < 0.12f) { val k = ph / 0.12f; val px = hand.first + (1 - 2 * k) * 6f; g.fillRound(minOf(hand.first, px), hand.second - 5.5f, kotlin.math.abs(px - hand.first) + 1f, 10f, 1.5f, 0xFFFFFDF7.toInt()) } }   /* R5: a page turns now and then */
             Pose.EAT -> { if (sin(tt * 4.5f) > 0.6f) g.fillCircle(hand.first, hand.second - 4, 2f, 0xFFD9A472.toInt()) }
             Pose.PETTED, Pose.SHY -> { val f = look.mark("臉")?.let { at(look, it, x, y, h0, facing) } ?: (x to y - h * 0.62f); val off = (look.mark("臉")?.r ?: 0.14f) * h * 0.7f
                 g.fillCircle(f.first - off, f.second, 4f, Colors.withAlpha(0xFFF6A0A0.toInt(), 0.65f)); g.fillCircle(f.first + off, f.second, 4f, Colors.withAlpha(0xFFF6A0A0.toInt(), 0.65f)) }
@@ -168,6 +169,8 @@ object Actors {
             else -> {}
         }
         if (prop != null) prop(g, prop, hand.first, hand.second, time, facing)
+        if (prop == "cup" && !asleep) for (i in 0 until 2) { val k = (tt * 0.5f + i * 0.5f) % 1f; g.save(); g.alpha((1f - k) * 0.7f)   /* R5: steam from a hot cup */
+            g.fillCircle(hand.first - 1 + sin(tt * 2f + i * 3f) * 2.5f, hand.second - 12 - k * 14f, 2.2f + k * 1.5f, 0xFFFFFFFF.toInt()); g.restore() }
     }
     /** the little things in their hands (plan 13.2: the closest system pose + a prop), drawn from shapes */
     fun prop(g: Gfx, name: String, x: Float, y: Float, time: Float, facing: Int) {

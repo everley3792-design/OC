@@ -76,7 +76,11 @@
   - `chars/Spec`：`Address`（叫你三段 `callFor`、叫別人 `others`＋態度、心情換風格 `moods`、口頭禪位置與頻率）、`Habit`（自訂事件）；`Catalog.groupOf/opposites/LIKE_GROUPS`；`Builder.cycleLike`（三態）；
   - `Speech.say(…, to, mood)`：自稱 → 稱謂 → 禁用詞 → 態度 → 風格 → 語尾 → 口頭禪；`Society.nickBy/callTo/autoNick`；`LifeSim.moodOf`、自訂事件；存檔格式 v11；
   - `ui`：`CharacterEditor` 7 步（即時反應、試聽、四色互斥、三態、稱謂、自訂事件）；`TitleScreen` 編輯世界／編輯角色（`WorldHost.edit`、`SaveSystem.backupNow`）。
-- 下一步：**R5（1.5.0）美術與細節**（家具快取與材質、物件狀態、四層光、室外與小鎮場景、細節 40 項；見 `overhaul-plan.md`）。
+- **R5（1.5.0）美術與細節——完成**（`docs/reboot/r5-report.md`；效能待實機驗證）：
+  - `LifeSim.stateOf/pieceKey`（8 種家具的狀態）、`Life.things`（會留下來的狀態）、`Life.litter`（地上的東西，整理房間收掉）；存檔格式 v12；
+  - `HouseView`：物件狀態的畫法、四層光（天色、窗光、燈光、夜色）、木紋布紋、時鐘、窗簾、雨痕、地上的東西；`WorldScreen`：雲、遠山、四季的樹、路燈、水窪、季節落物；`Actors`：翻頁、熱氣；
+  - 沒做：家具點陣圖快取、小鎮 2.5D 場景、新圖示（移到 R7）。
+- 下一步：**R6（1.6.0）桌寵重構**（分層狀態機、桌面物件、性格驅動、資料化擴充、F-04～F-08；見 `overhaul-plan.md`）。
 
 ## 目錄
 ```
@@ -93,7 +97,7 @@ ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Des
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r4/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r5/（截圖）
 ```
 
 ## 指令
@@ -120,6 +124,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **小鎮只經 `TownLife`**：出門的人 `Person.out` 不為 null，不在家裡畫面、不參與家裡的活動與社交；`step(live)` 在即時與補算都跑，補算用 `Rng.of(seed, "town:…")`。
 - **天氣、季節、暫停只經 `Env`**（`LifeSim.env`）：生活用 `sim.weather()`（特殊天象換算成一般天氣），畫面用 `sim.sky()`；你的每個改變記在 `Life.env.changes`。
 - **互動只經 `Interactions`**（R3）：選單上的每一格都來自登錄表；新的社交行為或活動加進自己的表就會出現在選單。做不到的要給原因（灰色），不要藏起來；戀愛互動對未成年或戀愛關閉時**不顯示**。你給住民的事一律經 `Society.suggest(…, queue = true)`（意願照算），排在 `Person.queue`，最多 5 件、每件可取消。
+- **家具的樣子只來自 `LifeSim.stateOf(piece)`**（R5）：畫面不自己猜；會留下來的狀態寫在 `Life.things`（key＝`kind@x,y`），地上的東西在 `Life.litter`，都由活動結束時的 `things()` 改變（用 `Rng.of(seed, "things:…")`）。新的家具狀態＝在 `stateOf` 加一種、在 `HouseView` 畫出來、在 `ThingsTest` 補一項。
 - **導覽**：世界裡的頁面在底部畫 `Nav`，點擊先交給 `Nav.tap`（先回到家再推入新頁）；`Page` 設 `nav` 就會畫導覽列。
 - **次數與紀錄只經 `Journal`**（`did(who, what)`）：稱號、成就、統計、本週之星都從次數算；成就只由玩家領取（`claim`），星幣經帳本。圖鑑只由真實發生的事更新。無障礙設定是收藏庫旗標 `a11y:big`／`a11y:calm`／`a11y:vib0`／`a11y:vib1`。
 - **創作只經 `Studio`**（`core:save`）：草稿、動畫、物品、聲音、標籤、劇本都寫在收藏庫；世界打開時由 `Studio.syncWorld` 複製一份進 `Life`（世界自己存，確定性不受收藏庫影響）。劇本沒有可執行的程式，只有資料；戀愛相關的劇本只配對兩位成年角色且戀愛打開（`Society.scriptOk`）。

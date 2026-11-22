@@ -4,17 +4,17 @@
 
 > 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-## 目前版本 1.4.0（R4：創角與說話）
+## 目前版本 1.5.0（R5：美術與細節）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.4.0-debug.apk`](deliverables/apk/oc-shimeji-1.4.0-debug.apk)
-- 這一版（[全面重構計畫](docs/reboot/overhaul-plan.md)的第 4 步）：
-  - **創角 7 步**：外觀、基本、聲音、個性、性格、喜好、說話；每改一個地方，角色馬上用自己的口吻反應，聲音改了就說給你聽；
-  - **互斥性格**用 × 連起來、分四色；**喜歡／不喜歡三態**（點一下喜歡、再點不喜歡、再點取消）；
-  - **稱謂系統**：叫你分三段（還不熟、熟了、很親）、怎麼叫每一位室友與對他的態度、熟了會自己取綽號、心情不同時換說話方式、口頭禪的位置與頻率；
-  - **自訂事件**：一句話＋多久一次＋頭上的圖示；
-  - **開始畫面直接編輯**世界與角色，改之前先備份。
-- **全部都還沒在實機驗證**：請照 [R4 報告](docs/reboot/r4-report.md) 的「請你在手機上試」。
-- 紀錄：[R4](docs/reboot/r4-report.md)（之前：[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.5.0-debug.apk`](deliverables/apk/oc-shimeji-1.5.0-debug.apk)
+- 這一版（[全面重構計畫](docs/reboot/overhaul-plan.md)的第 5 步）：
+  - **物件狀態**：床會凌亂、餐桌有飯菜或碗盤、燈有人才開、浴缸有泡泡、書架的書被抽出來、窗簾晚上拉上；
+  - **地上的東西**：包裝紙、杯子、書，整理房間才收掉；
+  - **四層光**：清晨與黃昏的天色、隨時間移動的窗光（有灰塵在飄）、落地燈的光暈、夜色；
+  - **室外**：會飄的雲、遠山、四季的樹、路燈、雨天的水窪、地上的花瓣落葉積雪；
+  - 牆上會走的時鐘、木紋與布紋、熱飲冒熱氣、看書翻頁。
+- **全部都還沒在實機驗證**（尤其是效能）：請照 [R5 報告](docs/reboot/r5-report.md) 的「請你在手機上試」。
+- 紀錄：[R5](docs/reboot/r5-report.md)（之前：[R4](docs/reboot/r4-report.md)、[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
 
 ## 計畫
 完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)

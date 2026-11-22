@@ -67,6 +67,9 @@ class Life(
     val prog: Progress = Progress(),
     // ---- R2: your hand on the weather, the season and the clock
     val env: EnvState = EnvState(),
+    // ---- R5: how things look — states that stay (a messy bed, a book left out; key "kind@x,y") and things left on the floor
+    val things: MutableMap<String, String> = mutableMapOf(),
+    val litter: MutableList<Litter> = mutableListOf(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1
@@ -155,4 +158,6 @@ data class SimEvent(val kind: String, val who: String, val text: String = "")
 @Serializable class WorldItem(val id: String, val name: String, val kind: String, val taste: String = "", val full: Float = 0f, val words: List<String> = emptyList(), val image: String = "",
     /** furniture: footprint, spots (dx, dy, pose 0 sit / 1 lie / 2 stand), what it offers, its base price */
     val w: Int = 1, val h: Int = 1, val spots: List<List<Float>> = emptyList(), val offers: List<String> = emptyList(), val price: Int = 0, val series: String = "")
+/** something left on the floor (R5): a snack wrapper, a book, a cup — gone when someone tidies the room */
+@Serializable class Litter(val kind: String, val x: Int, val y: Int, val by: String = "", val minute: Double = 0.0)
 @Serializable class Decor(val wall: String = "", val floor: String = "")

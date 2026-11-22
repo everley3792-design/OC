@@ -59,7 +59,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("1.4.0（R4）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("1.5.0（R5）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }

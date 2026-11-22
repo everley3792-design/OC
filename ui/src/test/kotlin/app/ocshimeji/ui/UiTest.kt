@@ -508,6 +508,36 @@ class UiTest {
         // and the world still opens, with the new settings
         (a.screen as TitleScreen).open(m.id); frames(a, 20); val ws = a.screen as WorldScreen; assertEquals("主人", ws.sim.person(pid)!!.spec.address.close)
     }
+    /** R5: the house looks lived in — window light by the hour, beds and tables and shelves with their states, things on the floor, lamps at night, the seasons outside, rain */
+    @Test fun theHouseLooksLivedIn() {
+        val a = app()
+        val m = a.saves.createWorld("庭院", "楓糖鎮", "庭院平房", app.ocshimeji.sim.house.Houses.BUNGALOW, listOf(Presets.CINNAMON.id), mapOf(Presets.CINNAMON.id to "bed1"), platform.realMinute())
+        a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen; val sim = ws.sim
+        sim.life.people.forEach { it.recent["outing"] = sim.life.minute + 24 * 60.0 }; frames(a, 200)
+        sim.life.clockMode = "GAME"; sim.life.speed = 1.0
+        fun at(h: Double) { assertNull(sim.env.jumpTo(h)); sim.env.setPaused(true); frames(a, 20); var k = 0; while (a.overlay != null && k++ < 5) { if (!a.tapZone("dc:ok")) a.back(); frames(a, 15) } }
+        fun piece(kind: String) = sim.house.pieces.indices.first { sim.house.pieces[it].kind == kind }
+        // morning: sun through the windows, spring trees
+        assertNull(sim.env.setSeason("spring")); assertNull(sim.env.setWeather("sunny")); at(9.0)
+        assertEquals("open", sim.stateOf(piece("window"))); shot("r5-morning", frames(a, 1, scale = 2f))
+        // what life leaves behind
+        val bed = sim.house.pieces.indices.first { sim.house.pieces[it].kind.startsWith("bed") }; sim.life.things[sim.pieceKey(bed)] = "messy"
+        sim.house.pieces.indices.firstOrNull { sim.house.pieces[it].kind == "shelf" }?.let { sim.life.things[sim.pieceKey(it)] = "out" }
+        sim.life.soc.dishes = 2; val p = sim.life.people[0]
+        val spots = (0 until sim.house.w).flatMap { x -> (0 until sim.house.h).map { x to it } }.filter { (x, y) -> sim.grid.walkable(x, y) && sim.house.roomAt(x, y)?.id == sim.roomOf(p) }
+        for ((i, k) in listOf("wrapper", "book", "cup").withIndex()) spots.getOrNull(i * 2 + 1)?.let { (x, y) -> sim.life.litter += app.ocshimeji.sim.life.Litter(k, x, y) }
+        assertEquals("messy", sim.stateOf(bed)); assertEquals("dishes", sim.stateOf(piece("table"))); frames(a, 5); shot("r5-states", frames(a, 1, scale = 2f))
+        // night: curtains drawn, a lamp on where someone is awake, the street lamp
+        sim.env.setPaused(false); at(21.5); assertEquals("closed", sim.stateOf(piece("window"))); shot("r5-night", frames(a, 1, scale = 2f))
+        // the seasons and the rain outside
+        sim.env.setPaused(false); at(14.0); assertNull(sim.env.setSeason("autumn")); frames(a, 20); while (a.overlay != null) { a.back(); frames(a, 10) }; shot("r5-autumn", frames(a, 1, scale = 2f))
+        assertNull(sim.env.setSeason("winter")); assertNull(sim.env.setWeather("snow")); frames(a, 5); shot("r5-winter", frames(a, 1, scale = 2f))
+        assertNull(sim.env.setSeason("summer")); assertNull(sim.env.setWeather("rain")); frames(a, 5); shot("r5-rain", frames(a, 1, scale = 2f))
+        // tidying clears the floor of that room
+        sim.env.setPaused(false); sim.society.setControl(p.id, "command"); p.setNeed(app.ocshimeji.sim.life.Need.ROOM, 10f); sim.society.suggest(p.id, "tidy")
+        var n = 0; while (n++ < 3000 && sim.life.litter.any { sim.house.roomAt(it.x, it.y)?.id == sim.roomOf(p) }) frames(a, 1)
+        assertTrue(sim.life.litter.none { sim.house.roomAt(it.x, it.y)?.id == sim.roomOf(p) }, "tidied")
+    }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {
         val a = app(); a.push(LibraryScreen()); frames(a, 5)

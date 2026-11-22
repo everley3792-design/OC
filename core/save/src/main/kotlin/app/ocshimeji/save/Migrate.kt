@@ -86,6 +86,8 @@ object Migrate {
                 put("people", kotlinx.serialization.json.JsonArray(people.map { p0 -> val p = p0 as? JsonObject ?: return@map p0; val spec = p["spec"] as? JsonObject ?: return@map p
                     val call = (spec["callPlayer"] as? JsonPrimitive)?.content ?: "你"
                     if (call == "你" || call.isBlank()) p else JsonObject(p.toMutableMap().apply { put("spec", JsonObject(spec.toMutableMap().apply { put("address", buildJsonObject { put("close", JsonPrimitive(call)) }) })) }) })) })) }) },
+        /* 11 → 12 (R5): how things look — kept states (a messy bed, a book left out) and things on the floor; an old home starts neat */
+        11 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

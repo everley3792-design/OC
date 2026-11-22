@@ -185,8 +185,13 @@ class WorldScreen(val slotId: String) : Screen() {
         val wx = sim.sky(); val grass = Wx.grass(t, sim.season())
         g.fillRect(0f, 0f, W, H, grass)
         g.fillGradientV(0f, 0f, W, sy(-30f), Wx.sky(t, wx, lt), grass)
+        clouds(g, t, wx, lt)
+        // ---- R5: what the house shows (object states, things on the floor) and the light it is in
+        view.state = { sim.stateOf(it) }; view.hour = sim.hour; view.weather = sim.weather(); view.calm = app.saves.flag("a11y:calm")
+        view.litter = life.litter.map { Triple(it.kind, it.x, it.y) }
         // ---- the house, everyone in it
         g.save(); g.translate(app.w / 2 - camX * zoom, viewCy - camY * zoom); g.scale(zoom, zoom)
+        hills(g, t, lt)
         garden(g, t)
         hits.clear()
         val ds = ArrayList<HouseView.D>(); val CH = view.T * 1.62f
@@ -217,6 +222,7 @@ class WorldScreen(val slotId: String) : Screen() {
         hits.sortBy { h -> life.people.firstOrNull { it.id == h.first }?.let { if (sim.body(it.id).held) 99f else it.y } ?: 0f }
         // ---- night: the whole scene a little blue
         if (lt < 1f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF1E2550.toInt(), (1 - lt) * 0.22f))
+        skyTint(g, sim.hour, sim.weather(), W, H)   /* R5 light layer 1: dawn pink, dusk orange, a grey wash under rain */
         Wx.calm = app.saves.flag("a11y:calm")
         if (!placing) Wx.draw(g, W, H, wx, app.time)
         // ---- over the scene: mood skies, hearts, speech
@@ -328,14 +334,62 @@ class WorldScreen(val slotId: String) : Screen() {
         val e = sim.house.entrance; val ex = view.bx(e.x + 0.5f); val y0 = view.height + 10
         val stone = Colors.mix(t.grass, if (t.dark) 0xFF8A8296.toInt() else 0xFFFFF4E4.toInt(), 0.55f)
         for (i in 0 until 6) g.fillRound(ex - 13 + (if (i % 2 == 0) -3f else 3f), y0 + i * 26f, 26f, 14f, 7f, stone)
-        val bush = t.grassLip; val bushTop = Colors.mix(t.grass, 0xFF5EA56E.toInt(), 0.55f)
+        val bush = t.grassLip; val bushTop = Colors.mix(t.grass, 0xFF5EA56E.toInt(), 0.55f); val season = sim.season(); val wxNow = sim.weather()
         val spots = floatArrayOf(-30f, 20f, -26f, view.height * 0.6f, view.width + 26, 30f, view.width + 30, view.height * 0.7f, view.width * 0.75f, view.height + 40, view.width * 0.15f, view.height + 56)
         for (i in spots.indices step 2) { val x = spots[i]; val y = spots[i + 1]
-            g.fillCircle(x - 9, y + 4, 13f, bush); g.fillCircle(x + 9, y + 4, 12f, bush); g.fillCircle(x, y - 4, 15f, bushTop); g.fillCircle(x - 9, y + 1, 10f, bushTop) }
+            if (i % 4 == 0) { tree(g, t, x, y + 8, season, i); continue }   /* R5: every other one is a tree that follows the season */
+            g.fillCircle(x - 9, y + 4, 13f, bush); g.fillCircle(x + 9, y + 4, 12f, bush); g.fillCircle(x, y - 4, 15f, bushTop); g.fillCircle(x - 9, y + 1, 10f, bushTop)
+            if (season == "winter") { g.fillCircle(x - 4, y - 12, 8f, 0xFFF8FAFC.toInt()); g.fillCircle(x + 6, y - 9, 6f, 0xFFF8FAFC.toInt()) } }
+        // ---- R5: a street lamp by the path (lit at night), puddles in the rain, what the season leaves on the ground
+        val lx = ex + 46; val ly = y0 + 84; val night = sim.hour < 6.5 || sim.hour >= 18
+        if (night) { for (k in 3 downTo 1) g.fillCircle(lx, ly - 52, 10f + k * 10f, Colors.withAlpha(0xFFFFE29A.toInt(), 0.09f)); g.fillRound(lx - 30, ly - 6, 60f, 14f, 7f, Colors.withAlpha(0xFFFFE29A.toInt(), 0.16f)) }
+        g.fillRound(lx - 6, ly - 4, 12f, 5f, 2f, t.ink2); g.fillRect(lx - 1.5f, ly - 50, 3f, 47f, t.ink2); g.fillRound(lx - 7, ly - 60, 14f, 11f, 4f, t.ink2)
+        g.fillRound(lx - 5, ly - 58, 10f, 7f, 3f, if (night) 0xFFFFE29A.toInt() else Colors.mix(t.surface, t.ink2, 0.2f))
+        if (wxNow == "rain") for (k in 0 until 5) { val px = ((k * 131) % 97) / 97f * (view.width + 60) - 30; val py = view.height + 24 + ((k * 61) % 43) / 43f * 90
+            if (kotlin.math.abs(px - ex) < 30) continue
+            g.fillRound(px - 16, py - 4, 32f, 9f, 4.5f, Colors.mix(t.grass, 0xFF9DC8EE.toInt(), 0.65f)); g.fillRect(px - 9, py - 1, 10f, 1.2f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.7f))
+            if (!app.saves.flag("a11y:calm")) { val rr = (app.time * 9 + k * 3) % 8f; g.strokeRound(px - rr, py - rr * 0.3f, rr * 2, rr * 0.6f + 0.5f, rr * 0.3f, 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), (1 - rr / 8f) * 0.8f)) } }
+        val drift = when (season) { "spring" -> 0xFFF6B2C8.toInt(); "autumn" -> 0xFFE08A3C.toInt(); "winter" -> 0xFFFAFCFF.toInt(); else -> 0 }
+        if (drift != 0) for (i in 0 until 26) { val x = ((i * 89) % 101) / 101f * (view.width + 120) - 60; val y = -18f + ((i * 37) % 53) / 53f * (view.height + 150)
+            if (x > -4 && x < view.width + 4 && y > -4 && y < view.height + 8) continue
+            if (season == "winter") g.fillRound(x - 7, y - 2, 14f, 5f, 2.5f, drift) else { g.fillRound(x - 2.5f, y - 1.5f, 5f, 3f, 1.5f, drift); g.fillRound(x + 3, y + 2, 4f, 2.5f, 1.2f, Colors.mix(drift, 0xFF000000.toInt(), 0.12f)) } }
         val petals = intArrayOf(0xFFF6B2A8.toInt(), 0xFFFFE29A.toInt(), 0xFFFFFFFF.toInt(), 0xFFC9B8E8.toInt())
         for (i in 0 until 14) { val x = ((i * 97) % 23) / 23f * (view.width + 80) - 40; val y = view.height + 30 + ((i * 53) % 17) / 17f * 110
             if (kotlin.math.abs(x - ex) < 26) continue
             val c = petals[i % petals.size]; for (k in 0 until 4) { val a = k * Math.PI.toFloat() / 2 + i; g.fillCircle(x + kotlin.math.cos(a) * 3.2f, y + kotlin.math.sin(a) * 3.2f, 2.8f, c) }; g.fillCircle(x, y, 2f, 0xFFF4A259.toInt()) }
+    }
+    /** R5: a tree for the season — blossom, green, red and gold, bare with snow */
+    private fun tree(g: Gfx, t: Theme, x: Float, y: Float, season: String, i: Int) {
+        val trunk = if (t.dark) 0xFF6A5060.toInt() else 0xFF9A6A48.toInt(); val sway = if (app.saves.flag("a11y:calm")) 0f else kotlin.math.sin(app.time * 0.8f + i) * 1.5f
+        g.fillRound(x - 14, y - 2, 28f, 6f, 3f, Colors.withAlpha(0xFF000000.toInt(), 0.12f)); g.fillRound(x - 3, y - 34, 6f, 34f, 2f, trunk)
+        val (a, b) = when (season) { "spring" -> 0xFFF7C6D6.toInt() to 0xFFEFA2BC.toInt(); "autumn" -> 0xFFF0A24A.toInt() to 0xFFD9683A.toInt(); "winter" -> 0 to 0; else -> 0xFF8ED08A.toInt() to 0xFF5EA56E.toInt() }
+        if (season == "winter") { g.line(x, y - 30, x - 12, y - 46, 2f, trunk); g.line(x, y - 26, x + 13, y - 42, 2f, trunk); g.line(x, y - 34, x + 2, y - 52, 2f, trunk)
+            g.fillRound(x - 15, y - 49, 8f, 3f, 1.5f, 0xFFFAFCFF.toInt()); g.fillRound(x + 9, y - 45, 8f, 3f, 1.5f, 0xFFFAFCFF.toInt()); return }
+        val d = if (t.dark) 0.35f else 0f; val ca = Colors.mix(a, 0xFF2A2240.toInt(), d); val cb = Colors.mix(b, 0xFF2A2240.toInt(), d)
+        g.fillCircle(x - 10 + sway, y - 40, 13f, cb); g.fillCircle(x + 11 + sway, y - 42, 12f, cb); g.fillCircle(x + sway, y - 52, 15f, ca); g.fillCircle(x - 6 + sway, y - 44, 10f, ca)
+        if (season == "spring") for (k in 0 until 5) g.fillCircle(x - 10 + k * 5 + sway, y - 48 + (k % 2) * 6, 1.6f, 0xFFFFFFFF.toInt())
+    }
+    /** R5: far-off hills behind the house, a shade of the sky */
+    private fun hills(g: Gfx, t: Theme, lt: Float) {
+        val c = Colors.mix(t.grass, Wx.sky(t, sim.sky(), lt), 0.72f); val c2 = Colors.mix(t.grass, Wx.sky(t, sim.sky(), lt), 0.5f); val w = view.width
+        for (k in -3..6) { val cx = w * k / 4f + (k % 2) * 24; g.fillCircle(cx, 8f, 46f + ((k + 3) % 3) * 12, c) }
+        for (k in -3..6) { val cx = w * k / 4f + w / 8 + (k % 2) * 16; g.fillCircle(cx, 14f, 30f + ((k + 4) % 3) * 8, c2) }
+    }
+    /** R5: clouds drifting across the sky band (screen space; slower and thinner when it is clear) */
+    private fun clouds(g: Gfx, t: Theme, wx: String, lt: Float) {
+        val top = sy(-30f); if (top < 20) return
+        val n = when (wx) { "sunny", "stars", "petals" -> 3; "aurora" -> 2; else -> 6 }; val col = Colors.withAlpha(if (wx == "rain" || wx == "storm") 0xFFB8C0CC.toInt() else t.cloud, 0.55f + 0.35f * lt)
+        val calm = app.saves.flag("a11y:calm")
+        for (i in 0 until n) { val speed = 4f + (i % 3) * 2; val cx = (((i * 173) % 400) + (if (calm) 0f else app.time * speed)) % (app.w + 160) - 80; val cy = top * (0.25f + ((i * 37) % 50) / 100f)
+            g.fillCircle(cx, cy, 12f, col); g.fillCircle(cx + 14, cy - 6, 15f, col); g.fillCircle(cx + 30, cy, 11f, col); g.fillRound(cx - 6, cy, 46f, 11f, 5.5f, col) }
+    }
+    /** R5 light layer 1: the colour of the hour over everything (dawn, dusk), greyer under rain */
+    private fun skyTint(g: Gfx, h: Double, w: String, W: Float, H: Float) {
+        val dawn = when { h in 5.0..6.5 -> ((h - 5) / 1.5).toFloat(); h in 6.5..8.0 -> ((8 - h) / 1.5).toFloat(); else -> 0f }
+        val dusk = when { h in 16.5..18.0 -> ((h - 16.5) / 1.5).toFloat(); h in 18.0..19.5 -> ((19.5 - h) / 1.5).toFloat(); else -> 0f }
+        if (dawn > 0) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFFF7B6C0.toInt(), dawn * 0.14f))
+        if (dusk > 0) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFFF4A259.toInt(), dusk * 0.18f))
+        if (w == "rain" || w == "fog") g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF8A94A6.toInt(), 0.08f))
     }
     private fun bubble(g: Gfx, t: Theme, b: Bubble, cx: Float, bottom: Float, tint: String?) {
         val age = app.time - b.born; val k = Ease.outBack(min(1f, age / 0.25f)); val fade = if (age > 2.8f) 1 - (age - 2.8f) / 0.4f else 1f

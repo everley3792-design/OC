@@ -38,9 +38,47 @@ class LifeSim(val life: Life) {
         val base = Houses.get(life.houseId)
         return if (life.layout.isEmpty()) base else base.copy(pieces = life.layout.map { app.ocshimeji.sim.house.Piece(it.kind, it.x, it.y, it.room, it.flip) })
     }
+    // ---------------- R5: how things look ----------------
+    fun pieceKey(pi: Int): String = house.pieces.getOrNull(pi)?.let { "${it.kind}@${it.x},${it.y}" } ?: ""
+    /**
+     * The look of a piece of furniture now: bed tidy / sleeping / messy, table empty / food / dishes, lamp on / off, tv on / off,
+     * tub dry / full, stove cold / cooking, shelf tidy / out, window open / closed. Kept ones live in `Life.things`; the rest follow
+     * what is happening (so a screen, the desktop and a test all see the same thing).
+     */
+    fun stateOf(pi: Int): String {
+        val pc = house.pieces.getOrNull(pi) ?: return ""; val key = pieceKey(pi)
+        val users = life.people.filter { it.actPiece == pi && it.act != null && it.out == null && !it.desk && body(it.id).arrivedAct }
+        val h = hour
+        return when (pc.kind) {
+            "bed", "bed2" -> if (users.any { it.act in SLEEPY }) "sleeping" else life.things[key] ?: "tidy"
+            "table" -> when { users.any { it.act == "meal" } || life.soc.pot?.let { it.servings > 0 && life.minute - it.minute < 300 } == true -> "food"; life.soc.dishes > 0 -> "dishes"; else -> "empty" }
+            "lamp" -> if ((h >= 18.5 || h < 6.5) && life.people.any { it.out == null && !it.desk && roomOf(it) == pc.room && !asleep(it) }) "on" else "off"
+            "tv" -> if (users.isNotEmpty()) "on" else "off"
+            "tub" -> if (users.isNotEmpty()) "full" else "dry"
+            "stove" -> if (users.isNotEmpty()) "cooking" else "cold"
+            "shelf" -> life.things[key] ?: "tidy"
+            "window" -> if (h >= 6.5 && h < 20.0) "open" else "closed"
+            else -> ""
+        }
+    }
+    /** what finishing something leaves behind (R5): beds get messy, books come out, wrappers drop; tidying puts it back */
+    private fun things(p: Person, a: Activity) {
+        val pc = house.pieces.getOrNull(p.actPiece); val key = pieceKey(p.actPiece); val r = Rng.of(life.seed, "things:${p.id}:${life.minute.toLong()}")
+        fun drop(kind: String) { val x = p.x.toInt(); val y = p.y.toInt(); if (!grid.walkable(x, y) || house.doors.any { it.x == x && it.y == y }) return
+            life.litter += Litter(kind, x, y, p.id, life.minute); while (life.litter.size > MAX_LITTER) life.litter.removeAt(0) }
+        when (a.id) {
+            "sleep", "nap" -> if (pc != null && (pc.kind == "bed" || pc.kind == "bed2")) life.things[key] = "messy"
+            "makebed" -> house.pieces.forEachIndexed { i, q -> if ((q.kind == "bed" || q.kind == "bed2") && q.room == p.room) life.things.remove(pieceKey(i)) }
+            "read", "album" -> if (pc?.kind == "shelf" && r.chance(0.6)) { life.things[key] = "out"; drop("book") }
+            "snack" -> if (r.chance(0.45)) drop("wrapper")
+            "tea", "coffee" -> if (r.chance(0.35)) drop("cup")
+            "tidy" -> { val room = roomOf(p); life.litter.removeAll { house.roomAt(it.x, it.y)?.id == room }
+                house.pieces.forEachIndexed { i, q -> if (q.kind == "shelf" && q.room == room) life.things.remove(pieceKey(i)) } }
+        }
+    }
     /** a new arrangement: nobody keeps using furniture that moved; everyone stands on the floor */
     internal fun relayout() {
-        house = build(); grid = Grid(house); reserved.clear()
+        house = build(); grid = Grid(house); reserved.clear(); life.litter.removeAll { !grid.walkable(it.x, it.y) }
         for (p in life.people) { val b = body(p.id); if (p.actPiece >= 0 || b.path != null) { if (p.with == null) { p.act = null; b.arrivedAct = false }; b.path = null; p.actPiece = -1 }; unstick(p) }
     }
     /** the ledger (money and things), trips to town, the daily goals, the workshop (M6) */
@@ -496,6 +534,7 @@ class LifeSim(val life: Life) {
         if (a.id == "meal") society.ate(p)
         if (a.id == "dishes" || a.id == "tidy") society.chore(p, a.id)
         if (a.id == "sleep") { society.woke(p); if (!catching) journal.woke(p) }
+        things(p, a)
         society.actDone(p, a.id)
         journal.actDone(p, a)
     }
@@ -764,6 +803,7 @@ class LifeSim(val life: Life) {
         const val MAX_AWAY_MIN = 30.0 * 1440
         val SLEEPY = setOf("sleep", "nap", "sofanap")
         val ANGRY = setOf("angry", "annoyed", "feud")
+        const val MAX_LITTER = 10
         /** what people do every day anyway (no boredom from doing them again) */
         val ROUTINE = setOf("sleep", "meal", "snack", "bathe", "chat", "queue", "outing", "dishes")
         val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy", "sticker")
