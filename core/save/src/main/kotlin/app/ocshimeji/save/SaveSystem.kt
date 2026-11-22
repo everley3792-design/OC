@@ -237,6 +237,13 @@ class SaveSystem(private val store: Storage, internal val now: () -> Long = { Sy
         writeWorld(id, w)
         update(id) { it.copy(lastPlayed = now(), playSeconds = it.playSeconds + playedSeconds, residents = w.residents.map { r -> r.libId }, day = w.life?.day ?: it.day) }
     }
+    /** a backup right now (before an edit made from the title screen); named after the day, `-edit` */
+    fun backupNow(id: String): String? {
+        val old = store.read(worldPath(id)) ?: return null; val name = dayKey(now()) + "-edit"; val bdir = "saves/$id/backup"
+        store.write("$bdir/$name.json", old)
+        store.list(bdir).filter { it.endsWith(".json") }.sortedDescending().drop(KEEP_BACKUPS + 1).forEach { store.delete("$bdir/$it") }
+        return name
+    }
     fun backups(id: String): List<String> = store.list("saves/$id/backup").filter { it.endsWith(".json") }.map { it.removeSuffix(".json") }.sortedDescending()
     fun restoreBackup(id: String, day: String): Boolean { val b = store.read("saves/$id/backup/$day.json") ?: return false; store.write(worldPath(id), b); update(id) { it.copy(lastPlayed = now()) }; return true }
 

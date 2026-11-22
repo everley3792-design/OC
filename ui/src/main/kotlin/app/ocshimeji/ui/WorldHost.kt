@@ -32,6 +32,18 @@ class WorldHost(val saves: SaveSystem, val now: () -> Long, val realMinute: () -
         app.ocshimeji.save.Studio(saves).syncWorld(w.life!!)   /* what the player made (food, gifts, tags, scripts) comes into the world */
         return Open(slotId, w, LifeSim(w.life!!)).also { it.users = 1; worlds[slotId] = it }
     }
+    /**
+     * R4: change a world without going into it (the title screen's 「編輯世界／編輯角色」). An open world is changed in place;
+     * a closed one is loaded, changed and written back as it was — its clock is not touched, so the time away is still caught up later.
+     * A backup is made first. Returns the reason when the change is refused.
+     */
+    fun edit(slotId: String, f: (LifeSim) -> String?): String? {
+        worlds[slotId]?.let { o -> saves.backupNow(slotId); val r = f(o.sim); if (r == null) save(o); return r }
+        val w = saves.loadWorld(slotId) ?: return "找不到這個存檔"; val life = w.life ?: return "這個存檔要先打開一次"
+        saves.backupNow(slotId)
+        val sim = LifeSim(life); val r = f(sim); if (r != null) return r
+        saves.saveWorld(slotId, w.copy(life = sim.life, clockMode = sim.life.clockMode)); return null
+    }
     fun release(slotId: String) { val o = worlds[slotId] ?: return; o.users--; save(o); if (o.users <= 0) worlds.remove(slotId) }
 
     /** how far the world is behind (real time since it was last driven; time away runs at 1×); ≥ 60 game minutes = a summary */

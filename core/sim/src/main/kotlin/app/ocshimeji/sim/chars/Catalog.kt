@@ -81,6 +81,19 @@ object Catalog {
     val CONFLICTS: List<Pair<String, String>> = listOf("愛乾淨" to "邋遢", "早起" to "夜貓子", "貪吃" to "小鳥胃", "懶散" to "勤快", "黏人" to "獨立", "有點黏人" to "獨立",
         "健談" to "害羞", "樂天" to "愛哭", "情緒化" to "冷靜", "急性子" to "慢吞吞", "愛乾淨" to "邋遢")
     const val MAX_TRAITS = 10
+    /** R4: the four colours traits are sorted by (社交綠、脾氣紅、起居橘、做事藍) */
+    fun groupOf(cat: TraitCat): String = when (cat) { TraitCat.SOCIAL -> "社交"; TraitCat.FEEL -> "脾氣"; TraitCat.LIFE -> "起居"; else -> "做事" }
+    val GROUPS = listOf("社交", "脾氣", "起居", "做事")
+    /** the other side of an exclusive pair, if any */
+    fun opposites(id: String): List<String> = CONFLICTS.mapNotNull { (a, b) -> if (a == id) b else if (b == id) a else null }.distinct()
+    /** R4: likes and dislikes to pick from (any word of your own works too), in four groups */
+    val LIKE_GROUPS: Map<String, List<String>> = linkedMapOf(
+        "日常" to listOf("晴天", "下雨天", "早晨", "深夜", "散步", "泡澡", "午睡", "整理", "毛毯", "花"),
+        "興趣" to listOf("看書", "畫畫", "音樂", "唱歌", "遊戲", "園藝", "拍照", "運動", "漫畫", "星星"),
+        "相處" to listOf("被摸頭", "聊天", "安靜", "熱鬧", "被稱讚", "一起吃飯", "惡作劇", "一個人待著", "擁抱", "被叫綽號"),
+        "食物" to listOf("甜點", "布丁", "蛋糕", "麵包", "咖哩", "紅茶", "咖啡", "熱湯", "水果", "辣的東西"),
+    )
+    const val MAX_LIKES = 10
     fun conflict(a: String, b: String) = CONFLICTS.any { (x, y) -> (x == a && y == b) || (x == b && y == a) }
 
     // ---------------- quirks (≤ 3; each its own little behaviour) ----------------

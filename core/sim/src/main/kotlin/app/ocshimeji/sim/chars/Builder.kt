@@ -100,6 +100,12 @@ object Builder {
         if (kept.size >= Catalog.MAX_TRAITS) return s
         return s.copy(traits = kept + id)
     }
+    /** R4 三態: tap once = like, again = dislike, again = neither (each list at most MAX_LIKES; a word is never on both) */
+    fun cycleLike(s: CharSpec, w: String): CharSpec = when (w) {
+        in s.likes -> if (s.dislikes.size >= Catalog.MAX_LIKES) s.copy(likes = s.likes - w) else s.copy(likes = s.likes - w, dislikes = s.dislikes + w)
+        in s.dislikes -> s.copy(dislikes = s.dislikes - w)
+        else -> if (s.likes.size >= Catalog.MAX_LIKES) s else s.copy(likes = s.likes + w)
+    }
     fun addValue(s: CharSpec, id: String): CharSpec = if (id in s.values) s else s.copy(values = (s.values + id).takeLast(Catalog.MAX_VALUES))
     /** skills never add up to more than the points */
     fun fixSkills(s: CharSpec): CharSpec {
@@ -107,6 +113,7 @@ object Builder {
         for (k in CharSpec.SKILLS) { val v = (s.skills[k] ?: 0).coerceIn(0, left); if (v > 0) out[k] = v; left -= v }
         return s.copy(skills = out)
     }
+    const val MAX_HABITS = 5
     /** problems that make a spec invalid (the editor refuses to save) */
     fun errors(s: CharSpec): List<String> {
         val e = ArrayList<String>()
@@ -117,6 +124,10 @@ object Builder {
         for (i in s.traits.indices) for (j in i + 1 until s.traits.size) if (Catalog.conflict(s.traits[i], s.traits[j])) e += "「${s.traits[i]}」和「${s.traits[j]}」不能同時選"
         if (s.skills.values.sum() > CharSpec.SKILL_POINTS) e += "能力點數超過 ${CharSpec.SKILL_POINTS}"
         if (s.age < 0 || s.age > 999) e += "年齡要在 0～999"
+        if (s.likes.size > Catalog.MAX_LIKES || s.dislikes.size > Catalog.MAX_LIKES) e += "喜歡、不喜歡各最多 ${Catalog.MAX_LIKES} 個"
+        s.likes.firstOrNull { it in s.dislikes }?.let { e += "「$it」不能又喜歡又不喜歡" }
+        if (s.habits.size > MAX_HABITS) e += "自訂事件最多 $MAX_HABITS 個"
+        if (s.address.others.values.any { it.tone !in app.ocshimeji.sim.chars.Address.TONES }) e += "對別人的態度只能選：${app.ocshimeji.sim.chars.Address.TONES.joinToString("、")}"
         return e
     }
     /** 相容性提示: only reminders, never blocks (plan 12.4) */

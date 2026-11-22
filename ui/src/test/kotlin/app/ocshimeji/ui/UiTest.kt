@@ -172,11 +172,11 @@ class UiTest {
         a.push(LibraryScreen()); frames(a, 10); shot("library", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("char:${c.id}")); frames(a, 15); val ed = a.screen as CharacterEditor
         shot("editor-looks", frames(a, 1, scale = 2f))
-        for ((i, name) in listOf(3 to "editor-personality", 2 to "editor-speech")) { assertTrue(a.tapZone("tab:$i")); frames(a, 4); shot(name, frames(a, 1, scale = 2f)) }
-        assertTrue(a.tapZone("tab:3")); frames(a, 2); assertTrue(a.tapZone("chip:trait:書蟲")); assertTrue("書蟲" in ed.spec.traits)
+        for ((i, name) in listOf(4 to "editor-personality", 6 to "editor-speech")) { assertTrue(a.tapZone("tab:$i")); frames(a, 4); shot(name, frames(a, 1, scale = 2f)) }
+        assertTrue(a.tapZone("tab:4")); frames(a, 2); assertTrue(a.tapZone("chip:trait:書蟲")); assertTrue("書蟲" in ed.spec.traits)
         assertTrue(a.tapZone("undo")); assertTrue("書蟲" !in ed.spec.traits); assertTrue(a.tapZone("redo")); assertTrue("書蟲" in ed.spec.traits)
-        assertTrue(a.tapZone("step:axis0:+")); assertEquals(0.6f, ed.spec.axis(0), 0.01f)
-        assertTrue(a.tapZone("tab:2")); frames(a, 2); assertTrue(a.tapZone("chip:say:被稱讚")); frames(a, 10); shot("editor-scene", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("tab:3")); frames(a, 2); assertTrue(a.tapZone("step:axis0:+")); assertEquals(0.6f, ed.spec.axis(0), 0.01f)
+        assertTrue(a.tapZone("tab:6")); frames(a, 2); assertTrue(a.tapZone("chip:say:被稱讚")); frames(a, 10); shot("editor-scene", frames(a, 1, scale = 2f))
         // the quiz: ten answers
         assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:quiz")); frames(a, 12); assertTrue(a.overlay is QuizSheet)
         shot("editor-quiz", frames(a, 1, scale = 2f)); repeat(10) { frames(a, 12); assertTrue(a.tapZone("ans:${it % 3}")) }; frames(a, 2); assertNull(a.overlay); assertTrue(ed.spec.traits.size >= 4)
@@ -184,7 +184,7 @@ class UiTest {
         val style = ed.spec.style; assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:dice")); frames(a, 12)
         assertTrue(a.tapZone("chip:lock:鎖住說話")); assertTrue(a.tapZone("dice:go")); frames(a, 2); assertEquals(style, ed.spec.style)
         assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:template")); frames(a, 12); assertTrue(a.tapZone("row:天然呆")); assertTrue("天然呆" in ed.spec.traits)
-        assertTrue(a.tapZone("tab:1")); frames(a, 2); assertTrue(a.tapZone("btn:tagpick")); frames(a, 15); assertTrue(a.tapZone("cat:RACE")); frames(a, 2); assertTrue(a.tapZone("chip:tag:精靈")); frames(a, 2)
+        assertTrue(a.tapZone("tab:4")); frames(a, 2); ed.tap("btn:tagpick"); frames(a, 15); assertTrue(a.tapZone("cat:RACE")); frames(a, 2); assertTrue(a.tapZone("chip:tag:精靈")); frames(a, 2)
         shot("editor-tags", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("tags:done")); assertTrue("精靈" in ed.spec.tags)
         assertTrue(a.tapZone("save")); frames(a, 5); assertTrue(a.screen is LibraryScreen)
         val back = a.saves.libChar(c.id)!!; assertTrue("精靈" in back.spec!!.tags); assertTrue("天然呆" in back.spec!!.traits)
@@ -203,7 +203,7 @@ class UiTest {
         tapCard(a, ws, p.id); assertTrue(a.overlay is PersonCard)
         shot("person-card-m2", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("card:edit")); frames(a, 15); val ed = a.screen as CharacterEditor; assertTrue(ed.world)
-        assertTrue(a.tapZone("tab:5")); frames(a, 2); assertTrue(a.tapZone("step:wake:-")); assertTrue(a.tapZone("save")); frames(a, 5)
+        assertTrue(a.tapZone("tab:7")); frames(a, 2); assertTrue(a.tapZone("step:wake:-")); assertTrue(a.tapZone("save")); frames(a, 5)
         assertTrue(a.screen is WorldScreen); assertEquals(6, ws.sim.person(p.id)!!.spec.wake); assertEquals(7, a.saves.libChar(c.id)!!.spec!!.wake, "the library original is unchanged")
         assertEquals(6, a.saves.loadWorld(ws.slotId)!!.life!!.people[0].spec.wake, "saved with the world")
     }
@@ -467,6 +467,46 @@ class UiTest {
         assertEquals("f:plant", ws.draggingBag); shot("drag-place", frames(a, 1, scale = 2f)); a.up(dx, dy + 34); frames(a, 3)
         assertEquals(n + 1, sim.house.pieces.size, "dropped on the floor = placed"); assertEquals(0, sim.economy.count("f:plant"))
         ws.setPlacing(false); assertTrue(sim.economy.consistent())
+    }
+    /** R4: the creator in seven steps — live reactions, voice preview, exclusive traits, three-state likes, how they call everyone, custom events; editing from the title screen */
+    @Test fun sevenStepCreatorAndEditingFromTheTitle() {
+        val a = app()
+        fun png(c: java.awt.Color) = java.io.ByteArrayOutputStream().also { val b = java.awt.image.BufferedImage(120, 160, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val g = b.createGraphics(); g.color = c; g.fillOval(20, 20, 80, 130); g.color = java.awt.Color.WHITE; g.fillOval(42, 50, 12, 12); g.fillOval(66, 50, 12, 12); g.dispose(); ImageIO.write(b, "png", it) }.toByteArray()
+        val b = a.saves.saveCharacter(app.ocshimeji.save.media.Importer.prepare(app.ocshimeji.save.media.Importer.read(listOf(app.ocshimeji.save.media.Importer.Source("idle.png", png(java.awt.Color(0x7A, 0xAA, 0xD6)))), platform.codec)), app.ocshimeji.sim.chars.CharSpec(name = "小雨"), 1, true, emptyMap(), emptyList())
+        val ids = listOf(Presets.CINNAMON.id, b.id)
+        val m = a.saves.createWorld("公寓", "楓糖鎮", "三房公寓", app.ocshimeji.sim.house.Houses.APARTMENT, ids, mapOf(ids[0] to "bed1", ids[1] to "bed2"), platform.realMinute())
+        (a.screen as TitleScreen).reload(); frames(a, 10); shot("title-r4", frames(a, 1, scale = 2f))
+        // 編輯角色 from the title: no need to go in
+        assertTrue(a.tapZone("ewc:${m.id}")); frames(a, 15); val pid = a.saves.loadWorld(m.id)!!.life!!.people[0].id
+        assertTrue(a.tapZone("row:$pid")); frames(a, 15); val ed = a.screen as CharacterEditor; assertEquals(10, ed.tabs.size)
+        // step 3: every voice change speaks
+        assertTrue(a.tapZone("tab:2")); frames(a, 3); assertTrue(a.tapZone("step:pitch:+")); assertNotNull(ed.said, "the voice is heard at once")
+        // step 4: sliders → a reaction and 「這樣的人會…」
+        assertTrue(a.tapZone("tab:3")); frames(a, 3); repeat(3) { assertTrue(a.tapZone("step:axis0:+")) }; assertTrue(ed.said!!.contains("聊天"), "${ed.said}"); frames(a, 4); shot("creator-axes", frames(a, 1, scale = 2f))
+        // step 5: exclusive pairs, joined by ×
+        assertTrue(a.tapZone("tab:4")); frames(a, 3); assertTrue(a.tapZone("chip:trait:健談")); frames(a, 2); assertTrue(a.tapZone("chip:trait:害羞"))
+        assertTrue("健談" in ed.spec.traits && "害羞" !in ed.spec.traits, "the other side is greyed out"); assertTrue(a.toastText!!.contains("只能選一個"))
+        frames(a, 4); shot("creator-traits", frames(a, 1, scale = 2f))
+        // step 6: like → dislike → neither
+        assertTrue(a.tapZone("tab:5")); frames(a, 3); assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" in ed.spec.likes); assertTrue(ed.said!!.contains("布丁"))
+        assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" in ed.spec.dislikes && "布丁" !in ed.spec.likes); assertTrue(a.tapZone("chip:like:晴天")); frames(a, 4); shot("creator-likes", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" !in ed.spec.dislikes)
+        // step 7: how they call you and 小雨, moods, catchphrase places, a custom event
+        assertTrue(a.tapZone("tab:6")); frames(a, 3)
+        promptAnswer = "主人"; ed.tap("row:aClose"); assertEquals("主人", ed.spec.address.close); promptAnswer = "親愛的"; ed.tap("row:aDear")
+        promptAnswer = "雨雨"; ed.tap("row:aOther:${b.id}"); ed.tap("chip:tone_${b.id}:撒嬌"); assertEquals(app.ocshimeji.sim.chars.Call("雨雨", "撒嬌"), ed.spec.address.others[b.id])
+        ed.tap("chip:mood_angry:正式"); assertEquals("正式", ed.spec.address.moods["angry"]); ed.tap("chip:cwhen:打招呼"); assertEquals(listOf("greet"), ed.spec.address.catchWhen)
+        promptAnswer = "（對著窗戶哼了一首歌）"; ed.tap("btn:addhabit"); assertEquals(1, ed.spec.habits.size); ed.tap("hab:0:f:2"); assertEquals(2, ed.spec.habits[0].freq)
+        frames(a, 4); shot("creator-speech", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("save")); frames(a, 10); assertTrue(a.screen is TitleScreen)
+        val spec = a.saves.loadWorld(m.id)!!.life!!.people.first { it.id == pid }.spec
+        assertEquals("親愛的", spec.callFor(90)); assertEquals("主人", spec.callFor(60)); assertEquals(1, spec.habits.size); assertTrue(a.saves.backups(m.id).any { it.endsWith("-edit") }, "a backup first")
+        // 編輯世界: the clock, without going in
+        assertTrue(a.tapZone("eww:${m.id}")); frames(a, 15); shot("edit-world", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("row:clock")); frames(a, 2)
+        assertEquals("GAME", a.saves.loadWorld(m.id)!!.life!!.clockMode)
+        // and the world still opens, with the new settings
+        (a.screen as TitleScreen).open(m.id); frames(a, 20); val ws = a.screen as WorldScreen; assertEquals("主人", ws.sim.person(pid)!!.spec.address.close)
     }
     /** M5: the creator suite — paint (strokes, colours, layers, drafts, leave warning), animation studio, items, scripts, tags, space, decor */
     @Test fun theCreatorSuite() {

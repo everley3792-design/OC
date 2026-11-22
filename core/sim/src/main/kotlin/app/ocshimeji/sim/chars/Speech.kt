@@ -9,18 +9,30 @@ import app.ocshimeji.sim.life.Pose
  * they never say, and a speaking style. Deterministic (the caller's Rng).
  */
 object Speech {
-    /** `toPlayer` lines use how they call you, which depends on how close you are (0..100) */
-    fun say(s: CharSpec, base: String, r: Rng, affinity: Int = 50, toPlayer: Boolean = false): String {
+    /**
+     * `toPlayer` lines use how they call you, which depends on how close you are (0..100). R4: `to` = the housemate spoken to
+     * (their name and the attitude toward them), `mood` = happy / angry / sad (a mood can bring its own speaking style).
+     * Order: who → how they call → words they never say → attitude → style → endings → catchphrases.
+     */
+    fun say(s: CharSpec, base: String, r: Rng, affinity: Int = 50, toPlayer: Boolean = false, to: Call? = null, mood: String? = null): String {
         if (base.startsWith("（") || base.isBlank()) return base
         var t = base
-        val self = if (s.selfRef == "我" && s.style == "古風") "在下" else s.selfRef
+        val style = mood?.let { s.address.moods[it] }?.takeIf { it in CharSpec.STYLES } ?: s.style
+        val self = if (s.selfRef == "我" && style == "古風") "在下" else s.selfRef
         if (self != "我") t = t.replace("我", self)
         if (toPlayer) {
-            val call = when { affinity < 25 || s.style == "正式" -> "您"; s.style == "古風" -> "閣下"; affinity >= 60 -> s.callPlayer.ifBlank { "你" }; else -> "你" }
+            val mine = s.callFor(affinity)
+            val call = when { mine != "你" -> mine; affinity < 25 || style == "正式" -> "您"; style == "古風" -> "閣下"; else -> "你" }
             if (call != "你") t = t.replace("你", call)
-        }
+        } else if (to != null && to.tone == "敬重") t = t.replace("你", "您")
         for (w in s.banned) if (w.isNotBlank()) t = t.replace(w, "那個")
-        t = when (s.style) {
+        if (to != null) t = when (to.tone) {
+            "客氣" -> t.replace("！", "。").replace("～", "。")
+            "撒嬌" -> if (r.chance(0.5)) end(t, "嘛～") else t
+            "嘴硬" -> if (r.chance(0.4) && !t.startsWith("哼")) "哼，$t" else t
+            else -> t
+        }
+        t = when (style) {
             "正式" -> t.replace("！", "。").replace("～", "。").replace("嘿嘿，", "").ifBlank { t }
             "可愛" -> end(t, if (s.endings.isNotEmpty()) "～" else if (r.chance(0.5)) "呢～" else "喔～")
             "冷淡" -> t.replace("！", "。").replace("～", "").substringBefore("，").let { if (it.endsWith("。") || it.endsWith("？")) it else "$it。" }
@@ -31,9 +43,21 @@ object Speech {
             else -> t
         }
         if (s.endings.isNotEmpty() && r.chance(0.6)) t = end(t, r.pick(s.endings))
-        if (s.catchphrases.isNotEmpty() && r.chance(0.22)) t = if (r.chance(0.5)) r.pick(s.catchphrases) + "，" + t else t + " " + r.pick(s.catchphrases)
+        if (s.catchphrases.isNotEmpty() && r.chance(s.address.catchRate.toDouble())) {
+            val where = s.address.catchWhen; val greet = GREET.any { base.startsWith(it) }; val surprise = SURPRISE.any { base.contains(it) }
+            val c = r.pick(s.catchphrases)
+            t = when {
+                where.isEmpty() -> if (r.chance(0.5)) "$c，$t" else "$t $c"
+                "greet" in where && greet -> "$c，$t"
+                "surprise" in where && surprise -> "$c！$t"
+                "end" in where -> "$t $c"
+                else -> t
+            }
+        }
         return t
     }
+    private val GREET = listOf("早", "嗨", "你好", "晚安", "午安", "歡迎", "我回來")
+    private val SURPRISE = listOf("咦", "哇", "什麼", "真的假的", "！？", "欸")
     /** put an ending before the last punctuation mark */
     private fun end(t: String, e: String): String {
         if (e.isEmpty()) return t

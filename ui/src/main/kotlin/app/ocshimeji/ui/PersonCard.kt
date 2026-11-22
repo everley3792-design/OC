@@ -156,17 +156,22 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
 /** edit a resident (their own copy in this world) */
 fun editResident(app: UiApp, ws: WorldScreen, id: String) {
     val p = ws.sim.person(id) ?: return; val c = ws.libOf(p) ?: return
-    app.push(CharacterEditor(c, p.spec, world = true, title = p.name, houseId = ws.sim.house.id, housemates = ws.sim.life.people.size) { s, _ ->
+    app.push(CharacterEditor(c, p.spec, world = true, title = p.name, houseId = ws.sim.house.id, housemates = ws.sim.life.people.size,
+        others = ws.sim.life.people.filter { it.id != id }.map { it.libId to it.name }) { s, _ ->
         ws.sim.editSpec(id, s); ws.refresh(); ws.flush(); null })
+}
+/** the relationship map's result applied to a world (the rules decide; on a refusal nothing changes) */
+fun applyRels(sim: app.ocshimeji.sim.life.LifeSim, r: List<app.ocshimeji.sim.chars.Rel>, rom: Boolean): String? {
+    val keep = sim.life.rels.toList(); val keepRom = sim.life.romance
+    sim.life.romance = rom; sim.life.rels.clear()
+    val err = r.firstNotNullOfOrNull { sim.setRel(it) }
+    if (err != null) { sim.life.rels.clear(); sim.life.rels += keep; sim.life.romance = keepRom }
+    return err
 }
 
 /** the relationship map of this home (edits go through LifeSim.setRel → the relationship rules) */
 fun openWorldRelations(app: UiApp, ws: WorldScreen) {
     val sim = ws.sim; if (sim.life.people.size < 2) { app.toast("這裡只住了一位"); return }
     val people = sim.life.people.map { Triple(it.id, it.spec, ws.libOf(it)) }
-    app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom ->
-        val keep = sim.life.rels.toList(); val keepRom = sim.life.romance
-        sim.life.romance = rom; sim.life.rels.clear()
-        val err = r.firstNotNullOfOrNull { sim.setRel(it) }
-        if (err != null) { sim.life.rels.clear(); sim.life.rels += keep; sim.life.romance = keepRom; err } else { ws.flush(); null } })
+    app.push(RelationsScreen(people, sim.life.rels, sim.life.romance) { r, rom -> applyRels(sim, r, rom) ?: run { ws.flush(); null } })
 }

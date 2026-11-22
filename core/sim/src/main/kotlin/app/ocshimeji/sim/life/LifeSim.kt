@@ -215,6 +215,11 @@ class LifeSim(val life: Life) {
     /** a mood card's weight for this person: personality and how strongly feelings show */
     fun moodWeight(p: Person, value: Int): Float { val m = mods(p); return if (value >= 0) value * m.pos else value * m.neg * (1f + 0.4f * p.spec.cry) }
     /** the mood: mood cards plus how well the needs are met */
+    /** R4: happy / angry / sad (their speaking style can change with it), or null */
+    fun moodOf(p: Person): String? {
+        if (p.moods.any { it.id in ANGRY }) return "angry"
+        val v = moodValue(p); return if (v >= 4) "happy" else if (v <= -3 || p.moods.any { it.id == "cried" || it.id == "heartbroken" }) "sad" else null
+    }
     fun moodValue(p: Person): Int {
         val avg = Need.values().map { p.need(it) }.average().toFloat()
         return p.moods.sumOf { (moodWeight(p, Moods.ALL[it.id]?.value ?: 0).toDouble()) }.roundToInt() + ((avg - 55f) / 15f).toInt()
@@ -409,6 +414,11 @@ class LifeSim(val life: Life) {
         if (p.affinity < 40) pool.removeAll { it.needs == Need.ATTENTION }                                                                           /* not close: does not seek you */
         else if (p.affinity >= 70) repeat(3) { pool += Micros.ALL.first { it.id == "wave" } }
         if (p.affinity >= 65 && rng.chance(p.affinity / 400.0) && comeToYou(p, b)) return
+        if (p.spec.habits.isNotEmpty() && rng.chance(0.06 + 0.07 * p.spec.habits.maxOf { it.freq.coerceIn(0, 2) })) {   /* R4: their own little events */
+            val h = rng.pick(p.spec.habits.flatMap { x -> List(x.freq.coerceIn(0, 2) + 1) { x } })
+            say(p, h.text); events += SimEvent("fx", p.id, h.icon); log(p, h.text.trim().trimEnd('。', '！'), kind = "habit", weight = 1)
+            b.pose = Pose.HAPPY; b.poseT = 0f; b.think = 4f; return
+        }
         if (rng.chance(0.55)) {
             val m = rng.pick(pool); b.micro = m; b.microT = m.sec; b.pose = m.pose; b.poseT = 0f
             if (m.line != null && rng.chance(0.6)) say(p, m.line, toPlayer = m.needs == Need.ATTENTION)
@@ -497,9 +507,9 @@ class LifeSim(val life: Life) {
     }
     private var catching = false
     /** a line in this character's own way of talking; quietly when someone sleeps in the same room (plan B-08) */
-    internal fun say(p: Person, base: String, toPlayer: Boolean = false) {
+    internal fun say(p: Person, base: String, toPlayer: Boolean = false, to: Person? = null) {
         if (catching) return
-        var t = Speech.say(p.spec, base, rng, p.affinity, toPlayer)
+        var t = Speech.say(p.spec, base, rng, p.affinity, toPlayer, to?.let { society.callTo(p, it) }, moodOf(p))
         if (!t.startsWith("（") && life.people.any { it !== p && asleep(it) && roomOf(it) == roomOf(p) }) t = "（小聲）$t"
         events += SimEvent("say", p.id, t)
     }
@@ -753,6 +763,7 @@ class LifeSim(val life: Life) {
         const val CHUNK = 10.0            /* game minutes per catch-up step */
         const val MAX_AWAY_MIN = 30.0 * 1440
         val SLEEPY = setOf("sleep", "nap", "sofanap")
+        val ANGRY = setOf("angry", "annoyed", "feud")
         /** what people do every day anyway (no boredom from doing them again) */
         val ROUTINE = setOf("sleep", "meal", "snack", "bathe", "chat", "queue", "outing", "dishes")
         val FURNITURE_KINDS = setOf("furniture", "rug", "plant", "decor", "toy", "sticker")

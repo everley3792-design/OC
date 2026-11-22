@@ -72,13 +72,17 @@
   - 指定的指令：`act:<id>@<家具>`、`act:<id>@t<x>,<y>`（`LifeSim.candidateAt/candidateOn/anyWay/pieceProblem`）；
   - 指令佇列 `Person.queue`（`Society.pending/cancelOrder/stopNow/orderLabel`，最多 5 件）；存檔格式 v10；
   - `ui`：`PieMenu`（環狀選單，最多 8 格、分組、更多、灰色附原因）、`WorldScreen` 觀看／操控、選取光圈、佇列列、拖曳擺放；`PersonCard` 三頁（現在／關係／紀錄）。
-- 下一步：**R4（1.4.0）創角與說話**（7 步創角、即時反應與試聽、互斥標籤、喜歡不喜歡三態、稱謂系統、開始畫面的編輯入口；見 `overhaul-plan.md`）。
+- **R4（1.4.0）創角與說話——完成**（`docs/reboot/r4-report.md`）：
+  - `chars/Spec`：`Address`（叫你三段 `callFor`、叫別人 `others`＋態度、心情換風格 `moods`、口頭禪位置與頻率）、`Habit`（自訂事件）；`Catalog.groupOf/opposites/LIKE_GROUPS`；`Builder.cycleLike`（三態）；
+  - `Speech.say(…, to, mood)`：自稱 → 稱謂 → 禁用詞 → 態度 → 風格 → 語尾 → 口頭禪；`Society.nickBy/callTo/autoNick`；`LifeSim.moodOf`、自訂事件；存檔格式 v11；
+  - `ui`：`CharacterEditor` 7 步（即時反應、試聽、四色互斥、三態、稱謂、自訂事件）；`TitleScreen` 編輯世界／編輯角色（`WorldHost.edit`、`SaveSystem.backupNow`）。
+- 下一步：**R5（1.5.0）美術與細節**（家具快取與材質、物件狀態、四層光、室外與小鎮場景、細節 40 項；見 `overhaul-plan.md`）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
 core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskPet＝桌寵行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
-               chars/（Spec＝CharSpec／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
+               chars/（Spec＝CharSpec／Address 稱謂／Habit 自訂事件／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：paint/（Paint＝繪圖引擎、Draft＝草稿）、Studio（創作套件的收藏庫端：動畫、物品、聲音、標籤、劇本、.ocitem／.ocmod、空間）；Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
@@ -89,7 +93,7 @@ ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Des
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r3/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r4/（截圖）
 ```
 
 ## 指令
@@ -123,7 +127,8 @@ pkill -f GradleDaemon                                             # 建完釋放
 - 長的 `ListSheet` 會在底單裡捲動（R1）：覆蓋層可以覆寫 `drag/release` 接收拖曳；捲動區裡登記點擊區前設 `app.zoneDy`。
 - **每件做完的小事都是一行回憶**（`LifeSim.memory`）：擬聲與旁白只來自 `Flavor`（原創、用世界的 `Rng` 選）；時間線最多 `LOG_MAX` 行，收藏永遠不刪，只經 `trimLog()` 修剪。
 - **時間**：現實模式下世界比手機快時 `LifeSim.hold`＝等待（`WorldHost.drive` 設定），不得把時鐘往回撥；補算最多過 30 天，其餘跳過並寫進摘要。
-- **每一句台詞都經過 `Speech.say`**（`LifeSim.say()`）；寫台詞時用「我」「你」，由說話方式改寫。
+- **每一句台詞都經過 `Speech.say`**（`LifeSim.say()`）；寫台詞時用「我」「你」，由說話方式改寫。對住民說的話傳 `to`（`LifeSim.say(p, text, to = q)`），台詞裡的別人用 `Society.nickBy(說話的人, 對象)`；新的稱謂、心情、態度設定要能通過 `SpeechTest` 的全組合。
+- **改世界不進去**只經 `WorldHost.edit(slotId) { sim -> … }`（先備份；沒打開的世界時鐘不動）。
 - **關係規則只在 `Relations.problem()`**：戀愛預設關閉、只限兩位成年角色；編輯器、開場、生活都呼叫它。
 - 匯入只經 `Importer`：用檔頭判斷格式；每個拒絕都要有原因（`MediaTest` 有壞檔集）；解碼一律經 `Codec.safe`；工作圖用 `Png.encode`（無損、各平台同位元組）。
 - **世界只經 `WorldHost` 打開**（`acquire/release/drive/save`）：家的畫面與桌寵共用同一個 `LifeSim`；`drive(o, dt, "desk")` 在家的畫面看得見時不推動時間；事件經 `listeners` 發給每個觀看者。

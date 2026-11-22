@@ -90,6 +90,17 @@ class Society(private val sim: LifeSim) {
     // ================= choosing a social act (plan C-01) =================
     class Pick(val act: SocialAct, val w: Float, val why: String)
     private fun nick(p: Person) = p.spec.nickname.ifBlank { p.name }
+    /** how `by` calls `q` (R4): what you set, or — once they are close — a nickname of their own (C-07), or the plain name */
+    fun nickBy(by: Person?, q: Person): String {
+        if (by == null) return nick(q)
+        by.spec.address.others[q.libId]?.name?.takeIf { it.isNotBlank() }?.let { return it }
+        val r = sim.rel(by.id, q.id)
+        return if (r != null && r.like >= 70 && r.familiar >= 60) autoNick(q) else nick(q)
+    }
+    /** the nickname close friends come up with */
+    fun autoNick(q: Person): String = q.spec.nickname.ifBlank { val n = q.name; if (n.length >= 2 && !n.startsWith("小")) "小" + n.last() else n.last().toString().repeat(2) }
+    /** how `by` talks to `q` (their attitude) */
+    fun callTo(by: Person, q: Person): app.ocshimeji.sim.chars.Call = by.spec.address.others[q.libId]?.copy(name = nickBy(by, q)) ?: app.ocshimeji.sim.chars.Call(nickBy(by, q))
     fun statusOf(p: Person): DayStatus? = if (p.statusDay == life.day) DayStatuses.ALL[p.status] else null
     private fun hourIn(a: Int, b: Int): Boolean { val h = sim.hour; return if (a <= b) h >= a && h < b else h >= a || h < b }
     fun condOk(act: SocialAct, p: Person, q: Person): Boolean {
@@ -186,8 +197,8 @@ class Society(private val sim: LifeSim) {
         val bt = run.beats[run.i++]
         val who = sim.person(if (bt.who == 0) run.a else run.b) ?: return true
         val other = sim.person(if (bt.who == 0) run.b else run.a) ?: return true
-        val text = fill(bt.text, other, run)
-        if (text.isNotBlank()) sim.say(who, text)
+        val text = fill(bt.text, other, run, who)
+        if (text.isNotBlank()) sim.say(who, text, to = other)
         val pose = bt.pose ?: if (bt.who == 1 && run.act != null) run.re.pose else Pose.TALK
         sim.body(who.id).pose = pose; sim.body(who.id).poseT = 0f
         val fx = bt.fx ?: if (bt.who == 1 && run.act != null) run.re.fx else null
@@ -201,7 +212,7 @@ class Society(private val sim: LifeSim) {
         if (run.closeup) sim.events += SimEvent("closeupEnd", run.a, run.b)
         if (done) { run.apply(); ideaResult(run) } else run.idea?.let { ideas[run.a] = it }
     }
-    private fun fill(t: String, other: Person, run: Run) = t.replace("{對方}", nick(other)).replace("{物}", run.thing.ifBlank { "那個" }).replace("{第三人}", sim.person(run.third)?.let { nick(it) } ?: "大家")
+    private fun fill(t: String, other: Person, run: Run, by: Person? = null) = t.replace("{對方}", nickBy(by, other)).replace("{物}", run.thing.ifBlank { "那個" }).replace("{第三人}", sim.person(run.third)?.let { nickBy(by, it) } ?: "大家")
 
     /** builds the scene and what it changes (used live, and at once while you are away) */
     internal fun build(p: Person, q: Person, id: String, r: Rng): Run {

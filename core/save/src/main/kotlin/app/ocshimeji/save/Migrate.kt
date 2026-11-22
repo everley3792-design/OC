@@ -80,6 +80,12 @@ object Migrate {
             if (life == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply { put("env", buildJsonObject { put("season", JsonPrimitive("")); put("paused", JsonPrimitive(false)) }) })) }) },
         /* 9 → 10 (R3): residents get a queue of your orders after the one waiting — an old world starts with empty queues */
         9 to { w -> w },
+        /* 10 → 11 (R4): how they call you has three steps now — the old single name becomes the middle one ("熟了以後") */
+        10 to { w -> val life = w["life"] as? JsonObject; val people = life?.get("people") as? kotlinx.serialization.json.JsonArray
+            if (life == null || people == null) w else JsonObject(w.toMutableMap().apply { put("life", JsonObject(life.toMutableMap().apply {
+                put("people", kotlinx.serialization.json.JsonArray(people.map { p0 -> val p = p0 as? JsonObject ?: return@map p0; val spec = p["spec"] as? JsonObject ?: return@map p
+                    val call = (spec["callPlayer"] as? JsonPrimitive)?.content ?: "你"
+                    if (call == "你" || call.isBlank()) p else JsonObject(p.toMutableMap().apply { put("spec", JsonObject(spec.toMutableMap().apply { put("address", buildJsonObject { put("close", JsonPrimitive(call)) }) })) }) })) })) }) },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

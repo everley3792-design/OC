@@ -1,6 +1,9 @@
 package app.ocshimeji.sim
 
 import app.ocshimeji.sim.chars.CharSpec
+import app.ocshimeji.sim.chars.Address
+import app.ocshimeji.sim.chars.Call
+import app.ocshimeji.sim.chars.Habit
 import app.ocshimeji.sim.chars.Rel
 import app.ocshimeji.sim.chars.Speech
 import app.ocshimeji.sim.house.Houses
@@ -62,6 +65,22 @@ class SpecEffectsTest {
         assertTrue(lines(base.copy(banned = listOf("餓")), "我餓了。").none { it.contains("餓") }, "banned")
         assertNotEquals(lines(base, "我今天很好。"), lines(base.copy(style = "元氣"), "我今天很好。"), "style")
         assertEquals("呦。", Speech.preview(base.copy(greeting = "呦。"), "早安", Rng(1)).first, "greeting")
+    }
+    @Test fun addressHabitsAndNicknames() {   /* R4: every new field has a visible effect */
+        assertTrue(lines(base.copy(address = Address(dear = "親愛的")), "謝謝你。", true, 90).all { it.contains("親愛的") }, "address.dear")
+        assertTrue(lines(base.copy(address = Address(stranger = "那位")), "謝謝你。", true, 10).all { it.contains("那位") }, "address.stranger")
+        assertTrue(lines(base.copy(address = Address(moods = mapOf("happy" to "元氣"))), "我今天很好。").none { it.endsWith("！") } &&
+            (1..30).map { Speech.say(base.copy(address = Address(moods = mapOf("happy" to "元氣"))), "我今天很好。", Rng(it.toLong()), mood = "happy") }.all { it.endsWith("！") }, "address.moods")
+        // a habit shows up as a line, an icon and a memory
+        val (s, p) = sim(base.copy(habits = listOf(Habit("（對著窗戶哼了一首歌）", 2, "heart"))), 10.0)
+        var fx = false; repeat(12000) { s.update(0.1f); if (s.events.any { it.kind == "fx" && it.text == "heart" && it.who == p.id }) fx = true; s.events.clear() }
+        assertTrue(s.life.log.any { it.kind == "habit" && it.text.contains("哼了一首歌") }, "habits"); assertTrue(fx, "the habit's icon")
+        // how one calls another: what you set, or a nickname once they are close
+        val other = CharSpec(name = "小雨點")
+        val (s2, a) = sim(base.copy(address = Address(others = mapOf("b" to Call("雨滴", "撒嬌")))), 10.0, other); val b = s2.person("b")!!
+        assertEquals("雨滴", s2.society.nickBy(a, b)); assertEquals("撒嬌", s2.society.callTo(a, b).tone)
+        val (s3, a3) = sim(base, 10.0, other, rels = listOf(Rel("a", "b", "好友", like = 80, familiar = 70), Rel("b", "a", "好友")))
+        assertEquals("點點", s3.society.nickBy(a3, s3.person("b")!!), "a nickname of their own once close (C-07)"); assertEquals("測試", s3.society.nickBy(s3.person("b"), a3), "not close the other way round: the plain name")
     }
     @Test fun lifeAndSchedule() {
         val (s0, p0) = sim(base)

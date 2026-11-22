@@ -79,7 +79,18 @@ data class CharSpec(
     val motion: String = "可愛",
     /** where they love being petted (頭 / 身體 / 耳朵 / 尾巴); hidden from the player until found */
     val petSpot: String = "頭",
+    // ---- R4: 稱謂與說話、自訂事件
+    /** how they call you and everyone else, how feelings change their talk, where their catchphrases go */
+    val address: Address = Address(),
+    /** little things they do on their own now and then (a line and an icon over the head) */
+    val habits: List<Habit> = emptyList(),
 ) {
+    /** how they call you at this closeness (R4: three steps; the old single field is the middle one) */
+    fun callFor(affinity: Int): String = when {
+        affinity >= Address.DEAR -> address.dear.ifBlank { address.close.ifBlank { callPlayer } }
+        affinity >= Address.CLOSE -> address.close.ifBlank { callPlayer }
+        else -> address.stranger
+    }.ifBlank { "你" }
     val adult get() = age >= 18
     val stage get() = stageOf(age)
     fun axis(i: Int) = axes.getOrElse(i) { 0f }
@@ -107,6 +118,35 @@ data class CharSpec(
     }
 }
 fun stageOf(age: Int) = when { age < 3 -> "嬰兒"; age < 6 -> "幼兒"; age < 12 -> "兒童"; age < 18 -> "少年"; age < 30 -> "青年"; age < 65 -> "成年"; else -> "老年" }
+
+/**
+ * 稱謂 (overhaul plan B-3, R4). `stranger` / `close` / `dear` = how they call you as you get closer; `others` = how they call a
+ * housemate (key = that character's library id) and how they talk to them; `moods` = the speaking style when happy / angry / sad;
+ * `catchWhen` = where catchphrases go (greet, surprise, end; empty = anywhere) and `catchRate` how often.
+ */
+@Serializable
+data class Address(
+    val stranger: String = "你", val close: String = "", val dear: String = "",
+    val others: Map<String, Call> = emptyMap(),
+    val moods: Map<String, String> = emptyMap(),
+    val catchWhen: List<String> = emptyList(), val catchRate: Float = 0.22f,
+) {
+    companion object {
+        const val CLOSE = 50; const val DEAR = 80
+        val TONES = listOf("客氣", "普通", "撒嬌", "嘴硬", "敬重")
+        val MOODS = linkedMapOf("happy" to "開心時", "angry" to "生氣時", "sad" to "難過時")
+        val PLACES = linkedMapOf("greet" to "打招呼", "surprise" to "驚訝", "end" to "句尾")
+    }
+}
+/** how one character calls another, and their attitude toward them */
+@Serializable
+data class Call(val name: String = "", val tone: String = "普通")
+
+/** a custom little event (R4 step 7): a line, how often (0 偶爾, 1 有時, 2 常常) and the icon over the head */
+@Serializable
+data class Habit(val text: String, val freq: Int = 1, val icon: String = "sparkle") {
+    companion object { val FREQ = listOf("偶爾", "有時", "常常"); val ICONS = linkedMapOf("sparkle" to "閃閃", "heart" to "愛心", "sweat" to "汗", "shock" to "驚訝", "gloom" to "烏雲", "fire" to "燃燒") }
+}
 
 /** a voice made of synthesized babble (the player can also import clips in M5) */
 @Serializable
