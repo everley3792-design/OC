@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/oc_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp"
+    android:background="@drawable/oc_widget_bg">
+    <ImageView
+        android:id="@+id/oc_widget_img"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:scaleType="fitCenter"
+        android:src="@mipmap/ic_launcher" />
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginLeft="10dp"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/oc_widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FF5A3A29"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:text="@string/app_name" />
+        <TextView
+            android:id="@+id/oc_widget_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="#FF8A6A55"
+            android:textSize="13sp"
+            android:maxLines="4"
+            android:text="@string/widget_hint" />
+    </LinearLayout>
+</LinearLayout>

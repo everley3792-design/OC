@@ -77,7 +77,7 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         // ---- back walls with what hangs on them
         for (r in house.rooms) wall(g, p, r, light)
         clock(g, p)
-        house.pieces.forEachIndexed { wi, pc -> when (pc.kind) { "window" -> window(g, p, pc.x, pc.y, Furniture.kind(pc.kind).w, light, time, state(wi)); "mirror" -> mirror(g, p, pc.x, pc.y)
+        house.pieces.forEachIndexed { wi, pc -> when (pc.kind) { "window" -> window(g, p, pc.x, pc.y, Furniture.kind(pc.kind).w, light, time, state(wi)); "mirror" -> mirror(g, p, pc.x, pc.y); "frame" -> photoFrame(g, p, pc.x, pc.y, state(wi))
             else -> Furniture.kind(pc.kind).takeIf { it.wall }?.let { k -> sticker(g, p, k, pc.x, pc.y) } } }
         for (d in house.doors) { val r = house.roomAt(d.x, d.y) ?: continue; if (d.y == r.y) doorway(g, p, d.x, d.y, r) }
         // ---- depth-sorted: furniture and whatever the caller adds
@@ -228,6 +228,18 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
         val img = k.image.takeIf { it.isNotBlank() }?.let { itemImg(it) }; val x = bx(tx.toFloat()) + 4; val y = by(ty.toFloat()) + 4; val w = k.w * T - 8; val h = T * K - 10
         if (img == null) { g.fillRound(x, y, w, h, 6f, p.sun); return }
         val sc = minOf(w / img.w, h / img.h); g.image(img, x + (w - img.w * sc) / 2, y + (h - img.h * sc) / 2, img.w * sc, img.h * sc)
+    }
+    /** 1.9.0 G-08: a wooden frame with your latest photo in it ("people:hour:filter"; empty = waiting for a photo) */
+    private fun photoFrame(g: Gfx, p: Pal, tx: Int, ty: Int, st: String) {
+        val cx = bx(tx + 0.5f); val y = by(ty - 1f) + 8; val w = T * 0.78f; val h = T * K * 0.62f
+        g.fillRound(cx - w / 2 - 3, y - 3, w + 6, h + 6, 3f, p.s("#B07A50")); g.fillRect(cx - w / 2, y, w, h, p.s("#FFFDF4"))
+        val parts = st.split(":"); if (parts.size < 3) { g.fillCircle(cx, y + h / 2, 3f, p.s("#E8D6B8")); return }
+        val n = parts[0].toIntOrNull() ?: 1; val hr = parts[1].toIntOrNull() ?: 12; val night = hr < 6 || hr >= 19
+        var sky = if (night) p.s("#3A4A7A") else p.s("#BFE2F4"); var ground = p.s("#E2C49E")
+        when (parts[2]) { "mono" -> { sky = p.s("#B8B8B8"); ground = p.s("#8E8E8E") }; "warm", "retro" -> { sky = Colors.mix(sky, p.s("#F2B880"), 0.4f); ground = Colors.mix(ground, p.s("#C08050"), 0.3f) }; "dream" -> sky = Colors.mix(sky, p.s("#F4C8E0"), 0.5f) }
+        g.fillRect(cx - w / 2 + 2, y + 2, w - 4, h * 0.6f, sky); g.fillRect(cx - w / 2 + 2, y + 2 + h * 0.6f, w - 4, h * 0.4f - 4, ground)
+        val cols = listOf("#F2A65A", "#7AAAD6", "#E08A9A", "#8CC48A", "#C8A0E0", "#F0C850")
+        for (i in 0 until n.coerceIn(1, 6)) { val px = cx - w / 2 + (i + 1) * w / (n.coerceIn(1, 6) + 1); g.fillCircle(px, y + h * 0.62f, 3.2f, p.s(cols[i % cols.size])); g.fillRound(px - 2.6f, y + h * 0.66f, 5.2f, 6f, 2f, p.s(cols[i % cols.size])) }
     }
     private fun mirror(g: Gfx, p: Pal, tx: Int, ty: Int) {
         val cx = bx(tx + 0.5f); val y = by(ty - 1f) + 3; val h = T * K - 9; val w = T * 0.55f

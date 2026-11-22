@@ -4,8 +4,8 @@
      tools/framework-extras (the offline aapt only knows API 23 attributes). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.ocshimeji"
-    android:versionCode="116"
-    android:versionName="1.8.0">
+    android:versionCode="117"
+    android:versionName="1.9.0">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
 
@@ -42,5 +42,17 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="On-screen companion: the player's own characters walk on the home screen while the player chooses to show them; tapping them opens the app." />
         </service>
+        <!-- F-13 (1.9.0): home-screen widget; shows what it last saw, tapping it opens the app -->
+        <receiver
+            android:name=".android.OcWidget"
+            android:exported="false"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oc_widget_info" />
+        </receiver>
     </application>
 </manifest>

@@ -64,7 +64,11 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
         return if (c.image.startsWith("asset:")) assets.image(c.image.removePrefix("asset:"), maxSide)
         else { val path = c.image.removePrefix("lib:"); assets.decode("lib:$path@$maxSide", maxSide) { saves.readFile(path) } }
     }
-    var theme: Theme = Theme.LIGHT
+    private var baseTheme: Theme = Theme.LIGHT; private var safeTheme: Theme? = null; private var colorSafe = false
+    /** the palette (1.9.0 O-04: the colour-blind friendly version when that setting is on) */
+    var theme: Theme
+        get() = if (colorSafe) safeTheme ?: baseTheme.colorSafe().also { safeTheme = it } else baseTheme
+        set(v) { baseTheme = v; safeTheme = null }
     /** safe area (status bar, cutout, gesture bar) in dp */
     var insetTop = 0f; var insetBottom = 0f
     var w = 360f; var h = 800f
@@ -101,7 +105,7 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** 1.8.0: the last frame's Gfx, so a tap can make a picture off screen (photos, cards) */
     var gfxForSnap: Gfx? = null; private set
     fun frame(g: Gfx, dt: Float) {
-        gfxForSnap = g
+        gfxForSnap = g; colorSafe = saves.flag("a11y:cb")
         time += dt; w = g.width; h = g.height; zones.clear(); zoneDx = 0f; zoneDy = 0f
         layer = 0
         val dur = if (saves.flag("a11y:calm")) 0.12f else if (transKind == "fade") 0.18f else 0.24f; val k = ((time - transAt) / dur).coerceIn(0f, 1f)

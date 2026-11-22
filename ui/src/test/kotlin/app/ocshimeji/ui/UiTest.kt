@@ -381,7 +381,7 @@ class UiTest {
         assertTrue(a.tapZone("bd:ledger")); frames(a, 10); shot("ledger", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
         assertTrue(sim.economy.consistent())
         // moving: everyone says what they think
-        assertTrue(a.tapZone("move")); frames(a, 15); assertTrue(a.tapZone("row:bungalow")); frames(a, 15); assertTrue(a.overlay is MoveSheet); shot("move-sheet", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("more")); frames(a, 20); assertTrue(a.tapZone("row:move")); frames(a, 15); assertTrue(a.tapZone("row:bungalow")); frames(a, 15); assertTrue(a.overlay is MoveSheet); shot("move-sheet", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("mv:yes")); frames(a, 30); assertTrue(a.screen is WorldScreen); assertEquals("bungalow", sim.life.houseId)
         frames(a, 200); shot("world-bungalow", frames(a, 1, scale = 2f))
         // decorating: pick what you bought, tap the floor
@@ -778,6 +778,25 @@ class UiTest {
         a.push(CardsPage(ws)); frames(a, 20); shot("you-cards", frames(a, 1, scale = 2f)); assertTrue(a.tapZone("card:${p.id}")); frames(a, 20); shot("you-namecard", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); a.pop()
         a.push(RulesPage(ws)); frames(a, 20); assertTrue(a.tapZone("rule:quiet")); frames(a, 5); assertTrue("quiet" in sim.life.you.rules); shot("you-rules", frames(a, 1, scale = 2f)); a.pop()
         assertNull(sim.you.bury("給未來的我們")); a.push(CapsulePage(ws)); frames(a, 20); shot("you-capsule", frames(a, 1, scale = 2f)); a.pop()
+    }
+    @Test fun homeAndTown() {   /* 1.9.0 「家與小鎮」 */
+        val a = app(); val ws = home2(a); val sim = ws.sim; val p = sim.life.people[0]
+        // the town: more → the feed, a day trip, the recipe book
+        sim.economy.earn(300, "測試"); sim.economy.move("v:pumpkin", 1, "測試")
+        sim.you.takePhoto(sim.life.people.map { it.id }, listOf("HAPPY", "SHY"), "warm", "polaroid", listOf("heart"), "大家")
+        assertTrue(sim.economy.move("f:frame", 1, "測試")); var placed = false
+        for (y in 0..12) for (x in 0..16) if (!placed && sim.decorate.place("f:frame", x, y) == null) placed = true
+        assertTrue(placed, "a frame on a wall"); ws.flush(); frames(a, 30); shot("home-frame", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("nav:town")); frames(a, 30); shot("town-photo-board", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("more")); frames(a, 20); assertTrue(a.tapZone("row:recipes")); frames(a, 20); assertTrue(a.screen is RecipesPage); shot("days-recipes", frames(a, 1, scale = 2f)); a.pop(); frames(a, 10)
+        sim.days.useTool("luck"); sim.life.days.feed += app.ocshimeji.sim.social.Post(sim.life.days.nextId++, p.id, sim.life.minute, "今天在公園撿到漂亮的石頭！", "smile")
+        a.push(FeedPage(ws)); frames(a, 20); val po = sim.days.feed().first(); assertTrue(a.tapZone("lk:${po.id}")); frames(a, 5); assertTrue("you" in po.likes); shot("days-feed", frames(a, 1, scale = 2f)); a.pop(); frames(a, 10)
+        a.push(TripPage(ws)); frames(a, 20); assertTrue(a.tapZone("who:${p.id}")); frames(a, 5); shot("days-trip", frames(a, 1, scale = 2f)); a.pop(); frames(a, 10)
+        // the tools, a cabinet, the frame on the wall, the widget lines, the colour-blind palette
+        a.push(YouHub(ws)); frames(a, 20); assertTrue(a.tapZone("tools")); frames(a, 20); shot("days-tools", frames(a, 1, scale = 2f)); a.back(); frames(a, 10); a.pop(); frames(a, 10)
+        sim.days.keep(p, app.ocshimeji.sim.social.Keepsake("trip:beach", "海邊的貝殼", "drop", 3, "旅行")); a.show(CabinetSheet(ws, p.id)); frames(a, 20); shot("days-cabinet", frames(a, 1, scale = 2f)); a.back(); frames(a, 10)
+        val (title, body) = WidgetLines.of(sim); assertTrue(title.contains("第 ") && body.contains(p.name), "$title / $body")
+        a.saves.setFlag("a11y:cb"); frames(a, 2); assertEquals(a.theme.select, Theme.LIGHT.colorSafe().select); a.saves.clearFlag("a11y:cb"); frames(a, 2); assertEquals(Theme.LIGHT.select, a.theme.select)
     }
     @Test fun coinsRollAndFlyToTheBag() {
         val a = app(); val ws = home2(a); val sim = ws.sim; val w0 = sim.economy.wallet; frames(a, 5)

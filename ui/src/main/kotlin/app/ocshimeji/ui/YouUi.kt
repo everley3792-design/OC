@@ -394,6 +394,7 @@ class YouHub(val ws: WorldScreen) : Page("和你") {
             Row("msgs", "訊息", if (un > 0) "$un 則還沒回" else "${you.messages.size} 則", icon = "chat", tint = 0xFFE6E0F4.toInt()),
             Row("photo", "拍照", "選人、姿勢、濾鏡、相框、貼紙", icon = "camera", tint = 0xFFF6D0B8.toInt()),
             Row("album", "相簿", "${you.photos.size} 張", icon = "image", tint = 0xFFFFE9A8.toInt()),
+            Row("tools", "神明的小道具", "天降禮物、幸運的一天、好夢、流星（每樣一天一次）", icon = "gift", tint = 0xFFFFE9A8.toInt()),
             Row("catch", "接點心", "最高 ${you.best["catch"] ?: 0} 個", icon = "food", tint = 0xFFCDE6D6.toInt()),
             Row("flip", "翻牌", "用大家的表情配對・最高 ${you.best["flip"] ?: 0} 顆星", icon = "game", tint = 0xFFCFE2F2.toInt()),
             Row("cards", "角色卡", "每個人的名片，可以存成圖片", icon = "star", tint = 0xFFF8E0A8.toInt()),
@@ -405,7 +406,7 @@ class YouHub(val ws: WorldScreen) : Page("和你") {
         if (Nav.tap(app, ws, id)) return
         when (id) {
             "back" -> app.pop(); "msgs" -> app.push(MessagesPage(ws)); "album" -> app.push(AlbumPage(ws)); "cards" -> app.push(CardsPage(ws))
-            "capsule" -> app.push(CapsulePage(ws)); "rules" -> app.push(RulesPage(ws)); "notes" -> app.push(NotesPage(ws))
+            "capsule" -> app.push(CapsulePage(ws)); "rules" -> app.push(RulesPage(ws)); "tools" -> toolsSheet(app, ws); "notes" -> app.push(NotesPage(ws))
             "photo" -> app.push(PhotoStudio(ws, ws.sim.life.people.filter { !it.desk && it.out == null }.take(3).map { it.id }))
             "catch", "flip" -> pickPlayer(app, ws, id)
         }

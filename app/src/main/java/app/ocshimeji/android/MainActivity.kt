@@ -99,7 +99,7 @@ class MainActivity : Activity() {
     }
     private fun themeFor(c: Configuration) = if ((c.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) Theme.DARK else Theme.LIGHT
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); ui.theme = themeFor(newConfig); edgeToEdge(); view.invalidate() }
-    override fun onPause() { super.onPause(); ui.pause() }
+    override fun onPause() { super.onPause(); ui.pause(); OcWidget.push(this) }
     override fun onResume() { super.onResume(); if (started) ui.wake(); started = true; view.kick() }
     override fun onDestroy() { super.onDestroy(); if (!DeskService.running) OcRuntime.sounds.release() }
     private var started = false

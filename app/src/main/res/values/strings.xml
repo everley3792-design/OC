@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OC Shimeji</string>
+    <string name="widget_name">家裡的大家</string>
+    <string name="widget_hint">打開 App，看看大家在做什麼</string>
 </resources>

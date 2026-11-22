@@ -158,11 +158,11 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             /* 1.8.0: your note, their card, and more (memory, photo, games, a grown version for the library) */
             "card:note" -> { val pid = this.id; app.closeOverlay(); writeNote(app, ws, pid); return }
             "card:namecard" -> { val pid = this.id; app.closeOverlay(); app.show(NameCardSheet(ws, pid)); return }
-            "card:more" -> { val pid = this.id; app.closeOverlay(); app.show(ListSheet("更多", listOf("mem" to "記憶與更多紀錄", "photo" to "拍照", "catch" to "接點心", "flip" to "翻牌", "grown" to "存成收藏庫的新版本")) { k ->
+            "card:more" -> { val pid = this.id; app.closeOverlay(); app.show(ListSheet("更多", listOf("mem" to "記憶與更多紀錄", "photo" to "拍照", "catch" to "接點心", "flip" to "翻牌", "cabinet" to "收藏櫃", "grown" to "存成收藏庫的新版本")) { k ->
                 when (k) { "mem" -> app.show(MemorySheet(ws, pid)); "photo" -> app.push(PhotoStudio(ws, listOf(pid)))
                     "catch" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(CatchScreen(ws, pid))
                     "flip" -> if (ws.sim.person(pid)?.let { ws.sim.asleep(it) } == true) app.toast("睡著了") else app.push(FlipScreen(ws, pid))
-                    "grown" -> saveGrown(app, ws, pid) } }); return }
+                    "grown" -> saveGrown(app, ws, pid); "cabinet" -> app.show(CabinetSheet(ws, pid)) } }); return }
         }
         if (id.startsWith("feed:")) { val msg = ws.sim.feed(this.id, id.removePrefix("feed:")); app.closeOverlay(); if (msg.isNotEmpty()) app.toast(msg) }
     }

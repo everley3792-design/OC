@@ -120,7 +120,7 @@ class A11ySheet : Overlay() {
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
-        val h = 400f + app.insetBottom; val y = app.h - h * s
+        val h = 472f + app.insetBottom; val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("ax:body", 0f, y, W, h)
         g.text("設定：好讀、好用", G + 4, y + 40, Dim.FS_L, t.ink)
         var yy = y + 64
@@ -131,6 +131,7 @@ class A11ySheet : Overlay() {
         }
         row("ax:big", "大字", "所有文字和按鈕放大一些（重新打開 App 後生效）", app.saves.flag("a11y:big"))
         row("ax:calm", "減少動態", "不畫雨雪粒子、少一點晃動", app.saves.flag("a11y:calm"))
+        row("ax:cb", "色弱友善配色", "選取改成藍色、提醒改成深橘紅，靠深淺也分得出來", app.saves.flag("a11y:cb"))
         g.text("震動", G + 4, yy + 22, Dim.FS_S, t.ink2); var x = G + 56
         val cur = when { app.saves.flag("a11y:vib0") -> "0"; app.saves.flag("a11y:vib1") -> "1"; else -> "2" }
         for ((k, zh) in listOf("0" to "關", "1" to "弱", "2" to "標準")) x += Widgets.chip(g, app, "ax:vib$k", x, yy, zh, cur == k, 38f, 64f) + 8
@@ -140,6 +141,7 @@ class A11ySheet : Overlay() {
         when (id) {
             "ax:big" -> { if (f.flag("a11y:big")) f.clearFlag("a11y:big") else f.setFlag("a11y:big"); app.toast("重新打開 App 後生效") }
             "ax:calm" -> if (f.flag("a11y:calm")) f.clearFlag("a11y:calm") else f.setFlag("a11y:calm")
+            "ax:cb" -> if (f.flag("a11y:cb")) f.clearFlag("a11y:cb") else f.setFlag("a11y:cb")
             "ax:vib0", "ax:vib1", "ax:vib2" -> { f.clearFlag("a11y:vib0"); f.clearFlag("a11y:vib1"); if (id != "ax:vib2") f.setFlag("a11y:" + id.removePrefix("ax:")); app.platform.haptic("tick") }
         }
     }

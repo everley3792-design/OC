@@ -58,6 +58,7 @@ class LifeSim(val life: Life) {
             "stove" -> if (users.isNotEmpty()) "cooking" else "cold"
             "shelf" -> life.things[key] ?: "tidy"
             "window" -> life.things[key] ?: if (h >= 6.5 && h < 20.0) "open" else "closed"
+            "frame" -> life.you.photos.lastOrNull()?.let { "${it.who.size}:${it.hour.toInt()}:${it.filter}" } ?: ""   /* 1.9.0 G-08: the latest photo */
             else -> ""
         }
     }

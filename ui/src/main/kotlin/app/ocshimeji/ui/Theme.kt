@@ -16,6 +16,9 @@ class Theme(
     val select: Int, val alert: Int, val onAlert: Int,
     val scrim: Int, val grass: Int, val grassLip: Int, val cloud: Int,
 ) {
+    /** 1.9.0 O-04: a colour-blind friendly version — what is selected turns blue, what is new or dangerous a deep vermilion (told apart by lightness too) */
+    fun colorSafe() = Theme(dark, bg, skyTop, skyBottom, surface, surface2, lip, shadow, line, ink, ink2, ink3, accent, accentLip, onAccent,
+        select = if (dark) hex("#5E9AD6") else hex("#8DBBEA"), alert = if (dark) hex("#E0663C") else hex("#C8452A"), onAlert = onAlert, scrim = scrim, grass = grass, grassLip = grassLip, cloud = cloud)
     companion object {
         val LIGHT = Theme(false,
             bg = hex("#FFF4E4"), skyTop = hex("#CDEBFA"), skyBottom = hex("#FFF4E4"),

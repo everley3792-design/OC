@@ -137,6 +137,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         for (pl in Town.PLACES) if (pl.id != "plaza") { val mx = (wx(plaza.x) + wx(pl.x)) / 2 + 16; val my = (wy(plaza.y) + wy(pl.y)) / 2; ds += my to { lamp(g, p, mx, my, night) } }
         ds += (hy - 30) to { lamp(g, p, hx + 30, hy - 30, night) }
         for (pl in Town.PLACES) { val cx = wx(pl.x); val cy = wy(pl.y); ds += cy to { place(g, t, p, pl.id, cx, cy, season, night) } }
+        photoBoard()?.let { ph -> val bx0 = wx(plaza.x) - 92; val by0 = wy(plaza.y) - 6; ds += by0 to { board(g, t, ph, bx0, by0) } }
         ds += hy to { homeHut(g, t, p, hx, hy) }
         val out = sim.townLife.inTown()
         out.forEachIndexed { i, (person, o) ->
@@ -167,8 +168,20 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         g.text(Widgets.fit(g, if (names.isEmpty()) "現在大家都在家裡" else "在小鎮：" + names.joinToString("、"), Dim.FS_S + 1, W - G * 2 - 32), G + 16, by + 30, Dim.FS_S + 1, t.ink)
         val jobs = sim.life.town.jobs; g.text(Widgets.fit(g, if (jobs.isEmpty()) "點地點：買東西、看布告欄、擺東西；兩指縮放、拖曳移動" else "工坊：" + jobs.joinToString("、") { j -> "${sim.person(j.maker)?.name ?: ""}在做${sim.life.items.firstOrNull { it.id == j.item }?.name ?: "作品"} ${(j.worked * 100 / j.need).toInt().coerceAtMost(99)}%" }, Dim.FS_S, W - G * 2 - 32), G + 16, by + 52, Dim.FS_S, t.ink2)
         val bw = (W - G * 2 - 24 - 24) / 4
-        listOf("stall" to "市集攤位", "work" to "工坊委託", "board" to "布告欄", "move" to "搬家").forEachIndexed { i, (id, s) -> Widgets.button(g, app, id, G + 12 + i * (bw + 8), by + 70, bw, 52f, s, size = Dim.FS_S + 1) }
+        listOf("stall" to "市集攤位", "work" to "工坊委託", "board" to "布告欄", "more" to "更多").forEachIndexed { i, (id, s) -> Widgets.button(g, app, id, G + 12 + i * (bw + 8), by + 70, bw, 52f, s, size = Dim.FS_S + 1) }
         Nav.draw(g, app, "town", Nav.badges(ws))
+    }
+    /** 1.9.0 Q-13: the plaza shows a photo of this week's star (or the latest photo) */
+    private val boardCache = SnapCache()
+    private fun photoBoard(): app.ocshimeji.sim.social.Photo? { val ps = sim.life.you.photos; if (ps.isEmpty()) return null
+        val star = sim.journal.starNow()?.who; return ps.lastOrNull { star != null && star in it.who } ?: ps.last() }
+    private fun board(g: Gfx, t: Theme, ph: app.ocshimeji.sim.social.Photo, x: Float, feet: Float) {
+        val w = 40f; val h = w * PhotoArt.H / PhotoArt.W
+        g.fillRect(x - 1.5f, feet - 12, 3f, 12f, 0xFF8A6A4A.toInt()); g.fillRect(x + w - 1.5f, feet - 12, 3f, 12f, 0xFF8A6A4A.toInt())
+        g.fillRound(x - 4, feet - 12 - h - 8, w + 8, h + 8, 4f, 0xFFB07A50.toInt())
+        val img = boardCache.get(app, "b${ph.id}") { PhotoArt.raster(g, ws, ph, 0.5f) }
+        if (img != null) g.image(img, x, feet - 8 - h, w, h) else g.fillRect(x, feet - 8 - h, w, h, 0xFFFFFDF4.toInt())
+        if (sim.journal.starNow()?.who?.let { it in ph.who } == true) Widgets.icon(g, "star", x + w, feet - 12 - h - 6, 9f, 0xFFF2B33C.toInt())
     }
     private fun lerp(ax: Float, ay: Float, bx: Float, by: Float, k: Float) = (ax + (bx - ax) * (1 - k)) to (ay + (by - ay) * (1 - k))
     private fun person(g: Gfx, t: Theme, w: String, p: app.ocshimeji.sim.life.Person, o: app.ocshimeji.sim.town.Outing, pl: app.ocshimeji.sim.town.Place, cx: Float, feet: Float, i: Int) {
@@ -262,6 +275,9 @@ class TownScreen(val ws: WorldScreen) : Screen() {
             id == "stall" -> stall()
             id == "work" -> workshop()
             id == "move" -> moveHouse()
+            /* 1.9.0: the feed, day trips, the recipe book, moving house */
+            id == "more" -> app.show(ListSheet("小鎮", listOf("feed" to "小鎮動態（大家的貼文）", "trip" to "一日小旅行", "recipes" to "食譜", "move" to "搬家")) { k ->
+                when (k) { "feed" -> app.push(FeedPage(ws)); "trip" -> app.push(TripPage(ws)); "recipes" -> app.push(RecipesPage(ws)); "move" -> moveHouse() } })
         }
     }
     private fun cornerLabel(k: String) = TownState.CORNERS[k]!! + "：" + (sim.life.town.corners[k]?.let { "放著${Economy.nameOf(sim.life, it)}（收回）" } ?: "空著（放東西）")

@@ -96,24 +96,28 @@
   - `life/WithYou`＋`social/YouData`：訊息 E-07、照片 E-09（存內容不存像素）、接點心 L-03、翻牌 L-04（`CatchGame`／`FlipGame` 純 Kotlin）、觀察筆記 P-03、時光膠囊 P-04、情境開局 P-05（`Scenarios`）、家規 P-11（`appealK`）、換房間 P-13（`Decision` kind "room"）；`CharSpec.lines`（M-04 自己的台詞）；
   - `SaveSystem.saveGrown`（P-14）、`Studio.exportPack/importPackParts`（P-15，`.ocmod` v2）；存檔格式 v16；
   - `Gfx.offscreenPixels`（畫面外繪製並讀回像素：照片濾鏡、PNG 匯出）；`ui/YouUi`（YouHub、MessagesPage、PhotoStudio、AlbumPage、CatchScreen、FlipScreen、CardsPage、NameCardSheet、CapsulePage、RulesPage、NotesPage）、`CreateUi.PackPage`、開場情境、創角自己的台詞。
-- 下一步：**1.9.0「桌寵與家、小鎮」**（F-12、F-13、家與小鎮的項目、前幾版只做了一部分的項目）。
+- **R7 第三批（1.9.0）家與小鎮——完成**（`docs/reboot/r7-3-report.md`；全部待實機驗證）：
+  - `life/Days`＋`social/DaysData`：食譜 I-03（`Recipes`、`Dish.recipe`、`Society.cooked` 用材料）、紀念日與約會 J-04、小鎮動態 Q-01、神明的小道具 Q-02、一日小旅行 Q-03（`Outing.stage == "trip"`）、收藏櫃 Q-11、回憶相框 G-08（家具 `frame`、活動 `framelook`）、住民挪家具 G-05、桌面日記 F-12；夜晚的小鎮 H-07（`TownAct.night`）；存檔格式 v17；
+  - `ui/DaysUi`（RecipesPage、FeedPage、TripPage、toolsSheet、CabinetSheet、WidgetLines）、廣場照片板 Q-13、色弱配色 O-04（`Theme.colorSafe`、旗標 `a11y:cb`）；
+  - `app/OcWidget`：主畫面小工具 F-13（只顯示看到的，不在背景跑世界）。
+- R7 完成。下一步：**R8（2.0.0）正式版**（打磨、效能分級、實機回報、正式簽章）。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Drama＝夢想怕的東西生病熱潮八卦綽號秘密小圈圈團體活動比賽戀愛與你的決定、Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
+core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Drama＝夢想怕的東西生病熱潮八卦綽號秘密小圈圈團體活動比賽戀愛與你的決定、Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物、WithYou＝和你、Days＝家與小鎮）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
                chars/（Spec＝CharSpec／Address 稱謂／Habit 自訂事件／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：paint/（Paint＝繪圖引擎、Draft＝草稿）、Studio（創作套件的收藏庫端：動畫、物品、聲音、標籤、劇本、.ocitem／.ocmod、空間）；Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
 render/jvm/    Java2D 後端（只給測試：把畫面畫成 PNG；不進 APK）
-ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、PaintUi（繪圖工坊、ColorSheet、LayerSheet）、AnimStudio、ItemEditor、ScriptUi（ScriptsPage、ScriptEditor）、CreateUi（Page、CreateHub、DraftsPage、ItemsPage、SoundsPage、TagsPage、TagEditor、SpacePage）、SocialUi（Fx 特效、Portrait 特寫、WorrySheet、RpsSheet、TalkSheet、SuggestSheet、DayCardSheet、MemorySheet、TimelineScreen）、TownUi（Wx、TownScreen、MoveSheet、BoardSheet、LedgerPage、Placing）、JournalUi（JournalHub、各紀錄頁、A11ySheet）、YouUi（和你：訊息、拍照、相簿、小遊戲、角色卡、膠囊、家規、筆記）、ListSheet、Confirm
+ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Desk（DeskStage／DeskMenuScreen／DeskSheet／DeskPermissionSheet）、Theme（tokens）、Dim、Spring、UiApp（畫面堆疊、點擊區、覆蓋層、返回鍵）、Widgets、TitleScreen、Opening（開場四步、ImportSheet、Scroller）、HouseView（房子的 2.5D 繪製）、Actors（姿勢動畫）、WorldScreen（家、觸控、AwaySheet）、PersonCard、Form（設定表單）、CharacterEditor（角色創建＋TagSheet／QuizSheet／DiceSheet／MarksSheet）、ImportStudio、Library（收藏庫、RelationsScreen、PairSheet）、PaintUi（繪圖工坊、ColorSheet、LayerSheet）、AnimStudio、ItemEditor、ScriptUi（ScriptsPage、ScriptEditor）、CreateUi（Page、CreateHub、DraftsPage、ItemsPage、SoundsPage、TagsPage、TagEditor、SpacePage）、SocialUi（Fx 特效、Portrait 特寫、WorrySheet、RpsSheet、TalkSheet、SuggestSheet、DayCardSheet、MemorySheet、TimelineScreen）、TownUi（Wx、TownScreen、MoveSheet、BoardSheet、LedgerPage、Placing）、JournalUi（JournalHub、各紀錄頁、A11ySheet）、YouUi（和你：訊息、拍照、相簿、小遊戲、角色卡、膠囊、家規、筆記）、DaysUi（食譜、動態牆、旅行、小道具、收藏櫃、小工具文字）、ListSheet、Confirm
                PieUi（PieMenu 環狀選單）、MemoryUi（MemoryScreen：回憶回放與收藏）、NavUi（Nav 底部導覽、EnvSheet 環境面板、ItemArt 物品圖、StoragePage／ItemSheet 收納、ResidentsPage 住民）
                src/test：UiTest（用點擊區模擬手指＋截圖比對 resources/golden）
-app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
+app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、OcWidget（主畫面小工具）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/、r7-3/（截圖）
 ```
 
 ## 指令
@@ -155,6 +159,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **世界只經 `WorldHost` 打開**（`acquire/release/drive/save`）：家的畫面與桌寵共用同一個 `LifeSim`；`drive(o, dt, "desk")` 在家的畫面看得見時不推動時間；事件經 `listeners` 發給每個觀看者。
 - 桌寵的行為與手勢只在 `DeskPet`／`DeskGestures`（純 Kotlin、有測試）；`DeskService` 只放視窗、回報手機狀態。桌面上的觸碰一律經 `LifeSim` 的同一組函式。
 - **桌寵三層**（R6）：新行為＝在 `DeskData` 加一筆（動作、意圖、東西、一起做的事）；動作只能沿 `DeskActs` 的 `next` 走（`enter` 會用 `hop` 找路），`DeskTest` 檢查每個動作都回得到閒晃、100 小時 `illegal == 0`、`rescues == 0`。性格只經 `Catalog` 的 `desk:cling/nest/climb/hide/social`。桌面上的東西存在 `Life.deskProps`，點心經 `Economy`（`deskPut/deskTake`）；兩隻一起做的事經 `Society.relUpdate`。
+- **家與小鎮只經 `Days`**（1.9.0）：食譜、紀念日、動態牆、小道具、旅行、收藏櫃、相框、挪家具、桌面日記都在 `life/Days`；一律用 `Rng.of(seed, "days:…")`；旅行中的人 `out.stage == "trip"`，`TownLife` 不處理、小鎮畫面不顯示；住民挪家具一樣經 `Decorate.move`；主畫面小工具只讀已經打開的世界（`WidgetLines`），不自己推動時間。
 - **和你只經 `WithYou`**（1.8.0）：訊息、照片、筆記、膠囊、家規、換房間、小遊戲獎勵都在 `life/WithYou`（資料在 `social/YouData`）；一律用 `Rng.of(seed, "you:…")`，不得從 `sim.rng` 抽；照片只存「裡面有什麼」，由 `PhotoArt` 重畫；小遊戲的星幣經 `Economy.earn`。
 - **故事只經 `Drama`**（1.7.0）：夢想、怕的東西、生病、熱潮、八卦、綽號、秘密、小圈圈、團體活動、比賽、戀愛演出都在 `life/Drama`（資料在 `social/DramaData`）；**一律用自己的 `Rng.of(seed, "drama:…")`，不得從 `sim.rng` 抽**（會打亂其他生活）。需要玩家決定的事寫成 `Decision`（`ask`／`decide`），你不在時一直等，你在看時 6 小時沒選才用溫和的預設；戀愛告白只在 `romance` 打開且兩人成年。
 - **家具快取**（1.5.1）：不會動的家具經 `HouseView.cached` → `PieceCache`（依 `g.pxPerDp()` 每 0.5 倍一張，LRU 64 MB）；有動畫或有人在用的不進快取。新的家具畫法若和時間有關，不要放進 `still` 清單。
