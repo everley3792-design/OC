@@ -8,6 +8,8 @@ import app.ocshimeji.save.SaveSystem
 interface Platform {
     fun now(): Long
     fun haptic(kind: String) {}
+    /** 2.0.0 效能分級: the app's memory class (MB), CPU cores and the low-RAM flag; null = unknown (the top tier, adjusted by the frame meter) */
+    fun deviceClass(): Triple<Int, Int, Boolean>? = null
     /** ask for a line of text (system keyboard); the answer comes back later, null = cancelled */
     fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit)
     /** leave the app (back on the first screen) */
@@ -69,6 +71,9 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     var theme: Theme
         get() = if (colorSafe) safeTheme ?: baseTheme.colorSafe().also { safeTheme = it } else baseTheme
         set(v) { baseTheme = v; safeTheme = null }
+    /** 2.0.0 效能分級 (plan O-02): the phone's class picks the tier, a frame meter adjusts it, settings can fix it */
+    val perf = Perf().also { p -> platform.deviceClass()?.let { (mem, cores, low) -> p.setDevice(Perf.choose(mem, cores, low)) } }
+    private var perfFlag: Tier? = null; private var perfRead = false
     /** safe area (status bar, cutout, gesture bar) in dp */
     var insetTop = 0f; var insetBottom = 0f
     var w = 360f; var h = 800f
@@ -105,7 +110,9 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** 1.8.0: the last frame's Gfx, so a tap can make a picture off screen (photos, cards) */
     var gfxForSnap: Gfx? = null; private set
     fun frame(g: Gfx, dt: Float) {
-        gfxForSnap = g; colorSafe = saves.flag("a11y:cb")
+        gfxForSnap = g; colorSafe = saves.flag("a11y:cb"); val t0 = System.nanoTime()
+        Perf.fromFlags(saves::flag).let { f -> if (!perfRead || f != perfFlag) { perfRead = true; perfFlag = f; perf.force(f) } }
+        PieceCache.maxBytes = perf.tier.cacheMb shl 20
         time += dt; w = g.width; h = g.height; zones.clear(); zoneDx = 0f; zoneDy = 0f
         layer = 0
         val dur = if (saves.flag("a11y:calm")) 0.12f else if (transKind == "fade") 0.18f else 0.24f; val k = ((time - transAt) / dur).coerceIn(0f, 1f)
@@ -114,11 +121,12 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
             screen.frame(g, dt); g.restore() } else screen.frame(g, dt)
         overlay?.let { layer = 1; it.frame(g, dt) }
         toast?.let { (t, at) -> val age = time - at; if (age > 3.4f) { toast = null; toastRect = null } else toastRect = Widgets.toast(g, this, t, age) }
+        perf.sample((System.nanoTime() - t0) / 1e6f, dt)
     }
     /** something is moving: the platform should keep drawing at full rate (otherwise it may idle) */
     val animating: Boolean get() = screen.animating || overlay != null || toast != null || pressed != null
     /** frames per second worth drawing now: a living scene nobody touches is smooth enough at 30 (battery) */
-    val fps: Int get() = if (overlay != null || pressed != null) 60 else screen.fps
+    val fps: Int get() = minOf(perf.tier.fpsCap, if (overlay != null || pressed != null) 60 else screen.fps)
 
     // ---------------- input (dp) ----------------
     var pressed: String? = null; private set

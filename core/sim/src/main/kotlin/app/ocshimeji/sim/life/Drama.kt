@@ -93,6 +93,15 @@ class Drama(private val sim: LifeSim) {
             if (ca >= 20 && st.seen["blush:${a.id}:${b.id}"] == null) { st.seen["blush:${a.id}:${b.id}"] = life.minute; sim.log(a, "看到${b.name}時，心跳好像快了一點", kind = "event", weight = 2, with = b.id) }
             if (ca >= 60 && cb >= 60 && st.decisions.none { it.kind == "confess" }) ask("confess", a, b, "${a.name}好像想對${b.name}告白……要讓牠說出口嗎？", listOf("讓牠說", "再等等"), live)
         }
+        // 2.0.0 (C-14, the rest): lovers who keep fighting may part, exes who still care may come back — only if you say so
+        if (life.romance) for (a in life.people) for (b in life.people) { if (a === b || a.id > b.id || !a.adult || !b.adult) continue
+            val ra = sim.rel(a.id, b.id) ?: continue; val rb = sim.rel(b.id, a.id) ?: continue
+            if (ra.kind == "戀人" && (ra.conflict >= 60 || ra.like < 35 || rb.like < 35) && st.decisions.none { it.kind == "breakup" && it.who == a.id && it.other == b.id })
+                ask("breakup", a, b, "${a.name}和${b.name}最近一直處不好……要讓兩人分開冷靜一下嗎？", listOf("讓兩人分開", "再給一次機會"), live)
+            val parted = st.seen["parted:${a.id}:${b.id}"]
+            if (ra.kind == "前任" && ra.like >= 80 && rb.like >= 80 && (parted == null || life.minute - parted >= 10 * 1440) && st.decisions.none { it.kind == "reunion" && it.who == a.id && it.other == b.id })
+                ask("reunion", a, b, "${a.name}和${b.name}好像還放不下對方……要讓兩人復合嗎？", listOf("讓兩人復合", "當朋友就好"), live)
+        }
     }
 
     // ---------------- every 15 minutes ----------------
@@ -385,6 +394,17 @@ class Drama(private val sim: LifeSim) {
                     for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(kind = "戀人", crush = it.crush + 10) }
                     if (sim.rel(a.id, b.id)?.kind == "戀人") { for (x in listOf(a, b)) sim.addMood(x, "inlove"); sim.log(a, "向${b.name}告白，兩人在一起了", kind = "event", weight = 3, with = b.id); "${a.name}和${b.name}在一起了" } else "沒有成功"
                 } else { sim.log(a, "把想說的話又放回心裡", kind = "you", weight = 1, with = b.id); "再等等" } }
+            "breakup" -> { b ?: return ""
+                if (option == 0) { for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(kind = "前任", crush = 0, conflict = (it.conflict - 20).coerceAtLeast(0)) }
+                    for (x in listOf(a, b)) sim.addMood(x, "parted"); st.seen["parted:${a.id}:${b.id}"] = life.minute
+                    sim.log(a, "和${b.name}分開了，決定先各自冷靜一下", kind = "event", weight = 3, with = b.id); "${a.name}和${b.name}分開了" }
+                else { for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(conflict = (it.conflict - 15).coerceAtLeast(0), like = it.like + 5) }
+                    sim.log(a, "和${b.name}好好談了一次，決定再試試看", kind = "you", weight = 2, with = b.id); "兩人決定再試試看" } }
+            "reunion" -> { b ?: return ""
+                if (option == 0 && Relations0.ok(sim, a, b)) { for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(kind = "戀人", crush = it.crush + 10) }
+                    if (sim.rel(a.id, b.id)?.kind == "戀人") { for (x in listOf(a, b)) sim.addMood(x, "reunited"); sim.log(a, "和${b.name}復合了", kind = "event", weight = 3, with = b.id); "${a.name}和${b.name}復合了" } else "沒有成功" }
+                else { for ((x, y) in listOf(a to b, b to a)) sim.society.relUpdate(x, y) { it.copy(kind = "好友") }
+                    sim.log(a, "和${b.name}說好，以後當好朋友", kind = "you", weight = 2, with = b.id); "兩人當好朋友" } }
             else -> sim.you.decide(d, option)   /* 1.8.0: a room request */
         }
     }

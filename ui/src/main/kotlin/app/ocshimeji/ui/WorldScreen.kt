@@ -291,7 +291,7 @@ class WorldScreen(val slotId: String) : Screen() {
         // ---- night: the whole scene a little blue
         if (lt < 1f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF1E2550.toInt(), (1 - lt) * 0.22f))
         skyTint(g, sim.hour, sim.weather(), W, H)   /* R5 light layer 1: dawn pink, dusk orange, a grey wash under rain */
-        Wx.calm = app.saves.flag("a11y:calm")
+        Wx.calm = app.saves.flag("a11y:calm"); Wx.amount = app.perf.tier.particles
         if (!placing) Wx.draw(g, W, H, wx, app.time)
         // ---- over the scene: mood skies, hearts, speech
         for ((id, r) in hits) {
@@ -425,7 +425,7 @@ class WorldScreen(val slotId: String) : Screen() {
             g.fillRound(px - 12, py - 2, 24f, 3f, 1.5f, Colors.withAlpha(Wx.sky(t, sim.sky(), light(sim.hour)), 0.55f)); g.fillRect(px + 4, py - 3, 1.5f, 5f, Colors.withAlpha(0xFF5B4A52.toInt(), 0.25f))   /* 1.5.1: the sky and a lamp post upside down in it */
             if (!app.saves.flag("a11y:calm")) { val rr = (app.time * 9 + k * 3) % 8f; g.strokeRound(px - rr, py - rr * 0.3f, rr * 2, rr * 0.6f + 0.5f, rr * 0.3f, 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), (1 - rr / 8f) * 0.8f)) } }
         val drift = when (season) { "spring" -> 0xFFF6B2C8.toInt(); "autumn" -> 0xFFE08A3C.toInt(); "winter" -> 0xFFFAFCFF.toInt(); else -> 0 }
-        if (drift != 0) for (i in 0 until 26) { val x = ((i * 89) % 101) / 101f * (view.width + 120) - 60; val y = -18f + ((i * 37) % 53) / 53f * (view.height + 150)
+        if (drift != 0) for (i in 0 until (26 * app.perf.tier.particles).toInt()) { val x = ((i * 89) % 101) / 101f * (view.width + 120) - 60; val y = -18f + ((i * 37) % 53) / 53f * (view.height + 150)
             if (x > -4 && x < view.width + 4 && y > -4 && y < view.height + 8) continue
             if (season == "winter") g.fillRound(x - 7, y - 2, 14f, 5f, 2.5f, drift) else { g.fillRound(x - 2.5f, y - 1.5f, 5f, 3f, 1.5f, drift); g.fillRound(x + 3, y + 2, 4f, 2.5f, 1.2f, Colors.mix(drift, 0xFF000000.toInt(), 0.12f)) } }
         val petals = intArrayOf(0xFFF6B2A8.toInt(), 0xFFFFE29A.toInt(), 0xFFFFFFFF.toInt(), 0xFFC9B8E8.toInt())
@@ -453,7 +453,7 @@ class WorldScreen(val slotId: String) : Screen() {
     /** R5: clouds drifting across the sky band (screen space; slower and thinner when it is clear) */
     private fun clouds(g: Gfx, t: Theme, wx: String, lt: Float) {
         val top = sy(-30f); if (top < 20) return
-        val n = when (wx) { "sunny", "stars", "petals" -> 3; "aurora" -> 2; else -> 6 }; val col = Colors.withAlpha(if (wx == "rain" || wx == "storm") 0xFFB8C0CC.toInt() else t.cloud, 0.55f + 0.35f * lt)
+        val n = minOf(app.perf.tier.clouds, when (wx) { "sunny", "stars", "petals" -> 3; "aurora" -> 2; else -> 6 }); val col = Colors.withAlpha(if (wx == "rain" || wx == "storm") 0xFFB8C0CC.toInt() else t.cloud, 0.55f + 0.35f * lt)
         val calm = app.saves.flag("a11y:calm")
         for (i in 0 until n) { val speed = 4f + (i % 3) * 2; val cx = (((i * 173) % 400) + (if (calm) 0f else app.time * speed)) % (app.w + 160) - 80; val cy = top * (0.25f + ((i * 37) % 50) / 100f)
             g.fillCircle(cx, cy, 12f, col); g.fillCircle(cx + 14, cy - 6, 15f, col); g.fillCircle(cx + 30, cy, 11f, col); g.fillRound(cx - 6, cy, 46f, 11f, 5.5f, col) }

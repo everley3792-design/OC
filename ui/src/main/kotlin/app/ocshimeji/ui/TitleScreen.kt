@@ -60,7 +60,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("1.9.0（R7 第三批・家與小鎮）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("2.0.0-rc.1（正式版候選）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }

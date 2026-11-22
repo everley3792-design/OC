@@ -158,8 +158,11 @@ tasks.register<Exec>("assembleRelease") {
     group = "build"; description = "Release APK signed with OC_RELEASE_KEYSTORE (never stored in the repository)."
     dependsOn(zipalign); inputs.file(alignedApk)
     val ks = System.getenv("OC_RELEASE_KEYSTORE"); val out = outDir.map { it.file("release/oc-shimeji-$vName-release.apk") }
-    onlyIf { ks != null }
-    doFirst { out.get().asFile.parentFile.mkdirs() }
+    doFirst {   /* 2.0.0: no key = a clear stop, never a silent skip that looks like success */
+        require(ks != null && File(ks).isFile) { "正式簽章需要 OC_RELEASE_KEYSTORE（金鑰檔的路徑）、OC_RELEASE_STORE_PASSWORD、OC_RELEASE_KEY_ALIAS、OC_RELEASE_KEY_PASSWORD；金鑰絕不放進專案" }
+        require(System.getenv("OC_RELEASE_STORE_PASSWORD") != null && System.getenv("OC_RELEASE_KEY_PASSWORD") != null) { "缺少 OC_RELEASE_STORE_PASSWORD 或 OC_RELEASE_KEY_PASSWORD" }
+        out.get().asFile.parentFile.mkdirs() }
+    doLast { println("正式版 APK：${out.get().asFile.path}") }
     commandLine("apksigner", "sign", "--ks", ks ?: "", "--ks-pass", "env:OC_RELEASE_STORE_PASSWORD", "--ks-key-alias", System.getenv("OC_RELEASE_KEY_ALIAS") ?: "oc",
         "--key-pass", "env:OC_RELEASE_KEY_PASSWORD", "--out", out.get().asFile.path, alignedApk.get().asFile.path)
 }

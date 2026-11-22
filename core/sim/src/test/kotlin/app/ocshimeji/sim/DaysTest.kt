@@ -94,6 +94,17 @@ class DaysTest {
         var night = false; repeat(6) { days(s, 1.0); if (s.life.log.any { it.text.contains("看星星") || it.text.contains("吃宵夜") || it.text.contains("夜裡散步") }) night = true }
         assertTrue(night, "someone went out in the evening")
     }
+    @Test fun r8BreakupAndReunionOnlyWithYou() {
+        val s = world(); s.life.romance = true
+        assertNull(s.setRel(Rel("p1", "p2", "戀人", like = 50, familiar = 80, trust = 50, conflict = 70))); assertNull(s.setRel(Rel("p2", "p1", "戀人", like = 50, familiar = 80, trust = 50, conflict = 70)))
+        days(s, 4.0); val d = s.drama.pending().firstOrNull { it.kind == "breakup" }; assertNotNull(d, "you are asked")
+        assertEquals("戀人", s.rel("p1", "p2")?.kind, "while you are away nothing happens without you")
+        s.drama.decide(d.id, 0); assertEquals("前任", s.rel("p1", "p2")?.kind); assertEquals("前任", s.rel("p2", "p1")?.kind)
+        for ((a, b) in listOf("p1" to "p2", "p2" to "p1")) s.society.relUpdate(s.person(a)!!, s.person(b)!!) { it.copy(like = 92, conflict = 0) }
+        s.drama.st.seen["parted:p1:p2"] = s.life.minute - 11 * 1440; days(s, 1.0)
+        val r = s.drama.pending().firstOrNull { it.kind == "reunion" }; assertNotNull(r); s.drama.decide(r.id, 0); assertEquals("戀人", s.rel("p1", "p2")?.kind)
+        val off = world(); off.life.romance = false; days(off, 3.0); assertTrue(off.drama.pending().none { it.kind == "breakup" || it.kind == "reunion" })
+    }
     @Test fun daysAreDeterministic() {
         fun run(): List<String> { val s = world(seed = 9); s.economy.move("v:tomato", 2, "t"); days(s, 8.0); return s.life.log.map { it.text } + s.days.feed().map { it.text } }
         assertEquals(run(), run())

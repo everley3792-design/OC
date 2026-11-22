@@ -54,6 +54,8 @@ class MainActivity : Activity() {
                 view.performHapticFeedback(when { weak -> HapticFeedbackConstants.KEYBOARD_TAP; kind == "soft" -> HapticFeedbackConstants.CONTEXT_CLICK; kind == "heavy" -> HapticFeedbackConstants.LONG_PRESS; else -> HapticFeedbackConstants.KEYBOARD_TAP }) } }
             override fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) = askText(title, initial, maxLength, done)
             override fun exit() { finish() }
+            override fun deviceClass(): Triple<Int, Int, Boolean>? = runCatching { val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+                Triple(am.memoryClass, Runtime.getRuntime().availableProcessors(), am.isLowRamDevice) }.getOrNull()
             override fun pickImage(done: (PickedImage?, String?) -> Unit) = pick(done)
             override fun saveFile(name: String, mime: String, data: ByteArray, done: (Boolean) -> Unit) = create(name, mime, data, done)
             override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)

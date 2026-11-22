@@ -582,7 +582,7 @@ class UiTest {
         val spots = (0 until sim.house.w).flatMap { x -> (0 until sim.house.h).map { x to it } }.filter { (x, y) -> sim.grid.walkable(x, y) && sim.house.roomAt(x, y)?.id == sim.roomOf(p) }
         for ((i, k) in listOf("wrapper", "book", "cup").withIndex()) spots.getOrNull(i * 2 + 1)?.let { (x, y) -> sim.life.litter += app.ocshimeji.sim.life.Litter(k, x, y) }
         assertEquals("messy", sim.stateOf(bed)); assertTrue(sim.stateOf(piece("table")) in setOf("dishes", "food")); frames(a, 5)   /* food while someone is still eating breakfast */; shot("r5-states", frames(a, 1, scale = 2f))
-        assertTrue(PieceCache.size > 0 && PieceCache.hits > 0 && PieceCache.bytes <= PieceCache.MAX_BYTES)   /* 1.5.1: still furniture is drawn from pictures */
+        assertTrue(PieceCache.size > 0 && PieceCache.hits > 0 && PieceCache.bytes <= PieceCache.maxBytes)   /* 1.5.1: still furniture is drawn from pictures */
         // night: curtains drawn, a lamp on where someone is awake, the street lamp
         sim.env.setPaused(false); at(21.5); assertEquals("closed", sim.stateOf(piece("window"))); shot("r5-night", frames(a, 1, scale = 2f))
         // the seasons and the rain outside

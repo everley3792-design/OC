@@ -367,7 +367,8 @@ class HouseView(val house: HouseType, var T: Float = 32f) {
  * so zooming in redraws once at the sharper size instead of blurring. Least recently used pictures go first above 64 MB.
  */
 object PieceCache {
-    const val MAX_BYTES = 64L shl 20
+    /** 2.0.0: set from the performance tier (`Tier.cacheMb`) */
+    var maxBytes = 64L shl 20
     private class E(val img: Img, val bytes: Long)
     private val map = LinkedHashMap<String, E>(64, 0.75f, true)
     var bytes = 0L; private set
@@ -386,6 +387,6 @@ object PieceCache {
         }
         g.image(e.img, x0, y0, w, h); return true
     }
-    private fun trim() { val it = map.entries.iterator(); while (bytes > MAX_BYTES && it.hasNext()) { val n = it.next(); bytes -= n.value.bytes; it.remove() } }
+    private fun trim() { val it = map.entries.iterator(); while (bytes > maxBytes && it.hasNext()) { val n = it.next(); bytes -= n.value.bytes; it.remove() } }
     fun clear() { map.clear(); bytes = 0; hits = 0; misses = 0 }
 }

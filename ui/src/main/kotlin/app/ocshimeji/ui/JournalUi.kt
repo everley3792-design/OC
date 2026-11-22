@@ -120,7 +120,7 @@ class A11ySheet : Overlay() {
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
-        val h = 472f + app.insetBottom; val y = app.h - h * s
+        val h = 536f + app.insetBottom; val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("ax:body", 0f, y, W, h)
         g.text("設定：好讀、好用", G + 4, y + 40, Dim.FS_L, t.ink)
         var yy = y + 64
@@ -135,12 +135,19 @@ class A11ySheet : Overlay() {
         g.text("震動", G + 4, yy + 22, Dim.FS_S, t.ink2); var x = G + 56
         val cur = when { app.saves.flag("a11y:vib0") -> "0"; app.saves.flag("a11y:vib1") -> "1"; else -> "2" }
         for ((k, zh) in listOf("0" to "關", "1" to "弱", "2" to "標準")) x += Widgets.chip(g, app, "ax:vib$k", x, yy, zh, cur == k, 38f, 64f) + 8
+        /* 2.0.0 效能分級: automatic, or fixed by you */
+        yy += 56; val pf = app.perf; val forced = pf.forced
+        g.text("畫面品質", G + 4, yy + 22, Dim.FS_S, t.ink2); x = G + 72
+        for ((k, zh) in listOf("auto" to "自動", "low" to "省電", "mid" to "標準", "high" to "高")) { val on = if (k == "auto") forced == null else forced?.name?.lowercase() == k
+            x += Widgets.chip(g, app, "ax:perf:$k", x, yy, zh, on, 38f, 52f) + 6 }
+        g.text(Widgets.fit(g, "現在：${pf.tier.zh}" + (if (pf.adaptive) "（這支手機：${pf.device.zh}）・每幀約 ${pf.frameMs.toInt()} 毫秒" else "") + if (forced == null && pf.adaptive) "・太慢會自動降一級" else "", Dim.FS_S - 1, W - G * 2 - 8), G + 4, yy + 62, Dim.FS_S - 1, t.ink3)
     }
     override fun tap(id: String) {
         val f = app.saves
         when (id) {
             "ax:big" -> { if (f.flag("a11y:big")) f.clearFlag("a11y:big") else f.setFlag("a11y:big"); app.toast("重新打開 App 後生效") }
             "ax:calm" -> if (f.flag("a11y:calm")) f.clearFlag("a11y:calm") else f.setFlag("a11y:calm")
+            "ax:perf:auto", "ax:perf:low", "ax:perf:mid", "ax:perf:high" -> { for (k in listOf("low", "mid", "high")) f.clearFlag("perf:$k"); val k = id.removePrefix("ax:perf:"); if (k != "auto") f.setFlag("perf:$k") }
             "ax:cb" -> if (f.flag("a11y:cb")) f.clearFlag("a11y:cb") else f.setFlag("a11y:cb")
             "ax:vib0", "ax:vib1", "ax:vib2" -> { f.clearFlag("a11y:vib0"); f.clearFlag("a11y:vib1"); if (id != "ax:vib2") f.setFlag("a11y:" + id.removePrefix("ax:")); app.platform.haptic("tick") }
         }

@@ -38,21 +38,24 @@ object Wx {
     /** falling rain / snow and drifting fog over the whole screen (screen-side decoration, never touches the life) */
     /** 減少動態 (plan O-04): no falling particles */
     var calm = false
+    /** 2.0.0 效能分級: the share of particles drawn (`Tier.particles`) */
+    var amount = 1f
+    private fun n(k: Int) = (k * amount).toInt().coerceAtLeast(1)
     fun draw(g: Gfx, W: Float, H: Float, w: String, time: Float) {
         when (w) {
             "storm" -> { draw(g, W, H, "rain", time); if (!calm && ((time * 0.37f) % 7f) < 0.12f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.35f)) }   /* lightning now and then */
-            "petals" -> { if (calm) return; for (i in 0 until 40) { val x0 = ((i * 151) % 991) / 991f * W; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * (40f + (i % 5) * 10)) % (H + 20) - 10
+            "petals" -> { if (calm) return; for (i in 0 until n(40)) { val x0 = ((i * 151) % 991) / 991f * W; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * (40f + (i % 5) * 10)) % (H + 20) - 10
                 val x = x0 + sin(time * 1.1f + i) * 16; g.fillRound(x - 3, y - 2, 6f, 4f, 2f, if (i % 3 == 0) 0xFFFFFFFF.toInt() else 0xFFF6B2C8.toInt()) } }
-            "stars" -> { for (i in 0 until 30) { val x = ((i * 137) % 997) / 997f * W; val y = ((i * 263) % 1009) / 1009f * H * 0.3f; g.fillCircle(x, y, if (i % 4 == 0) 1.6f else 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.5f + 0.5f * sin(time * 2 + i))) }
+            "stars" -> { for (i in 0 until n(30)) { val x = ((i * 137) % 997) / 997f * W; val y = ((i * 263) % 1009) / 1009f * H * 0.3f; g.fillCircle(x, y, if (i % 4 == 0) 1.6f else 1f, Colors.withAlpha(0xFFFFFFFF.toInt(), 0.5f + 0.5f * sin(time * 2 + i))) }
                 if (!calm) for (k in 0 until 2) { val ph = ((time * 0.5f + k * 0.5f) % 1f); val sx = W * (0.2f + 0.5f * k) + ph * 120; val sy = H * 0.05f + ph * 70; g.line(sx, sy, sx - 30, sy - 18, 2f, Colors.withAlpha(0xFFFFFFFF.toInt(), 1 - ph)) } }
-            "aurora" -> for (i in 0 until 3) { val y = H * (0.05f + i * 0.05f) + sin(time * 0.4f + i) * 8; g.fillRound(-40f, y, W + 80, 22f, 11f, Colors.withAlpha(if (i == 1) 0xFF8AF0C8.toInt() else 0xFF9AB8F8.toInt(), 0.22f)) }
+            "aurora" -> for (i in 0 until n(3)) { val y = H * (0.05f + i * 0.05f) + sin(time * 0.4f + i) * 8; g.fillRound(-40f, y, W + 80, 22f, 11f, Colors.withAlpha(if (i == 1) 0xFF8AF0C8.toInt() else 0xFF9AB8F8.toInt(), 0.22f)) }
             "rain" -> { if (calm) return; val c = Colors.withAlpha(0xFFB8D4EE.toInt(), 0.55f)
-                for (i in 0 until 70) { val x0 = ((i * 137) % 997) / 997f * (W + 60) - 30; val sp = 520f + (i % 7) * 40; val y = ((i * 263) % 1009) / 1009f * (H + 40) + time * sp
+                for (i in 0 until n(70)) { val x0 = ((i * 137) % 997) / 997f * (W + 60) - 30; val sp = 520f + (i % 7) * 40; val y = ((i * 263) % 1009) / 1009f * (H + 40) + time * sp
                     val yy = (y % (H + 40)) - 20; val xx = x0 - (yy * 0.18f); g.line(xx, yy, xx - 4f, yy + 16f, 1.6f, c) } }
             "snow" -> { if (calm) return; val c = Colors.withAlpha(0xFFFFFFFF.toInt(), 0.9f)
-                for (i in 0 until 60) { val x0 = ((i * 151) % 991) / 991f * W; val sp = 30f + (i % 5) * 12; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * sp) % (H + 20) - 10
+                for (i in 0 until n(60)) { val x0 = ((i * 151) % 991) / 991f * W; val sp = 30f + (i % 5) * 12; val y = (((i * 241) % 1013) / 1013f * (H + 20) + time * sp) % (H + 20) - 10
                     g.fillCircle(x0 + sin(time * 1.3f + i) * 8, y, 1.8f + (i % 3) * 0.8f, c) } }
-            "fog" -> for (i in 0 until 5) { val y = H * (0.2f + i * 0.16f); val dx = sin(time * 0.15f + i) * 40
+            "fog" -> for (i in 0 until n(5)) { val y = H * (0.2f + i * 0.16f); val dx = sin(time * 0.15f + i) * 40
                 g.fillRound(-60 + dx, y, W + 120, 46f, 23f, Colors.withAlpha(0xFFF2F2F4.toInt(), 0.16f)) }
         }
     }
@@ -148,7 +151,7 @@ class TownScreen(val ws: WorldScreen) : Screen() {
         }
         ds.sortBy { it.first }; for ((_, d) in ds) d()
         g.restore()
-        Wx.draw(g, W, H, w, app.time)
+        Wx.calm = calm; Wx.amount = app.perf.tier.particles; Wx.draw(g, W, H, w, app.time)
         if (lt < 1f) g.fillRect(0f, 0f, W, H, Colors.withAlpha(0xFF1E2550.toInt(), (1 - lt) * 0.2f))
         // ---- the places and people are tapped where they are on screen
         for (pl in Town.PLACES) { val cx = sx(wx(pl.x)); val cy = sy(wy(pl.y)); val r = 56f * zoom / fit
