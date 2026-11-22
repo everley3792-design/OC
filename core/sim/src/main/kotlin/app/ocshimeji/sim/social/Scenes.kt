@@ -108,37 +108,15 @@ object Sparks {
  * Everyday events (plan 4.5 / 13.5: the first daily pool) and one serial drama (flags across days).
  * `cond` is read by `Society.eventOk`; `hours` = when it can happen (game hours, start..end, may wrap past midnight).
  */
-data class EventDef(val id: String, val zh: String, val cond: String, val from: Int, val to: Int, val script: String, val like: Int = 2, val fun_: Float = 10f, val closeup: Boolean = false, val weight: Int = 2) {
+data class EventDef(val id: String, val zh: String, val cond: String, val from: Int, val to: Int, val script: String, val like: Int = 2, val fun_: Float = 10f, val closeup: Boolean = false, val weight: Int = 2,
+                    /** 2.1.0: an event from the content format (its conditions are fields, checked by `Content.ok`) */
+                    val content: ContentEvent? = null) {
     val beats by lazy { Script.parse(script) }
 }
 object Events {
     private fun e(id: String, zh: String, cond: String, from: Int, to: Int, script: String, like: Int = 2, fun_: Float = 10f, closeup: Boolean = false) = EventDef(id, zh, cond, from, to, script, like, fun_, closeup)
-    val DAILY: List<EventDef> = listOf(
-        e("sunset", "一起看夕陽", "window", 17, 19, "A:{對方}，你看，夕陽。@LOOK / B:好漂亮……@LOOK / A:每天都看得到，可是每天都不一樣。#sparkle", like = 3),
-        e("lost", "找東西", "", 8, 21, "A:我的{物}不見了…… / B:我幫你找！@LOOK / B:是不是這個？在沙發下面。 / A:找到了！謝謝你！@HAPPY#heart", like = 3),
-        e("sofadoze", "靠在沙發上一起打瞌睡", "sleepyPair", 13, 17, "A:……（打哈欠）@SIT / B:……（打哈欠）@SIT / A:（頭慢慢歪到{對方}肩上）zzz@LIE / B:……（沒有推開）zzz@LIE#heart", like = 3, fun_ = 4f),
-        e("hair", "互相整理頭髮", "", 6, 10, "A:你頭髮翹起來了。 / B:你的也是。 / A:那我們互相整理一下。@PRIMP / B:好了，很可愛。#sparkle", like = 2),
-        e("arm", "比腕力", "active", 10, 20, "A:來比腕力！@SWING / B:好啊！ / A:嗚嗚嗚嗚……！@ANGRY#fire / B:……我要用力了喔。#shock", like = 1, fun_ = 16f),
-        e("hanky", "遞手帕", "someoneSad", 0, 24, "B:（偷偷擦眼淚）@SAD / A:……給你。（遞出手帕） / B:……謝謝。#heart", like = 4, fun_ = 2f, closeup = true),
-        e("headpat", "摸頭安慰", "someoneSad", 0, 24, "B:今天好糟喔……@SAD#gloom / A:（摸摸{對方}的頭）辛苦了。 / B:……嗯。（好一點了）", like = 3, fun_ = 2f),
-        e("caught", "偷吃冰箱被抓包", "glutton", 21, 3, "A:（打開冰箱，拿出布丁）@EAT / B:……你在做什麼？ / A:沒、沒有！我在……檢查冰箱有沒有壞！#sweat / B:那順便幫我也檢查一個。#heart", like = 2, fun_ = 16f),
-        e("bathqueue", "早上搶浴室", "bathMorning", 6, 9, "A:（敲門）還沒好嗎？ / B:再五分鐘！ / A:你五分鐘前也這樣說！@ANGRY#anger / B:好啦好啦，出來了！#sweat", like = 0, fun_ = 6f),
-        e("tvcry", "看電視看到哭", "crier", 19, 23, "A:（看電視）……嗚……@WATCH / B:你在哭嗎？ / A:才沒有……是眼睛在流汗……@SAD#gloom / B:……給你衛生紙。#heart", like = 2),
-        e("overheard", "背後說好話", "third", 9, 21, "A:跟你說，{第三人}其實人很好。 / B:我也這麼覺得。 / A:（沒發現{第三人}就在旁邊聽到了）#sparkle", like = 2),
-        e("morningrun", "拉對方晨練", "active", 6, 9, "A:早安！一起去做體操！@SWING / B:……現在？ / A:一、二、三、四！@SWING / B:（跟著動了一下）……其實還不錯。#sparkle", like = 2, fun_ = 12f),
-        e("stars", "看星星", "window", 21, 24, "A:今晚的星星好多。@LOOK / B:那顆最亮的，好像在對我們眨眼。@LOOK / A:我們來許個願吧。#sparkle", like = 3),
-        e("teatime", "下午茶", "", 15, 17, "A:下午茶時間到！@HAPPY / B:有什麼點心？ / A:只有茶。 / B:……那也很好。@EAT#heart", like = 2),
-        e("ghoststory", "講鬼故事", "", 21, 2, "A:我講一個鬼故事……走廊盡頭有一扇門…… / B:不、不要講了……@SHY#sweat / A:門打開，裡面是……一盒布丁。 / B:……什麼啦！#anger", like = 1, fun_ = 16f),
-        e("firsttalk", "第一次好好聊天", "strangers", 9, 21, "A:我們好像還沒好好聊過。 / B:對耶……你平常喜歡做什麼？ / A:我喜歡{物}。 / B:真的嗎！我也有點興趣。#sparkle", like = 4, closeup = true),
-        e("secret", "交換秘密", "close", 20, 24, "A:跟你說一個秘密，你不能說出去喔。@SHY / B:嗯，我發誓。 / A:……其實我會怕打雷。 / B:那下次打雷，我陪你。#heart", like = 4, closeup = true),
-        e("cookhelp", "一起做飯", "", 11, 19, "A:我要煮飯了，來幫忙！@TIDY / B:我負責切菜！@TIDY / A:那個是……糖，不是鹽。#sweat / B:……甜的咖哩也不錯吧？", like = 2, fun_ = 12f),
-        e("plantname", "幫盆栽取名字", "plant", 8, 18, "A:這盆植物還沒有名字耶。@WATER / B:叫它「小綠」？ / A:太普通了。叫它「葉之騎士」。 / B:……好，葉之騎士。#sparkle", like = 2, fun_ = 12f),
-        /* 1.7.0 D-03: misunderstandings */
-        e("misread", "誤會劇場：最愛的點心", "third", 12, 20, "A:（從門口看到{對方}和{第三人}在分我最愛的布丁）……@SHY#shock / A:你們……居然不等我！@ANGRY#anger / B:咦？這是特地幫你留的那一半啦！@HAPPY / A:……原來如此。對不起，我想太多了。#heart", like = 3, closeup = true),
-        e("mishear", "誤會劇場：聽錯了", "", 9, 21, "A:{對方}說要「搬走」？！@SHY#shock / B:我是說要把沙發「搬走」一點點，打掃後面。 / A:……嚇死我了。@HAPPY#sweat / B:你以為我要搬家喔？#sparkle", like = 3),
-        e("misgift", "誤會劇場：神秘的禮物", "third", 9, 21, "A:桌上有一個禮物……是{對方}送的嗎？@SHY#heart / B:不是我耶……是{第三人}吧？ / A:咦？那我剛剛對你道謝道了三次……@SHY#sweat / B:沒關係，你的謝謝我收下了。#sparkle", like = 2),
-        e("birthday", "幫壽星慶生", "birthday", 8, 22, "A:{對方}，生日快樂！@HAPPY#sparkle / B:你記得！ / A:當然記得。來，許個願吧。 / B:（閉上眼睛）……許好了。#heart", like = 5, fun_ = 12f, closeup = true),
-    )
+    /** 2.1.0: the daily events are data now (`DailyContent`, the one content format) */
+    val DAILY: List<EventDef> by lazy { DailyContent.ALL.filter { it.enabled }.map { c -> EventDef(c.id, c.name, "content", c.hours[0], c.hours[1], c.script, c.like, c.funGain, c.closeup, content = c) } }
     /** the serial drama 「消失的布丁」 (five episodes, one a day; flags carry it on) */
     val SERIAL_ZH = "消失的布丁"
     val SERIAL: List<EventDef> = listOf(

@@ -10,6 +10,8 @@ interface Platform {
     fun haptic(kind: String) {}
     /** 2.0.0 效能分級: the app's memory class (MB), CPU cores and the low-RAM flag; null = unknown (the top tier, adjusted by the frame meter) */
     fun deviceClass(): Triple<Int, Int, Boolean>? = null
+    /** 2.1.0 settings: music, effects, ambience, character voices (0..1) */
+    fun volumes(music: Float, sfx: Float, ambience: Float, voice: Float) {}
     /** ask for a line of text (system keyboard); the answer comes back later, null = cancelled */
     fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit)
     /** leave the app (back on the first screen) */
@@ -69,11 +71,17 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     private var baseTheme: Theme = Theme.LIGHT; private var safeTheme: Theme? = null; private var colorSafe = false
     /** the palette (1.9.0 O-04: the colour-blind friendly version when that setting is on) */
     var theme: Theme
-        get() = if (colorSafe) safeTheme ?: baseTheme.colorSafe().also { safeTheme = it } else baseTheme
+        get() { val b = when (themePref) { "light" -> Theme.LIGHT; "dark" -> Theme.DARK; else -> baseTheme }   /* 2.1.0: follow the phone, or always light / dark */
+            return if (colorSafe) (safeTheme?.takeIf { it.dark == b.dark } ?: b.colorSafe().also { safeTheme = it }) else b }
         set(v) { baseTheme = v; safeTheme = null }
     /** 2.0.0 效能分級 (plan O-02): the phone's class picks the tier, a frame meter adjusts it, settings can fix it */
     val perf = Perf().also { p -> platform.deviceClass()?.let { (mem, cores, low) -> p.setDevice(Perf.choose(mem, cores, low)) } }
     private var perfFlag: Tier? = null; private var perfRead = false
+    private var themePref = "auto"; private var lastVolumes = ""
+    /** 2.1.0 settings: a channel's volume 0..100 (default 100); `vol:mute` silences everything */
+    fun volume(ch: String): Int = if (saves.flag("vol:mute")) 0 else (saves.pref("vol:$ch")?.toIntOrNull() ?: 100).coerceIn(0, 100)
+    private fun volumeKey() = listOf("music", "sfx", "ambience", "voice").joinToString(",") { volume(it).toString() }
+    private fun applyVolumes() = platform.volumes(volume("music") / 100f, volume("sfx") / 100f, volume("ambience") / 100f, volume("voice") / 100f)
     /** safe area (status bar, cutout, gesture bar) in dp */
     var insetTop = 0f; var insetBottom = 0f
     var w = 360f; var h = 800f
@@ -110,7 +118,8 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     /** 1.8.0: the last frame's Gfx, so a tap can make a picture off screen (photos, cards) */
     var gfxForSnap: Gfx? = null; private set
     fun frame(g: Gfx, dt: Float) {
-        gfxForSnap = g; colorSafe = saves.flag("a11y:cb"); val t0 = System.nanoTime()
+        gfxForSnap = g; colorSafe = saves.flag("a11y:cb"); themePref = saves.pref("ui:theme") ?: "auto"; val t0 = System.nanoTime()
+        volumeKey().let { k -> if (k != lastVolumes) { lastVolumes = k; applyVolumes() } }
         Perf.fromFlags(saves::flag).let { f -> if (!perfRead || f != perfFlag) { perfRead = true; perfFlag = f; perf.force(f) } }
         PieceCache.maxBytes = perf.tier.cacheMb shl 20
         time += dt; w = g.width; h = g.height; zones.clear(); zoneDx = 0f; zoneDy = 0f

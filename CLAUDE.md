@@ -104,7 +104,13 @@
   - 效能分級 O-02：`ui/Perf`（`Tier` 省電／標準／高畫質；`Platform.deviceClass()` 選起始等級；只在真的手機上依每幀時間自動升降；收藏庫旗標 `perf:low/mid/high`＝自己選）；影響雨雪粒子（`Wx.amount`）、雲、`PieceCache.maxBytes`、幀數上限；
   - 戀愛線補完：`Drama` 的 `breakup`／`reunion` 決定（只在戀愛打開且兩人成年，你同意才改變）；
   - `assembleRelease` 沒有金鑰時清楚停止；實機測試清單 `docs/reboot/device-checklist.md`（49 項）。
-- 下一步：**等你的實機回報**（依清單），逐項修正後用你的金鑰出正式 2.0.0。
+- **第十五節：擴充計畫（整合版 50 項）**（`docs/reboot/expansion-plan.md`，8 個階段 2.1.0～2.8.0）：
+  - 未成年只有友情劇情（不做暗戀、初戀、牽手）；3D＝在 `Gfx` 上自己做投影，角色維持 2D；店員沒有生活模擬。
+- **擴充第一階段（2.1.0）——完成**（`docs/reboot/p1-report.md`）：
+  - `social/Content`（`ContentEvent`／`When`／`Who`／`RelWhen`、`Content.ok` 不擲骰子、`Content.problems` 驗證器）、`social/DailyContent`（23 個日常事件的 JSON）；格式說明 `docs/reboot/content-format.md`；
+  - 長文字換行（`Widgets.wrap` 避頭、`toastStay`、`ListSheet` 可變列高）；移除玩家啟動的四個小遊戲；`Society.topicsFor`；
+  - `SettingsPage`、`SoundSheet`（`Platform.volumes`）、`ui:theme`；存檔格式不變（v17）。
+- 下一步：擴充第二階段（2.2.0）角色模擬核心；正式 2.0.0 仍等實機回報與金鑰。
 
 ## 目錄
 ```
@@ -121,7 +127,7 @@ ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Des
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、OcWidget（主畫面小工具）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/、r7-3/、r8/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/、r7-3/、r8/、p1/（截圖）
 ```
 
 ## 指令
@@ -141,6 +147,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - UI 是即時模式：每幀畫自己並用 `app.zone(id, …)` 登記點擊區；`Screen.tap(id)` 處理。捲動區裡登記點擊區前設 `app.zoneDy`。覆蓋層（`Overlay`）出現後 `Dim.GUARD`（0.3 秒）內不接受點擊；點覆蓋層外面＝關閉；返回鍵先關覆蓋層。
 - 生活畫面只看不改：觸碰經 `LifeSim` 的 `pet/petEnd/lift/hold/drop/feed`；畫面效果（泡泡、愛心、聲音）來自 `sim.events`。畫面自己的裝飾亂數不得影響模擬。
 - **角色的個性只經過 `CharSpec` 與 `Catalog`**：新的標籤、特質、怪癖就是新的一筆 `Effect` 資料；不要在 `LifeSim` 寫「如果名字是…」。新設定欄位要在 `SpecEffectsTest` 補一項「看得到的效果」。
+- **事件是資料**（2.1.0）：新的事件寫成 `ContentEvent`（JSON），條件只用欄位，必須通過 `Content.problems`；戀愛分類只在兩位成年角色且戀愛打開時成立（`Content.ok`）。介面文字一律用 `Widgets.wrap` 換行並讓高度跟著長，不要切成「…」。
 - **社交只經 `Society`**：新的社交行為、事件、化學反應、衝突火花都是 `core:sim/social` 裡的一筆資料（`Scenes` 的腳本 `A:句子@POSE#特效 / B:…`）；關係的每一次改變都經 `Society.relUpdate`（內部再過 `Relations.problem`），不得直接改 `life.rels`。需要玩家回應的事（煩惱、請求）一律經打擾預算，一次只顯示一個泡泡。
 - 場景只由開始的人推進（`Society.play`）；另一方只聽。場景不存檔，後果在場景結束時一次套用；補算時直接套用、不演。
 - **錢和東西只經 `Economy`**（`earn/buy/spend/move/sale`）：每一次都是帳本的一行；不得直接改 `life.wallet`／`life.bag`。測試用 `consistent()` 檢查錢包＝帳本總和、背包＝帳本件數。

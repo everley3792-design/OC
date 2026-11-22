@@ -120,14 +120,15 @@ class A11ySheet : Overlay() {
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
-        val h = 536f + app.insetBottom; val y = app.h - h * s
+        val h = 590f + app.insetBottom; val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("ax:body", 0f, y, W, h)
         g.text("設定：好讀、好用", G + 4, y + 40, Dim.FS_L, t.ink)
         var yy = y + 64
         fun row(id: String, title: String, sub: String, on: Boolean) {
-            g.fillRound(G, yy, W - G * 2, 64f, 18f, t.surface2); g.text(title, G + 16, yy + 28, Dim.FS_M, t.ink); g.text(Widgets.fit(g, sub, Dim.FS_S - 1, W - G * 2 - 100), G + 16, yy + 50, Dim.FS_S - 1, t.ink2)
-            val sx = W - G - 70; g.fillRound(sx, yy + 18, 52f, 28f, 14f, if (on) t.select else t.lip); g.fillCircle(if (on) sx + 38 else sx + 14, yy + 32, 11f, t.surface)
-            app.zone(id, G, yy, W - G * 2, 64f); yy += 72
+            val sl = Widgets.wrap(g, sub, Dim.FS_S - 1, W - G * 2 - 100); val rh = 46f + sl.size * 18f   /* 2.1.0 (#05): the whole explanation */
+            g.fillRound(G, yy, W - G * 2, rh, 18f, t.surface2); g.text(title, G + 16, yy + 28, Dim.FS_M, t.ink); sl.forEachIndexed { i, l -> g.text(l, G + 16, yy + 50 + i * 18f, Dim.FS_S - 1, t.ink2) }
+            val sx = W - G - 70; g.fillRound(sx, yy + rh / 2 - 14, 52f, 28f, 14f, if (on) t.select else t.lip); g.fillCircle(if (on) sx + 38 else sx + 14, yy + rh / 2, 11f, t.surface)
+            app.zone(id, G, yy, W - G * 2, rh); yy += rh + 8
         }
         row("ax:big", "大字", "所有文字和按鈕放大一些（重新打開 App 後生效）", app.saves.flag("a11y:big"))
         row("ax:calm", "減少動態", "不畫雨雪粒子、少一點晃動", app.saves.flag("a11y:calm"))
@@ -151,5 +152,57 @@ class A11ySheet : Overlay() {
             "ax:cb" -> if (f.flag("a11y:cb")) f.clearFlag("a11y:cb") else f.setFlag("a11y:cb")
             "ax:vib0", "ax:vib1", "ax:vib2" -> { f.clearFlag("a11y:vib0"); f.clearFlag("a11y:vib1"); if (id != "ax:vib2") f.setFlag("a11y:" + id.removePrefix("ax:")); app.platform.haptic("tick") }
         }
+    }
+}
+
+/** 2.1.0 (#20): one settings page — screen, sound, theme; every item changes something you can see or hear */
+class SettingsPage : Page("設定") {
+    override fun rows(): List<Row> {
+        val f = app.saves; val perf = app.perf
+        val screen = listOfNotNull("畫面品質：" + (perf.forced?.zh ?: "自動（${perf.tier.zh}）"), "大字".takeIf { f.flag("a11y:big") }, "減少動態".takeIf { f.flag("a11y:calm") }, "色弱配色".takeIf { f.flag("a11y:cb") })
+        val vib = when { f.flag("a11y:vib0") -> "震動關"; f.flag("a11y:vib1") -> "震動弱"; else -> "震動標準" }
+        val theme = when (f.pref("ui:theme")) { "light" -> "一直用淺色"; "dark" -> "一直用深色"; else -> "跟著手機" }
+        val snd = if (f.flag("vol:mute")) "靜音" else "音樂 ${app.volume("music")}・音效 ${app.volume("sfx")}・環境 ${app.volume("ambience")}・角色 ${app.volume("voice")}"
+        return listOf(
+            Row("screen", "畫面與操作", (screen + vib).joinToString("・"), icon = "eye", tint = 0xFFCFE2F2.toInt()),
+            Row("theme", "淺色與深色", theme, icon = "lamp", tint = 0xFFD6D0F0.toInt()),
+            Row("sound", "聲音", snd, icon = "note2", tint = 0xFFF8E0A8.toInt()),
+        )
+    }
+    override fun header(g: Gfx, x: Float, y: Float, w: Float): Float {
+        val ls = Widgets.wrap(g, "這裡的設定每個世界都通用。時間流速和熱鬧程度是每個世界各自的：在家裡點上方的時間膠囊、在「紀錄 → 時間線與信箱」調整。存檔的匯出、匯入、備份在開始畫面每個存檔卡上。", Dim.FS_S, w - 8)
+        ls.forEachIndexed { i, l -> g.text(l, x + 4, y + 16 + i * 20f, Dim.FS_S, app.theme.ink2) }; return ls.size * 20f + 16
+    }
+    override fun tap(id: String) {
+        when (id) {
+            "back" -> app.pop(); "screen" -> app.show(A11ySheet()); "sound" -> app.show(SoundSheet())
+            "theme" -> app.show(ListSheet("淺色與深色", listOf("auto" to "跟著手機", "light" to "一直用淺色", "dark" to "一直用深色")) { k -> app.saves.setPref("ui:theme", if (k == "auto") null else k) })
+        }
+    }
+}
+
+/** 2.1.0 (#20): four volumes and mute (the phone's own volume still applies on top) */
+class SoundSheet : Overlay() {
+    private val slide = Spring(0f, 1f)
+    override fun frame(g: Gfx, dt: Float) {
+        val t = app.theme; val s = slide.step(dt); val G = Dim.GUTTER; val W = app.w
+        g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, (s * 0.4f).coerceIn(0f, 1f)))
+        val h = 460f + app.insetBottom; val y = app.h - h * s
+        g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("snd:body", 0f, y, W, h)
+        g.text("聲音", G + 4, y + 40, Dim.FS_L, t.ink)
+        val mute = app.saves.flag("vol:mute"); var yy = y + 60
+        g.fillRound(G, yy, W - G * 2, 56f, 18f, t.surface2); g.text("全部靜音", G + 16, yy + 34, Dim.FS_M, t.ink)
+        val sx = W - G - 70; g.fillRound(sx, yy + 14, 52f, 28f, 14f, if (mute) t.select else t.lip); g.fillCircle(if (mute) sx + 38 else sx + 14, yy + 28, 11f, t.surface)
+        app.zone("snd:mute", G, yy, W - G * 2, 56f); yy += 70
+        for ((ch, zh) in listOf("music" to "音樂", "sfx" to "音效", "ambience" to "環境聲（鳥叫、蟲鳴、風）", "voice" to "角色的聲音")) {
+            g.text(zh, G + 4, yy + 16, Dim.FS_S, t.ink2); yy += 24; var x = G
+            val cur = app.saves.pref("vol:$ch")?.toIntOrNull() ?: 100
+            for (v in listOf(0, 25, 50, 75, 100)) x += Widgets.chip(g, app, "snd:$ch:$v", x, yy, if (v == 0) "關" else "$v", cur == v && !mute, 38f, 56f) + 6
+            yy += 50 }
+    }
+    override fun tap(id: String) {
+        val f = app.saves
+        if (id == "snd:mute") { if (f.flag("vol:mute")) f.clearFlag("vol:mute") else f.setFlag("vol:mute"); return }
+        if (id.startsWith("snd:") && id.count { it == ':' } == 2) { val (_, ch, v) = id.split(":"); f.setPref("vol:$ch", if (v == "100") null else v); if (f.flag("vol:mute")) f.clearFlag("vol:mute"); app.platform.sound("tick") }
     }
 }

@@ -399,7 +399,8 @@ class Society(private val sim: LifeSim) {
                     for ((a, b) in listOf(p to q, q to p)) { relUpdate(a, b) { it.copy(like = it.like + e.like, familiar = it.familiar + 2, seenDay = life.day) }; a.setNeed(Need.FUN, a.need(Need.FUN) + e.fun_); a.setNeed(Need.SOCIAL, a.need(Need.SOCIAL) + 18f) }
                     if (e.id == "overheard" && third.isNotEmpty()) sim.person(third)?.let { t -> relUpdate(t, p) { it.copy(like = it.like + 3) } }
                     count(p.id, q.id, "all"); count(p.id, q.id, "event")
-                    sim.log(p, "和${q.name}：${e.zh}", kind = "event", weight = 2, with = q.id) } }
+                    sim.log(p, "和${q.name}：${e.zh}", kind = "event", weight = 2, with = q.id)
+                    e.content?.let { c -> st.seen.remove("next:${e.id}:${p.id}|${q.id}"); if (c.next.isNotEmpty()) st.seen["next:${c.next}:${p.id}|${q.id}"] = life.minute + c.nextAfterDays * 1440.0 } } }
         }
     }
     private fun likeBoth(p: Person, q: Person) = ((sim.rel(p.id, q.id)?.like ?: 30) + (sim.rel(q.id, p.id)?.like ?: 30)) / 2
@@ -428,6 +429,7 @@ class Society(private val sim: LifeSim) {
     }
     fun eventOk(e: EventDef, a: Person, b: Person): Boolean {
         if (!hourIn(e.from, e.to)) return false
+        e.content?.let { c -> return app.ocshimeji.sim.social.Content.ok(sim, c, a, b) { id -> st.seen.keys.any { it == "day:$id" } } }
         val h = sim.house
         return when (e.cond) {
             "" -> true
@@ -455,7 +457,11 @@ class Society(private val sim: LifeSim) {
             if (a === b) continue
             for (c in Chemistry.ALL) if (a.spec.has(c.a) && b.spec.has(c.b) && life.minute - (st.seen["chem:${c.id}:${a.id}:${b.id}"] ?: -1e9) > 2 * day) { out += Triple(a, b, "chem:${c.id}"); ws += 3.0 }
             for (sp in st.sparks) if (sp.a == a.id && sp.b == b.id && sp.stage < 2 && life.minute - sp.lastMinute > day * 0.75) { out += Triple(a, b, "spark:${sp.id}"); ws += 4.0 }
-            for (e in Events.DAILY) if (life.minute - (st.seen["day:${e.id}"] ?: -1e9) > day && eventOk(e, a, b)) { out += Triple(a, b, "day:${e.id}"); ws += 1.0 }
+            for (e in Events.DAILY) { val c = e.content; val last = st.seen["day:${e.id}"]
+                if (c != null && !c.repeatable && last != null) continue
+                if (life.minute - (last ?: -1e9) > day * (c?.cooldownDays ?: 1) && eventOk(e, a, b)) {
+                    val chained = st.seen["next:${e.id}:${a.id}|${b.id}"]?.let { life.minute >= it } == true   /* 2.1.0: a follow-up between the same two */
+                    out += Triple(a, b, "day:${e.id}"); ws += if (chained) 4.0 else 1.0 } }
             val se = st.serial
             if (se.episode < Events.SERIAL.size && life.day >= se.nextDay && (se.cast.isEmpty() || (se.cast[0] == a.id && se.cast[1] == b.id)) && eventOk(Events.SERIAL[se.episode], a, b)) { out += Triple(a, b, "serial:${se.episode}"); ws += 5.0 }
             st.pot?.let { pot -> val d = Dishes.ALL[pot.dish]; if (d?.sweet == true && pot.servings == 1 && a.id !in pot.eaters && b.id !in pot.eaters) { out += Triple(a, b, "last"); ws += 8.0 } }
@@ -1058,7 +1064,7 @@ class Society(private val sim: LifeSim) {
         val first = life.minute - p.lastYouChat > 30
         askDone(p, "chat")
         val lines = when (topic.substringBefore(":")) {
-            "how" -> listOf(when (p.act) { null -> "沒在忙什麼，就這樣晃來晃去。"; else -> "剛剛在${app.ocshimeji.sim.life.Acts[p.act!!]?.zh ?: "忙"}。" }, statusOf(p)?.let { "今天$it。" } ?: "你呢？")
+            "how" -> listOf(when (p.act) { null -> "沒在忙什麼，就這樣晃來晃去。"; else -> "剛剛在${app.ocshimeji.sim.life.Acts[p.act!!]?.zh ?: "忙"}。" }, statusOf(p)?.let { "今天${it.zh}。" } ?: "你呢？")
             "worry" -> p.worry?.let { listOf("……被你發現了。", "最近有點在意一件事，${Worries.ALL[it.kind]?.zh ?: "說不太出來"}。", "說出來好像好一點了，謝謝你。") }
                 ?: listOf("沒有啦……只是有點累。", "不過有你問，心情好多了。")
             "today" -> life.log.lastOrNull { it.who == p.id && it.weight >= 2 && it.kind !in setOf("note", "you") }?.let { listOf("對啊！${it.text.removePrefix(p.name)}。", "你怎麼知道的？") } ?: listOf("今天？很普通啦。")

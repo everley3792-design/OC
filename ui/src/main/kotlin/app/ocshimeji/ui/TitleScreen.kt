@@ -60,7 +60,7 @@ class TitleScreen : Screen() {
             y += 100
         }
         for (s in slots) { slotCard(g, s, y, sc); y += 112 }
-        g.text("2.0.0-rc.1（正式版候選）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
+        g.text("2.1.0（擴充第一階段）", W / 2, y + 30, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         g.restore(); app.zoneDy = 0f
         maxScroll = maxOf(0f, y + 60 - (H - app.insetBottom))
     }
@@ -90,7 +90,7 @@ class TitleScreen : Screen() {
     override fun tap(id: String) {
         when {
             id == "new" -> app.push(OpeningScreen())
-            id == "a11y" -> app.show(A11ySheet())
+            id == "a11y" -> app.push(SettingsPage())   /* 2.1.0: one settings page */
             id == "library" -> app.push(LibraryScreen())
             id == "importSave" -> app.platform.openFile("application/octet-stream") { bytes -> if (bytes != null) {
                 try { val m = app.saves.importSave(bytes); reload(); app.toast("匯入了「${m.name}」") } catch (e: IllegalArgumentException) { app.toast(e.message ?: "匯入失敗") } } }

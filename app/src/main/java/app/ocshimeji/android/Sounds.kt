@@ -41,7 +41,15 @@ class Sounds {
         "chime" -> mix(tone(0.4f, 880f, 880f, 0.35f, 4f), tone(0.4f, 1320f, 1320f, 0.25f, 5f))
         else -> null
     }
+    /** 2.1.0 settings: music, effects, ambience, voices (0..1); 0 everywhere = mute */
+    @Volatile var vMusic = 1f; @Volatile var vSfx = 1f; @Volatile var vAmb = 1f; @Volatile var vVoice = 1f
+    fun volumes(music: Float, sfx: Float, amb: Float, voice: Float) {
+        val ambChanged = amb != vAmb; vMusic = music; vSfx = sfx; vAmb = amb; vVoice = voice
+        runCatching { bgmTrack?.setVolume(0.35f * vMusic) }; runCatching { this.music?.setVolume(0.5f * vMusic, 0.5f * vMusic) }
+        if (ambChanged) { synchronized(bgmCache) { bgmCache.clear() }; val k = bgmWant; bgmKind = "#"; if (k.isNotEmpty()) bgm(k) }   /* the ambience is mixed into the loop: make it again */
+    }
     fun play(name: String) {
+        if (vSfx <= 0f) return
         runCatching {
             val tr = tracks[name] ?: run {
                 val pcm = make(name) ?: return
@@ -52,12 +60,13 @@ class Sounds {
                     .also { it.write(pcm, 0, pcm.size); tracks[name] = it }
             }
             if (tr.playState == AudioTrack.PLAYSTATE_PLAYING) tr.stop()
-            tr.reloadStaticData(); tr.play()
+            tr.reloadStaticData(); tr.setVolume(vSfx); tr.play()
         }
     }
     private var voiceTrack: AudioTrack? = null
     /** a short babble for a line: one soft syllable per few characters, pitch wandering like speech (plan 12.4 聲線) */
     fun voice(pitch: Float, speed: Float, timbre: String, bright: Float, text: String) {
+        if (vVoice <= 0f) return
         runCatching {
             val syl = (text.count { !it.isWhitespace() && it !in "，。！？、…～（）「」" } / 2).coerceIn(2, 10)
             val sylSec = 0.085f / speed.coerceIn(0.5f, 2f); val gap = sylSec * 0.35f
@@ -76,12 +85,13 @@ class Sounds {
             voiceTrack = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.play() }
+                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.setVolume(vVoice); it.play() }
         }
     }
     private var tuneTrack: AudioTrack? = null
     /** 1.7.0: a little melody — soft plucked notes, 0 = a rest (original synthesis, no samples) */
     fun melody(notes: IntArray) {
+        if (vMusic <= 0f) return
         runCatching {
             val beat = 0.24f; val n = (rate * beat).toInt(); val pcm = ShortArray(n * notes.size)
             notes.forEachIndexed { k, m -> if (m <= 0) return@forEachIndexed; val f = 440.0 * Math.pow(2.0, (m - 69) / 12.0); var ph = 0.0
@@ -91,7 +101,7 @@ class Sounds {
             tuneTrack = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.play() }
+                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.setVolume(vMusic); it.play() }
         }
     }
     fun release() { tuneTrack?.let { runCatching { it.release() } }; tuneTrack = null; voiceTrack?.let { runCatching { it.release() } }; voiceTrack = null; for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
@@ -103,10 +113,11 @@ class Sounds {
         runCatching {
             if (!f.isFile) return
             if (loop) { if (musicPath == f.path && music != null) return; stopMusic(); bgm("")
-                music = android.media.MediaPlayer().apply { setDataSource(f.path); isLooping = true; setVolume(0.5f, 0.5f); prepare(); start() }; musicPath = f.path; return }
+                music = android.media.MediaPlayer().apply { setDataSource(f.path); isLooping = true; setVolume(0.5f * vMusic, 0.5f * vMusic); prepare(); start() }; musicPath = f.path; return }
             shorts.removeAll { p -> if (!p.isPlaying) { p.release(); true } else false }
             if (shorts.size >= 4) return
-            shorts += android.media.MediaPlayer().apply { setDataSource(f.path); prepare(); setOnCompletionListener { it.release(); shorts.remove(it) }; start() }
+            if (vVoice <= 0f) return
+            shorts += android.media.MediaPlayer().apply { setDataSource(f.path); setVolume(vVoice, vVoice); prepare(); setOnCompletionListener { it.release(); shorts.remove(it) }; start() }
         }
     }
     fun stopMusic() { runCatching { music?.stop(); music?.release() }; music = null; musicPath = ""; bgm("") }
@@ -129,7 +140,7 @@ class Sounds {
                     .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                     .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                     .setBufferSizeInBytes(pcm.size * 2).setTransferMode(AudioTrack.MODE_STATIC).build()
-                tr.write(pcm, 0, pcm.size); tr.setLoopPoints(0, pcm.size, -1); tr.setVolume(0.35f)
+                tr.write(pcm, 0, pcm.size); tr.setLoopPoints(0, pcm.size, -1); tr.setVolume(0.35f * vMusic)
                 synchronized(this) { if (bgmWant != kind) { tr.release(); return@Thread }; bgmTrack?.let { runCatching { it.stop(); it.release() } }; bgmTrack = tr; bgmKind = kind; tr.play() }
             }
         }.apply { isDaemon = true }.start()
@@ -172,7 +183,7 @@ class Sounds {
                     val env = minOf(1.0, t * 40) * exp(-3.0 * t); out[s0 + k] += ((sin(ph) + 0.25 * sin(ph * 2) + 0.1 * sin(ph * 3)) * 0.11 * env).toFloat() } }
             b += dur }
         if (kind == "rain") { var lp = 0f; for (i in 0 until n) { lp += (noise.nextFloat() * 2 - 1 - lp) * 0.08f; out[i] += lp * 0.05f } }
-        ambience(out, kind, season, rnd)
+        if (vAmb > 0f) { val amb = FloatArray(out.size); ambience(amb, kind, season, rnd); for (i in out.indices) out[i] += amb[i] * vAmb }   /* 2.1.0: its own volume */
         return ShortArray(n) { i -> (out[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort() }
     }
 }

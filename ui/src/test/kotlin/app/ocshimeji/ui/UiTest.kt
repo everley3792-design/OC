@@ -27,7 +27,9 @@ class UiTest {
     /** what the file picker hands over next */
     private var files: List<app.ocshimeji.save.media.Importer.Source> = emptyList()
     private fun pngOf(p: PickedImage) = p.working
+    private var lastVolumes: List<Float> = emptyList()
     private val platform = object : Platform {
+        override fun volumes(music: Float, sfx: Float, ambience: Float, voice: Float) { lastVolumes = listOf(music, sfx, ambience, voice) }
         override fun now() = now
         override fun realMinute() = now / 60000.0
         override fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) = done(promptAnswer)
@@ -391,8 +393,14 @@ class UiTest {
     }
     /** M7: the journal pages, achievements, the book, the town as a scene, the café, decorating with scores, accessibility */
     @Test fun theJournalTheTownSceneAndSettings() {
-        val a = app(); frames(a, 3); assertTrue(a.tapZone("a11y")); frames(a, 15); assertTrue(a.overlay is A11ySheet); shot("a11y", frames(a, 1, scale = 2f))
-        assertTrue(a.tapZone("ax:calm")); assertTrue(a.saves.flag("a11y:calm")); assertTrue(a.tapZone("ax:calm")); assertTrue(!a.saves.flag("a11y:calm")); a.back(); frames(a, 2)
+        val a = app(); frames(a, 3); assertTrue(a.tapZone("a11y")); frames(a, 15); assertTrue(a.screen is SettingsPage); shot("settings", frames(a, 1, scale = 2f))
+        /* 2.1.0: sound — four volumes and mute reach the platform; theme — always dark */
+        assertTrue(a.tapZone("sound")); frames(a, 15); assertTrue(a.tapZone("snd:music:25")); frames(a, 2); assertEquals(25, a.volume("music")); assertEquals(listOf(0.25f, 1f, 1f, 1f), lastVolumes)
+        assertTrue(a.tapZone("snd:mute")); frames(a, 2); assertEquals(0, a.volume("sfx")); assertEquals(listOf(0f, 0f, 0f, 0f), lastVolumes); shot("settings-sound", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("snd:mute")); a.back(); frames(a, 10)
+        assertTrue(a.tapZone("theme")); frames(a, 15); assertTrue(a.tapZone("row:dark")); frames(a, 5); assertTrue(a.theme.dark); a.saves.setPref("ui:theme", null); frames(a, 2); assertTrue(!a.theme.dark)
+        assertTrue(a.tapZone("screen")); frames(a, 15); assertTrue(a.overlay is A11ySheet); shot("a11y", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("ax:calm")); assertTrue(a.saves.flag("a11y:calm")); assertTrue(a.tapZone("ax:calm")); assertTrue(!a.saves.flag("a11y:calm")); a.back(); frames(a, 2); a.pop(); frames(a, 2)
         val m = a.saves.createWorld("庭院", "楓糖鎮", "庭院平房", app.ocshimeji.sim.house.Houses.BUNGALOW, listOf(Presets.CINNAMON.id), mapOf(Presets.CINNAMON.id to "bed1"), platform.realMinute())
         a.saves.setFlag("tip:touch"); (a.screen as TitleScreen).open(m.id); frames(a, 3); val ws = a.screen as WorldScreen; val sim = ws.sim; val p = sim.life.people[0]
         frames(a, 200)
