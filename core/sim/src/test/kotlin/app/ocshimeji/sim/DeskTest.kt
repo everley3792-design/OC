@@ -135,6 +135,10 @@ class DeskTest {
         val q = pet(10); run(q, 3f); run(q, 30f, DeskContext(energy = 10f, props = things)) { if (it.state == DeskState.SLEEP && sleptAt < 0) sleptAt = it.x }
         assertEquals(40f, sleptAt, 25f, "sleepy: goes back to the nest to sleep")
     }
+    @Test fun theirOwnLittleEventsHappenOnTheDesktopToo() {
+        val p = pet(13); var n = 0; run(p, 1200f, DeskContext(habits = 2)) { n += it.events.count { e -> e.kind == "habit" && e.value in 0f..1f }; it.events.clear() }; assertTrue(n >= 3, "habits: $n")
+        val q = pet(13); var m = 0; run(q, 1200f) { m += it.events.count { e -> e.kind == "habit" }; it.events.clear() }; assertEquals(0, m, "none without custom events")
+    }
     @Test fun keepingYouCompany() {
         val p = pet(11); run(p, 3f); p.events.clear()
         run(p, 20f, DeskContext(focus = "work")); assertEquals(DeskState.READ, p.state); assertTrue(p.x < 120f || p.x > 240f, "reads off to one side"); assertTrue(p.events.any { it.text == "focusStart" })
@@ -161,6 +165,9 @@ class DeskTest {
         val h = Host(pets); var t = 0f; while (t < 3600f) { h.step(s, 1 / 15f, DeskContext(hour = if (t > 2400f) 23.5 else 15.0, energy = if (t > 2400f) 40f else 70f)); t += 1 / 15f }
         assertTrue(h.together.keys.containsAll(listOf("greet", "sitTogether")), "${h.together}"); assertTrue((h.together["chase"] ?: 0) + (h.together["leanSleep"] ?: 0) > 0, "${h.together}")
         assertTrue(pets.all { it.illegal == 0 && it.rescues == 0 })
+        // sitting or sleeping together, they lean toward each other
+        var leaned = false; t = 0f; while (t < 3600f && !leaned) { h.step(s, 1 / 15f, DeskContext(hour = 23.5, energy = 40f)); if (pets.any { it.lean != 0 }) leaned = true; t += 1 / 15f }
+        assertTrue(leaned, "leaning together")
         val strangers = (1..2).map { DeskPet("s$it", 110f, 0.8f, 200L + it).also { p -> p.place(s, 100f + it * 100f) } }
         val h2 = Host(strangers, like = 10); t = 0f; while (t < 1800f) { h2.step(s, 1 / 15f, DeskContext()); t += 1 / 15f }
         assertEquals(setOf("greet"), h2.together.keys.ifEmpty { setOf("greet") }, "strangers only say hello")

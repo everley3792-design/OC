@@ -21,6 +21,8 @@ data class DeskContext(
     val reminderDue: Boolean = false, val live: String? = null, val asleepAtHome: Boolean = false,
     /** R6: things on the desktop (F-05, F-06), the other pets (F-07), the focus timer: "work" / "break" / null (F-08) */
     val props: List<DeskThing> = emptyList(), val others: List<DeskOther> = emptyList(), val focus: String? = null,
+    /** how many custom events the character has (R4 自訂事件; they happen on the desktop too) */
+    val habits: Int = 0,
 )
 
 /** something for the host to do: a line to say (by key, through the character's speech), a sound, a touch result for the simulation */
@@ -154,11 +156,14 @@ class DeskPet(val id: String, var height: Float, var aspect: Float, seed: Long) 
     fun declined() { if (plan?.together != null) { plan = null; intent = "rest"; enter(DeskState.IDLE, 1f) } }
 
     // ---------------- every frame ----------------
+    /** together (sitting or sleeping next to a friend): −1 / 1 = leaning toward them, 0 = upright */
+    var lean = 0; private set
     private var lastW = 360f
     private var lastFocus: String? = null
     fun step(dt0: Float, s: DeskScreen, c: DeskContext) {
         lastW = s.w; val dt = dt0.coerceIn(0f, 0.1f); t += dt; clock += dt; thinkT += dt
         intentTime[intent] = (intentTime[intent] ?: 0f) + dt
+        lean = plan?.partner?.takeIf { state == DeskState.SIT || state == DeskState.SLEEP }?.let { pid -> c.others.firstOrNull { it.id == pid }?.let { o -> if (abs(o.x - x) < width * 1.6f) (if (o.x > x) 1 else -1) else 0 } } ?: 0
         // ---- reflex: a full-screen app (shy characters hide sooner)
         if (c.fullscreen && state != DeskState.HELD) {
             fsT += dt; val delay = 0.8f / persona.hide.coerceAtLeast(0.25f)
@@ -282,6 +287,7 @@ class DeskPet(val id: String, var height: Float, var aspect: Float, seed: Long) 
                 Plan("social", Lv.SELF, tx = (f.x + sd * width * 0.85f), run = tg.id == "chase", act = tg.mine, len = tg.len, partner = f.id, together = tg.id) }
         }
         if (ready("nearYou", 24f / (persona.cling * persona.cling))) out += Cand("nearYou", Lv.SELF, 0.08f * persona.cling * persona.cling * persona.cling) { used("nearYou"); events += DeskEvent("look"); Plan("nearYou", Lv.SELF, tx = s.w / 2 + (rng.nextFloat() - 0.5f) * 60f, act = DeskState.ASK, len = 3f + rng.nextFloat() * 5f * persona.cling) }
+        if (c.habits > 0 && ready("habit", 90f)) out += Cand("habit", Lv.SELF, 0.12f) { used("habit"); events += DeskEvent("habit", value = rng.nextInt(c.habits).toFloat()); Plan("habit", Lv.SELF, act = DeskState.HAPPY, len = 2f) }
         if (c.attention < 25f && ready("lonely", 40f)) out += Cand("lonely", Lv.SELF, 0.8f * persona.cling) { used("lonely"); events += DeskEvent("say", "lonely"); Plan("lonely", Lv.SELF, act = DeskState.ASK, len = 6f) }
         // ---- idling (1): only when it is free to choose
         if (free) {

@@ -58,7 +58,7 @@ class DeskService : Service() {
     private var fullscreen = false
     private val gfx by lazy { AndroidGfx(OcRuntime.assets) }
     private val handler = Handler(Looper.getMainLooper())
-    private var lastNs = 0L; private var looping = false
+    private var lastNs = 0L; private var looping = false; private var lastFocusLine: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onCreate() {
@@ -129,6 +129,7 @@ class DeskService : Service() {
         st.frame(dt, phone.copy(fullscreen = fullscreen))
         for ((id, v) in petViews) { val b = st.windowOf(id) ?: continue; v.place(b, st.pets[id]?.pet?.hidden == true); v.invalidate() }
         bubbles(st); props(st)
+        st.focusLine.let { l -> if (l != lastFocusLine) { lastFocusLine = l; notifyUpdate() } }   /* the countdown, once a minute */
         st.menuFor?.let { st.menuFor = null; openMenu(it) }
         if (st.pets.isEmpty()) { stopEverything(); return }
         val fps = st.fps.coerceAtLeast(2)
@@ -266,7 +267,7 @@ class DeskService : Service() {
         fun pi(action: String, code: Int) = PendingIntent.getService(this, code, Intent(this, DeskService::class.java).setAction(action), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val open = PendingIntent.getActivity(this, 9, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
         val b = Notification.Builder(this, CHANNEL).setSmallIcon(android.R.drawable.star_on).setOngoing(true).setContentIntent(open)
-            .setContentTitle(if (names.isEmpty()) "桌面" else names.joinToString("、") + " 在桌面上").setContentText(if (through) "手指會穿過牠們" else "點這裡打開小鎮")
+            .setContentTitle(if (names.isEmpty()) "桌面" else names.joinToString("、") + " 在桌面上").setContentText(stage?.focusLine ?: if (through) "手指會穿過牠們" else "點這裡打開小鎮")
             .addAction(Notification.Action.Builder(null, "收回", pi(ACTION_STOP, 1)).build())
             .addAction(Notification.Action.Builder(null, if (through) "恢復觸控" else "讓手指穿過", pi(if (through) ACTION_TOUCH else ACTION_THROUGH, 2)).build())
         return b.build()

@@ -92,7 +92,7 @@ object DeskIntents {
         DeskIntent("focus", Lv.CARE, "陪你專心"), DeskIntent("break", Lv.CARE, "休息時間"),
         DeskIntent("follow", Lv.YOU, "追著你的手指", "desk:cling"), DeskIntent("wake", Lv.YOU, "被你叫醒"), DeskIntent("invited", Lv.YOU, "被朋友找"),
         DeskIntent("nest", Lv.SELF, "回窩裡待著", "desk:nest"), DeskIntent("water", Lv.SELF, "幫小盆栽澆水"), DeskIntent("read", Lv.SELF, "看紙條"),
-        DeskIntent("social", Lv.SELF, "去找朋友", "desk:social"), DeskIntent("nearYou", Lv.SELF, "靠過來看你", "desk:cling"), DeskIntent("lonely", Lv.SELF, "想要你理牠", "desk:cling"),
+        DeskIntent("social", Lv.SELF, "去找朋友", "desk:social"), DeskIntent("habit", Lv.SELF, "做自己的小習慣"), DeskIntent("nearYou", Lv.SELF, "靠過來看你", "desk:cling"), DeskIntent("lonely", Lv.SELF, "想要你理牠", "desk:cling"),
         DeskIntent("wander", Lv.IDLE, "走一走"), DeskIntent("run", Lv.IDLE, "跑來跑去", "desk:climb"), DeskIntent("climb", Lv.IDLE, "爬牆", "desk:climb"),
         DeskIntent("sit", Lv.IDLE, "坐一下"), DeskIntent("stretch", Lv.IDLE, "伸懶腰"), DeskIntent("peek", Lv.IDLE, "從邊邊探頭", "desk:hide"), DeskIntent("rest", Lv.IDLE, "發呆"),
     ).associateBy { it.id }
@@ -100,11 +100,11 @@ object DeskIntents {
 }
 
 /** F-05 / F-06: things on the desktop and what they give (eat, sleep, water, read, home) */
-data class DeskPropKind(val id: String, val zh: String, val gives: String, val icon: String)
+data class DeskPropKind(val id: String, val zh: String, val gives: String, val icon: String, /** the bag item it is (null = the pet's own: the nest) */ val item: String? = null)
 
 object DeskProps {
-    val KINDS = listOf(DeskPropKind("food", "點心", "eat", "cake"), DeskPropKind("blanket", "小毯子", "sleep", "bed"), DeskPropKind("plant", "小盆栽", "water", "plant"),
-        DeskPropKind("note", "紙條", "read", "note"), DeskPropKind("nest", "窩", "home", "bed")).associateBy { it.id }
+    val KINDS = listOf(DeskPropKind("food", "點心", "eat", "cake"), DeskPropKind("blanket", "小毯子", "sleep", "bed", "d:blanket"), DeskPropKind("plant", "小盆栽", "water", "plant", "d:plant"),
+        DeskPropKind("note", "紙條", "read", "note", "d:note"), DeskPropKind("nest", "窩", "home", "bed")).associateBy { it.id }
     operator fun get(id: String) = KINDS[id]
     /** at most this many things on the desktop (plus the nest) */
     const val MAX = 4

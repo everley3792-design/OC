@@ -103,6 +103,7 @@ object ItemArt {
     fun draw(g: Gfx, t: Theme, life: app.ocshimeji.sim.life.Life, id: String, cx: Float, cy: Float, s: Float, app: UiApp? = null) {
         val u = s / 40f
         fun c(hex: Long) = hex.toInt()
+        if (id.startsWith("d:")) { g.fillCircle(cx, cy, 16 * u, c(0xFFF3E6D2)); Widgets.icon(g, when (id) { "d:blanket" -> "bed"; "d:plant" -> "plant"; else -> "note" }, cx, cy, 20 * u, t.ink2); return }   /* desktop things */
         when (id) {
             "pudding", "m:honey" -> { g.fillRound(cx - 14 * u, cy - 6 * u, 28 * u, 20 * u, 8 * u, c(0xFFF8D888)); g.fillRound(cx - 12 * u, cy - 12 * u, 24 * u, 9 * u, 4 * u, c(0xFFA0603A)); g.fillRound(cx - 16 * u, cy + 12 * u, 32 * u, 4 * u, 2 * u, c(0xFFFFFFFF)) }
             "onigiri", "m:bread" -> { g.fillCircle(cx, cy, 16 * u, c(0xFFE8DCC8)); g.fillCircle(cx, cy, 15 * u, c(0xFFFFFCF4)); g.fillRound(cx - 8 * u, cy + 2 * u, 16 * u, 12 * u, 2 * u, c(0xFF3A4A3A)) }

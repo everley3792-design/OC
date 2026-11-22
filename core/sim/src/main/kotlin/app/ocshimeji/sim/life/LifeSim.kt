@@ -718,16 +718,17 @@ class LifeSim(val life: Life) {
     fun deskRest(id: String, sleeping: Boolean) { val p = person(id) ?: return; body(id).deskSleep = sleeping && p.desk }
     val onDesk: List<Person> get() = life.people.filter { it.desk }
     // ---------------- R6: things on the desktop (F-05, F-06), together (F-07), keeping you company (F-08) ----------------
-    /** put a thing on the desktop; a snack comes out of the bag (a line in the ledger). null = done, otherwise why not */
+    /** put a thing on the desktop; it comes out of the bag (a line in the ledger) — all but the nest, which is the pet's own. null = done, otherwise why not */
     fun deskPut(kind: String, fx: Float, item: String? = null): String? {
         if (app.ocshimeji.sim.desk.DeskProps[kind] == null) return "沒有這種東西"
         if (kind == "nest") life.deskProps.removeAll { it.kind == "nest" }
         else if (life.deskProps.count { it.kind != "nest" } >= app.ocshimeji.sim.desk.DeskProps.MAX) return "桌面上最多放 ${app.ocshimeji.sim.desk.DeskProps.MAX} 樣東西"
-        if (kind == "food") { val it = item ?: return "要選一樣點心"; if (!economy.move(it, -1, "放到手機桌面")) return "背包裡沒有${foodOf(it)?.zh ?: "點心"}了" }
+        val bagItem = if (kind == "food") item ?: return "要選一樣點心" else app.ocshimeji.sim.desk.DeskProps[kind]!!.item
+        if (bagItem != null && !economy.move(bagItem, -1, "放到手機桌面")) return "背包裡沒有${app.ocshimeji.sim.life.Economy.nameOf(life, bagItem)}了" + if (kind != "food") "（雜貨店有賣）" else ""
         val n = (life.deskProps.maxOfOrNull { it.id.removePrefix("dp").toIntOrNull() ?: 0 } ?: 0) + 1
-        life.deskProps += DeskPropRec("dp$n", kind, fx.coerceIn(0.05f, 0.95f), if (kind == "food") item else null); return null
+        life.deskProps += DeskPropRec("dp$n", kind, fx.coerceIn(0.05f, 0.95f), bagItem); return null
     }
-    /** put a thing away; a snack goes back into the bag */
+    /** put a thing away; it goes back into the bag */
     fun deskTake(propId: String): Boolean {
         val r = life.deskProps.firstOrNull { it.id == propId } ?: return false
         life.deskProps.remove(r); r.item?.let { economy.move(it, 1, "從手機桌面收回") }; return true
@@ -742,6 +743,8 @@ class LifeSim(val life: Life) {
             "nest" -> { log(p, "在桌面的窩裡睡了一覺", kind = "desk") }
         }
     }
+    /** R6 leftover: one of their own custom events, on the desktop */
+    fun deskHabit(id: String, i: Int) { val p = person(id) ?: return; val h = p.spec.habits.getOrNull(i) ?: return; say(p, h.text); events += SimEvent("fx", p.id, h.icon); log(p, h.text.trim().trimEnd('。', '！'), kind = "habit", weight = 1) }
     /** two pets did something together on the desktop: a memory for both, a little closer (through the usual rules) */
     fun deskTogether(a: String, b: String, kind: String) {
         val pa = person(a) ?: return; val pb = person(b) ?: return

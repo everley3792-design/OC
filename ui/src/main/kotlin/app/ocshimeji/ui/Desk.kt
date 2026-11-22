@@ -49,7 +49,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
         "heart" -> p.hearts += time
         "sound" -> app.platform.sound(e.text)
     } } }
-    init { open.listeners += listener }
+    init { open.listeners += listener; restoreFocus() }
 
     /** bring a resident out; null = done, otherwise why not */
     fun add(id: String): String? {
@@ -83,7 +83,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
             pt.gest.tick(time); gestures(pt)
             val ctx = DeskContext(hour = sim.hour, charging = phone.charging, battery = phone.battery, fullscreen = phone.fullscreen && hideFullscreen,
                 food = p.need(Need.FOOD), energy = p.need(Need.ENERGY), attention = p.need(Need.ATTENTION), active = p.spec.axis(Axis.ACTIVE),
-                reminderDue = due && pt == pets.values.first(), live = live, props = things, focus = focus?.phase,
+                reminderDue = due && pt == pets.values.first(), live = live, props = things, focus = focus?.phase, habits = p.spec.habits.size,
                 others = pets.values.filter { it !== pt }.map { o -> DeskOther(o.id, o.pet.x, o.pet.side == Side.FLOOR, o.pet.state, sim.rel(pt.id, o.id)?.like ?: 30) })
             dp.step(dt, screen, ctx)
             var resting = false
@@ -102,6 +102,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
                 "invite" -> { val (k, who) = e.text.split("|"); val o = pets[who]; if (o == null || !o.pet.invited(k, pt.id, dp.x, screen)) dp.declined() }
                 "together" -> { val (k, who) = e.text.split("|"); if (who in pets) sim.deskTogether(pt.id, who, k) }
                 "eat", "water", "read", "nest" -> sim.deskUse(pt.id, e.text, e.kind)
+                "habit" -> sim.deskHabit(pt.id, e.value.toInt())
             }
             dp.events.clear()
             sim.deskRest(pt.id, resting || dp.state == DeskState.SLEEP)
@@ -120,7 +121,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
     /** a finger on a pet's window, in screen dp: kind 0 down, 1 move, 2 up, 3 cancel. Down next to the pet (not on it) = it follows (F-04) */
     fun touch(id: String, kind: Int, x: Float, y: Float) {
         val pt = pets[id] ?: return; lastY = y
-        if (kind == 0) { val b = pt.pet.bounds(4f); pt.following = pt.pet.side == Side.FLOOR && (x < b[0] || x > b[0] + b[2] || y < b[1] || y > b[1] + b[3]) }
+        if (kind == 0) { val b = pt.pet.bounds(4f); pt.following = followOn && pt.pet.side == Side.FLOOR && (x < b[0] || x > b[0] + b[2] || y < b[1] || y > b[1] + b[3]) }
         if (pt.following) { when (kind) { 0, 1 -> pt.pet.follow(x); else -> { pt.pet.followEnd(); pt.following = false } }; return }
         when (kind) { 0 -> pt.gest.down(time, x, y); 1 -> pt.gest.move(time, x, y); 2 -> pt.gest.up(time, x, y); else -> pt.gest.cancel() }
         gestures(pt)
@@ -139,12 +140,15 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
 
     // ---------------- drawing (each pet in its own small window) ----------------
     /** the pet window, in screen dp (left, top, width, height) */
-    fun windowOf(id: String): FloatArray? = pets[id]?.pet?.bounds(MARGIN)
+    fun windowOf(id: String): FloatArray? = pets[id]?.pet?.bounds(margin)
+    /** R6 leftover: the band around the pet that makes it follow your finger can be switched off (it also catches touches meant for the app below) */
+    val followOn: Boolean get() = app.saves.pref("desk:follow") != "off"
+    val margin: Float get() = if (followOn) MARGIN else 10f
     /** draw a pet into its window (the canvas origin is the window's top-left) */
     fun drawPet(g: Gfx, id: String) {
-        val pt = pets[id] ?: return; val d = pt.pet; val b = d.bounds(MARGIN); val p = sim.person(id) ?: return; val look = pt.look ?: return
+        val pt = pets[id] ?: return; val d = pt.pet; val b = d.bounds(margin); val p = sim.person(id) ?: return; val look = pt.look ?: return
         if (d.hidden) return
-        g.save(); g.translate(d.x - b[0], d.y - b[1]); g.rotate(Math.toRadians(d.rotation.toDouble()).toFloat())
+        g.save(); g.translate(d.x - b[0], d.y - b[1]); g.rotate(Math.toRadians(d.rotation.toDouble() + d.lean * 9.0).toFloat())   /* together: leaning toward the other one */
         val asleep = d.state == DeskState.SLEEP || d.state == DeskState.DOZE
         Actors.draw(g, look, 0f, 0f, d.height / look.scale, d.pose, time, 0f, d.facing, 0f, if (asleep) "bed" else null, asleep, sim.moodSky(p))
         Actors.extras(g, app.theme, look, d.pose, 0f, 0f, d.height / look.scale, time, 0f, d.facing, asleep, if (asleep && (sim.hour >= 23 || sim.hour < 5)) "pillow" else null)
@@ -199,7 +203,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
     /** put something down where the pet is; null = done, otherwise why not */
     fun put(kind: String, near: String): String? {
         val d = pets[near]?.pet ?: return null; val fx = ((d.x + d.facing * d.width * 0.9f) / screen.w)
-        val item = if (kind == "food") sim.life.bag.keys.firstOrNull { sim.foodOf(it) != null && Goods.ALL[it]?.kind == "food" } ?: return "背包裡沒有點心（可以在小鎮的雜貨店買）" else null
+        val item = if (kind == "food") sim.life.bag.keys.firstOrNull { sim.foodOf(it) != null && Goods.ALL[it]?.kind == "food" } ?: return "背包裡沒有點心（可以在小鎮的雜貨店買）" else null   /* the others come from the bag in deskPut */
         return sim.deskPut(kind, fx, item)
     }
     fun putAway() { for (r in sim.life.deskProps.toList()) sim.deskTake(r.id) }
@@ -207,13 +211,23 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
     // ---------------- R6 F-08: keeping you company (a focus timer) ----------------
     class Focus(val work: Int, val rest: Int, var phase: String = "work", var left: Float = work * 60f, var rounds: Int = 0)
     var focus: Focus? = null; private set
-    fun startFocus(work: Int = 25, rest: Int = 5) { focus = Focus(work, rest) }
-    fun stopFocus() { focus?.let { f -> if (f.phase == "work") { val done = ((f.work * 60 - f.left) / 60).toInt(); if (done >= 5) sim.deskFocus(pets.keys.toList(), done) } }; focus = null }
+    fun startFocus(work: Int = 25, rest: Int = 5) { focus = Focus(work, rest); keepFocus() }
+    /** R6 leftover: the timer is kept in the settings by the clock on the wall, so a restarted service carries on */
+    private fun keepFocus() { val f = focus; app.saves.setPref("desk:focus", f?.let { "${it.phase}|${app.platform.now() + (it.left * 1000).toLong()}|${it.work}|${it.rest}|${it.rounds}" }) }
+    private fun restoreFocus() {
+        val v = app.saves.pref("desk:focus")?.split("|") ?: return; if (v.size < 5) return
+        val left = (v[1].toLongOrNull() ?: return) - app.platform.now(); if (left <= 0) { app.saves.setPref("desk:focus", null); return }
+        focus = Focus(v[2].toIntOrNull() ?: 25, v[3].toIntOrNull() ?: 5, v[0], left / 1000f, v[4].toIntOrNull() ?: 0)
+    }
+    /** what the notification says about the timer (null = no timer) */
+    val focusLine: String? get() = focus?.let { f -> (if (f.phase == "work") "陪你專心中，還有" else "休息中，還有") + " ${(f.left / 60).toInt() + 1} 分" }
+    fun stopFocus() { focus?.let { f -> if (f.phase == "work") { val done = ((f.work * 60 - f.left) / 60).toInt(); if (done >= 5) sim.deskFocus(pets.keys.toList(), done) } }; focus = null; keepFocus() }
     private fun focusTick(dt: Float) {
         val f = focus ?: return; f.left -= dt; if (f.left > 0) return
         if (f.phase == "work") { sim.deskFocus(pets.keys.toList(), f.work); f.rounds++; f.phase = "break"; f.left = f.rest * 60f; app.platform.sound("chime") }
         else if (f.rounds >= 4) { pets.keys.firstOrNull()?.let { sim.deskSay(it, "focusDone") }; focus = null }
         else { f.phase = "work"; f.left = f.work * 60f; app.platform.sound("tick") }
+        keepFocus()
     }
 
     companion object { const val MAX = 3; const val BASE = 110f; private val REMIND_KEYS = setOf("reminder")
@@ -271,7 +285,7 @@ class DeskSheet(val slotId: String, val personId: String, val name: String, val 
     override fun frame(g: Gfx, dt: Float) {
         val t = app.theme; val s = slide.step(dt); val W = app.w; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, s.coerceIn(0f, 1f)))
-        val h = 470f + app.insetBottom; val y = app.h - h * s
+        val h = 540f + app.insetBottom; val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); g.fillRound(W / 2 - 20, y + 10, 40f, 5f, 3f, t.line); app.zone("sheet:body", 0f, y, W, h)
         val out = onDesk()
         g.text("手機桌面", G + 4, y + 44, Dim.FS_L, t.ink); g.text(if (out) "$name 在桌面上" else "讓 $name 跑到手機桌面上陪你", G + 4, y + 68, Dim.FS_S, t.ink2)
@@ -279,6 +293,7 @@ class DeskSheet(val slotId: String, val personId: String, val name: String, val 
         val every = app.saves.pref("desk:remind")?.toIntOrNull() ?: 0
         f.chips("remind", listOf("不提醒", "每 30 分", "每 60 分", "每 90 分"), setOf(when (every) { 30 -> "每 30 分"; 60 -> "每 60 分"; 90 -> "每 90 分"; else -> "不提醒" }), label = "從螢幕邊探頭提醒你喝水、休息")
         f.toggle("full", "看影片、玩遊戲時躲起來", app.saves.pref("desk:fullscreen") != "off", "全螢幕結束後再出來")
+        f.toggle("follow", "手指按在牠旁邊會追過來", app.saves.pref("desk:follow") != "off", "關掉後，牠四周不會擋住下面的 App")
         f.button("stable", "讓桌寵更穩定（各廠牌的設定說明）")
         Widgets.button(g, app, "desk:go", G, y + h - app.insetBottom - 72, W - G * 2, 56f, if (out) "叫回家" else "帶到桌面", Kind.PRIMARY, Dim.FS_L)
     }
@@ -286,6 +301,7 @@ class DeskSheet(val slotId: String, val personId: String, val name: String, val 
         when {
             id.startsWith("chip:remind:") -> app.saves.setPref("desk:remind", when (id.removePrefix("chip:remind:")) { "每 30 分" -> "30"; "每 60 分" -> "60"; "每 90 分" -> "90"; else -> null })
             id == "tog:full" -> app.saves.setPref("desk:fullscreen", if (app.saves.pref("desk:fullscreen") == "off") null else "off")
+            id == "tog:follow" -> app.saves.setPref("desk:follow", if (app.saves.pref("desk:follow") == "off") null else "off")
             id == "btn:stable" -> app.show(ListSheet("讓桌寵更穩定", STABLE.mapIndexed { i, s -> "s$i" to s }, subtitle = "都由你決定；App 不會自己改設定") {})
             id == "desk:go" -> {
                 if (onDesk()) { app.platform.deskStop(slotId, personId); app.closeOverlay(); app.toast("$name 回家了"); return }

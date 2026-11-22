@@ -56,12 +56,14 @@ object Goods {
     /** festival goods (plan H-04): sold on that day only */
     val FESTIVAL = listOf(Good("e:petal", "花瓣糖", "food", 15, "甜", 10f), Good("e:ice", "刨冰", "food", 14, "甜", 12f), Good("e:yam", "烤地瓜", "food", 16, "甜", 30f), Good("e:cocoa", "熱可可", "food", 14, "甜", 12f),
         Good("f:lantern", "紙燈籠", "furniture", 40, furniture = "lantern"))
-    val ALL = (FOOD + FURNITURE + FARM + WILD + MARKET + FESTIVAL).associateBy { it.id }
+    /** R6 leftover: little things for the phone's desktop (grocery, every day) */
+    val DESK = listOf(Good("d:blanket", "小毯子", "desk", 12), Good("d:plant", "迷你盆栽", "desk", 15), Good("d:note", "便條紙", "desk", 3))
+    val ALL = (FOOD + FURNITURE + FARM + WILD + MARKET + FESTIVAL + DESK).associateBy { it.id }
     /** where a wild find comes from, by season */
     fun wildFor(season: String): List<Good> = WILD.filter { when (it.id) { "w:leaf" -> season == "autumn"; "w:shell" -> season == "winter"; "w:berry" -> season == "summer"; "w:flower" -> season == "spring" || season == "summer"; else -> true } }
     /** today's grocery shelf (6 of the foods, every day) and this week's furniture (6 kinds, every 7 days) */
     fun grocery(seed: Long, day: Long): List<Good> = Rng.of(seed, "grocery:$day").let { r -> FOOD.sortedBy { r.nextDouble() }.take(6) +
-        (if (Town.marketDay(day)) MARKET.sortedBy { r.nextDouble() }.take(2) else emptyList()) + (Town.festival(day)?.let { f -> FESTIVAL.filter { it.id == f.good || it.id == "f:lantern" } } ?: emptyList()) }
+        (if (Town.marketDay(day)) MARKET.sortedBy { r.nextDouble() }.take(2) else emptyList()) + (Town.festival(day)?.let { f -> FESTIVAL.filter { it.id == f.good || it.id == "f:lantern" } } ?: emptyList()) + DESK }
     fun furniture(seed: Long, day: Long): List<Good> = Rng.of(seed, "furniture:${Math.floorDiv(day, 7L)}").let { r -> FURNITURE.sortedBy { r.nextDouble() }.take(7) }
 }
 

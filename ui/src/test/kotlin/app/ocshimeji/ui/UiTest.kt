@@ -260,11 +260,12 @@ class UiTest {
         assertNull(a.platform.deskStart(ws.slotId, p1.id)); assertNull(a.platform.deskStart(ws.slotId, p2.id)); val st = stage!!; a.pause()
         repeat(60) { st.frame(1 / 30f, Phone()) }
         // things on the desktop: a snack from the bag (a ledger line), a nest; drag one along the floor, double tap to put it away
-        val food = app.ocshimeji.sim.town.Goods.ALL.values.first { it.kind == "food" }.id; assertTrue(sim.economy.move(food, 1, "測試"))
+        val food = app.ocshimeji.sim.town.Goods.ALL.values.first { it.kind == "food" }.id; assertTrue(sim.economy.move(food, 1, "測試")); assertTrue(sim.economy.move("d:plant", 1, "測試"))
         val menu = UiApp(a.saves, assets, platform, a.host); var act = ""; menu.push(DeskMenuScreen(st, p1.id) { act = it })
         Java2dGfx.render(DeskMenuScreen.W.toInt(), DeskMenuScreen.H.toInt(), 1f, assets) { menu.frame(it, 1 / 30f) }
         assertTrue(menu.tapZone("m:put:nest")); assertTrue(menu.tapZone("m:put:food")); assertTrue(menu.tapZone("m:put:plant"))
-        assertEquals(3, sim.life.deskProps.size); assertEquals(0, sim.economy.count(food), "the snack left the bag"); assertTrue(sim.economy.consistent())
+        assertEquals(3, sim.life.deskProps.size); assertEquals(0, sim.economy.count(food), "the snack left the bag"); assertEquals(0, sim.economy.count("d:plant")); assertTrue(sim.economy.consistent())
+        assertTrue(menu.tapZone("m:put:note")); assertTrue(st.pets[p1.id]!!.bubble!!.contains("雜貨店"), "no note in the bag: it says where to get one"); assertEquals(3, sim.life.deskProps.size)
         val plant = sim.life.deskProps.first { it.kind == "plant" }; val pw = st.propWindow(plant.id)!!
         st.touchProp(plant.id, 0, pw[0] + 20, pw[1] + 20); st.touchProp(plant.id, 1, 300f, pw[1] + 20); st.touchProp(plant.id, 2, 300f, pw[1] + 20); assertEquals(300f / st.screen.w, plant.fx, 0.01f)
         repeat(20) { st.frame(1 / 30f, Phone()) }; shot("desk-things", desktop(st))
@@ -284,7 +285,10 @@ class UiTest {
         repeat(25 * 60 * 2) { st.frame(1 / 2f, Phone()) }; assertEquals("break", st.focus!!.phase); assertTrue(sim.life.log.any { it.text.contains("陪你專心了 25 分鐘") })
         assertTrue(menu.tapZone("m:focus")); assertNull(st.focus)
         // put everything away; the nest and the plant are the pet's own, nothing goes missing
-        assertTrue(menu.tapZone("m:putaway")); assertTrue(sim.life.deskProps.isEmpty()); assertTrue(sim.economy.consistent())
+        assertTrue(menu.tapZone("m:putaway")); assertTrue(sim.life.deskProps.isEmpty()); assertTrue(sim.economy.consistent()); assertEquals(1, sim.economy.count("d:plant"), "the plant is back in the bag")
+        // the timer survives a restarted service (kept by the wall clock); the band can be switched off
+        st.startFocus(); repeat(10) { st.frame(1f, Phone()) }; val again = DeskStage(a, ws.slotId, st.screen); assertEquals("work", again.focus?.phase); assertTrue(again.focusLine!!.contains("專心"))
+        again.stopFocus(); again.close(); st.stopFocus(); a.saves.setPref("desk:follow", "off"); assertEquals(10f, st.margin); a.saves.setPref("desk:follow", null)
         for (pt in st.pets.values) { assertEquals(0, pt.pet.illegal); assertEquals(0, pt.pet.rescues) }
     }
     /** M4: three residents — worry bubbles, a close-up, observation mode, the mailbox and timeline, the day-end card, games, talking, suggestions */
