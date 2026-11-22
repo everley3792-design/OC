@@ -234,6 +234,10 @@ class WorldScreen(val slotId: String) : Screen() {
             "worry" -> { app.platform.sound("chime"); if (observing && !lockFollow) follow = e.who }
             "rps" -> if (app.overlay == null) app.show(RpsSheet(this, e.who))
             "goal" -> { app.platform.sound("chime"); app.toast("完成小目標：${e.text}") }
+            /* 1.7.0: a song (their theme, or one made up on the spot), everyone together, something only you decide */
+            "song" -> if (ff == null) e.text.split("|").let { v -> app.platform.melody(v[0].split(",").mapNotNull { it.toIntOrNull() }.toIntArray(), v.getOrNull(1)?.toFloatOrNull() ?: 1f) }
+            "group" -> { app.platform.sound("chime"); app.toast("大家一起：${e.text}") }
+            "decision" -> if (app.overlay == null && ff == null) e.text.toIntOrNull()?.let { decide(it) }
         }
         if (closeup?.let { app.time - it.third > 30f } == true) closeup = null
         followPicked(dt)
@@ -338,6 +342,10 @@ class WorldScreen(val slotId: String) : Screen() {
         if (cw > 220) g.text(Widgets.fit(g, nm, Dim.FS_S - 1, cw - 160), cx0 + cw - 16, top + 40 + csink, Dim.FS_S - 1, t.ink3, FontKind.UI, Align.RIGHT)
         app.zone("clock", cx0, top + 8, cw, 54f)
         if (!observing) wallet(g, app, this, W - Dim.GUTTER - 104, top + 66)
+        val waiting = sim.drama.pending().size   /* 1.7.0: things only you decide */
+        if (waiting > 0 && !observing) { val s = "有 $waiting 件事等你決定"; val w = g.measure(s, Dim.FS_S - 1) + 34; val dx = Dim.GUTTER; val dy = top + 72; val sink = if (app.pressed == "decide") 2f else 0f
+            g.fillRound(dx, dy + 3, w, 30f, 15f, Colors.mix(t.accentLip, t.surface, 0.2f)); g.fillRound(dx, dy + sink, w, 30f, 15f, Colors.mix(t.accent, t.surface, 0.35f))
+            Widgets.icon(g, "bell", dx + 15, dy + 15 + sink, 12f, t.ink); g.text(s, dx + 27, dy + 20 + sink, Dim.FS_S - 1, t.ink); app.zone("decide", dx, dy, w, 34f) }
         var y0 = top + 116
         if (life.arriving) { val s = "搬家日：大家一個一個到了"; val w = g.measure(s, Dim.FS_S) + 32
             g.fillRound((W - w) / 2, y0, w, 32f, 16f, Colors.withAlpha(t.surface, 0.92f)); g.text(s, W / 2, y0 + 21, Dim.FS_S, t.ink2, FontKind.UI, Align.CENTER); y0 += 40 }
@@ -621,7 +629,13 @@ class WorldScreen(val slotId: String) : Screen() {
     private fun openCard(id: String) { if (tip) dismissTip(); app.show(PersonCard(this, id)) }
     private fun dismissTip() { tip = false; app.saves.setFlag("tip:touch") }
 
+    /** 1.7.0: a decision only you can make (a debate to judge, a year older, a confession) */
+    fun decide(id: Int) {
+        val d = sim.drama.pending().firstOrNull { it.id == id } ?: return
+        app.show(ListSheet(d.text, d.options.mapIndexed { i, o -> "$i" to o }, subtitle = "不選的話，你不在時會一直等你") { k -> val msg = sim.drama.decide(id, k.toInt()); app.platform.sound("chime"); if (msg.isNotEmpty()) app.toast(msg); flush() })
+    }
     override fun tap(id: String) {
+        if (id == "decide") { val ds = sim.drama.pending(); if (ds.size == 1) decide(ds[0].id) else app.show(ListSheet("等你決定", ds.map { "${it.id}" to it.text }) { k -> decide(k.toInt()) }); return }
         when {
             id == "back" -> app.pop()
             id == "tip:close" -> dismissTip()

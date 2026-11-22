@@ -2,6 +2,9 @@ package app.ocshimeji.ui
 
 import app.ocshimeji.sim.life.Acts
 import app.ocshimeji.sim.social.Worries
+import app.ocshimeji.sim.social.Sickness
+import app.ocshimeji.sim.social.Crazes
+import app.ocshimeji.sim.social.Fears
 import app.ocshimeji.render.Align
 import app.ocshimeji.render.Colors
 import app.ocshimeji.render.FontKind
@@ -57,6 +60,15 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         for (s0 in info.take(4)) { val w0 = g.measure(s0, Dim.FS_S - 1) + 20; if (ix + w0 > W - G) break; g.fillRound(ix, yy, w0, 26f, 13f, if (s0.startsWith("煩惱")) Colors.mix(t.alert, t.surface, 0.6f) else t.surface2)
             g.text(s0, ix + 10, yy + 18, Dim.FS_S - 1, t.ink); ix += w0 + 6 }
         if (info.isNotEmpty()) yy += 34
+        // ---- 1.7.0: their bigger stories — a dream, being ill, a craze, today's whim, a fear they are working on
+        val dr = sim.drama
+        val story = listOfNotNull(dr.dreamOf(p)?.let { (_, s) -> "夢想：${p.spec.dream}（${s.step}/3）" + if (s.done) "實現了" else "" }, dr.sickOf(p)?.let { "生病：${Sickness.ALL[it.kind]?.zh}" },
+            dr.crazeOf(p)?.let { "最近迷上${Crazes.ACTS[it.act]}" }, dr.whimOf(p)?.let { "今天是${it.role}" },
+            dr.fearsOf(p).firstOrNull()?.let { f -> "怕${f.zh}（${sim.life.drama.courage["${p.id}:${f.id}"] ?: 0}/${Fears.COURAGE}）" })
+        ix = G
+        for (s0 in story) { val w0 = g.measure(s0, Dim.FS_S - 1) + 20; if (ix + w0 > W - G) { ix = G; yy += 32 }; g.fillRound(ix, yy, w0, 26f, 13f, Colors.mix(t.accent, t.surface, 0.75f))
+            g.text(s0, ix + 10, yy + 18, Dim.FS_S - 1, t.ink); ix += w0 + 6 }
+        if (story.isNotEmpty()) yy += 34
         // ---- what you can do together (plan E-04 / E-05 / E-08)
         val acts = listOf("card:talk" to "聊天", "card:suggest" to when (p.control) { "observe" -> "觀察中"; "suggest" -> "建議"; else -> "操控" }, "card:rps" to "猜拳", "card:hide" to "躲貓貓", "card:feed" to "點心")
         val aw = (W - G * 2 - 24) / 5

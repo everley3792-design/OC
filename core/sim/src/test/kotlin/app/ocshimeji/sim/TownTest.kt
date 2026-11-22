@@ -36,7 +36,7 @@ class TownTest {
     @Test fun contentIsComplete() {
         assertEquals(5, Town.PLACES.size); assertEquals(25, Town.EVENTS.size); assertEquals(6, Houses.ALL.size)
         assertTrue(Town.EVENTS.all { e -> Town.PLACES.any { it.id == e.place } })
-        assertEquals(6, Goods.grocery(1, 100).size); assertEquals(7, Goods.furniture(1, 100).size)
+        assertEquals(6, Goods.grocery(1, 100).count { it.kind == "food" }); assertEquals(Goods.DESK, Goods.grocery(1, 100).filter { it.kind == "desk" }); assertEquals(7, Goods.furniture(1, 100).size)
         assertEquals(Goods.furniture(1, 98).map { it.id }, Goods.furniture(1, 104).map { it.id })      /* one week, one shelf */
         assertTrue((0 until 30L).map { Goods.grocery(1, it).map { g -> g.id } }.toSet().size > 10)       /* the grocery changes daily */
     }

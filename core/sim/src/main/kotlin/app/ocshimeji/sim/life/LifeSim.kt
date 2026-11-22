@@ -150,6 +150,8 @@ class LifeSim(val life: Life) {
     private val arrived = HashSet<String>()
     /** the social life (M4): acts, scenes, events, worries, the daily settlement */
     val society = Society(this)
+    /** 1.7.0: dreams, fears, sickness, crazes, whims, songs, gossip, nicknames, secrets, cliques, group activities, contests, decisions */
+    val drama by lazy { Drama(this) }
 
     init {
         for (p in life.people) if (p.act != null && p.actPiece >= 0) { reserved["${p.actPiece}:${p.actSlot}"] = p.id; body(p.id).arrivedAct = true; body(p.id).pose = Acts[p.act!!]?.pose ?: Pose.STAND }
@@ -201,6 +203,7 @@ class LifeSim(val life: Life) {
         for (p in life.people) tick(p, dm, dt)
         society.step(true, dt)
         townLife.step(true)
+        drama.step(true)
         if (life.arriving && arrived.size >= life.people.size && life.people.all { body(it.id).path == null }) life.arriving = false
     }
 
@@ -320,6 +323,7 @@ class LifeSim(val life: Life) {
         val words = ACT_WORDS[a.id].orEmpty()
         if (words.isNotEmpty() && (s.likes + s.hobbies).any { l -> words.any { l.contains(it) } }) { k *= 1.6f; why = "喜歡${(s.likes + s.hobbies).first { l -> words.any { l.contains(it) } }}" }
         if (a.id in m.hate) k *= 0.4f
+        k *= drama.appealK(p, a)   /* 1.7.0: a craze, or being sick */
         if (a.id == "bathe") k *= 1f + 0.5f * s.hygiene
         if (a.id == "tidy") k *= when (s.roomPref) { "整齊" -> 1.4f; "隨性" -> 0.7f; else -> 1f } * (1f + 0.4f * s.hygiene)
         if (a.id == "water" && s.roomPref == "要有植物") k *= 1.5f
@@ -490,7 +494,7 @@ class LifeSim(val life: Life) {
         if (rng.chance(0.55)) {
             val m = rng.pick(pool); b.micro = m; b.microT = m.sec; b.pose = m.pose; b.poseT = 0f
             if (m.line != null && rng.chance(0.6)) say(p, m.line, toPlayer = m.needs == Need.ATTENTION)
-            else if (rng.chance(0.3)) Speech.idle(p.spec, rng, life.tags)?.let { events += SimEvent("say", p.id, it) }
+            else if (rng.chance(0.3)) { val d = drama.idleLine(p, rng); if (d != null) say(p, d) else Speech.idle(p.spec, rng, life.tags)?.let { events += SimEvent("say", p.id, it) } }
         } else {
             val tiles = grid.walkableTiles(house.rooms.indexOfFirst { it.id == roomOf(p) }.coerceAtLeast(0))
             if (tiles.isNotEmpty()) { val t = tiles[rng.nextInt(tiles.size)]; grid.path(p.x.toInt(), p.y.toInt(), t.first, t.second)?.let { path -> b.path = ArrayList(path.drop(1).map { floatArrayOf(it.first + 0.5f, it.second + 0.5f) }); b.pose = Pose.WALK } }
@@ -575,6 +579,7 @@ class LifeSim(val life: Life) {
         if (snd.isEmpty() && asd.isEmpty() && kind != "you" && kind != "habit" && kind != "worry") Flavor.forLine(text, kind, Rng.of(life.seed, "flav:${at.toLong()}:${text.length}")).let { snd = it.first; asd = it.second }   /* 1.5.1: every memory gets its sound and line */
         life.log += LogLine(at, p.id, "${p.name}：$text", away || catching, kind, weight, cause = cause, with = with, sound = snd, aside = asd, dur = dur)
         trimLog()
+        drama.onLog(life.log.last())
     }
     private var catching = false
     /** a line in this character's own way of talking; quietly when someone sleeps in the same room (plan B-08) */
@@ -621,6 +626,7 @@ class LifeSim(val life: Life) {
     fun pet(id: String, sec: Float, part: String = "身體") {
         val p = person(id) ?: return; val b = body(id); if (b.held || b.flying) return
         b.petting = true; b.petAcc += sec; b.petPart = part
+        if (drama.scared(p)) drama.comfort(id)   /* 1.7.0: you stayed with them while they were scared */
         if (!asleep(p)) b.pose = if (p.affinity < 25 || p.spec.shy > 0.5f) Pose.SHY else Pose.PETTED
         if (b.petAcc > 0.3f && rng.chance(sec * (if (part == p.spec.petSpot) 2.5 else 1.5))) events += SimEvent("heart", id)
     }
@@ -701,7 +707,7 @@ class LifeSim(val life: Life) {
     fun toDesk(id: String): Boolean {
         val p = person(id) ?: return false; if (p.desk) return true
         breakChat(p); release(p); p.act = null; p.why = listOf("在手機桌面上"); val b = body(id); b.path = null; b.micro = null; b.arrivedAct = false; b.held = false; b.flying = false
-        p.desk = true; log(p, "跑到手機桌面上了"); say(p, rng.pick(Lines.M["deskOut"]!!), toPlayer = true); return true
+        p.desk = true; drama.playTheme(p); log(p, "跑到手機桌面上了"); say(p, rng.pick(Lines.M["deskOut"]!!), toPlayer = true); return true
     }
     /** back home: they come in through the front door */
     fun fromDesk(id: String) {
@@ -790,6 +796,7 @@ class LifeSim(val life: Life) {
         addMood(p, when (t) { 1 -> "tasty"; -1 -> "yuck"; else -> "snack" })
         society.fed(p, food, t)
         if (bought) economy.move(food, -1, "${p.name}吃了${f.zh}", p.id)
+        drama.onAte(p)
         townLife.goal("feed", p.id)
         p.affinity = (p.affinity + when (t) { 1 -> 5; -1 -> -2; else -> 3 }).coerceIn(0, 100)
         if (p.act != null && !b.arrivedAct) { release(p); p.act = null; b.path = null }
@@ -834,6 +841,7 @@ class LifeSim(val life: Life) {
             life.minute += dm
             for (p in life.people) { needs(p, dm); moods(p, live = false) }
             society.step(false, 0f)
+            drama.step(false)
         }
         catching = false
         for (p in life.people) { val a = p.act?.let { Acts[it] }; if (a != null && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }

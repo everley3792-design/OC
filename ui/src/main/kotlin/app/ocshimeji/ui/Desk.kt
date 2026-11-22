@@ -48,6 +48,7 @@ class DeskStage(val app: UiApp, val slotId: String, val screen: DeskScreen) {
         "say" -> { p.bubble = e.text; p.bubbleAt = time; p.live = false; sim.person(e.who)?.let { app.platform.voice(it.spec.voice, e.text) } }
         "heart" -> p.hearts += time
         "sound" -> app.platform.sound(e.text)
+        "song" -> e.text.split("|").let { v -> app.platform.melody(v[0].split(",").mapNotNull { it.toIntOrNull() }.toIntArray(), v.getOrNull(1)?.toFloatOrNull() ?: 1f) }   /* 1.7.0: their theme */
     } } }
     init { open.listeners += listener; restoreFocus() }
 

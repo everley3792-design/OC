@@ -79,7 +79,22 @@ class Sounds {
                 .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.play() }
         }
     }
-    fun release() { voiceTrack?.let { runCatching { it.release() } }; voiceTrack = null; for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
+    private var tuneTrack: AudioTrack? = null
+    /** 1.7.0: a little melody — soft plucked notes, 0 = a rest (original synthesis, no samples) */
+    fun melody(notes: IntArray) {
+        runCatching {
+            val beat = 0.24f; val n = (rate * beat).toInt(); val pcm = ShortArray(n * notes.size)
+            notes.forEachIndexed { k, m -> if (m <= 0) return@forEachIndexed; val f = 440.0 * Math.pow(2.0, (m - 69) / 12.0); var ph = 0.0
+                for (i in 0 until n) { ph += 2 * PI * f / rate; val t = i.toFloat() / n; val env = minOf(1f, i / (rate * 0.006f)) * exp(-3.2f * t)
+                    pcm[k * n + i] = ((sin(ph) + 0.25 * sin(ph * 2)) / 1.25 * env * 0.22 * Short.MAX_VALUE).toInt().toShort() } }
+            tuneTrack?.let { runCatching { it.stop(); it.release() } }
+            tuneTrack = AudioTrack.Builder()
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                .setBufferSizeInBytes(maxOf(2, pcm.size * 2)).setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(pcm, 0, pcm.size); it.play() }
+        }
+    }
+    fun release() { tuneTrack?.let { runCatching { it.release() } }; tuneTrack = null; voiceTrack?.let { runCatching { it.release() } }; voiceTrack = null; for (t in tracks.values) runCatching { t.release() }; tracks.clear() }
 
     // ---------------- imported sounds (plan 12.6): played from the app's own files, nothing else is read ----------------
     private var music: android.media.MediaPlayer? = null; private var musicPath = ""

@@ -291,6 +291,19 @@ class UiTest {
         again.stopFocus(); again.close(); st.stopFocus(); a.saves.setPref("desk:follow", "off"); assertEquals(10f, st.margin); a.saves.setPref("desk:follow", null)
         for (pt in st.pets.values) { assertEquals(0, pt.pet.illegal); assertEquals(0, pt.pet.rescues) }
     }
+    /** 1.7.0: the bigger stories — a debate you judge (the pill and its sheet), a get-together, their stories on the person card */
+    @Test fun storiesAndDecisions() {
+        val a = app(); val ws = home2(a); val sim = ws.sim; val (p1, p2) = sim.life.people
+        p1.spec = p1.spec.copy(dream = "做出最好吃的蛋糕", fears = listOf("打雷")); sim.drama.startCraze(p1, "doodle"); sim.life.drama.whims[p1.id] = app.ocshimeji.sim.social.Whim("偵探", sim.life.day)
+        sim.drama.fallSick(p2, "cold"); frames(a, 10); var k = 0; while (a.overlay != null && k++ < 5) { a.back(); frames(a, 15) }
+        sim.drama.debate(app.ocshimeji.sim.Rng(4), live = true, x = p1, y = p2); frames(a, 20)
+        assertTrue(a.overlay is ListSheet, "the decision opens by itself"); shot("decision-debate", frames(a, 1, scale = 2f))
+        a.back(); frames(a, 15); assertTrue(a.hasZone("decide"), "and waits behind the pill"); shot("decision-pill", frames(a, 1, scale = 2f))
+        val d = sim.drama.pending().single(); assertTrue(a.tapZone("decide")); frames(a, 15); assertTrue(a.tapZone("row:0")); frames(a, 5)
+        assertTrue(sim.drama.pending().isEmpty()); assertTrue(sim.person(d.who)!!.moods.any { it.id == "debatewin" }); assertFalse(a.hasZone("decide"))
+        sim.drama.doGroup(app.ocshimeji.sim.social.Groups.ALL["picnic"]!!, sim.life.people, app.ocshimeji.sim.Rng(1)); frames(a, 5); assertTrue(a.toastText!!.contains("野餐"))
+        tapCard(a, ws, p1.id); frames(a, 20); shot("card-stories", frames(a, 1, scale = 2f))
+    }
     /** M4: three residents — worry bubbles, a close-up, observation mode, the mailbox and timeline, the day-end card, games, talking, suggestions */
     @Test fun socialLifeAtHome() {
         val a = app()

@@ -110,7 +110,7 @@ class SpecEffectsTest {
     }
     @Test fun chattingFollowsRelationships() {
         val a = base.copy(name = "甲", traits = listOf("健談"), nickname = "小甲"); val b = base.copy(name = "乙", nickname = "阿乙", memories = listOf("一起看過流星"))
-        fun chats(rels: List<Rel>): Int { val (s, _) = sim(a, 10.0, b, rels, "studio".let { "cottage" }); for (p in s.life.people) p.setNeed(Need.SOCIAL, 10f)
+        fun chats(rels: List<Rel>): Int { val (s, _) = sim(a, 10.0, b, rels, "studio".let { "cottage" }); for (p in s.life.people) { p.setNeed(Need.SOCIAL, 10f); p.recent["outing"] = s.life.minute + 1440.0 }   /* stay home to chat */
             var n = 0; var t = 0f; while (t < 240f) { s.update(0.1f); t += 0.1f; if (s.events.any { it.kind == "say" && it.text.contains("阿乙") }) n++; s.events.clear() }; return n }
         val good = chats(listOf(Rel("a", "b", "知己", like = 90), Rel("b", "a", "知己", like = 90))); val bad = chats(listOf(Rel("a", "b", "前任", like = 5, conflict = 90)))
         assertTrue(good > 0, "close friends chat and use the nickname ($good)"); assertTrue(good >= bad, "good $good vs bad $bad")

@@ -42,6 +42,8 @@ interface Platform {
     fun voice(v: app.ocshimeji.sim.chars.Voice, text: String) {}
     /** an imported sound (library-relative path): a voice clip or effect once, or music looping (plan 12.6) */
     fun clip(path: String, music: Boolean = false) {}
+    /** 1.7.0: a little melody (note numbers, 60 = middle C, 0 = rest) in a character's voice pitch */
+    fun melody(notes: IntArray, pitch: Float) {}
     fun stopMusic() {}
     /** time-of-day music made by the app (plan N-03): morning, day, rain, evening, night; "" = stop */
     fun bgm(kind: String) {}

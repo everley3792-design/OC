@@ -74,6 +74,8 @@ class Life(
     var tzOffset: Int = Int.MIN_VALUE,
     /** R6 (F-05, F-06): things on the phone's desktop — a snack, a blanket, a little plant, a note, the nest */
     val deskProps: MutableList<DeskPropRec> = mutableListOf(),
+    /** 1.7.0: the bigger stories (`Drama`) */
+    val drama: app.ocshimeji.sim.social.DramaState = app.ocshimeji.sim.social.DramaState(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1

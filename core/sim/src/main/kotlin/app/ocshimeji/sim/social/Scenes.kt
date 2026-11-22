@@ -133,6 +133,10 @@ object Events {
         e("secret", "交換秘密", "close", 20, 24, "A:跟你說一個秘密，你不能說出去喔。@SHY / B:嗯，我發誓。 / A:……其實我會怕打雷。 / B:那下次打雷，我陪你。#heart", like = 4, closeup = true),
         e("cookhelp", "一起做飯", "", 11, 19, "A:我要煮飯了，來幫忙！@TIDY / B:我負責切菜！@TIDY / A:那個是……糖，不是鹽。#sweat / B:……甜的咖哩也不錯吧？", like = 2, fun_ = 12f),
         e("plantname", "幫盆栽取名字", "plant", 8, 18, "A:這盆植物還沒有名字耶。@WATER / B:叫它「小綠」？ / A:太普通了。叫它「葉之騎士」。 / B:……好，葉之騎士。#sparkle", like = 2, fun_ = 12f),
+        /* 1.7.0 D-03: misunderstandings */
+        e("misread", "誤會劇場：最愛的點心", "third", 12, 20, "A:（從門口看到{對方}和{第三人}在分我最愛的布丁）……@SHY#shock / A:你們……居然不等我！@ANGRY#anger / B:咦？這是特地幫你留的那一半啦！@HAPPY / A:……原來如此。對不起，我想太多了。#heart", like = 3, closeup = true),
+        e("mishear", "誤會劇場：聽錯了", "", 9, 21, "A:{對方}說要「搬走」？！@SHY#shock / B:我是說要把沙發「搬走」一點點，打掃後面。 / A:……嚇死我了。@HAPPY#sweat / B:你以為我要搬家喔？#sparkle", like = 3),
+        e("misgift", "誤會劇場：神秘的禮物", "third", 9, 21, "A:桌上有一個禮物……是{對方}送的嗎？@SHY#heart / B:不是我耶……是{第三人}吧？ / A:咦？那我剛剛對你道謝道了三次……@SHY#sweat / B:沒關係，你的謝謝我收下了。#sparkle", like = 2),
         e("birthday", "幫壽星慶生", "birthday", 8, 22, "A:{對方}，生日快樂！@HAPPY#sparkle / B:你記得！ / A:當然記得。來，許個願吧。 / B:（閉上眼睛）……許好了。#heart", like = 5, fun_ = 12f, closeup = true),
     )
     /** the serial drama 「消失的布丁」 (five episodes, one a day; flags carry it on) */

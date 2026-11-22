@@ -59,6 +59,7 @@ class MainActivity : Activity() {
             override fun openFile(mime: String, done: (ByteArray?) -> Unit) = open(done)
             override fun sound(name: String) { OcRuntime.sounds.play(name) }
             override fun voice(v: Voice, text: String) { OcRuntime.sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
+            override fun melody(notes: IntArray, pitch: Float) { OcRuntime.sounds.melody(notes) }
             override fun clip(path: String, music: Boolean) { OcRuntime.sounds.clip(java.io.File(filesDir, path.removePrefix("lib:")), music) }
             override fun stopMusic() { OcRuntime.sounds.stopMusic() }
             override fun bgm(kind: String) { OcRuntime.sounds.bgm(kind) }

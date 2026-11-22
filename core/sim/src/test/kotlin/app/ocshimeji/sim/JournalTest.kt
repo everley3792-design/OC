@@ -61,7 +61,7 @@ class JournalTest {
 
     @Test fun marketDayAndFestivals() {
         val market = (0 until 7L).first { Town.marketDay(20000 + it) } + 20000
-        assertEquals(8, Goods.grocery(7, market).size); assertEquals(6, Goods.grocery(7, market + 1).size)
+        assertEquals(8, Goods.grocery(7, market).count { it.kind != "desk" }); assertEquals(6, Goods.grocery(7, market + 1).count { it.kind != "desk" })
         val petal = java.time.LocalDate.of(2026, 4, 15).toEpochDay()
         assertEquals("petal", Town.festival(petal)?.id); assertNull(Town.festival(petal + 1))
         val s = world(at = petal * 1440.0 + 14 * 60); run(s, 9 * 60.0)

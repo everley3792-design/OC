@@ -88,12 +88,16 @@
   - `DeskPet`：驅動 → 意圖（高優先級才打斷）→ 動作（只沿轉移表）；F-04 `follow`、F-05／F-06 桌面東西與窩、F-07 `invited/declined`、F-08 陪伴（`DeskContext.focus`）；100 小時測試；
   - `LifeSim.deskPut/deskTake/deskUse/deskTogether/deskFocus`、`Life.deskProps`；存檔格式 v14；
   - `ui`：`DeskStage`（性格、其他桌寵、東西視窗、手指追、專心計時）、新選單；`app`：`DeskService` 東西的小視窗。
-- 下一步：**R7（1.7.0～1.9.0）**（`m7-1-report.md` 第七節的 55 項）。
+- **R7 第一批（1.7.0）角色與社交——完成**（`docs/reboot/r7-1-report.md`；全部待實機驗證）：
+  - R6 補完：桌面小東西經背包（雜貨店 `Goods.DESK`）、追手指可關、專心計時存在設定並在通知倒數、一起時互相靠、自訂事件上桌面；
+  - `life/Drama`＋`social/DramaData`：夢想 A-08、怕的東西 A-11、長大一歲 A-14、生病 B-09、熱潮 B-13、突發奇想 D-02、誤會劇場 D-03、辯論 D-04、即興歌 D-05、如果問答 D-08、主題旋律 N-04、八卦 C-05、綽號 C-07、共同秘密 C-08、小圈圈 C-09、團體活動 C-10、比賽 C-13、戀愛演出 C-14、料理對決 Q-08、停電夜 Q-09、驚喜派對 Q-14；
+  - 你的決定（`Decision`：辯論、長大、告白）＋「有 N 件事等你決定」；`Platform.melody`；存檔格式 v15。
+- 下一步：**R7 第二批（1.8.0）「和你」**（E-07、E-09、L-03、L-04、M-03、M-04、P-03、P-04、P-05、P-07、P-11、P-13、P-14、P-15），之後 1.9.0「桌寵與家、小鎮」。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
+core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Drama＝夢想怕的東西生病熱潮八卦綽號秘密小圈圈團體活動比賽戀愛與你的決定、Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
                chars/（Spec＝CharSpec／Address 稱謂／Habit 自訂事件／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：paint/（Paint＝繪圖引擎、Draft＝草稿）、Studio（創作套件的收藏庫端：動畫、物品、聲音、標籤、劇本、.ocitem／.ocmod、空間）；Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
@@ -105,7 +109,7 @@ ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Des
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/（截圖）
 ```
 
 ## 指令
@@ -147,6 +151,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - **世界只經 `WorldHost` 打開**（`acquire/release/drive/save`）：家的畫面與桌寵共用同一個 `LifeSim`；`drive(o, dt, "desk")` 在家的畫面看得見時不推動時間；事件經 `listeners` 發給每個觀看者。
 - 桌寵的行為與手勢只在 `DeskPet`／`DeskGestures`（純 Kotlin、有測試）；`DeskService` 只放視窗、回報手機狀態。桌面上的觸碰一律經 `LifeSim` 的同一組函式。
 - **桌寵三層**（R6）：新行為＝在 `DeskData` 加一筆（動作、意圖、東西、一起做的事）；動作只能沿 `DeskActs` 的 `next` 走（`enter` 會用 `hop` 找路），`DeskTest` 檢查每個動作都回得到閒晃、100 小時 `illegal == 0`、`rescues == 0`。性格只經 `Catalog` 的 `desk:cling/nest/climb/hide/social`。桌面上的東西存在 `Life.deskProps`，點心經 `Economy`（`deskPut/deskTake`）；兩隻一起做的事經 `Society.relUpdate`。
+- **故事只經 `Drama`**（1.7.0）：夢想、怕的東西、生病、熱潮、八卦、綽號、秘密、小圈圈、團體活動、比賽、戀愛演出都在 `life/Drama`（資料在 `social/DramaData`）；**一律用自己的 `Rng.of(seed, "drama:…")`，不得從 `sim.rng` 抽**（會打亂其他生活）。需要玩家決定的事寫成 `Decision`（`ask`／`decide`），你不在時一直等，你在看時 6 小時沒選才用溫和的預設；戀愛告白只在 `romance` 打開且兩人成年。
 - **家具快取**（1.5.1）：不會動的家具經 `HouseView.cached` → `PieceCache`（依 `g.pxPerDp()` 每 0.5 倍一張，LRU 64 MB）；有動畫或有人在用的不進快取。新的家具畫法若和時間有關，不要放進 `still` 清單。
 - 場景以 base dp 繪製（`HouseView` 的 T 固定 32），縮放交給 `g.scale`；高度數值都是 base dp。
 - 圖示一律用 `Widgets.icon()` 畫的形狀，**不要**用字型裡的符號（`⋯ ✓ ‹` 在 Nunito 裡沒有，會變成方框）。

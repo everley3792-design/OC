@@ -68,6 +68,7 @@ class DeskService : Service() {
             override fun prompt(title: String, initial: String, maxLength: Int, done: (String?) -> Unit) = done(null)
             override fun sound(name: String) { OcRuntime.sounds.play(name) }
             override fun voice(v: app.ocshimeji.sim.chars.Voice, text: String) { OcRuntime.sounds.voice(v.pitch, v.speed, v.timbre, v.bright, text) }
+            override fun melody(notes: IntArray, pitch: Float) { OcRuntime.sounds.melody(notes) }
             override val codec: Codec = Codec { null }
         }
         app = UiApp(OcRuntime.saves, OcRuntime.assets, platform, OcRuntime.host)

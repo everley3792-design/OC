@@ -104,6 +104,7 @@ class Society(private val sim: LifeSim) {
     fun nickBy(by: Person?, q: Person): String {
         if (by == null) return nick(q)
         by.spec.address.others[q.libId]?.name?.takeIf { it.isNotBlank() }?.let { return it }
+        sim.drama.nickFor(by, q)?.let { return it }   /* 1.7.0 C-07: the nickname they gave */
         val r = sim.rel(by.id, q.id)
         return if (r != null && r.like >= 70 && r.familiar >= 60) autoNick(q) else nick(q)
     }
@@ -1053,13 +1054,14 @@ class Society(private val sim: LifeSim) {
     data class Question(val key: String, val text: String, val options: List<String>)
     val QUESTIONS = listOf(Question("taste", "你喜歡甜的還是鹹的？", listOf("甜的", "鹹的")), Question("time", "早上和晚上，你比較喜歡哪個？", listOf("早上", "晚上")),
         Question("place", "如果可以去任何地方，你想去哪？", listOf("海邊", "山上", "待在家")), Question("rain", "你喜歡下雨天嗎？", listOf("喜歡", "不喜歡")),
-        Question("pet", "你喜歡貓還是狗？", listOf("貓", "狗", "都喜歡")))
+        Question("pet", "你喜歡貓還是狗？", listOf("貓", "狗", "都喜歡"))) +
+        app.ocshimeji.sim.social.WhatIf.ALL.map { (k, q, o) -> Question(k, q, o) }   /* 1.7.0 D-08: what-if questions */
     val QUESTION_ZH = mapOf("taste" to "喜歡", "time" to "喜歡", "place" to "想去", "rain" to "對下雨天：", "pet" to "喜歡")
     /** they ask you something (once per question) */
     fun question(id: String): Question? { val p = sim.person(id) ?: return null; return QUESTIONS.firstOrNull { it.key !in p.knows } }
     fun answerQuestion(id: String, key: String, option: String): String {
         val p = sim.person(id) ?: return ""; p.knows[key] = option; p.affinity = (p.affinity + 2).coerceIn(0, 100)
-        sim.log(p, "你告訴${p.name}：${QUESTION_ZH[key]}$option", kind = "you", weight = 1)
+        sim.log(p, "你告訴${p.name}：${QUESTION_ZH[key] ?: (QUESTIONS.firstOrNull { it.key == key }?.text?.removeSuffix("？")?.plus("——")) ?: ""}$option", kind = "you", weight = 1)
         val same = when (key) { "taste" -> (p.spec.tastes[option.take(1)] ?: 0) > 0; "time" -> (option == "早上") == (p.spec.wake <= 7); else -> false }
         return Speech.say(p.spec, if (same) "真的嗎！我也是！" else "原來你$option，我記住了。", sim.rng, p.affinity, true)
     }

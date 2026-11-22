@@ -92,6 +92,8 @@ object Migrate {
         12 to { w -> w },
         /* 13 → 14 (R6): things on the phone's desktop (none yet) */
         13 to { w -> w },
+        /* 14 → 15 (1.7.0): the bigger stories — dreams, fears, sickness, crazes, gossip, nicknames, secrets, cliques, decisions (none yet) */
+        14 to { w -> w },
     )
 
     fun upgrade(json: JsonObject, target: Int, steps: Map<Int, (JsonObject) -> JsonObject>): JsonObject {

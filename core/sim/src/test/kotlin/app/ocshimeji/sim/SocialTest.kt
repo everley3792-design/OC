@@ -46,7 +46,7 @@ class SocialTest {
 
     @Test fun contentTablesAreCompleteAndPointAtRealTraitsAndTags() {
         assertTrue(SocialActs.ALL.size >= 40, "social acts: ${SocialActs.ALL.size}")
-        assertEquals(30, Chemistry.ALL.size); assertEquals(15, Sparks.ALL.size); assertEquals(20, Events.DAILY.size); assertEquals(5, Events.SERIAL.size); assertEquals(9, Worries.ALL.size)
+        assertEquals(30, Chemistry.ALL.size); assertEquals(15, Sparks.ALL.size); assertEquals(23, Events.DAILY.size); assertEquals(5, Events.SERIAL.size); assertEquals(9, Worries.ALL.size)
         val known = Catalog.TRAITS.keys + Catalog.TAGS.keys + Catalog.QUIRKS.keys
         for (c in Chemistry.ALL) { assertTrue(c.a in known && c.b in known, "chemistry ${c.id}: ${c.a} / ${c.b}"); assertTrue(c.beats.size >= 3) }
         for (k in Sparks.ALL) { assertTrue(k.a in known && k.b in known, "spark ${k.id}: ${k.a} / ${k.b}"); assertEquals(4, k.stages.size); k.stages.forEach { assertTrue(it.size >= 2, k.id) } }

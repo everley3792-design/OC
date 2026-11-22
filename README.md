@@ -4,19 +4,16 @@
 
 > 這是**重構版**（從零重新開始的 0.1.x）。舊版 0.1–0.17（網頁＋3D）已經整個捨棄，只留在 git 歷史裡（最後一個舊版提交 `d88e849`），舊存檔不會被讀取。
 
-## 目前版本 1.6.0（R6：桌寵重構）
+## 目前版本 1.7.0（R7 第一批：角色與社交的故事）
 
-- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.6.0-debug.apk`](deliverables/apk/oc-shimeji-1.6.0-debug.apk)
-- 這一版（[全面重構計畫](docs/reboot/overhaul-plan.md)的第 6 步）把手機桌面上的角色整個重做：
-  - **三層行為**：需求與性格 → 有優先級的意圖（反射、照顧、回應你、自己的事、閒晃）→ 照轉移表走的動作（坐下先蹲、倒吊只能放手）；
-  - **性格看得出來**：黏人的常走過來看你、獨立的常回窩、好動的常爬牆、害羞的全螢幕時更早躲；
-  - **跟著手指**：手指按在牠旁邊拖，牠會追過來；
-  - **桌面小東西與窩**：點心（從背包拿，會去吃）、小毯子、小盆栽（會去澆水）、紙條（會去看）、窩（睏了回窩睡）；
-  - **多隻互動**：打招呼、追來追去、一起坐著、靠在一起睡，依兩人的關係；都會記成回憶；
-  - **陪伴模式**：陪你專心 25 分鐘，時間到提醒你休息；
-  - 100 小時模擬沒有卡住。
-- **桌寵全部都還沒在實機驗證**：請照 [R6 報告](docs/reboot/r6-report.md) 的「請你在手機上試」。
-- 紀錄：[R6](docs/reboot/r6-report.md)（之前：[1.5.1 補完](docs/reboot/r5-1-report.md)、[R5](docs/reboot/r5-report.md)、[R4](docs/reboot/r4-report.md)、[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
+- **可安裝 APK（Debug 簽章，非正式發行版）**：[`deliverables/apk/oc-shimeji-1.7.0-debug.apk`](deliverables/apk/oc-shimeji-1.7.0-debug.apk)
+- 這一版：
+  - **角色**：夢想一步一步實現、怕的東西（陪牠就會克服）、生日時由你決定要不要長大、生病與朋友照顧、突然迷上一件事、突發奇想當一天偵探、即興唱歌、每個人的主題旋律、30 題「如果」問答（會記住你的回答）；
+  - **社交**：八卦會傳開還會走樣、熟了互取綽號、只有兩人知道的秘密、小圈圈、野餐睡衣派對營火大掃除、好勝的人找人比賽、料理對決、停電夜講鬼故事、驚喜派對、辯論請你當裁判；
+  - **戀愛**（只在打開、兩人都成年時）：心動 → 你同意 → 告白；
+  - **桌寵補完**：小東西從背包拿（雜貨店有賣）、追手指可以關、專心計時在通知倒數、好朋友靠在一起。
+- **全部都還沒在實機驗證**：請照 [1.7.0 報告](docs/reboot/r7-1-report.md) 的「請你在手機上試」。
+- 紀錄：[R7 第一批](docs/reboot/r7-1-report.md)（之前：[R6](docs/reboot/r6-report.md)、[1.5.1 補完](docs/reboot/r5-1-report.md)、[R5](docs/reboot/r5-report.md)、[R4](docs/reboot/r4-report.md)、[R3](docs/reboot/r3-report.md)、[R2](docs/reboot/r2-report.md)、[R1](docs/reboot/r1-report.md)、[M7 第一批](docs/reboot/m7-1-report.md)、[M6](docs/reboot/m6-report.md)、[M5](docs/reboot/m5-report.md)、[M4](docs/reboot/m4-report.md)、[M3](docs/reboot/m3-report.md)、[M2](docs/reboot/m2-report.md)、[M1](docs/reboot/m1-report.md)、[M0](docs/reboot/m0-report.md)）
 
 ## 計畫
 完整的重構計畫（玩家已確認）：[`docs/reboot/reboot-plan.md`](docs/reboot/reboot-plan.md)
