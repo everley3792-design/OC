@@ -113,8 +113,16 @@ class UiApp(val saves: SaveSystem, val assets: Assets, val platform: Platform, v
     private var layer = 0
     /** register a tap area for this frame (drawing order = priority: later wins) */
     /** added to every zone registered while drawing inside a translated (scrolled) area */
-    var zoneDx = 0f; var zoneDy = 0f
-    fun zone(id: String, x: Float, y: Float, w: Float, h: Float) { zones += Zone(id, x + zoneDx, y + zoneDy, w, h, layer, overlay?.born ?: -1f) }
+    var zoneDx = 0f
+    /** a scrolled list's offset; setting it back to 0 also ends the list's visible box (`zoneClip`) */
+    var zoneDy = 0f; set(v) { field = v; if (v == 0f) zoneClip = null }
+    fun zone(id: String, x: Float, y: Float, w: Float, h: Float) {
+        var zx = x + zoneDx; var zy = y + zoneDy; var zw = w; var zh = h
+        zoneClip?.let { c -> val x2 = minOf(zx + zw, c[0] + c[2]); val y2 = minOf(zy + zh, c[1] + c[3]); zx = maxOf(zx, c[0]); zy = maxOf(zy, c[1]); zw = x2 - zx; zh = y2 - zy; if (zw <= 0f || zh <= 0f) return }
+        zones += Zone(id, zx, zy, zw, zh, layer, overlay?.born ?: -1f)
+    }
+    /** 2.2.0: a scrolled panel's visible box (x, y, w, h in screen space): parts of zones outside it cannot be tapped (they are hidden under the header) */
+    var zoneClip: FloatArray? = null
     /** 1.8.0: the last frame's Gfx, so a tap can make a picture off screen (photos, cards) */
     var gfxForSnap: Gfx? = null; private set
     fun frame(g: Gfx, dt: Float) {

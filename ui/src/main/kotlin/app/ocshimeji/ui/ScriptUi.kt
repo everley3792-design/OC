@@ -73,7 +73,7 @@ class ScriptEditor(var s: ScriptDef) : Screen() {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, H, t.bg)
         val listTop = top + 70; val btnY = H - app.insetBottom - 76; val sc = scroll.step(dt)
-        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, btnY - 12 - listTop)
         var y = listTop + 6
         fun title(x: String) { g.text(x, G + 4, y + 18, Dim.FS_S, t.ink2); y += 28 }
         fun chips(list: List<Pair<String, String>>, on: (String) -> Boolean = { false }) { var x = G; for ((id, zh) in list) { val w0 = g.measure(zh, Dim.FS_S + 1) + 28; if (x + w0 > W - G) { x = G; y += 46 }; x += Widgets.chip(g, app, id, x, y, zh, on(id), 38f) + 6 }; y += 50 }

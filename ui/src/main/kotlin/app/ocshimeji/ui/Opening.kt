@@ -31,6 +31,8 @@ class Scroller {
     }
     fun release() { dragging = false; s.target = s.value }
     fun reset() { s.snap(0f); vel = 0f }
+    /** jump to a position (tests, "go to section") */
+    fun jump(to: Float) { s.snap(to.coerceIn(0f, max)); s.target = s.value; vel = 0f }
     /** follow the end of a growing list (replay) */
     fun toEnd() { if (!dragging) { s.target = max; vel = 0f } }
 }
@@ -143,7 +145,7 @@ class OpeningScreen : Screen() {
         val t = app.theme; val G = Dim.GUTTER; val W = app.w; val lib = app.saves.library().chars
         g.text("從收藏庫選，或用一張圖片做一位新角色。已選 ${chosen.size}／${house.capacity}", G + 4, y0 + 8, Dim.FS_S, t.ink2)
         val top = y0 + 22; val sc = list.step(dt)
-        g.save(); g.clip(0f, top, W, btnY - 16 - top); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, top, W, btnY - 16 - top); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, W, btnY - 16 - top)
         var y = top + 6; val rowH = 80f
         for (c in lib) {
             val on = c.id in chosen; val id = "pick:${c.id}"; val sink = if (app.pressed == id) Dim.LIP - 1 else 0f
@@ -171,7 +173,7 @@ class OpeningScreen : Screen() {
         g.fillRound(G, y0, W - G * 2, 190f, Dim.RADIUS_L, t.surface2)
         drawHousePreview(g, app, house, G, y0, W - G * 2, 190f, faces, labels = true)
         val top = y0 + 202; val sc = list.step(dt)
-        g.save(); g.clip(0f, top, W, btnY - 16 - top); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, top, W, btnY - 16 - top); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, W, btnY - 16 - top)
         var y = top + 4
         if (chosen.size >= 2) { val f = Form(app, g, G, W - G * 2, y); f.button("rels", "設定他們的關係（選用）${if (rels.isNotEmpty()) "・已設定 ${rels.size / 2} 組" else ""}"); y = f.y }
         for (lid in chosen) {

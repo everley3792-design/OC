@@ -80,6 +80,8 @@ class Life(
     val you: app.ocshimeji.sim.social.YouState = app.ocshimeji.sim.social.YouState(),
     /** 1.9.0: recipes, anniversaries, the town feed, your tools, trips, keepsakes, desktop minutes (`life/Days`) */
     val days: app.ocshimeji.sim.social.DaysState = app.ocshimeji.sim.social.DaysState(),
+    /** 2.2.0: the inner life (`life/Inner`) */
+    val inner: app.ocshimeji.sim.social.InnerState = app.ocshimeji.sim.social.InnerState(),
 ) {
     /** 第 N 天 */
     val day: Long get() = kotlin.math.floor(minute / 1440).toLong() - kotlin.math.floor(startMinute / 1440).toLong() + 1

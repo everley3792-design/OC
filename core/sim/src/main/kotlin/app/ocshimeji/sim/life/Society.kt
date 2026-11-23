@@ -311,6 +311,7 @@ class Society(private val sim: LifeSim) {
         if (re.bad || re == Reaction.NO) sim.addMood(p, "rejected") else if (good) sim.addMood(p, "socgood")
         if (act.id == "gift" && good) sim.addMood(q, "gift")
         if (act.id == "comfort" && good || act.id == "deep" && good) sim.addMood(q, "listened")
+        sim.inner.onSocial(p, q, act.id, act.cat, good, re.bad, gift?.id, gift?.zh ?: "")
         st.seen["${act.id}:${p.id}:${q.id}"] = life.minute
         count(p.id, q.id, "all"); count(p.id, q.id, act.cat)
         if (act.cat == "衝突" && re.bad) count(p.id, q.id, "quarrel")

@@ -86,7 +86,14 @@ data class CharSpec(
     val habits: List<Habit> = emptyList(),
     /** M-04 (1.8.0): their own lines for a situation (`CustomLine.WHEN`) */
     val lines: List<CustomLine> = emptyList(),
+    // ---- 2.2.0: personality in more dimensions (`Dims`; the first five are `axes`) and how they put words together
+    val dims: Map<String, Float> = emptyMap(),
+    val talk: TalkStyle = TalkStyle(),
 ) {
+    /** a personality dimension −1..1 (`Dims`): the five axis ones read `axes` */
+    fun dim(id: String): Float { val d = Dims.BY[id] ?: return 0f; return if (d.axis >= 0) axis(d.axis) else dims[id] ?: 0f }
+    fun withDim(id: String, v: Float): CharSpec { val d = Dims.BY[id] ?: return this; val x = v.coerceIn(-1f, 1f)
+        return if (d.axis >= 0) copy(axes = List(5) { if (it == d.axis) x else axis(it) }) else copy(dims = if (kotlin.math.abs(x) < 0.01f) dims - id else dims + (id to x)) }
     /** how they call you at this closeness (R4: three steps; the old single field is the middle one) */
     fun callFor(affinity: Int): String = when {
         affinity >= Address.DEAR -> address.dear.ifBlank { address.close.ifBlank { callPlayer } }

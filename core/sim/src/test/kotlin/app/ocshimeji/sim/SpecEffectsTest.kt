@@ -35,6 +35,12 @@ class SpecEffectsTest {
     private fun lines(spec: CharSpec, line: String, toPlayer: Boolean = false, aff: Int = 50) = (1..30).map { Speech.say(spec, line, Rng(it.toLong()), aff, toPlayer) }.toSet()
     private fun run(s: LifeSim, sec: Float) { var t = 0f; while (t < sec) { s.update(0.1f); t += 0.1f } }
 
+    /** 2.2.0: the personality dimensions and the ways of talking */
+    @Test fun dimensionsAndWaysOfTalking() {
+        assertTrue(appeal(base.withDim("創造", 1f), "craft") > appeal(base, "craft") * 1.3f, "dims")
+        assertTrue(appeal(base.withDim("好奇", 1f), "read") > appeal(base.withDim("好奇", -1f), "read"), "dims")
+        assertNotEquals(lines(base, "嗯，好啊，那我們走吧。"), lines(base.copy(talk = app.ocshimeji.sim.chars.TalkStyle(stutter = 1f, rhetorical = 1f)), "嗯，好啊，那我們走吧。"), "talk")
+    }
     @Test fun personality() {
         assertTrue(appeal(base.copy(axes = listOf(0f, 0.9f, 0f, 0f, 0f)), "tidy") > appeal(base.copy(axes = listOf(0f, -0.9f, 0f, 0f, 0f)), "tidy"), "axes")
         assertTrue(appeal(base.copy(traits = listOf("書蟲")), "read") > appeal(base, "read") * 1.5f, "traits")

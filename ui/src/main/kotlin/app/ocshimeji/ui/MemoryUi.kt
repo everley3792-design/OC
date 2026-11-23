@@ -74,7 +74,7 @@ class MemoryScreen(val ws: WorldScreen) : Screen() {
         if (playing) scroll.toEnd()
         val sc = scroll.step(dt)
         if (shown.isEmpty()) g.text(if (tab == "fav") "還沒有收藏的名場面：點一件事就能收藏" else if (cursor != null) "按播放，這一天會一件一件出現" else "這一天還沒有記下什麼", W / 2, listTop + 50, Dim.FS_S + 1, t.ink3, FontKind.UI, Align.CENTER)
-        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, listH)
         g.fillRect(G + 58, listTop - sc, 2f, tops.last(), t.line)   /* the time line */
         shown.forEachIndexed { i, l ->
             val rowH = hs[i]; val ry = listTop + tops[i] - sc; if (ry + rowH < listTop || ry > listTop + listH) return@forEachIndexed

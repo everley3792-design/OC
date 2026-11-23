@@ -59,7 +59,7 @@ class EnvSheet(val ws: WorldScreen) : Overlay() {
         g.text("${ws.timeText()}・${Weather.SEASON_ZH[sim.season()]}天・${Env.zh(sim.sky())}" + if (env.paused) "・暫停中" else "", G + 4, y + 68, Dim.FS_S, t.ink2)
         val top = y + 84; val listH = hh - 84 - app.insetBottom
         scroll.max = maxOf(0f, 560f - listH); val sc = scroll.step(dt)
-        g.save(); g.clip(0f, top, W, listH); app.zoneDy = -sc; g.translate(0f, -sc)
+        g.save(); g.clip(0f, top, W, listH); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, W, listH); g.translate(0f, -sc)
         var yy = top
         fun head(s0: String) { g.text(s0, G + 4, yy + 16, Dim.FS_S, t.ink3); yy += 26 }
         fun chips(items: List<Pair<String, String>>, on: (String) -> Boolean) { var x = G
@@ -172,7 +172,7 @@ class StoragePage(val ws: WorldScreen) : Screen() {
         val listTop = top + 156; val listH = H - listTop - Nav.height(app); val cols = 3; val cw = (W - G * 2 - 16) / cols; val ch = cw + 28
         scroll.max = maxOf(0f, ((items.size + cols - 1) / cols) * (ch + 8) - listH + 10); val sc = scroll.step(dt)
         if (items.isEmpty()) g.text(if (life.bag.isEmpty()) "收納是空的：在小鎮的店裡買東西、撿東西、或委託住民做" else "這一類還沒有東西", W / 2, listTop + 60, Dim.FS_S + 1, t.ink3, FontKind.UI, Align.CENTER)
-        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc; g.translate(0f, -sc)
+        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, listH); g.translate(0f, -sc)
         items.forEachIndexed { i, (id, n) -> val cx0 = G + (i % cols) * (cw + 8); val cy0 = listTop + (i / cols) * (ch + 8); val down = app.pressed == "it:$id"
             Widgets.card(g, t, cx0, cy0, cw, ch, 18f, t.surface, t.lip, if (down) Dim.LIP - 1 else 0f)
             ItemArt.draw(g, t, life, id, cx0 + cw / 2, cy0 + cw / 2 - 2, cw * 0.62f, app)
@@ -243,7 +243,7 @@ class ResidentsPage(val ws: WorldScreen) : Screen() {
         var x = G; for ((k, zh) in listOf("rels" to "關係圖", "lib" to "收藏庫與創角")) x += Widgets.chip(g, app, k, x, top + 80, zh, false, 36f) + 6
         val listTop = top + 128; val listH = H - listTop - Nav.height(app); val rowH = 96f
         scroll.max = maxOf(0f, sim.life.people.size * rowH - listH + 10); val sc = scroll.step(dt)
-        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc; g.translate(0f, -sc)
+        g.save(); g.clip(0f, listTop, W, listH); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, listH); g.translate(0f, -sc)
         sim.life.people.forEachIndexed { i, p -> val y = listTop + i * rowH; val id = "p:${p.id}"
             Widgets.card(g, t, G, y, W - G * 2, rowH - 10, 20f, t.surface, t.lip, if (app.pressed == id) Dim.LIP - 1 else 0f)
             Widgets.face(g, t, app.charImg(ws.libOf(p), 256), G + 40, y + 43, 26f); Widgets.sky(g, t, sim.moodSky(p), G + 62, y + 20, 8f)

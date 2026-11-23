@@ -99,7 +99,7 @@ class ImportStudio(val edit: LibChar? = null, val spec: CharSpec? = null, val on
     // ---- 4 actions
     private fun assign(g: Gfx, y0: Float, btnY: Float, dt: Float) {
         val t = app.theme; val G = Dim.GUTTER; val W = app.w; val p = prep ?: return
-        val sc = list.step(dt); g.save(); g.clip(0f, y0, W, btnY - 12 - y0); g.translate(0f, -sc); app.zoneDy = -sc
+        val sc = list.step(dt); g.save(); g.clip(0f, y0, W, btnY - 12 - y0); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, y0, W, btnY - 12 - y0)
         val f = Form(app, g, G, W - G * 2, y0)
         f.note("點一列可以改成別的動作。沒有的動作會用系統的程序動畫代替（照備用鏈）。")
         for ((a, c) in p.clips) { val id = "clip:$a"; val sink = if (app.pressed == id) 2f else 0f

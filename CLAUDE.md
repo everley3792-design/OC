@@ -110,13 +110,17 @@
   - `social/Content`（`ContentEvent`／`When`／`Who`／`RelWhen`、`Content.ok` 不擲骰子、`Content.problems` 驗證器）、`social/DailyContent`（23 個日常事件的 JSON）；格式說明 `docs/reboot/content-format.md`；
   - 長文字換行（`Widgets.wrap` 避頭、`toastStay`、`ListSheet` 可變列高）；移除玩家啟動的四個小遊戲；`Society.topicsFor`；
   - `SettingsPage`、`SoundSheet`（`Platform.volumes`）、`ui:theme`；存檔格式不變（v17）。
-- 下一步：擴充第二階段（2.2.0）角色模擬核心；正式 2.0.0 仍等實機回報與金鑰。
+- **擴充第二階段（2.2.0）角色模擬核心——完成**（`docs/reboot/p2-report.md`）：
+  - `chars/Dims`（22 個面向，前五個＝`axes`；`CharSpec.dims`、`dim()`、`withDim()`；情境問答 22 題；`TalkStyle` 說話的小習慣，`Speech.talk`）；特質 83 個；
+  - `life/Inner`＋`social/InnerData`（`Life.inner`）：內在需求 6 種、想念、記憶（重要程度、淡化、看到東西想起）、第一印象／默契／價值觀摩擦／害羞的兩人／吃醋、習慣自己形成、老位子、目標、邀約與約定、羈絆（談心、站在同一邊、變遠）、互相影響（最多 3 樣）、個人年表；存檔格式 v18；
+  - `ui`：人物卡「內心」頁、創角 22 個面向的滑桿＋情境問答＋說話的小習慣；`UiApp.zoneClip`（捲動清單只有看得見的部分能點）。
+- 下一步：擴充第三階段（2.3.0）互動與內容資料庫；正式 2.0.0 仍等實機回報與金鑰。
 
 ## 目錄
 ```
 settings.gradle.kts  build.gradle.kts  gradle.properties（版本號 oc.versionName／oc.versionCode）  gradle/libs.versions.toml
-core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Drama＝夢想怕的東西生病熱潮八卦綽號秘密小圈圈團體活動比賽戀愛與你的決定、Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物、WithYou＝和你、Days＝家與小鎮）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
-               chars/（Spec＝CharSpec／Address 稱謂／Habit 自訂事件／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
+core/sim/      純 Kotlin：act/（Interactions＝互動登錄表）；script/（Script＝玩家劇本）；social/（SocialActs＝社交行為、Will＝意願與反應、Topics＝話題碰撞、Scenes＝化學反應／火花／事件、Games＝猜拳躲貓貓、Narrate＝敘事描寫、State＝社交存檔資料）；desk/（DeskData＝動作表／意圖／東西／性格、DeskPet＝三層行為與物理、DeskGestures＝手勢）；Rng（SplitMix64，唯一的亂數）、GameClock；house/（Furniture、HouseTypes＝房型與房客規則）；life/（Drama＝夢想怕的東西生病熱潮八卦綽號秘密小圈圈團體活動比賽戀愛與你的決定、Data＝需求／活動／心情小卡／小動作／台詞、Flavor＝回憶的擬聲與旁白、Env＝你對天氣季節時間的調整、State＝存檔資料 Life／Person、Grid＝尋路、LifeSim＝生活本體、Society＝社交與事件、Economy＝星幣背包帳本、TownLife＝小鎮與每日、Decorate＝佈置與搬家、Journal＝次數日記夢稱號成就圖鑑統計植物、WithYou＝和你、Days＝家與小鎮、Inner＝內在生活）；town/（Town＝天氣季節、商店、地點、小鎮事件、小鎮存檔資料）；
+               chars/（Spec＝CharSpec／Address 稱謂／Habit 自訂事件／Voice／Rel／Relations、Catalog＝標籤特質怪癖價值觀的效果、Dims＝性格面向／情境問答／TalkStyle、Speech＝說話方式與情境預覽、Builder＝範本問答隨機規則）
 core/save/     純 Kotlin：paint/（Paint＝繪圖引擎、Draft＝草稿）、Studio（創作套件的收藏庫端：動畫、物品、聲音、標籤、劇本、.ocitem／.ocmod、空間）；Storage（FileStorage 原子寫入＋.bak、MemStorage）、SaveSystem（收藏庫、存檔、備份、複製、分支）、Model（LibChar、SlotMeta、World）、Migrate、Presets（肉桂捲）、ImageCheck（透明背景、腳的位置）；.ocsave 匯出匯入；
                media/（Raster＝像素／縮放／PNG 編碼／去背／檔頭、Formats＝GIF／APNG／WebP／格子、Importer＝格式判斷、限制、序列、圖集、.ocpkg、動作與備用鏈、prepare）
 render/api/    Gfx 介面（dp 為單位、ARGB 顏色）、Img、Assets、Colors
@@ -127,7 +131,7 @@ ui/            純 Kotlin 的整個介面：WorldHost（共用的世界）、Des
 app/           Android 外殼：OcRuntime（共用存檔／圖片／世界）、DeskService（桌寵前景服務與懸浮窗）、OcWidget（主畫面小工具）、tools/framework-extras（離線 aapt 的新屬性）、MainActivity（全螢幕單一 GameView、insets、深色模式、返回鍵、輸入框）、AndroidGfx（Canvas 後端）、AndroidAssets、Sounds（合成音效）；選圖／匯出／匯入用系統檔案選擇器；build.gradle.kts＝離線管線
 art/           原創美術與字型（fonts/*.ttf、chars/cinnamon/original.png 與 idle.png）
 docs/reboot/   計畫書、各里程碑報告、肉桂捲原圖
-deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/、r7-3/、r8/、p1/（截圖）
+deliverables/  apk/（Debug APK＋sha256）、m0/～m7/、r1/～r6/、r5-1/、r7-1/、r7-2/、r7-3/、r8/、p1/、p2/（截圖）
 ```
 
 ## 指令
@@ -147,6 +151,7 @@ pkill -f GradleDaemon                                             # 建完釋放
 - UI 是即時模式：每幀畫自己並用 `app.zone(id, …)` 登記點擊區；`Screen.tap(id)` 處理。捲動區裡登記點擊區前設 `app.zoneDy`。覆蓋層（`Overlay`）出現後 `Dim.GUARD`（0.3 秒）內不接受點擊；點覆蓋層外面＝關閉；返回鍵先關覆蓋層。
 - 生活畫面只看不改：觸碰經 `LifeSim` 的 `pet/petEnd/lift/hold/drop/feed`；畫面效果（泡泡、愛心、聲音）來自 `sim.events`。畫面自己的裝飾亂數不得影響模擬。
 - **角色的個性只經過 `CharSpec` 與 `Catalog`**：新的標籤、特質、怪癖就是新的一筆 `Effect` 資料；不要在 `LifeSim` 寫「如果名字是…」。新設定欄位要在 `SpecEffectsTest` 補一項「看得到的效果」。
+- **內在生活只經 `Inner`**（2.2.0）：內在需求、記憶、習慣、老位子、目標、約定、羈絆、影響、年表都在 `life/Inner`（資料在 `social/InnerData`）；一律用 `Rng.of(seed, "inner:…")`；性格面向只從 `CharSpec.dim()` 讀；被影響只能加喜好（最多 3 樣），不得拿掉原本的特質。捲動清單設 `app.zoneDy` 時一併設 `app.zoneClip`（看不見的部分不能點）。
 - **事件是資料**（2.1.0）：新的事件寫成 `ContentEvent`（JSON），條件只用欄位，必須通過 `Content.problems`；戀愛分類只在兩位成年角色且戀愛打開時成立（`Content.ok`）。介面文字一律用 `Widgets.wrap` 換行並讓高度跟著長，不要切成「…」。
 - **社交只經 `Society`**：新的社交行為、事件、化學反應、衝突火花都是 `core:sim/social` 裡的一筆資料（`Scenes` 的腳本 `A:句子@POSE#特效 / B:…`）；關係的每一次改變都經 `Society.relUpdate`（內部再過 `Relations.problem`），不得直接改 `life.rels`。需要玩家回應的事（煩惱、請求）一律經打擾預算，一次只顯示一個泡泡。
 - 場景只由開始的人推進（`Society.play`）；另一方只聽。場景不存檔，後果在場景結束時一次套用；補算時直接套用、不演。

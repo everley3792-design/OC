@@ -43,6 +43,7 @@ object Speech {
             else -> t
         }
         if (s.endings.isNotEmpty() && r.chance(0.6)) t = end(t, r.pick(s.endings))
+        if (s.talk.any) t = talk(s.talk, t, r)
         if (s.catchphrases.isNotEmpty() && r.chance(s.address.catchRate.toDouble())) {
             val where = s.address.catchWhen; val greet = GREET.any { base.startsWith(it) }; val surprise = SURPRISE.any { base.contains(it) }
             val c = r.pick(s.catchphrases)
@@ -56,6 +57,22 @@ object Speech {
         }
         return t
     }
+    /** 2.2.0 (#39): how they put words together — each part only when its value is above zero (no dice otherwise) */
+    fun talk(k: TalkStyle, base: String, r: Rng): String {
+        var t = base
+        if (k.blunt > 0f && r.chance(k.blunt * 0.7)) { val c = t.indexOfFirst { it == '，' }; if (c in 1 until t.length - 2) t = t.substring(0, c) + "。" }
+        if (k.polite > 0f && r.chance(k.polite * 0.6)) t = if (t.contains("謝")) t else end(t, if (t.endsWith("？")) "，可以嗎" else "，謝謝")
+        if (k.metaphor > 0f && r.chance(k.metaphor * 0.4)) t = end(t, "，" + r.pick(METAPHORS))
+        if (k.rhetorical > 0f && r.chance(k.rhetorical * 0.5) && !t.endsWith("？")) t = t.trimEnd('。', '！', '～') + "，不是嗎？"
+        if (k.digress > 0f && r.chance(k.digress * 0.35)) t = "$t 啊，說到這個——" + r.pick(DIGRESS)
+        if (k.quip > 0f && r.chance(k.quip * 0.35)) t = r.pick(QUIPS) + t
+        if (k.jokeShy > 0f && (t.contains("謝謝") || t.contains("喜歡") || t.contains("開心")) && r.chance(k.jokeShy * 0.6)) t = "$t……開、開玩笑的啦。"
+        if (k.stutter > 0f && r.chance(k.stutter * 0.6) && t.length >= 2 && t[0] !in "（「…") t = "${t[0]}、${t[0]}……" + t
+        return t
+    }
+    private val METAPHORS = listOf("像剛曬好的被子一樣", "像下雨前的空氣", "像一顆慢慢融化的糖", "像早上第一口熱茶", "像沒寫完的信")
+    private val DIGRESS = listOf("我昨天看到一朵很奇怪的雲。", "冰箱為什麼會叫呢？", "算了，下次再說。", "我好像忘了關燈。")
+    private val QUIPS = listOf("（翻白眼）", "喂喂，", "說真的，")
     private val GREET = listOf("早", "嗨", "你好", "晚安", "午安", "歡迎", "我回來")
     private val SURPRISE = listOf("咦", "哇", "什麼", "真的假的", "！？", "欸")
     /** put an ending before the last punctuation mark */

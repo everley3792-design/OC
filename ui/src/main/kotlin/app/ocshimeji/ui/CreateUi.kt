@@ -34,7 +34,7 @@ abstract class Page(val title: String) : Screen() {
         val navH = if (nav != null) Nav.height(app) else 0f
         val btnY = H - app.insetBottom - 76 - navH + (if (nav != null) app.insetBottom else 0f); val listTop = top + 70; val bottom = if (primary != null) btnY - 12 else H - app.insetBottom - navH + (if (nav != null) app.insetBottom else 0f)
         val sc = scroll.step(dt)
-        g.save(); g.clip(0f, listTop, W, bottom - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, bottom - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, bottom - listTop)
         var y = listTop + 6 + header(g, G, listTop + 6, W - G * 2)
         val rs = rows()
         if (rs.isEmpty() && empty.isNotEmpty()) { Widgets.emptyArt(g, t, W / 2, y + 40); for ((i, l) in Widgets.wrap(g, empty, Dim.FS_M, W - 64).withIndex()) g.text(l, W / 2, y + 100 + i * 24f, Dim.FS_M, t.ink3, FontKind.UI, Align.CENTER) }
@@ -175,7 +175,7 @@ class TagEditor(var tag: CustomTag) : Screen() {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, H, t.bg)
         val listTop = top + 70; val btnY = H - app.insetBottom - 76; val sc = scroll.step(dt)
-        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, btnY - 12 - listTop)
         var y = listTop + 8
         fun title(s: String) { g.text(s, G + 4, y + 18, Dim.FS_S, t.ink2); y += 28 }
         title("說明"); Widgets.chip(g, app, "note", G, y, tag.note.ifBlank { "（點一下寫說明）" }, false, 40f, W - G * 2); y += 52

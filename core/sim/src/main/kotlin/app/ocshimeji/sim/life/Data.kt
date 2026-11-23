@@ -135,6 +135,11 @@ object Moods {
         MoodDef("goodweather", "喜歡今天的天氣", 1, 0.25f), MoodDef("rainy", "雨天悶悶的", -1, 0.25f), MoodDef("cosy", "房間很舒服", 1, 0.25f), MoodDef("bare", "房間空蕩蕩的", -1, 0.25f),
         MoodDef("town", "去小鎮玩了一趟", 2, 4f), MoodDef("rainbow", "看到彩虹", 3, 6f), MoodDef("firstsnow", "初雪", 2, 12f), MoodDef("crafted", "做好了作品", 2, 8f),
         MoodDef("newthing", "房間多了喜歡的東西", 2, 12f), MoodDef("festival", "逛了祭典", 3, 8f), MoodDef("treated", "你請喝咖啡", 2, 4f),
+        /* 2.2.0: the inner life */
+        MoodDef("crowded", "想一個人靜一靜", -1, 0.3f), MoodDef("uneasy", "不太安心", -1, 0.3f), MoodDef("itchy", "手癢想做點東西", -1, 0.3f), MoodDef("useless", "覺得什麼都沒做成", -1, 0.3f),
+        MoodDef("leftout", "覺得自己像外人", -2, 0.3f), MoodDef("restless", "好想知道新的事", -1, 0.3f), MoodDef("missing", "想念某人", -1, 0.3f), MoodDef("reunited", "又見面了", 2, 4f),
+        MoodDef("jealous", "有點吃醋", -2, 6f), MoodDef("tonguetied", "想說話卻開不了口", -1, 6f), MoodDef("myseat", "老位子被坐了", -1, 2f), MoodDef("goaldone", "完成了今天的目標", 2, 8f),
+        MoodDef("longgoal", "達成了長期目標", 3, 48f), MoodDef("promise", "守住了約定", 2, 6f), MoodDef("stoodup", "被放鴿子", -2, 8f), MoodDef("drifting", "好像變遠了", -1, 24f),
     ).associateBy { it.id }
 }
 

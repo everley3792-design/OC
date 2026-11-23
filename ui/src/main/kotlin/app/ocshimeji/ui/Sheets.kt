@@ -30,7 +30,7 @@ open class ListSheet(val title: String, val rows: List<Pair<String, String>>, va
         app.zone("sheet:body", 0f, y, app.w, h)
         scroll.max = maxOf(0f, total - listH); val sc = scroll.step(dt)
         val top = y + head
-        g.save(); g.clip(0f, top, app.w, listH); app.zoneDy = -sc
+        g.save(); g.clip(0f, top, app.w, listH); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, app.w, listH)
         var acc = 0f
         rows.forEachIndexed { i, (id, _) -> val rowH = heights[i]
             val ry = top + acc - sc; acc += rowH; if (ry + rowH < top || ry > top + listH) return@forEachIndexed

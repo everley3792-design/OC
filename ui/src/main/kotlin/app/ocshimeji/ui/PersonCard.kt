@@ -9,6 +9,9 @@ import app.ocshimeji.render.Align
 import app.ocshimeji.render.Colors
 import app.ocshimeji.render.FontKind
 import app.ocshimeji.render.Gfx
+import app.ocshimeji.sim.social.InnerData
+import app.ocshimeji.sim.chars.Dims
+import app.ocshimeji.sim.social.InnerNeeds
 import app.ocshimeji.sim.life.Moods
 import app.ocshimeji.sim.life.Need
 import kotlin.math.floor
@@ -40,9 +43,10 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
         val so = sim.society
         // ---- R3: three pages — now, relationships, records
         var tx = G
-        for ((k, zh) in listOf("now" to "現在", "rels" to "關係", "log" to "紀錄")) tx += Widgets.chip(g, app, "ptab:$k", tx, y + 98, zh, tab == k, 36f, 72f) + 8
+        for ((k, zh) in listOf("now" to "現在", "inner" to "內心", "rels" to "關係", "log" to "紀錄")) tx += Widgets.chip(g, app, "ptab:$k", tx, y + 98, zh, tab == k, 36f, 72f) + 8
         if (tab == "rels") { relsPage(g, t, y + 146, y + h); return }
         if (tab == "log") { logPage(g, t, y + 146, y + h); return }
+        if (tab == "inner") { innerPage(g, t, y + 146, y + h); return }
         // ---- now + why
         var yy = y + 142
         val why = if (p.why.isEmpty()) "沒有特別的理由，隨意地過著" else "因為：" + p.why.joinToString("、")
@@ -123,6 +127,30 @@ class PersonCard(val ws: WorldScreen, val id: String) : Overlay() {
             g.text(Widgets.fit(g, note, Dim.FS_S - 1, W - G * 2 - 74), G + 58, yy + 76, Dim.FS_S - 1, t.ink2)
             yy += 96 }
         Widgets.button(g, app, "card:rels", G, bottom - app.insetBottom - 62, W - G * 2, 48f, "關係圖")
+    }
+    /** 2.2.0: the inner life — needs beyond the body, goals, promises, habits, their seat, what they remember, their firsts */
+    private fun innerPage(g: Gfx, t: Theme, y0: Float, bottom: Float) {
+        val sim = ws.sim; val inn = sim.inner; val p = sim.person(id) ?: return; val W = app.w; val G = Dim.GUTTER; var yy = y0; val end = bottom - app.insetBottom - 12
+        val colW = (W - G * 2 - 16) / 2
+        InnerNeeds.ALL.forEachIndexed { i, n ->
+            val cx = G + (i % 2) * (colW + 16); val cy = yy + (i / 2) * 30f; val v = inn.need(p, n.id)
+            g.text(n.zh, cx, cy + 12, Dim.FS_S - 1, t.ink2); val bx = cx + 56; val bw = colW - 56
+            g.fillRound(bx, cy + 2, bw, 11f, 6f, t.surface2); if (v > 1) g.fillRound(bx, cy + 2, maxOf(11f, bw * v / 100f), 11f, 6f, when { v < 25 -> t.alert; v < 55 -> t.accent; else -> t.select })
+        }
+        yy += 3 * 30f + 6
+        fun para(label: String, text: String, col: Int = t.ink) { if (yy > end - 24) return
+            val ls = Widgets.wrap(g, text, Dim.FS_S, W - G * 2 - 64); g.text(label, G + 4, yy + 16, Dim.FS_S - 1, t.accentLip)
+            for ((i, l) in ls.withIndex()) { if (yy + 16 + i * 19f > end) break; g.text(l, G + 60, yy + 16 + i * 19f, Dim.FS_S, col) }; yy += 8 + ls.size * 19f }
+        val dims = Dims.summary(p.spec, 4); if (dims.isNotEmpty()) para("個性", dims.joinToString("、"))
+        inn.bondOf(p)?.let { q -> para("最親近", q.name + (sim.life.inner.missing[p.id]?.takeIf { it == q.id }?.let { "（現在好想${q.spec.pronoun}）" } ?: "")) }
+        val goals = inn.goalsOf(id); if (goals.isNotEmpty()) para("目標", goals.joinToString("；") { g0 -> "${g0.text}（${minOf(g0.got, g0.need)}/${g0.need}${if (g0.done) "，完成了" else ""}）" })
+        val ap = inn.apptsOf(id); if (ap.isNotEmpty()) para("約定", ap.joinToString("；") { a -> val other = sim.person(if (a.from == id) a.to else a.from)?.name ?: ""
+            val m = ((a.at % 1440) + 1440) % 1440; "和$other ${(m / 60).toInt()} 點${Acts[a.act]?.zh ?: a.act}" + if (a.at - sim.life.minute > 1440 - m + (sim.life.minute % 1440)) "（明天）" else "" })
+        val hab = inn.routinesOf(id); if (hab.isNotEmpty()) para("習慣", hab.joinToString("、") { "每天${InnerData.SLOT_ZH[it.slot]}${Acts[it.act]?.zh ?: it.act}" })
+        val seats = inn.seatsOf(id); if (seats.isNotEmpty()) para("老位子", seats.joinToString("、"))
+        val mem = inn.memosOf(id).take(3); if (mem.isNotEmpty()) para("記得", mem.joinToString("；") { it.what })
+        val firsts = inn.timeline(id).takeLast(4); if (firsts.isNotEmpty()) para("年表", firsts.joinToString("；") { "第 ${(kotlin.math.floor(it.minute / 1440) - kotlin.math.floor(sim.life.startMinute / 1440) + 1).toLong()} 天 ${it.text}" })
+        if (dims.isEmpty() && goals.isEmpty() && hab.isEmpty() && mem.isEmpty() && firsts.isEmpty()) para("", "日子還短，慢慢會有自己的習慣、目標和回憶。", t.ink3)
     }
     /** what they did lately (the timeline, their lines only), titles and the things they do most */
     private fun logPage(g: Gfx, t: Theme, y0: Float, bottom: Float) {

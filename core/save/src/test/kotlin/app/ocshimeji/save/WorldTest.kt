@@ -121,6 +121,11 @@ class WorldTest {
         assertEquals("晚安囉", life.people.first { it.id == "r_a" }.spec.lines.single().text)
         assertTrue(life.days.feed.isEmpty() && life.days.trips.isEmpty() && life.days.recipes.isEmpty())
     }
+    @Test fun a220WorldFileIsUpgraded() {   /* format 17 → 18: recipes and tools stay; no dimensions, ways of talking or inner life yet */
+        val w = sys().parseWorld(javaClass.getResourceAsStream("/world-v17.json")!!.readBytes()); val life = w.life!!
+        assertEquals(WORLD_VERSION, w.v); assertEquals(setOf("omelet"), life.days.recipes); assertEquals(3L, life.days.tools["wand"])
+        assertTrue(life.people.all { it.spec.dims.isEmpty() && !it.spec.talk.any } && life.inner.memos.isEmpty() && life.inner.routines.isEmpty())
+    }
     @Test fun relationshipsAndFamilyRoomsWhenCreating() {
         val s = sys(); val a = importOne(s, "大人"); val k = s.importChar("小孩", false, 1, ImageCheck.analyze(2, 2, IntArray(4) { -1 }), byteArrayOf(1), byteArrayOf(1), "png")
         assertTrue(assertFailsWith<IllegalArgumentException> { s.createWorld("A", "", "", Houses.COTTAGE, listOf(a.id, k.id), mapOf(a.id to "bedA", k.id to "bedA"), 0.0) }.message!!.contains("家人"))

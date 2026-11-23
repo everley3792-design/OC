@@ -77,10 +77,64 @@ object Catalog {
         Trait("天然呆", TraitCat.ODD, fx("daydream" to 1.6f, dur = 1.1f, lines = listOf("咦？我剛剛要做什麼？")), "常常忘記自己要做什麼"),
         Trait("嘴硬心軟", TraitCat.ODD, fx("r:稱讚" to 0.85f, "s:稱讚" to 0.6f, lines = listOf("才、才不是在等你。")), "說話和心裡相反"),
         Trait("完美主義", TraitCat.ODD, fx("tidy" to 1.4f, dur = 1.2f, neg = 1.15f), "做事慢但仔細"),
+        /* 2.2.0 (expansion #14): more traits — each a bundle of effects like the ones above */
+        Trait("收集癖", TraitCat.ODD, fx("album" to 1.6f, "outing" to 1.3f, "s:分享" to 1.2f, lines = listOf("這個要收起來。"), topics = listOf("最近收集到的東西")), "喜歡收集奇怪的小東西"),
+        Trait("偷偷觀察", TraitCat.ODD, fx("window" to 1.3f, "s:聊天" to 0.8f, "daydream" to 1.2f, lines = listOf("（從後面偷偷看）"), topics = listOf("大家最近在做什麼")), "喜歡偷偷觀察別人"),
+        Trait("可愛控", TraitCat.LIKE, fx("s:稱讚" to 1.4f, "r:肢體" to 1.2f, "plantchat" to 1.3f, pos = 1.1f, lines = listOf("好可愛……！")), "很容易被可愛的東西吸引"),
+        Trait("雨天派", TraitCat.LIKE, fx("rainwatch" to 2.4f, "window" to 1.2f, lines = listOf("下雨的聲音最好聽了。")), "非常喜歡下雨天"),
+        Trait("怕被碰", TraitCat.SOCIAL, fx("r:肢體" to 0.45f, "s:肢體" to 0.4f, decay = mapOf(Need.ATTENTION to 0.8f), lines = listOf("……先說一聲再碰我。")), "不喜歡被突然碰觸"),
+        Trait("被誇就害羞", TraitCat.FEEL, fx("r:稱讚" to 0.9f, "desk:hide" to 1.3f, lines = listOf("不、不要一直誇我啦。")), "容易因為被稱讚而害羞"),
+        Trait("愛分享", TraitCat.SOCIAL, fx("s:分享" to 1.8f, "s:送禮" to 1.3f, "snack" to 1.2f, lines = listOf("這個分你一半。")), "喜歡分享食物"),
+        Trait("小儀式", TraitCat.ODD, fx("tea" to 1.4f, "makebed" to 1.5f, "stretch" to 1.3f, lines = listOf("要先做完這個才行。")), "有自己奇怪的小儀式"),
+        Trait("愛離題", TraitCat.SOCIAL, fx("chat" to 1.2f, "s:聊天" to 1.2f, lines = listOf("啊，說到這個——"), topics = listOf("剛剛想到的別的事")), "說話時常常離題"),
+        Trait("記得喜好", TraitCat.SOCIAL, fx("s:送禮" to 1.7f, "s:照顧" to 1.3f, lines = listOf("你說過喜歡這個吧？")), "很會記住別人的喜好"),
+        Trait("惡作劇王", TraitCat.ODD, fx("s:玩笑" to 1.7f, "r:玩笑" to 1.3f, lines = listOf("嘿嘿，等一下有好戲看。")), "喜歡惡作劇"),
+        Trait("獨行俠", TraitCat.SOCIAL, fx("outing" to 1.5f, "chat" to 0.75f, decay = mapOf(Need.SOCIAL to 0.75f), lines = listOf("一個人走也不錯。")), "喜歡一個人到處走"),
+        Trait("心軟", TraitCat.FEEL, fx("r:和好" to 1.6f, "s:照顧" to 1.3f, "r:衝突" to 0.8f, lines = listOf("……好啦，原諒你。")), "很容易心軟"),
+        Trait("喜新", TraitCat.ODD, fx("outing" to 1.3f, "window" to 1.2f, "puzzle" to 1.2f, topics = listOf("沒試過的事")), "對陌生事物充滿好奇"),
+        Trait("念舊", TraitCat.FEEL, fx("album" to 1.8f, "framelook" to 1.8f, "letter" to 1.3f, lines = listOf("以前啊……")), "常常想起以前的事"),
+        Trait("愛逞強", TraitCat.FEEL, fx("r:照顧" to 0.8f, "active" to 1.2f, neg = 0.9f, lines = listOf("我一個人沒問題。")), "不想讓人看到自己弱的一面"),
+        Trait("杞人憂天", TraitCat.FEEL, fx(neg = 1.25f, lines = listOf("萬一……怎麼辦？"), flags = setOf("dark")), "什麼都會擔心"),
+        Trait("隨遇而安", TraitCat.FEEL, fx("relax" to 1.2f, neg = 0.8f, lines = listOf("怎樣都好啦。")), "到哪裡都能過得好"),
+        Trait("容易感動", TraitCat.FEEL, fx("tv" to 1.2f, pos = 1.25f, lines = listOf("（眼睛亮亮的）")), "一點小事就很感動"),
+        Trait("愛面子", TraitCat.SOCIAL, fx("primp" to 1.4f, "r:玩笑" to 0.75f, "r:衝突" to 0.85f), "很在意別人怎麼看"),
+        Trait("老好人", TraitCat.SOCIAL, fx("s:照顧" to 1.5f, "r:邀請" to 1.4f, "s:衝突" to 0.5f, lines = listOf("好啊，我幫你。")), "很難拒絕別人"),
+        Trait("毒舌", TraitCat.SOCIAL, fx("s:玩笑" to 1.3f, "s:衝突" to 1.3f, "s:稱讚" to 0.6f, lines = listOf("嗯，還行吧。（其實很好）")), "說話很直又很犀利"),
+        Trait("慢熟", TraitCat.SOCIAL, fx("s:聊天" to 0.75f, "s:邀請" to 0.7f, "r:肢體" to 0.8f), "要很久才會跟人熟起來"),
+        Trait("自來熟", TraitCat.SOCIAL, fx("s:打招呼" to 1.8f, "s:聊天" to 1.4f, "chat" to 1.3f, lines = listOf("嗨嗨！")), "跟誰都能馬上聊起來"),
+        Trait("愛撒嬌", TraitCat.SOCIAL, fx("s:肢體" to 1.4f, "desk:cling" to 1.5f, decay = mapOf(Need.ATTENTION to 1.3f), lines = listOf("陪我嘛～")), "喜歡撒嬌"),
+        Trait("吃醋精", TraitCat.FEEL, fx(neg = 1.1f, decay = mapOf(Need.ATTENTION to 1.2f), lines = listOf("你剛剛跟誰在聊天？")), "很容易吃醋"),
+        Trait("愛操心", TraitCat.SOCIAL, fx("s:照顧" to 1.6f, "cook" to 1.2f, lines = listOf("你有沒有穿暖一點？")), "總是在擔心別人"),
+        Trait("夜間活躍", TraitCat.LIFE, fx("stargaze" to 1.8f, "game" to 1.3f, wake = 1, sleep = 2), "喜歡在深夜活動"),
+        Trait("賴床", TraitCat.LIFE, fx("rest" to 1.2f, wake = 1, lines = listOf("五分鐘……再五分鐘……")), "早上起不來"),
+        Trait("規律", TraitCat.LIFE, fx("makebed" to 1.4f, "tidy" to 1.15f, lines = listOf("這個時間該做這件事了。")), "每天都照一樣的時間過"),
+        Trait("宅", TraitCat.LIFE, fx("outing" to 0.5f, "game" to 1.4f, "phone" to 1.3f, "tv" to 1.3f, lines = listOf("家裡最好了。")), "能不出門就不出門"),
+        Trait("運動派", TraitCat.LIFE, fx("stretch" to 1.8f, "workout" to 1.8f, "active" to 1.3f, "lazy" to 0.7f), "一天不動就不舒服"),
+        Trait("咖啡因", TraitCat.LIFE, fx("coffee" to 2f, "tea" to 1.4f, lines = listOf("先喝一杯再說。")), "沒喝一杯就不能開始一天"),
+        Trait("甜食派", TraitCat.LIFE, fx("snack" to 1.6f, "bake" to 1.4f, lines = listOf("有沒有甜的？")), "最愛甜的東西"),
+        Trait("挑食", TraitCat.LIFE, fx("meal" to 0.85f, "food" to 0.9f, lines = listOf("這個……可以不要嗎？")), "很多東西不吃"),
+        Trait("愛泡澡", TraitCat.LIFE, fx("bathe" to 1.9f, dur = 1.05f, lines = listOf("泡久一點……")), "洗澡可以洗很久"),
+        Trait("手作人", TraitCat.LIKE, fx("craft" to 1.9f, "origami" to 1.7f, "doodle" to 1.3f), "很愛自己動手做"),
+        Trait("音樂人", TraitCat.LIKE, fx("music" to 1.9f, "hum" to 1.8f, "dance" to 1.4f, "sing" to 1.4f, lines = listOf("♪～")), "生活裡一定要有音樂"),
+        Trait("電玩高手", TraitCat.LIKE, fx("game" to 2.2f, "phone" to 1.2f, lines = listOf("再一關就好。")), "最常打電動"),
+        Trait("天文迷", TraitCat.LIKE, fx("stargaze" to 2.4f, "cloudwatch" to 1.4f, topics = listOf("星星")), "喜歡看星星"),
+        Trait("拼圖控", TraitCat.LIKE, fx("puzzle" to 2.3f, dur = 1.1f), "很愛拼拼圖"),
+        Trait("寫字的人", TraitCat.LIKE, fx("diary" to 2f, "letter" to 1.8f), "常常寫東西"),
+        Trait("跳舞", TraitCat.LIKE, fx("dance" to 2.2f, "active" to 1.15f), "音樂一來就想動"),
+        Trait("看雲的人", TraitCat.LIKE, fx("cloudwatch" to 2.2f, "dreamy" to 1.3f), "可以看雲看一下午"),
+        Trait("健忘", TraitCat.ODD, fx("daydream" to 1.3f, dur = 1.05f, lines = listOf("咦，我剛剛要拿什麼？")), "容易忘記自己原本要做什麼"),
+        Trait("迷信", TraitCat.ODD, fx("fortune" to 1.8f, "window" to 1.2f, lines = listOf("今天的運勢好像不錯。")), "很相信好兆頭和壞兆頭"),
+        Trait("講究", TraitCat.ODD, fx("tidy" to 1.2f, "tea" to 1.3f, "primp" to 1.2f, dur = 1.1f), "東西一定要照自己的方式"),
+        Trait("節儉", TraitCat.ODD, fx("money" to 1.6f, "outing" to 0.85f, lines = listOf("這個還可以用啦。")), "什麼都捨不得丟"),
+        Trait("冒失", TraitCat.ODD, fx("tidy" to 0.85f, speed = 1.1f, dur = 0.9f, lines = listOf("哎呀！")), "常常撞到東西"),
+        Trait("愛熱鬧", TraitCat.SOCIAL, fx("chat" to 1.4f, "s:邀請" to 1.5f, decay = mapOf(Need.SOCIAL to 1.25f), lines = listOf("大家都來嘛！")), "人越多越開心"),
+        Trait("怕寂寞", TraitCat.FEEL, fx("chat" to 1.3f, decay = mapOf(Need.SOCIAL to 1.3f), flags = setOf("alone")), "一個人待著會不安"),
     ).associateBy { it.id }
     val CONFLICTS: List<Pair<String, String>> = listOf("愛乾淨" to "邋遢", "早起" to "夜貓子", "貪吃" to "小鳥胃", "懶散" to "勤快", "黏人" to "獨立", "有點黏人" to "獨立",
-        "健談" to "害羞", "樂天" to "愛哭", "情緒化" to "冷靜", "急性子" to "慢吞吞", "愛乾淨" to "邋遢")
-    const val MAX_TRAITS = 10
+        "健談" to "害羞", "樂天" to "愛哭", "情緒化" to "冷靜", "急性子" to "慢吞吞", "愛乾淨" to "邋遢",
+        /* 2.2.0 */ "慢熟" to "自來熟", "宅" to "獨行俠", "宅" to "運動派", "怕被碰" to "愛撒嬌", "杞人憂天" to "隨遇而安", "愛逞強" to "愛撒嬌", "早起" to "賴床", "早起" to "夜間活躍",
+        "規律" to "冒失", "節儉" to "愛分享", "獨立" to "怕寂寞", "獨行俠" to "愛熱鬧", "甜食派" to "挑食")
+    const val MAX_TRAITS = 12
     /** 1.5.1: jobs by era (現代、古風、奇幻; the player's own tags are 自訂) */
     val JOB_ERA: Map<String, String> = (listOf("郵差", "圖書館員", "店員", "偶像", "駭客", "學生", "甜點師", "無業遊民", "社畜", "醫生", "畫家", "作家", "廚師", "偵探", "園丁", "音樂家", "運動員", "研究員", "老師").map { it to "現代" } +
         listOf("宗門長老", "劍修", "傭兵").map { it to "古風" } + listOf("占卜師", "魔王", "鍊金術師", "騎士", "魔法師", "王族").map { it to "奇幻" }).toMap()
@@ -269,7 +323,7 @@ object Catalog {
 
     /** effects of everything a character has (tags + traits + quirks + values) */
     fun effects(s: CharSpec, custom: List<CustomTag> = emptyList()): List<Effect> = s.tags.mapNotNull { t -> TAGS[t]?.fx ?: custom.firstOrNull { it.id == t }?.effect() } +
-        s.traits.mapNotNull { TRAITS[it]?.fx } + s.quirks.mapNotNull { QUIRKS[it]?.fx } + s.values.mapNotNull { VALUES[it]?.fx }
+        s.traits.mapNotNull { TRAITS[it]?.fx } + s.quirks.mapNotNull { QUIRKS[it]?.fx } + s.values.mapNotNull { VALUES[it]?.fx } + Dims.effects(s)
 
     /** a first guess of the five axes from words (presets and M1 characters) */
     fun axesFromWords(words: List<String>): List<Float> {

@@ -11,6 +11,7 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -57,6 +58,12 @@ class UiTest {
         a.insetTop = 24f; a.insetBottom = 16f; a.push(TitleScreen()); return a
     }
     /** run frames (dp 360×800) and return the last one as an image */
+    /** tap something in the editor's scrolled panel: scroll until it is on screen (2.2.0: hidden parts cannot be tapped) */
+    private fun tapIn(a: UiApp, ed: CharacterEditor, id: String): Boolean {
+        ed.scrollBy(-1e5f); frames(a, 2)
+        repeat(40) { val z = a.zoneRect(id); if (z != null && z.h >= 30f) return a.tapZone(id); ed.scrollBy(120f); frames(a, 2) }
+        return false
+    }
     private fun frames(a: UiApp, n: Int = 40, w: Int = 360, h: Int = 800, scale: Float = 1f): BufferedImage {
         var img: BufferedImage? = null
         repeat(n) { i -> val draw = { g: app.ocshimeji.render.Gfx -> a.frame(g, 1 / 30f) }; if (i == n - 1) img = Java2dGfx.render(w, h, scale, assets, draw) else Java2dGfx.render(8, 8, 1f, assets) { a.w; a.frame(FakeSize(it, w.toFloat(), h.toFloat()), 1 / 30f) } }
@@ -175,13 +182,21 @@ class UiTest {
         assertTrue(a.tapZone("char:${c.id}")); frames(a, 15); val ed = a.screen as CharacterEditor
         shot("editor-looks", frames(a, 1, scale = 2f))
         for ((i, name) in listOf(4 to "editor-personality", 6 to "editor-speech")) { assertTrue(a.tapZone("tab:$i")); frames(a, 4); shot(name, frames(a, 1, scale = 2f)) }
-        assertTrue(a.tapZone("tab:4")); frames(a, 2); assertTrue(a.tapZone("chip:trait:書蟲")); assertTrue("書蟲" in ed.spec.traits)
+        assertTrue(a.tapZone("tab:4")); frames(a, 2); assertTrue(tapIn(a, ed, "chip:trait:書蟲")); assertTrue("書蟲" in ed.spec.traits)
         assertTrue(a.tapZone("undo")); assertTrue("書蟲" !in ed.spec.traits); assertTrue(a.tapZone("redo")); assertTrue("書蟲" in ed.spec.traits)
         assertTrue(a.tapZone("tab:3")); frames(a, 2); assertTrue(a.tapZone("step:axis0:+")); assertEquals(0.6f, ed.spec.axis(0), 0.01f)
         assertTrue(a.tapZone("tab:6")); frames(a, 2); assertTrue(a.tapZone("chip:say:被稱讚")); frames(a, 10); shot("editor-scene", frames(a, 1, scale = 2f))
         // the quiz: ten answers
         assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:quiz")); frames(a, 12); assertTrue(a.overlay is QuizSheet)
         shot("editor-quiz", frames(a, 1, scale = 2f)); repeat(10) { frames(a, 12); assertTrue(a.tapZone("ans:${it % 3}")) }; frames(a, 2); assertNull(a.overlay); assertTrue(ed.spec.traits.size >= 4)
+        // 2.2.0: the situational quiz fills the personality dimensions; sliders for the rest; little ways of talking
+        assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:dimquiz")); frames(a, 12); assertTrue(a.overlay is QuizSheet); shot("editor-dimquiz", frames(a, 1, scale = 2f))
+        repeat(app.ocshimeji.sim.chars.Dims.QUIZ.size) { frames(a, 12); assertTrue(a.tapZone("ans:${if (it % 2 == 0) 0 else 3}")) }; frames(a, 2); assertNull(a.overlay)
+        assertTrue(ed.spec.dims.size >= 8, "${ed.spec.dims}")
+        assertTrue(a.tapZone("tab:3")); frames(a, 4); val cur0 = ed.spec.dim("好奇"); ed.slide("dim:好奇", 1f); assertEquals(1f, ed.spec.dim("好奇"), 0.01f); assertNotEquals(cur0, ed.spec.dim("好奇"))
+        ed.scrollBy(1700f); frames(a, 4); shot("editor-dims", frames(a, 1, scale = 2f))
+        assertTrue(a.tapZone("tab:6")); frames(a, 4); ed.scrollBy(440f); frames(a, 4)
+        assertTrue(a.tapZone("step:talk:stutter:+"), "zones: ${a.zoneIds.filter { it.startsWith("step") }} ${a.zoneRect("step:talk:stutter:+")?.y}"); assertEquals(0.3f, ed.spec.talk.stutter, 0.01f); frames(a, 2); shot("editor-talk", frames(a, 1, scale = 2f))
         // dice with a lock: the speech tab stays
         val style = ed.spec.style; assertTrue(a.tapZone("more")); frames(a, 12); assertTrue(a.tapZone("row:dice")); frames(a, 12)
         assertTrue(a.tapZone("chip:lock:鎖住說話")); assertTrue(a.tapZone("dice:go")); frames(a, 2); assertEquals(style, ed.spec.style)
@@ -517,7 +532,13 @@ class UiTest {
         // the person card: now / relationships / records
         assertTrue(a.tapZone("ctl")); assertFalse(ws.control)
         a.show(PersonCard(ws, p1.id)); frames(a, 15); assertTrue(a.tapZone("ptab:rels")); frames(a, 5); shot("card-rels", frames(a, 1, scale = 2f))
-        assertTrue(a.tapZone("ptab:log")); frames(a, 5); shot("card-log", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
+        assertTrue(a.tapZone("ptab:log")); frames(a, 5); shot("card-log", frames(a, 1, scale = 2f))
+        // 2.2.0: their inner life
+        sim.inner.note(p1, sim.life.people[1].id, "${sim.life.people[1].name}送的一朵小花", "warm", 2, "flower")
+        sim.life.inner.goals += app.ocshimeji.sim.social.GoalRec(p1.id, "read", "今天想把書看完，然後再去澆花、寫日記，最後整理一下房間", listOf("read"), 2, 1, sim.life.day)
+        sim.life.inner.routines += app.ocshimeji.sim.social.Routine(p1.id, "tea", 2, sim.life.day, sim.life.day)
+        sim.inner.first(p1, "habit", "第一個自己養成的習慣：早上泡一杯茶")
+        assertTrue(a.tapZone("ptab:inner")); frames(a, 5); shot("card-inner", frames(a, 1, scale = 2f)); a.back(); frames(a, 2)
         // decorating: drag a piece from the bag onto the floor
         sim.economy.earn(100, "測試"); sim.economy.move("f:plant", 1, "測試"); ws.setPlacing(true); frames(a, 10)
         val chip = a.zoneRect("pl:f:plant")!!; val n = sim.house.pieces.size
@@ -545,13 +566,13 @@ class UiTest {
         // step 4: sliders → a reaction and 「這樣的人會…」
         assertTrue(a.tapZone("tab:3")); frames(a, 3); repeat(3) { assertTrue(a.tapZone("step:axis0:+")) }; assertTrue(ed.said!!.contains("聊天"), "${ed.said}"); frames(a, 4); shot("creator-axes", frames(a, 1, scale = 2f))
         // step 5: exclusive pairs, joined by ×
-        assertTrue(a.tapZone("tab:4")); frames(a, 3); assertTrue(a.tapZone("chip:trait:健談")); frames(a, 2); assertTrue(a.tapZone("chip:trait:害羞"))
+        assertTrue(a.tapZone("tab:4")); frames(a, 3); assertTrue(tapIn(a, ed, "chip:trait:健談")); frames(a, 2); assertTrue(tapIn(a, ed, "chip:trait:害羞"))
         assertTrue("健談" in ed.spec.traits && "害羞" !in ed.spec.traits, "the other side is greyed out"); assertTrue(a.toastText!!.contains("只能選一個"))
         frames(a, 4); shot("creator-traits", frames(a, 1, scale = 2f))
         // step 6: like → dislike → neither
-        assertTrue(a.tapZone("tab:5")); frames(a, 3); assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" in ed.spec.likes); assertTrue(ed.said!!.contains("布丁"))
-        assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" in ed.spec.dislikes && "布丁" !in ed.spec.likes); assertTrue(a.tapZone("chip:like:晴天")); frames(a, 4); shot("creator-likes", frames(a, 1, scale = 2f))
-        assertTrue(a.tapZone("chip:like:布丁")); assertTrue("布丁" !in ed.spec.dislikes)
+        assertTrue(a.tapZone("tab:5")); frames(a, 3); assertTrue(tapIn(a, ed, "chip:like:布丁")); assertTrue("布丁" in ed.spec.likes); assertTrue(ed.said!!.contains("布丁"))
+        assertTrue(tapIn(a, ed, "chip:like:布丁")); assertTrue("布丁" in ed.spec.dislikes && "布丁" !in ed.spec.likes); assertTrue(tapIn(a, ed, "chip:like:晴天")); frames(a, 4); shot("creator-likes", frames(a, 1, scale = 2f))
+        assertTrue(tapIn(a, ed, "chip:like:布丁")); assertTrue("布丁" !in ed.spec.dislikes)
         // step 7: how they call you and 小雨, moods, catchphrase places, a custom event
         assertTrue(a.tapZone("tab:6")); frames(a, 3)
         promptAnswer = "主人"; ed.tap("row:aClose"); assertEquals("主人", ed.spec.address.close); promptAnswer = "親愛的"; ed.tap("row:aDear")
@@ -727,7 +748,7 @@ class UiTest {
         assertTrue(a.tapZone("tab:3")); frames(a, 5); ed.slide("axis0", 0.95f); assertTrue(ed.spec.axis(0) > 0.7f, "${ed.spec.axis(0)}")
         ed.slide("axis0", 0.05f); assertTrue(ed.spec.axis(0) < -0.7f); assertNotNull(ed.said)
         assertTrue(a.tapZone("tab:0")); frames(a, 5)
-        assertTrue(a.tapZone("chip:sticker:${app.ocshimeji.save.Sticker.KINDS["ribbon"]}")); frames(a, 3); assertTrue(a.tapZone("step:stsize:+")); assertTrue(a.tapZone("step:sty:-"))
+        assertTrue(tapIn(a, ed, "chip:sticker:${app.ocshimeji.save.Sticker.KINDS["ribbon"]}")); frames(a, 3); assertTrue(tapIn(a, ed, "step:stsize:+")); assertTrue(tapIn(a, ed, "step:sty:-"))
         assertTrue(a.tapZone("chip:sticker:${app.ocshimeji.save.Sticker.KINDS["glasses"]}")); frames(a, 10); shot("editor-stickers", frames(a, 1, scale = 2f))
         assertTrue(a.tapZone("save")); frames(a, 5); val c = a.saves.libChar(b.id)!!
         assertEquals(listOf("ribbon", "glasses"), c.stickers.map { it.kind }); assertTrue(c.stickers[0].size > 1f); assertTrue(c.specOf().axis(0) < -0.7f)

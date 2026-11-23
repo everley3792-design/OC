@@ -33,7 +33,7 @@ class ItemEditor(val orig: LibItem?, picture: Raster?) : Screen() {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, H, t.bg)
         val listTop = top + 70; val btnY = H - app.insetBottom - 76; val sc = scroll.step(dt)
-        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, btnY - 12 - listTop)
         var y = listTop + 6
         fun title(s: String) { g.text(s, G + 4, y + 18, Dim.FS_S, t.ink2); y += 28 }
         // ---- pictures

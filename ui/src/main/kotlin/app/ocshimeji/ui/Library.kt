@@ -23,7 +23,7 @@ class LibraryScreen : Screen() {
         val t = app.theme; val W = app.w; val H = app.h; val top = app.insetTop; val G = Dim.GUTTER
         g.fillRect(0f, 0f, W, H, t.bg); g.fillGradientV(0f, 0f, W, top + 140, t.skyTop, t.bg)
         val sc = scroll.step(dt); val listTop = top + 108; val btnY = H - app.insetBottom - 76
-        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, btnY - 12 - listTop)
         val chars = app.saves.library().chars; val cw = (W - G * 2 - 12) / 2; var y = listTop + 6
         chars.forEachIndexed { i, c ->
             val x = G + (i % 2) * (cw + 12); if (i % 2 == 0 && i > 0) y += 214
@@ -110,7 +110,7 @@ class RelationsScreen(val people: List<Triple<String, CharSpec, LibChar?>>, rels
         g.text(if (first == null) "點兩個人來設定他們的關係" else "再點另一個人", W / 2, cy + r + 78, Dim.FS_S, t.ink3, FontKind.UI, Align.CENTER)
         // ---- pairs + romance
         val listTop = cy + r + 92; val btnY = H - app.insetBottom - 76
-        val sc = scroll.step(dt); g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc
+        val sc = scroll.step(dt); g.save(); g.clip(0f, listTop, W, btnY - 12 - listTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, listTop, W, btnY - 12 - listTop)
         val f = Form(app, g, G, W - G * 2, listTop)
         f.toggle("romance", "戀愛", romance, "預設關閉；只限兩位成年角色")
         for (i in people.indices) for (j in i + 1 until people.size) { val (a, sa, _) = people[i]; val (b, sb, _) = people[j]
@@ -152,7 +152,7 @@ class PairSheet(val a: String, val sa: CharSpec, val b: String, val sb: CharSpec
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("sheet:body", 0f, y, W, h)
         val f0 = Form(app, g, G, W - G * 2, y + 18); f0.chips("side", listOf("${sa.name} 怎麼看 ${sb.name}", "${sb.name} 怎麼看 ${sa.name}"), setOf(if (side == 0) "${sa.name} 怎麼看 ${sb.name}" else "${sb.name} 怎麼看 ${sa.name}"))
         val top = f0.y; val bottom = y + h - app.insetBottom - 84
-        val sc = scroll.step(dt); g.save(); g.clip(0f, top, W, bottom - top); g.translate(0f, -sc); app.zoneDy = -sc
+        val sc = scroll.step(dt); g.save(); g.clip(0f, top, W, bottom - top); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, W, bottom - top)
         val r = cur(); val f = Form(app, g, G, W - G * 2, top)
         val adults = sa.adult && sb.adult
         f.chips("quick", listOf("很好", "普通", "不好"), emptySet(), label = "快速設定")

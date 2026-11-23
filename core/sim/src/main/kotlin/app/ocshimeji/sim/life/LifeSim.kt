@@ -156,6 +156,8 @@ class LifeSim(val life: Life) {
     /** 1.8.0: messages, photos, notes, time capsules, house rules, room requests, little games, their own lines */
     val you by lazy { WithYou(this) }
     val days by lazy { Days(this) }
+    /** 2.2.0: inner needs, memories, habits, seats, goals, promises, bonds, firsts */
+    val inner by lazy { Inner(this) }
 
     init {
         for (p in life.people) if (p.act != null && p.actPiece >= 0) { reserved["${p.actPiece}:${p.actSlot}"] = p.id; body(p.id).arrivedAct = true; body(p.id).pose = Acts[p.act!!]?.pose ?: Pose.STAND }
@@ -207,7 +209,7 @@ class LifeSim(val life: Life) {
         for (p in life.people) tick(p, dm, dt)
         society.step(true, dt)
         townLife.step(true)
-        drama.step(true); you.step(true); days.step(true)
+        drama.step(true); you.step(true); days.step(true); inner.step(true)
         if (life.arriving && arrived.size >= life.people.size && life.people.all { body(it.id).path == null }) life.arriving = false
     }
 
@@ -327,7 +329,7 @@ class LifeSim(val life: Life) {
         val words = ACT_WORDS[a.id].orEmpty()
         if (words.isNotEmpty() && (s.likes + s.hobbies).any { l -> words.any { l.contains(it) } }) { k *= 1.6f; why = "喜歡${(s.likes + s.hobbies).first { l -> words.any { l.contains(it) } }}" }
         if (a.id in m.hate) k *= 0.4f
-        k *= drama.appealK(p, a) * you.appealK(p, a)   /* 1.7.0: a craze, or being sick; 1.8.0: house rules */
+        k *= drama.appealK(p, a) * you.appealK(p, a) * inner.appealK(p, a)   /* 1.7.0: a craze, or being sick; 1.8.0: house rules */
         if (a.id == "bathe") k *= 1f + 0.5f * s.hygiene
         if (a.id == "tidy") k *= when (s.roomPref) { "整齊" -> 1.4f; "隨性" -> 0.7f; else -> 1f } * (1f + 0.4f * s.hygiene)
         if (a.id == "water" && s.roomPref == "要有植物") k *= 1.5f
@@ -576,6 +578,7 @@ class LifeSim(val life: Life) {
         things(p, a)
         society.actDone(p, a.id)
         journal.actDone(p, a)
+        inner.actDone(p, a)
     }
     internal fun release(p: Person) { reserved.entries.removeAll { it.value == p.id } }
     /** the timeline (plan K-03); favourites are never dropped */
@@ -847,7 +850,7 @@ class LifeSim(val life: Life) {
             life.minute += dm
             for (p in life.people) { needs(p, dm); moods(p, live = false) }
             society.step(false, 0f)
-            drama.step(false); you.step(false); days.step(false)
+            drama.step(false); you.step(false); days.step(false); inner.step(false)
         }
         catching = false
         for (p in life.people) { val a = p.act?.let { Acts[it] }; if (a != null && life.minute >= p.actEnd) { counts.getOrPut(p.id) { HashMap() }.merge(a.zh, 1, Int::plus); finishQuiet(p, a) }

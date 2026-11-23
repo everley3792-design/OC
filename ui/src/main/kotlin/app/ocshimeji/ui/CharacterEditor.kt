@@ -18,6 +18,8 @@ import app.ocshimeji.sim.chars.Builder
 import app.ocshimeji.sim.chars.Call
 import app.ocshimeji.sim.chars.Habit
 import app.ocshimeji.sim.chars.Catalog
+import app.ocshimeji.sim.chars.Dims
+import app.ocshimeji.sim.chars.TalkStyle
 import app.ocshimeji.sim.chars.CharSpec
 import app.ocshimeji.sim.chars.Speech
 import app.ocshimeji.sim.chars.TagCat
@@ -106,11 +108,11 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         // ---- the panel (only this scrolls)
         val pTop = ty + 52; val btnY = H - app.insetBottom - 74
         val sc = scroll.step(dt)
-        g.save(); g.clip(0f, pTop, W, btnY - 8 - pTop); g.translate(0f, -sc); app.zoneDy = -sc
+        g.save(); g.clip(0f, pTop, W, btnY - 8 - pTop); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, pTop, W, btnY - 8 - pTop)
         val f = Form(app, g, G, W - G * 2, pTop + 2); f.bars = bars
         when (tab) { 0 -> looks(f); 1 -> basic(f); 2 -> voice(f); 3 -> axes(f); 4 -> traits(f); 5 -> likes(f); 6 -> speech(f); 7 -> life(f); 8 -> story(f); else -> skills(f) }
         if (tab < 6) f.button("next", "下一步：${tabs[tab + 1].substringAfter(" ")}")
-        g.restore(); app.zoneDy = 0f
+        g.restore(); app.zoneDy = 0f; app.zoneClip = null
         scroll.max = maxOf(0f, f.y + 20 - (btnY - 8))
         // ---- save (the one primary button)
         g.fillRect(0f, btnY - 8, W, H - btnY + 8, t.bg)
@@ -167,6 +169,10 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         val d = describe(spec)
         f.header("這樣的人會…"); if (d.isEmpty()) f.note("每一條都在中間：不特別偏向哪一邊。") else for ((_, l) in d) f.note("・$l", app.theme.ink2)
         f.header("情緒反應"); f.meter("cry", "不太哭", "容易哭", spec.cry); f.meter("temper", "好脾氣", "容易生氣", spec.temper); f.meter("shy", "大方", "容易害羞", spec.shy)
+        // 2.2.0 (#14): the other dimensions, by group (the five above are the first five)
+        f.header("更多面向（共 ${Dims.ALL.size} 個）", "也可以用「輔助工具 → 情境問答」一次填好")
+        for (grp in Dims.GROUPS) { f.header(grp); for (d in Dims.ALL.filter { it.group == grp && it.axis < 0 }) { f.note("${d.zh}：${d.note}"); f.meter("dim:${d.id}", d.low, d.high, spec.dim(d.id)) } }
+        Dims.summary(spec).takeIf { it.isNotEmpty() }?.let { f.note("最明顯的：" + it.joinToString("、"), app.theme.ink2) }
     }
     /** step 5: traits in four colours, exclusive pairs joined by ×; jobs and kinds are tags */
     private fun traits(f: Form) {
@@ -199,6 +205,9 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         val a = spec.address
         f.chips("style", CharSpec.STYLES, setOf(spec.style), label = "說話風格")
         f.header("說話測試", "選一個情境，看牠怎麼說"); f.chips("say", Speech.SCENES, emptySet())
+        // 2.2.0 (#39): little ways of putting words together
+        f.header("說話的小習慣", "多常這樣說；改了可以用上面的說話測試聽聽看")
+        for ((k, zh) in TalkStyle.FIELDS) { val v = spec.talk.get(k); f.stepper("talk:$k", zh, TALK_ZH[TALK_LV.indexOfFirst { it >= v - 0.01f }.coerceAtLeast(0)]) }
         f.header("怎麼叫你", "越熟叫法越不一樣；空著＝用上一段的")
         f.row("aStranger", "還不熟的時候", a.stranger); f.row("aClose", "熟了以後", a.close.ifBlank { spec.callPlayer.takeIf { it != "你" } ?: "" }); f.row("aDear", "很親的時候", a.dear)
         f.chips("attitude", CharSpec.ATTITUDES, setOf(spec.attitude), label = "一開始對你的態度")
@@ -283,7 +292,7 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
             id == "back" -> { if (dirty) app.show(Confirm("還沒儲存", "要放棄這些修改嗎？", "放棄") { app.pop() }) else app.pop() }
             id == "undo" -> undo(); id == "redo" -> redo()
             id == "save" -> save()
-            id == "more" -> app.show(ListSheet("輔助工具", listOf("quiz" to "性格問答（10 題）", "dice" to "隨機（可以鎖住分頁）", "template" to "套用原創範本", "scene" to "情境預覽")) { tools(it) })
+            id == "more" -> app.show(ListSheet("輔助工具", listOf("dimquiz" to "情境問答（${Dims.QUIZ.size} 題，填好 ${Dims.ALL.size} 個面向）", "quiz" to "性格問答（10 題）", "dice" to "隨機（可以鎖住分頁）", "template" to "套用原創範本", "scene" to "情境預覽")) { tools(it) })
             id == "warns" -> app.show(ListSheet("相容性提醒（只提醒，不會阻止）", Builder.warnings(spec, houseId, housemates).mapIndexed { i, w -> "w$i" to w }) {})
             id == "scene" -> tools("scene")
             id.startsWith("tab:") -> selectTab(id.removePrefix("tab:").toInt())
@@ -308,6 +317,7 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
     private fun tools(k: String) {
         when (k) {
             "quiz" -> app.show(QuizSheet { answers -> edit { Builder.quiz(it, answers) }; app.toast("依問答填好了個性與喜好") })
+            "dimquiz" -> app.show(QuizSheet(Dims.QUIZ.map { q -> q.ask to q.answers.map { it.first } }) { answers -> edit { Dims.quiz(it, answers) }; app.toast("依情境問答填好了性格的各個面向") })
             "dice" -> app.show(DiceSheet { locks -> edit { Builder.random(it, Rng(app.platform.now()), locks) }; app.toast("擲好了") })
             "template" -> app.show(ListSheet("原創範本", Builder.TEMPLATES.keys.map { it to it }, subtitle = "套用後還可以再改；名字、年齡、故事不變") { n -> edit { Builder.applyTemplate(n, it) }; app.toast("套用了「$n」") })
             "scene" -> app.show(ListSheet("情境預覽", Speech.SCENES.map { it to it }) { sc -> preview(sc) })
@@ -366,6 +376,8 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
         fun ax(i: Int) = edit { s -> s.copy(axes = s.axes.toMutableList().also { while (it.size < 5) it += 0f; it[i] = ((it[i] + 0.2f * d) * 10).let { x -> Math.round(x) / 10f }.coerceIn(-1f, 1f) }) }
         when {
             k.startsWith("axis") -> ax(k.removePrefix("axis").toInt())
+            k.startsWith("dim:") -> { val id = k.removePrefix("dim:"); edit { s -> s.withDim(id, Math.round((s.dim(id) + 0.2f * d) * 10) / 10f) } }
+            k.startsWith("talk:") -> { val id = k.removePrefix("talk:"); edit { s -> val i = TALK_LV.indexOfFirst { it >= s.talk.get(id) - 0.01f }.coerceAtLeast(0); s.copy(talk = s.talk.with(id, TALK_LV[(i + d).coerceIn(0, TALK_LV.size - 1)])) } }
             k == "height" -> edit { it.copy(height = (it.height + 5 * d).coerceIn(60, 200)) }
             k == "stx" || k == "sty" || k == "stsize" -> editChar { ch -> val st = ch.stickers.lastOrNull() ?: return@editChar ch
                 val n = when (k) { "stx" -> st.copy(dx = (st.dx + 0.02f * d).coerceIn(-0.6f, 0.6f)); "sty" -> st.copy(dy = (st.dy + 0.02f * d).coerceIn(-0.6f, 0.6f)); else -> st.copy(size = (st.size + 0.1f * d).coerceIn(0.4f, 2.5f)) }
@@ -414,13 +426,16 @@ class CharacterEditor(private var c: LibChar, spec0: CharSpec, val world: Boolea
     }
     override fun release() { if (sliding != null) sliding = null else scroll.release() }
     /** tests: drag a slider to a fraction of its bar */
+    fun scrollBy(d: Float) = scroll.jump(scroll.value + d)
     fun slide(key: String, frac: Float) { val b = bars[key] ?: return; sliding = key; drag(0f, 0f, b[0] + b[1] * frac, 0f, false); sliding = null }
     private fun setMeter(k: String, v: Float) = edit { s -> when {
         k.startsWith("axis") -> s.copy(axes = s.axes.toMutableList().also { while (it.size < 5) it += 0f; it[k.removePrefix("axis").toInt()] = v.coerceIn(-1f, 1f) })
+        k.startsWith("dim:") -> s.withDim(k.removePrefix("dim:"), v)
         k == "cry" -> s.copy(cry = v); k == "temper" -> s.copy(temper = v); k == "shy" -> s.copy(shy = v); k == "hygiene" -> s.copy(hygiene = v)
         k == "oversleep" -> s.copy(oversleep = v.coerceIn(0f, 1f)); k == "nightOwl" -> s.copy(nightOwl = v.coerceIn(0f, 1f)); else -> s } }
 
     companion object {
+        val TALK_LV = listOf(0f, 0.3f, 0.6f, 1f); val TALK_ZH = listOf("不會", "偶爾", "常常", "總是")
         val AXES = listOf("外向" to "內向", "活潑" to "沉穩", "認真" to "隨性", "坦率" to "含蓄", "溫柔" to "好勝")
         val EMOTIONS = linkedMapOf("開心" to "happy", "生氣" to "angry", "難過" to "sad", "害羞" to "shy", "睡覺" to "sleep", "驚訝" to "surprised")
         val GROUP_COLOR = mapOf("社交" to 0xFF9FDCC0.toInt(), "脾氣" to 0xFFF4A99A.toInt(), "起居" to 0xFFF7C98A.toInt(), "做事" to 0xFFA8CBEA.toInt())
@@ -458,7 +473,7 @@ class TagSheet(initial: List<String>, val done: (List<String>) -> Unit) : Overla
         for (c in TagCat.values()) { val cw = g.measure(c.zh, Dim.FS_S + 1) + 28; if (cx + cw > W - G) { cx = G; cy += 44 }; Widgets.chip(g, app, "cat:${c.name}", cx, cy, c.zh, c == cat, 36f); cx += cw + 6 }
         if (cat == TagCat.JOB) { cy += 46; cx = G; for (e in Catalog.ERAS) { cx += Widgets.chip(g, app, "era:$e", cx, cy, e, e == era, 34f) + 6 } }
         val top = cy + 50; val bottom = y + h - app.insetBottom - 130
-        val sc = scroll.step(dt); g.save(); g.clip(0f, top, W, bottom - top); g.translate(0f, -sc); app.zoneDy = -sc
+        val sc = scroll.step(dt); g.save(); g.clip(0f, top, W, bottom - top); g.translate(0f, -sc); app.zoneDy = -sc; app.zoneClip = floatArrayOf(0f, top, W, bottom - top)
         val ids = if (cat != TagCat.JOB) Catalog.TAGS.values.filter { it.cat == cat }.map { it.id } else if (era == "自訂") custom else Catalog.TAGS.values.filter { it.cat == cat && (Catalog.JOB_ERA[it.id] ?: "現代") == era }.map { it.id }
         val f = Form(app, g, G, W - G * 2, top); if (ids.isEmpty()) f.note("還沒有自訂的標籤：到「創作中心 → 標籤」做一個") else f.chips("tag", ids, chosen); g.restore(); app.zoneDy = 0f
         scroll.max = maxOf(0f, f.y - bottom)
@@ -478,19 +493,20 @@ class TagSheet(initial: List<String>, val done: (List<String>) -> Unit) : Overla
 }
 
 /** 性格問答: ten questions, three answers each */
-class QuizSheet(val done: (List<Int>) -> Unit) : Overlay() {
+class QuizSheet(val qs: List<Pair<String, List<String>>> = Builder.QUIZ.map { q -> q.text to q.answers.map { it.text } }, val done: (List<Int>) -> Unit) : Overlay() {
     private val pop = Spring(0f, 1f); private val answers = ArrayList<Int>()
     override fun frame(g: Gfx, dt: Float) {
-        val t = app.theme; val s = pop.step(dt); val W = app.w; val G = Dim.GUTTER; val q = Builder.QUIZ[answers.size]
+        val t = app.theme; val s = pop.step(dt); val W = app.w; val G = Dim.GUTTER; val q = qs[answers.size]
         g.fillRect(0f, 0f, W, app.h, Colors.withAlpha(t.scrim, s.coerceIn(0f, 1f)))
-        val h = 420f + app.insetBottom; val y = app.h - h * s
+        val h = 150f + q.second.size * 70f + 20f + app.insetBottom; val y = app.h - h * s
         g.fillRound(0f, y, W, h + 40, Dim.RADIUS_L, t.surface); app.zone("sheet:body", 0f, y, W, h)
-        for (i in 0 until Builder.QUIZ.size) g.fillRound(W / 2 - 90 + i * 18f, y + 22, if (i == answers.size) 14f else 8f, 8f, 4f, if (i <= answers.size) t.accent else t.lip)
-        g.text("${answers.size + 1}／${Builder.QUIZ.size}", G + 4, y + 66, Dim.FS_S, t.ink2)
-        for ((i, l) in Widgets.wrap(g, q.text, Dim.FS_L, W - G * 2, 2).withIndex()) g.text(l, G + 4, y + 98 + i * 28f, Dim.FS_L, t.ink)
-        q.answers.forEachIndexed { i, a -> Widgets.button(g, app, "ans:$i", G, y + 150 + i * 70f, W - G * 2, 58f, a.text) }
+        val dot = ((W - G * 2) / qs.size).coerceAtMost(18f); val x0 = W / 2 - dot * qs.size / 2
+        for (i in qs.indices) g.fillRound(x0 + i * dot, y + 22, if (i == answers.size) dot - 4 else (dot - 10).coerceAtLeast(4f), 8f, 4f, if (i <= answers.size) t.accent else t.lip)
+        g.text("${answers.size + 1}／${qs.size}", G + 4, y + 66, Dim.FS_S, t.ink2)
+        for ((i, l) in Widgets.wrap(g, q.first, Dim.FS_L, W - G * 2, 2).withIndex()) g.text(l, G + 4, y + 98 + i * 28f, Dim.FS_L, t.ink)
+        q.second.forEachIndexed { i, a -> Widgets.button(g, app, "ans:$i", G, y + 150 + i * 70f, W - G * 2, 58f, a) }
     }
-    override fun tap(id: String) { if (id.startsWith("ans:")) { answers += id.removePrefix("ans:").toInt(); pop.snap(0.85f); pop.target = 1f; if (answers.size >= Builder.QUIZ.size) { app.closeOverlay(); done(answers) } } }
+    override fun tap(id: String) { if (id.startsWith("ans:")) { answers += id.removePrefix("ans:").toInt(); pop.snap(0.85f); pop.target = 1f; if (answers.size >= qs.size) { app.closeOverlay(); done(answers) } } }
 }
 
 /** 隨機: lock the tabs to keep, then roll */
